@@ -80,13 +80,18 @@ class AuthenticationManager:
         Returns:
             User dictionary if authenticated, None otherwise
         """
+        import hashlib
+        
+        # Hash the input password for comparison
+        hashed_password = hashlib.sha256(password.encode()).hexdigest()
+        
         conn = get_db_connection()
         try:
             user = conn.execute("""
                 SELECT user_id, username, email, first_name, last_name, full_name, status 
                 FROM users 
                 WHERE email = ? AND password = ? AND status = 'active'
-            """, (email, password)).fetchone()
+            """, (email, hashed_password)).fetchone()
             
             if user:
                 # Update last login timestamp
@@ -105,24 +110,28 @@ class AuthenticationManager:
             conn.close()
     
     def authenticate_user(self, email: str, password: Optional[str] = None, 
-                         auth_method: str = "email_only") -> Optional[Dict[str, Any]]:
+                         auth_method: str = "email_password") -> Optional[Dict[str, Any]]:
         """
-        Main authentication method that supports both email-only and email+password
+        Main authentication method that requires password by default
         
         Args:
             email: User's email address
-            password: User's password (optional)
-            auth_method: "email_only" or "email_password"
+            password: User's password (required)
+            auth_method: "email_password" (default) or "email_only" 
             
         Returns:
             User dictionary if authenticated, None otherwise
         """
-        if auth_method == "email_only":
-            return self.authenticate_by_email_only(email)
-        else:
+        # Password is required by default
+        if auth_method == "email_password":
             if password is None:
                 return None
             return self.authenticate_by_email_and_password(email, password)
+        elif auth_method == "email_only":
+            # Only allow email-only if explicitly requested (for backward compatibility)
+            return self.authenticate_by_email_only(email)
+        else:
+            return None
     
     def setup_user_session(self, user: Dict[str, Any], login_method: str):
         """
@@ -391,7 +400,10 @@ def render_login_sidebar(auth_manager: Optional[AuthenticationManager] = None):
     if auth_manager.is_impersonating():
         original_user = auth_manager.get_original_user()
         current_user = auth_manager.get_current_user()
-        st.sidebar.warning(f"🔍 Impersonating: {current_user.get('full_name', 'Unknown')}")
+        if current_user:
+            st.sidebar.warning(f"🔍 Impersonating: {current_user.get('full_name', 'Unknown')}")
+        else:
+            st.sidebar.warning("🔍 Impersonating: Unknown User")
         if st.sidebar.button("⏹️ Stop Impersonating", key="stop_impersonation"):
             auth_manager.stop_impersonation()
             st.rerun()
@@ -402,23 +414,19 @@ def render_login_sidebar(auth_manager: Optional[AuthenticationManager] = None):
         with st.sidebar.form("login_form"):
             email = st.text_input("Email", placeholder="user@example.com")
             
-            # Add a checkbox to toggle password requirement
-            require_password = st.checkbox("Require Password", value=False)
-            password = None
-            
-            if require_password:
-                password = st.text_input("Password", type="password", placeholder="pass123")
+            # Password is required by default - no checkbox needed
+            password = st.text_input("Password", type="password", placeholder="Enter your password")
+            require_password = True
             
             login_button = st.form_submit_button("Login")
             
             if login_button:
                 if email:
-                    # Choose authentication method based on password requirement
-                    auth_method = "email_password" if require_password else "email_only"
-                    user = auth_manager.authenticate_user(email, password, auth_method)
+                    # Always use password authentication
+                    user = auth_manager.authenticate_user(email, password, "email_password")
                     
                     if user:
-                        auth_manager.setup_user_session(user, auth_method)
+                        auth_manager.setup_user_session(user, "email_password")
                         st.sidebar.success(f"Welcome, {auth_manager.get_user_full_name()}!")
                         st.rerun()
                     else:
@@ -428,7 +436,11 @@ def render_login_sidebar(auth_manager: Optional[AuthenticationManager] = None):
     else:
         # Show logged in user info and logout button
         if auth_manager.is_impersonating():
-            st.sidebar.info(f"Original: {auth_manager.get_original_user().get('full_name', 'Unknown')}")
+            original_user = auth_manager.get_original_user()
+            if original_user:
+                st.sidebar.info(f"Original: {original_user.get('full_name', 'Unknown')}")
+            else:
+                st.sidebar.info("Original: Unknown User")
         else:
             st.sidebar.success(f"Logged in as: {auth_manager.get_user_full_name()}")
         
