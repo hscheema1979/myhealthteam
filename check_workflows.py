@@ -17,10 +17,10 @@ def check_workflows():
         
         # Query workflow templates excluding those with "Future" in name
         cursor.execute("""
-            SELECT workflow_template_id, workflow_name 
+            SELECT template_id, template_name 
             FROM workflow_templates 
-            WHERE workflow_name NOT LIKE '%Future%'
-            ORDER BY workflow_name
+            WHERE template_name NOT LIKE '%Future%'
+            ORDER BY template_name
         """)
         
         workflows = cursor.fetchall()
@@ -28,8 +28,8 @@ def check_workflows():
         print(f"Found {len(workflows)} workflow templates (excluding Future workflows):")
         print("-" * 60)
         
-        for workflow_id, workflow_name in workflows:
-            print(f"ID: {workflow_id:2d} | Name: {workflow_name}")
+        for template_id, template_name in workflows:
+            print(f"ID: {template_id:2d} | Name: {template_name}")
         
         conn.close()
         return workflows
