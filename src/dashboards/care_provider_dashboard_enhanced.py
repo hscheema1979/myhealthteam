@@ -1,15 +1,26 @@
+import sys
+import os
+# Ensure the project root (parent of 'src') is in sys.path for imports
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.abspath(os.path.join(current_dir, '..', '..'))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
 import streamlit as st
+from src.dashboards.phone_review import show_phone_review_entry
 import pandas as pd
 from src import database
 import numpy as np
-from datetime import datetime
+from datetime import datetime, timedelta
+from src.config.ui_style_config import TextStyle, SectionTitles, get_section_title, get_metric_label
+import streamlit as st
+from src.dashboards.phone_review import show_phone_review_entry
+import pandas as pd
+from src import database
+import numpy as np
+from datetime import datetime, timedelta
+from src.config.ui_style_config import TextStyle, SectionTitles, get_section_title, get_metric_label
 
-# Try to import awesome_table, if it fails, use fallback
-try:
-    from streamlit_awesome_table import awesome_table
-    USE_AWESOME_TABLE = True
-except ImportError:
-    USE_AWESOME_TABLE = False
 
 def show(user_id, user_role_ids=None):
     if user_role_ids is None:
@@ -18,537 +29,217 @@ def show(user_id, user_role_ids=None):
     # Check if user has Care Provider Manager role (role_id 38)
     has_cpm_role = 38 in user_role_ids
     
-    st.title("Care Provider Dashboard - Enhanced")
-    
-    # Show onboarding queue statistics only for management roles
-    if has_cpm_role:
-        show_onboarding_queue_stats(user_id, has_cpm_role)
+    st.title("Care Provider Dashboard")
     
     if has_cpm_role:
-        st.info("👑 **Manager Access**: You have additional management tabs available")
+        st.info(f"{TextStyle.INFO_INDICATOR}: Manager Access - You have additional management tabs available")
         
-        # Create tabs with management functionality (Provider Onboarding moved to Admin only)
-        tab1, tab2, tab3 = st.tabs(["📋 My Patients", "👥 Team Management", " Manager Reports"])
+        # Always check for onboarding queue for CPM role
+        onboarding_queue = database.get_provider_onboarding_queue(user_id)
+        
+        # Create tabs with management functionality - single tab creation for CPM
+        if onboarding_queue and len(onboarding_queue) > 0:
+            tab1, tab2, tab3, tab4 = st.tabs(["My Patients", "Team Management", "Onboarding Queue & Initial TV Visits", "Phone Reviews"])
+            
+            with tab1:
+                show_patient_list_section(user_id, section_id="cpm_patients_with_queue")
+                
+            with tab2:
+                show_team_management_section()
+                
+            with tab3:
+                show_provider_onboarding_queue(user_id, onboarding_queue)
+                
+            with tab4:
+                show_phone_review_entry(mode="cp", user_id=user_id)
+        else:
+            tab1, tab2, tab3 = st.tabs(["My Patients", "Team Management", "Phone Reviews"])
+            
+            with tab1:
+                show_patient_list_section(user_id, section_id="cpm_patients_no_queue")
+                
+            with tab2:
+                show_team_management_section()
+                
+            with tab3:
+                show_phone_review_entry(mode="cp", user_id=user_id)
+    else:
+        # Regular care provider (non-manager) tabs
+        tab1, tab2 = st.tabs(["My Patients", "Phone Reviews"])
         
         with tab1:
-            show_patient_list_section(user_id)
+            show_patient_list_section(user_id, section_id="cp_patients")
             
         with tab2:
-            st.subheader("👥 Team Management")
-            
-            # Import and display performance summaries for providers
-            try:
-                from src.utils.performance_components import (
-                    display_provider_monthly_summary,
-                    display_provider_weekly_summary,
-                    display_patient_assignments_by_workflow
-                )
-                
-                # Performance Section
-                st.header("� Provider Performance")
-                st.markdown("Monitor and analyze provider performance metrics across your team.")
-                
-                # Provider Monthly Performance Summary
-                display_provider_monthly_summary(show_all=True, title="📈 Provider Monthly Performance Summary")
-                
-                st.divider()
-                
-                # Provider Weekly Performance Summary
-                display_provider_weekly_summary(show_all=True, title="📅 Provider Weekly Performance Summary")
-                
-                st.divider()
-                
-                # Patient Assignments Section
-                st.header("👥 Patient Assignments")
-                st.markdown("Review patient assignments and onboarding workflow progress for your provider team.")
-                
-                # Get all providers for assignments display
-                try:
-                    providers = database.get_users_by_role(33)  # Care Provider role
-                    if providers:
-                        # Convert sqlite3.Row objects to dictionaries
-                        provider_dicts = [dict(provider) for provider in providers]
-                        
-                        for provider in provider_dicts[:3]:  # Show for first 3 providers to avoid overload
-                            with st.expander(f"Patient Assignments - {provider.get('full_name', provider.get('username', 'Unknown'))}"):
-                                try:
-                                    # Get provider user ID for assignments
-                                    provider_user_id = provider.get('user_id', provider.get('id'))
-                                    display_patient_assignments_by_workflow(
-                                        user_id=provider_user_id,
-                                        role_id=33,  # Care Provider role
-                                        title=f"Assignments for {provider.get('full_name', provider.get('username', 'Unknown'))}"
-                                    )
-                                except Exception as e:
-                                    st.error(f"Error loading assignments for {provider.get('username', 'Unknown')}: {e}")
-                        
-                        if len(provider_dicts) > 3:
-                            st.info(f"Showing assignments for first 3 providers. Total providers: {len(provider_dicts)}")
-                    else:
-                        st.info("No providers found for patient assignment display.")
-                except Exception as e:
-                    st.error(f"Error getting providers: {e}")
-                    
-            except ImportError as e:
-                st.error(f"Error importing performance components: {e}")
-                st.info("🚧 Team management functionality coming soon...")
-            
-        with tab3:
-            st.subheader("📊 Manager Reports")
-            st.info("🚧 Manager reporting functionality coming soon...")
-            # TODO: Add manager reporting functionality
-    else:
-        # Standard CP dashboard - single patient list view
-        show_patient_list_section(user_id)
+            show_phone_review_entry(mode="cp", user_id=user_id)
 
-def show_onboarding_queue_stats(user_id, has_management_role=False):
-    """Display onboarding queue statistics"""
-    st.subheader("📊 Onboarding Queue Status")
-    
-    # Get onboarding statistics
-    queue_stats = database.get_onboarding_queue_stats()
-    
-    # Create columns for metrics display
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        st.metric(
-            "🏥 Total in Onboarding", 
-            queue_stats['total_onboarding'],
-            help="Total patients currently in onboarding process"
-        )
-    
-    with col2:
-        st.metric(
-            "👨‍⚕️ Need Provider Assignment", 
-            queue_stats['pending_provider_assignment'],
-            help="Patients who have completed TV visit and need provider assignment"
-        )
-    
-    with col3:
-        st.metric(
-            "📺 Need TV Visit", 
-            queue_stats['pending_tv_visit'],
-            help="Patients who need initial telemedicine visit"
-        )
-    
-    with col4:
-        st.metric(
-            "👥 Unassigned Active", 
-            queue_stats['unassigned_active_patients'],
-            help="Active patients without assigned care provider"
-        )
-    
-    # Show additional details for management roles
-    if has_management_role:
-        with st.expander("📋 Detailed Queue Information", expanded=False):
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                st.metric("📞 Need Initial Contact", queue_stats['pending_initial_contact'])
-                st.metric("📄 Need Documentation", queue_stats['pending_documentation'])
-            
-            with col2:
-                st.metric("🎯 Unassigned POT", queue_stats['unassigned_pot'])
-                st.metric("🆕 New Patients (30d)", queue_stats['new_patients_30_days'])
+def show_patient_list_section(user_id, section_id=None):
 
-def show_patient_list_section(user_id):
-    # Get the provider_id from user_id first
-    provider_id = database.get_provider_id_from_user_id(user_id)
-    if not provider_id:
-        st.error("No provider found for this user. Please contact your administrator.")
-        return
-
-    # Get all patients assigned to this provider with proper status information
+    # Map user_id to provider_id
+    provider_id = None
     try:
-        conn = database.get_db_connection()
-        cursor = conn.execute("""
-            SELECT DISTINCT
-                p.patient_id,
-                p.first_name,
-                p.last_name,
-                p.status,
-                p.address_street,
-                p.address_city,
-                p.address_state,
-                p.address_zip,
-                p.phone_primary,
-                p.email,
-                prs.zip_code,
-                prs.city,
-                prs.state,
-                r.county as region_county,
-                CASE 
-                    WHEN EXISTS (
-                        SELECT 1 FROM region_providers rp2 
-                        JOIN regions r2 ON rp2.region_id = r2.region_id 
-                        WHERE rp2.provider_id = ? AND r2.county = r.county
-                    ) THEN 0 
-                    ELSE 1 
-                END as outside_provider_region
-            FROM user_patient_assignments upa
-            JOIN patients p ON upa.patient_id = p.patient_id
-            LEFT JOIN patient_region_mapping prs ON p.patient_id = prs.patient_id
-            LEFT JOIN regions r ON prs.region_id = r.region_id
-            WHERE upa.user_id = ?
-            ORDER BY p.last_name, p.first_name
-        """, (provider_id, user_id,))
-        assigned_patients = cursor.fetchall()
-        conn.close()
-        # Convert to list of dictionaries for easier handling
-        patient_data_list = []
-        for patient in assigned_patients:
-            patient_dict = {}
-            for key in patient.keys():
-                patient_dict[key] = patient[key]
-            patient_data_list.append(patient_dict)
-            
+        provider_id = database.get_provider_id_from_user_id(user_id)
+    except Exception:
+        provider_id = None
+
+    # Get all assigned patients for this provider (no filtering)
+    try:
+        if provider_id is not None:
+            patient_data_list = database.get_provider_patient_panel_enhanced(provider_id)
+        else:
+            patient_data_list = []
     except Exception as e:
         st.error(f"Error fetching patient data: {e}")
-        # Debug: Let's check what's in the assignments table for this user
-        try:
-            conn = database.get_db_connection()
-            cursor = conn.execute("SELECT COUNT(*) as count FROM user_patient_assignments WHERE user_id = ?", (user_id,))
-            count = cursor.fetchone()[0]
-            st.info(f"Debug: Found {count} patient assignments for user {user_id}")
-            conn.close()
-        except Exception as e2:
-            st.info(f"Debug error: {e2}")
         patient_data_list = []
-        assigned_patients = []
 
-    # Get all unique patient statuses for filtering
-    all_statuses = []
-    if patient_data_list:
-        try:
-            # Extract unique statuses from patient data
-            all_statuses = list(set([p.get('status', 'Unknown') for p in patient_data_list if 'status' in p]))
-            all_statuses = sorted([s for s in all_statuses if s and s != ''])  # Remove empty strings and sort
-            # Clean up status names to remove "changed" and "Call0" suffixes
-            all_statuses = [s.split('changed')[0].split('Call0')[0].strip() for s in all_statuses]
-        except Exception as e:
-            print(f"Error getting statuses: {e}")
-            all_statuses = ['Active', 'Inactive', 'Pending', 'Discharged']  # Default fallback
-    else:
-        all_statuses = ['Active', 'Inactive', 'Pending', 'Discharged']  # Default fallback
-    
-    # Filter statuses to only show active-like statuses for metrics calculation
-    active_statuses = ['Active', 'active', 'Active - Changed', 'Active - Call0', 'Active - Changed', 'Active - Call0']
-    active_patient_statuses = [s for s in all_statuses if any(active_status.lower() in s.lower() for active_status in active_statuses)]
-    if not active_patient_statuses:
-        active_patient_statuses = ['Active', 'active']  # Fallback
-    
-    # Get counties and zip codes for filtering
-    # Priority: 1) Provider's assigned regions 2) All regions where the provider has patients
-    all_counties = []
-    all_zip_codes = []
-    
-    try:
-        conn = database.get_db_connection()
-        
-        # First check if provider has specific region assignments
-        cursor = conn.execute("""
-            SELECT COUNT(*) FROM region_providers WHERE provider_id = ?
-        """, (provider_id,))
-        has_region_assignments = cursor.fetchone()[0] > 0
-        
-        if has_region_assignments:
-            # Provider has region constraints - show their assigned regions AND their actual patients' regions
-            print(f"DEBUG: Provider {provider_id} has region assignments")
-            
-            # Get counties from provider's assigned regions PLUS counties where they have actual patients
-            cursor = conn.execute("""
-                SELECT DISTINCT r.county, r.state, COUNT(DISTINCT p.patient_id) as patient_count
-                FROM region_providers rp
-                JOIN regions r ON rp.region_id = r.region_id
-                LEFT JOIN patient_region_mapping prm ON r.region_id = prm.region_id
-                LEFT JOIN patients p ON prm.patient_id = p.patient_id
-                WHERE rp.provider_id = ? AND r.county IS NOT NULL AND r.county != ''
-                GROUP BY r.county, r.state
-                
-                UNION
-                
-                SELECT DISTINCT r.county, r.state, COUNT(DISTINCT p.patient_id) as patient_count
-                FROM user_patient_assignments upa
-                JOIN patients p ON upa.patient_id = p.patient_id
-                LEFT JOIN patient_region_mapping prm ON p.patient_id = prm.patient_id
-                LEFT JOIN regions r ON prm.region_id = r.region_id
-                WHERE upa.user_id = ? AND r.county IS NOT NULL AND r.county != ''
-                GROUP BY r.county, r.state
-                ORDER BY county
-            """, (provider_id, user_id))
-            
+    # --- Map facility_id to facility_name using modular utility ---
+    from src.core_utils import get_facility_id_to_name_map, map_facility_id_to_name
+    facility_id_to_name = get_facility_id_to_name_map(database)
+    unmapped_facilities = set()
+    for p in patient_data_list:
+        fid = p.get('current_facility_id')
+        facility_name = map_facility_id_to_name(fid, facility_id_to_name)
+        # Fallback: if no id or not mapped, try the text field
+        if not facility_name:
+            fallback_name = p.get('facility')
+            if fallback_name and fallback_name not in facility_id_to_name.values():
+                unmapped_facilities.add(fallback_name)
+            facility_name = fallback_name or 'Unknown'
+        p['facility'] = facility_name
+    if unmapped_facilities:
+        st.warning(f"Unmapped facilities found in patient data: {sorted(unmapped_facilities)}")
+
+    # Only show patients with status in Active, Active-Geri, Active-PCP
+    allowed_statuses = ['Active', 'Active-Geri', 'Active-PCP']
+    filtered_patients = [p for p in patient_data_list if (p.get('status', '') or '').strip() in allowed_statuses]
+
+
+    # Metrics for active patient counts (show only once, no dropdown)
+    total_active = len([p for p in patient_data_list if (p.get('status', '') or '').strip() in allowed_statuses])
+    count_geri = len([p for p in patient_data_list if (p.get('status', '') or '').strip() == 'Active-Geri'])
+    count_pcp = len([p for p in patient_data_list if (p.get('status', '') or '').strip() == 'Active-PCP'])
+    col1, col2, col3 = st.columns(3)
+    col1.metric("All Active Patients", total_active)
+    col2.metric("Active-Geri Patients", count_geri)
+    col3.metric("Active-PCP Patients", count_pcp)
+
+    # Map assigned coordinator using robust logic (as in coordinator dashboard)
+    coordinator_users = database.get_users_by_role(36)  # 36 = Care Coordinator
+    coordinator_map = {u['user_id']: u['full_name'] for u in coordinator_users}
+    for p in filtered_patients:
+        coord_id = p.get('assigned_coordinator_id')
+        if coord_id is not None and coord_id in coordinator_map:
+            p['assigned_coordinator'] = coordinator_map[coord_id]
+        elif coord_id is not None and str(coord_id) in coordinator_map:
+            p['assigned_coordinator'] = coordinator_map[str(coord_id)]
         else:
-            # Provider has no region constraints - show all regions where they have patients
-            print(f"DEBUG: Provider {provider_id} has no region assignments, showing all patient regions")
-            cursor = conn.execute("""
-                SELECT DISTINCT r.county, r.state, COUNT(DISTINCT p.patient_id) as patient_count
-                FROM user_patient_assignments upa
-                JOIN patients p ON upa.patient_id = p.patient_id
-                LEFT JOIN patient_region_mapping prm ON p.patient_id = prm.patient_id
-                LEFT JOIN regions r ON prm.region_id = r.region_id
-                WHERE upa.user_id = ? AND r.county IS NOT NULL AND r.county != ''
-                GROUP BY r.county, r.state
-                ORDER BY r.county
-            """, (user_id,))
-        
-        counties_data = cursor.fetchall()
-            
-        all_counties = [(c[0], f"{c[0]}, {c[1]} [{c[2]}]") for c in counties_data]
-        print(f"DEBUG: Found {len(counties_data)} counties: {all_counties}")
-        
-        # Get zip codes from the provider's assigned patients
-        print(f"DEBUG: Getting zip codes for provider {provider_id}")
-        cursor = conn.execute("""
-            SELECT DISTINCT p.address_zip, p.address_city, p.address_state, COUNT(*) as patient_count
-            FROM user_patient_assignments upa
-            JOIN patients p ON upa.patient_id = p.patient_id
-            WHERE upa.user_id = ? AND p.address_zip IS NOT NULL AND p.address_zip != ''
-            GROUP BY p.address_zip, p.address_city, p.address_state
-            ORDER BY p.address_zip
-        """, (user_id,))
-        zip_codes_data = cursor.fetchall()
-        
-        all_zip_codes = [(z[0], f"{z[0]} - {z[1]}, {z[2]} [{z[3]}]") for z in zip_codes_data]
-        print(f"DEBUG: Found {len(zip_codes_data)} zip codes: {all_zip_codes}")
-        
-        conn.close()
-        
-    except Exception as e:
-        print(f"Error getting provider counties/zip codes: {e}")
-        # Provide fallback data to show that the system is working
-        all_counties = [("Los Angeles", "Los Angeles, CA [0]")]
-        all_zip_codes = [("90001", "90001 - Los Angeles, CA [0]")]
-    
-    # Create enhanced metrics cards using Streamlit elements
-    col1, col2, col3 = st.columns(3)
-    
-    # Total patients assigned (only active patients)
-    active_patients_list = [p for p in patient_data_list if p.get('status', '').lower().startswith('active')]
-    total_patients = len(active_patients_list)
-    col1.metric("Total Patients Assigned", total_patients)
-    
-    # Active patients (including "Active-*" statuses) - for stats only
-    active_patients = len(active_patients_list)
-    col2.metric("Active Patients", active_patients)
-    
-    # Calculate hours:minutes served this month
-    total_minutes_this_month = 0
-    try:
-        conn = database.get_db_connection()
-        # Get total minutes from provider_tasks for this month
-        current_month = datetime.now().month
-        current_year = datetime.now().year
-        
-        cursor = conn.execute("""
-            SELECT SUM(minutes_of_service) as total_minutes
-            FROM provider_tasks 
-            WHERE provider_id = ? 
-            AND strftime('%Y-%m', task_date) = ?
-        """, (provider_id, f"{current_year}-{current_month:02d}"))
-        
-        result = cursor.fetchone()
-        total_minutes_this_month = result[0] if result[0] else 0
-        conn.close()
-        
-        # Convert minutes to hours and minutes
-        hours = total_minutes_this_month // 60
-        minutes = total_minutes_this_month % 60
-        time_string = f"{hours}h {minutes}m"
-    except Exception as e:
-        print(f"Error calculating time served: {e}")
-        time_string = "0h 0m"
-    
-    col3.metric("Time Served This Month", time_string)
-    
+            p['assigned_coordinator'] = 'Unassigned'
+
     st.divider()
-    
-    st.subheader("Assigned Patients")
-    
-    # Add filtering controls with proper dropdowns for status, counties, and zip codes
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        # Status filter - multi-select dropdown
-        st.write("Filter by Patient Status:")
-        selected_statuses = st.multiselect("Select Status(es)", ['All'] + all_statuses, default=['All'], key="status_filter_1")
-    with col2:
-        # County filter - single select dropdown
-        st.write("Filter by County:")
-        try:
-            county_names = ['All Counties'] + [c[1] for c in all_counties if len(c) > 1]
-            if len(county_names) <= 1:  # Only "All Counties"
-                county_names.append("No counties available")
-            selected_county = st.selectbox("Select County", county_names, index=0, key="county_filter_1")
-        except Exception as e:
-            st.error(f"Error loading counties: {e}")
-            selected_county = "All Counties"
-    with col3:
-        # Zip code filter - single select dropdown
-        st.write("Filter by Zip Code:")
-        try:
-            zip_code_names = ['All Zip Codes'] + [z[1] for z in all_zip_codes if len(z) > 1]
-            if len(zip_code_names) <= 1:  # Only "All Zip Codes"
-                zip_code_names.append("No zip codes available")
-            selected_zip_code = st.selectbox("Select Zip Code", zip_code_names, index=0, key="zip_filter_1")
-        except Exception as e:
-            st.error(f"Error loading zip codes: {e}")
-            selected_zip_code = "All Zip Codes"
-    
-    # Filter patients based on selections
-    filtered_patients = patient_data_list
-    if 'All' not in selected_statuses:
-        filtered_patients = [p for p in patient_data_list if p.get('status') in selected_statuses]
-    else:
-        # When 'All' is selected, only show active patients (default behavior)
-        filtered_patients = [p for p in patient_data_list if p.get('status', '').lower().startswith('active')]
-
-    # Further filter by county if selected
-    if selected_county != 'All Counties':
-        # Extract county name from the selected county display text
-        try:
-            selected_county_name = selected_county.split(',')[0]  # Extract county name from "county, state [patient_count]" format
-
-            # Filter patients by county using the patient_region_mapping table
-            # We need to join with regions table to get the county information
-            try:
-                conn = database.get_db_connection()
-                cursor = conn.execute("""
-                    SELECT DISTINCT p.patient_id
-                    FROM patient_region_mapping p
-                    JOIN regions r ON p.region_id = r.region_id
-                    WHERE r.county = ?
-                """, (selected_county_name,))
-                patient_ids_in_county = [row[0] for row in cursor.fetchall()]
-                conn.close()
-
-                # Filter patients to only those in this county
-                filtered_patients = [p for p in filtered_patients if p.get('patient_id') in patient_ids_in_county]
-            except Exception as e:
-                print(f"Error filtering by county: {e}")
-        except Exception as e:
-            print(f"Error processing county filter: {e}")
-
-    # Further filter by zip code if selected
-    if selected_zip_code != 'All Zip Codes':
-        # Extract zip code from the display text format: "zip - city, state [patient_count]"
-        selected_zip = selected_zip_code.split(' - ')[0]  # Extract zip code from "zip - city, state" format
-        filtered_patients = [p for p in filtered_patients if p.get('address_zip') == selected_zip]
+    st.subheader("Patients")
+    st.divider()
 
     if filtered_patients:
         try:
-            # Create DataFrame for display
+
+            # Define required columns and display names in requested order
+            required_columns = [
+                ('status', 'Status'),
+                ('goc', 'GOC'),
+                ('code_status', 'Code Status'),
+                ('first_name', 'First Name'),
+                ('last_name', 'Last Name'),
+                ('facility', 'Facility'),
+                ('assigned_coordinator', 'Assigned Coordinator'),
+                ('last_visit_date', 'Last Visit Date'),
+                ('service_type', 'Service Type'),
+                ('phone_primary', 'Phone Number'),
+            ]
             patients_df = pd.DataFrame(filtered_patients)
+            # Ensure all required columns are present and sourced from patient_data_list
+            for col, _ in required_columns:
+                if col not in patients_df.columns:
+                    patients_df[col] = None
+            display_columns = [col for col, _ in required_columns]
+            column_names = [name for _, name in required_columns]
 
-            # Create address and contact info columns
-            if all(col in patients_df.columns for col in ['address_street', 'address_city', 'address_state', 'address_zip']):
-                patients_df['full_address'] = (patients_df['address_street'] + ", " +
-                                             patients_df['address_city'] + ", " +
-                                             patients_df['address_state'] + " " +
-                                             patients_df['address_zip'])
-            else:
-                patients_df['full_address'] = "Address not available"
-
-            if all(col in patients_df.columns for col in ['phone_primary', 'email']):
-                patients_df['contact_info'] = patients_df['phone_primary'] + " / " + patients_df['email']
-            else:
-                patients_df['contact_info'] = "Contact info not available"
-
-            # Prepare data for display
-            # Add region status indicator for patients outside provider regions
-            if 'outside_provider_region' in patients_df.columns:
-                patients_df['region_status'] = patients_df['outside_provider_region'].apply(
-                    lambda x: "⚠️ Outside Region" if x == 1 else "✅ In Region"
+            # Standardize last_visit_date format for display and logic
+            display_df = patients_df[display_columns].copy()
+            display_df.columns = column_names
+            if 'Last Visit Date' in display_df.columns:
+                display_df['Last Visit Date'] = display_df['Last Visit Date'].apply(
+                    lambda x: pd.to_datetime(x, errors='coerce').strftime('%Y-%m-%d') if pd.notnull(pd.to_datetime(x, errors='coerce')) else None
                 )
-                display_df = patients_df[['first_name', 'last_name', 'full_address', 'contact_info', 'status', 'region_status']]
-                display_df.columns = ['First Name', 'Last Name', 'Address', 'Contact Info', 'Status', 'Region Status']
-            else:
-                display_df = patients_df[['first_name', 'last_name', 'full_address', 'contact_info', 'status']]
-                display_df.columns = ['First Name', 'Last Name', 'Address', 'Contact Info', 'Status']
 
-            # Display with enhanced capabilities
-            st.subheader("Patient Data Table")
+            def color_patient_name(row):
+                color = ''
+                last_visit = row['Last Visit Date']
+                today = datetime.now().date()
+                if last_visit:
+                    try:
+                        last_visit_dt = pd.to_datetime(last_visit, errors='coerce').date()
+                        delta = (today - last_visit_dt).days
+                        if delta > 60:
+                            color = 'background-color: #ffcccc; color: #a00;' # red
+                        elif 30 < delta <= 60:
+                            color = 'background-color: #fff3cd; color: #a67c00;' # yellow
+                        elif 0 <= delta <= 30:
+                            color = 'background-color: #d4edda; color: #155724;' # green
+                    except Exception:
+                        pass
+                return color
 
-            if USE_AWESOME_TABLE:
-                # Use Awesome Table for enhanced functionality
-                try:
-                    table_result = awesome_table(
-                        display_df,
-                        key="patient_table",
-                        height=400,
-                        width='100%',
-                        sortable=True,
-                        searchable=True,
-                        filterable=True,
-                        pagination=True,
-                        page_size=10,
-                        # Additional awesome-table features
-                        groupable=True,
-                        draggable=True,
-                        exportable=True,
-                        theme="streamlit"
-                    )
+            def style_patient_names(df):
+                return df.style.apply(lambda row: [color_patient_name(row) if col in ['First Name', 'Last Name'] else '' for col in df.columns], axis=1)
 
-                    # Show selected patient info
-                    if table_result and 'selected_rows' in table_result:
-                        selected_rows = table_result['selected_rows']
-                        if selected_rows:
-                            selected_row = selected_rows[0]
-                            st.info(f"Selected Patient: {selected_row.get('First Name', '')} {selected_row.get('Last Name', '')}")
-                            st.write("Selected Patient Details:")
-                            for key, value in selected_row.items():
-                                st.write(f"**{key}:** {value}")
-                except Exception as e:
-                    st.warning(f"Awesome table failed: {e}. Using fallback.")
-                    st.dataframe(
-                        display_df, 
-                        height=400, 
-                        use_container_width=True,
-                        column_config={
-                            "First Name": st.column_config.TextColumn("First Name", width="medium"),
-                            "Last Name": st.column_config.TextColumn("Last Name", width="medium"),
-                            "DOB": st.column_config.DateColumn("DOB", width="small"),
-                            "Gender": st.column_config.TextColumn("Gender", width="small"),
-                            "Phone": st.column_config.TextColumn("Phone", width="medium"),
-                            "Email": st.column_config.TextColumn("Email", width="large"),
-                            "City": st.column_config.TextColumn("City", width="medium"),
-                            "State": st.column_config.TextColumn("State", width="small"),
-                            "Status": st.column_config.TextColumn("Status", width="small"),
-                        },
-                        hide_index=True
-                    )
-                    st.info("Note: Enhanced table features are not available due to package issues.")
-            else:
-                # Fallback to standard dataframe with enhanced styling
+            
+            # Display patient data with conditional formatting
+            try:
+                # Try to display with styling first
                 st.dataframe(
-                    display_df, 
-                    height=400, 
+                    style_patient_names(display_df),
+                    height=400,
                     use_container_width=True,
                     column_config={
-                        "First Name": st.column_config.TextColumn("First Name", width="medium"),
-                        "Last Name": st.column_config.TextColumn("Last Name", width="medium"),
-                        "DOB": st.column_config.DateColumn("DOB", width="small"),
-                        "Gender": st.column_config.TextColumn("Gender", width="small"),
-                        "Phone": st.column_config.TextColumn("Phone", width="medium"),
-                        "Email": st.column_config.TextColumn("Email", width="large"),
-                        "City": st.column_config.TextColumn("City", width="medium"),
-                        "State": st.column_config.TextColumn("State", width="small"),
-                        "Status": st.column_config.TextColumn("Status", width="small"),
+                        "Status": st.column_config.TextColumn("Status", width=None),
+                        "GOC": st.column_config.TextColumn("GOC", width=None),
+                        "Code Status": st.column_config.TextColumn("Code Status", width=None),
+                        "First Name": st.column_config.TextColumn("First Name", width=None),
+                        "Last Name": st.column_config.TextColumn("Last Name", width=None),
+                        "Facility": st.column_config.TextColumn("Facility", width=None),
+                        "Assigned Coordinator": st.column_config.TextColumn("Assigned Coordinator", width=None),
+                        "Last Visit Date": st.column_config.DateColumn("Last Visit Date", width=None),
+                        "Service Type": st.column_config.TextColumn("Service Type", width=None),
+                        "Phone Number": st.column_config.TextColumn("Phone Number", width=None)
                     },
-                    hide_index=True
+                    hide_index=True,
+                )
+            except Exception as styling_error:
+                # If styling fails due to compatibility issues, fall back to plain display
+                st.warning("⚠️ Color mapping temporarily unavailable due to styling compatibility. Displaying plain table.")
+                st.dataframe(
+                    display_df,
+                    height=400,
+                    use_container_width=True,
+                    column_config={
+                        "Status": st.column_config.TextColumn("Status", width=None),
+                        "GOC": st.column_config.TextColumn("GOC", width=None),
+                        "Code Status": st.column_config.TextColumn("Code Status", width=None),
+                        "First Name": st.column_config.TextColumn("First Name", width=None),
+                        "Last Name": st.column_config.TextColumn("Last Name", width=None),
+                        "Facility": st.column_config.TextColumn("Facility", width=None),
+                        "Assigned Coordinator": st.column_config.TextColumn("Assigned Coordinator", width=None),
+                        "Last Visit Date": st.column_config.DateColumn("Last Visit Date", width=None),
+                        "Service Type": st.column_config.TextColumn("Service Type", width=None),
+                        "Phone Number": st.column_config.TextColumn("Phone Number", width=None)
+                    },
+                    hide_index=True,
                 )
 
-            # Patient selection for daily tasks
-            patient_names = [f"{p['first_name']} {p['last_name']}" for p in filtered_patients if 'first_name' in p and 'last_name' in p]
-            if patient_names:
-                selected_patient_name = st.selectbox("Select Patient for Daily Tasks", patient_names, key="daily_tasks_patient_select")
-                if selected_patient_name:
-                    # Find the selected patient
-                    selected_patient = next((p for p in filtered_patients if f"{p['first_name']} {p['last_name']}" == selected_patient_name), None)
-                    if selected_patient:
-                        st.session_state['selected_patient_id'] = selected_patient['patient_id']
-                        st.session_state['selected_patient_name'] = selected_patient_name
-            else:
-                st.info("No patients available for selection")
+            # Validation code removed for production
+
+            # Duplicate patient selector removed to avoid two selection widgets.
+            # The single patient selector used for task logging is the one in the 'Daily Task Entry' section below.
 
         except Exception as e:
             st.error(f"Error processing patient data: {e}")
@@ -563,130 +254,254 @@ def show_patient_list_section(user_id):
                     "DOB": st.column_config.DateColumn("DOB", width="small"),
                     "Gender": st.column_config.TextColumn("Gender", width="small"),
                     "Phone": st.column_config.TextColumn("Phone", width="medium"),
-                    "Email": st.column_config.TextColumn("Email", width="large"),
+                    # Email column removed per request
                     "City": st.column_config.TextColumn("City", width="medium"),
                     "State": st.column_config.TextColumn("State", width="small"),
-                    "Status": st.column_config.TextColumn("Status", width="small"),
+                    "Status": st.column_config.TextColumn("Status", width="small")
                 },
-                hide_index=True
+                hide_index=True,
+
+        
             )
     else:
         st.info("No patients match the selected filters.")
 
-    st.subheader("Daily Task Entries")
+    st.subheader("Visit Task Entry")
 
     # Fetch task billing codes for the task dropdown - filtered by Primary Care Visit
     task_billing_codes = database.get_tasks_billing_codes_by_service_type("Primary Care Visit")
-    # Group by task_description to avoid duplicates
     unique_task_descriptions = list(set(task['task_description'] for task in task_billing_codes))
     task_options = sorted(unique_task_descriptions)
 
-    # Initialize session state for tasks if not already present
-    if 'daily_tasks_data' not in st.session_state:
-        st.session_state.daily_tasks_data = [{}] * 5  # Reduced from 10 to 5 for cleaner UI
+    # Build patient list for selection
+    # Sort filtered_patients by last_name, then first_name
+    filtered_patients = sorted(
+        filtered_patients,
+        key=lambda p: (str(p.get('last_name', '')).lower(), str(p.get('first_name', '')).lower())
+    )
+    patient_names = [f"{p.get('first_name','').strip()} {p.get('last_name','').strip()}".strip() for p in filtered_patients if p.get('first_name') and p.get('last_name')]
+    patient_map = {f"{p.get('first_name','').strip()} {p.get('last_name','').strip()}": p for p in filtered_patients if p.get('first_name') and p.get('last_name')}
 
-    # Add a button to add more task entries dynamically
-    if st.button("Add Task Entry"):
-        st.session_state.daily_tasks_data.append({})
+    if not patient_names:
+        st.info("No patients available to log tasks for.")
+        key_prefix = f"single_task_{user_id}_{section_id or 'main'}"  # Still set, but widgets won't be rendered
+    else:
+        # Single, compact form for one task at a time
+        key_prefix = f"single_task_{user_id}_{section_id or 'main'}"
+        col_date, col_location = st.columns([1, 1])
+        with col_date:
+            task_date = st.date_input("Date of Service", value=pd.to_datetime('today'), key=f"{key_prefix}_date")
+        with col_location:
+            task_location = st.selectbox("Visit Location", ["Select one", "Home", "Tele", "Office"], index=0, key=f"{key_prefix}_location")
+            # Convert placeholder to None so upstream lookups don't receive the placeholder string
+            task_location_val = None if (task_location == "Select one") else task_location
 
-    # Create task entries
-    for i, task_entry in enumerate(st.session_state.daily_tasks_data):
-        st.markdown(f"#### Task Entry {i+1}")
-        # Create a compact row layout for date, patient, task type, and duration
-        col1, col2, col3, col4 = st.columns([1, 2, 2, 1])
-
-        with col1:
-            task_entry['date'] = st.date_input(f"Date {i+1}", value=task_entry.get('date', pd.to_datetime('today')), key=f"date_{i}")
-        with col2:
-            # Patient selection
-            patient_names = [f"{p['first_name']} {p['last_name']}" for p in filtered_patients if 'first_name' in p and 'last_name' in p]
-            if patient_names:
-                task_entry['patient_name'] = st.selectbox(f"Patient {i+1}", patient_names, key=f"patient_{i}", index=0 if patient_names else -1)
-            else:
-                task_entry['patient_name'] = st.selectbox(f"Patient {i+1}", ["No patients available"], key=f"patient_{i}", index=0)
-        with col3:
-            task_entry['task_type'] = st.selectbox(f"Task Type {i+1}", task_options, key=f"task_type_{i}", index=0 if task_options else -1)
-        with col4:
-            # Timer functionality for duration - compact layout in one row
-            timer_key = f"timer_{i}"
-            duration_key = f"duration_{i}"
-            
-            # Initialize timer state
-            if timer_key not in st.session_state:
-                st.session_state[timer_key] = 0
-                st.session_state[f"{timer_key}_running"] = False
-                st.session_state[f"{timer_key}_start_time"] = None
-            
-            # Create a compact timer layout - timer text next to button, duration next to button too
-            timer_display = f"{st.session_state[timer_key] // 60:02d}:{st.session_state[timer_key] % 60:02d}"
-            
-            # Display everything on same line: timer text, button, duration
-            col_timer_text, col_timer_btn, col_duration = st.columns([1, 1, 1])
-            
-            with col_timer_text:
-                st.write(f"Timer: {timer_display}")
-            
-            with col_timer_btn:
-                # Start/Stop timer button (smaller)
-                timer_btn_key = f"timer_btn_{i}"
-                if st.button("▶/⏹", key=timer_btn_key, use_container_width=True, help="Start/Stop Timer"):
-                    if not st.session_state[f"{timer_key}_running"]:
-                        st.session_state[f"{timer_key}_running"] = True
-                        st.session_state[f"{timer_key}_start_time"] = pd.Timestamp.now()
+        col_patient, col_task = st.columns([2, 2])
+        with col_patient:
+            selected_patient_name = st.selectbox("Select Patient", patient_names, key=f"{key_prefix}_patient")
+        with col_task:
+            # Auto-select billing code for established patients per priority rules
+            # Use sanitized task_location_val for billing lookup
+            location_lookup = "Telehealth" if task_location_val == "Tele" else task_location_val
+            billing_options = database.get_billing_codes(service_type="Primary Care Visit", location_type=location_lookup, patient_type="Established Patient")
+            # Default selection priority: 99024, then 99214, then any with is_default, then first
+            selected_billing = None
+            if billing_options:
+                # Prefer explicit codes
+                codes = [b.get('billing_code') for b in billing_options]
+                if '99024' in codes:
+                    selected_billing = next(b for b in billing_options if b.get('billing_code') == '99024')
+                elif '99214' in codes:
+                    selected_billing = next(b for b in billing_options if b.get('billing_code') == '99214')
+                else:
+                    # Try is_default flag
+                    default_candidates = [b for b in billing_options if b.get('is_default')]
+                    if default_candidates:
+                        selected_billing = default_candidates[0]
                     else:
-                        st.session_state[f"{timer_key}_running"] = False
-                        # When timer stops, update the duration field
-                        if st.session_state[f"{timer_key}_start_time"]:
-                            current_time = pd.Timestamp.now()
-                            elapsed_seconds = int((current_time - st.session_state[f"{timer_key}_start_time"]).total_seconds())
-                            st.session_state[timer_key] = elapsed_seconds
-                            task_entry['duration'] = elapsed_seconds // 60 + 1  # Convert to minutes, add 1 to avoid 0
-                            # Force a refresh to update the display
-                            st.experimental_rerun()
-            
-            with col_duration:
-                # Manual duration input (compact) - placed next to timer button
-                task_entry['duration'] = st.number_input(f"Duration (min)", min_value=1, value=task_entry.get('duration', 30), key=duration_key, label_visibility="collapsed")
-            
-            # Update timer in real-time using a rerun approach
-            if st.session_state[f"{timer_key}_running"]:
-                current_time = pd.Timestamp.now()
-                if st.session_state[f"{timer_key}_start_time"]:
-                    elapsed_seconds = int((current_time - st.session_state[f"{timer_key}_start_time"]).total_seconds())
-                    st.session_state[timer_key] = elapsed_seconds
-                    # Update the number input to reflect timer value
-                    task_entry['duration'] = elapsed_seconds // 60 + 1  # Convert to minutes, add 1 to avoid 0
-                    # Force a refresh to update the display
-                    st.experimental_rerun()
-
-        task_entry['notes'] = st.text_area(f"Notes {i+1}", value=task_entry.get('notes', ''), key=f"notes_{i}")
-
-        if st.button(f"Log Task {i+1}", key=f"log_task_{i}"):
-            if task_entry.get('patient_name') and task_entry.get('task_type') and task_entry.get('duration'):
-                # In a real implementation, this would save to the database
-                # For now, we'll just show a success message
-                st.success(f"Task '{task_entry['task_type']}' logged for {task_entry['patient_name']} on {task_entry['date']} with duration {task_entry['duration']} minutes.")
-                
-                # Save to database using the existing function
-                try:
-                    # Get patient_id from the selected patient name
-                    selected_patient = next((p for p in filtered_patients if f"{p['first_name']} {p['last_name']}" == task_entry['patient_name']), None)
-                    if selected_patient:
-                        # Call the database function to save the task
-                        database.save_daily_task(
-                            provider_id=provider_id,
-                            patient_id=selected_patient['patient_id'],
-                            task_date=task_entry['date'],
-                            task_description=task_entry['task_type'],
-                            duration_minutes=task_entry['duration'],
-                            notes=task_entry['notes']
-                        )
-                        st.success("Task successfully saved to database!")
-                except Exception as e:
-                    st.error(f"Error saving task to database: {e}")
+                        selected_billing = billing_options[0]
             else:
-                st.warning("Please fill in all fields for the task entry.")
-        st.markdown("---")
+                st.warning("No billing codes configured for Primary Care Visit - please contact admin")
+                selected_billing = None
+
+        st.markdown("#### Patient Risk & Clinical Fields (Optional)")
+        col1, col2 = st.columns(2)
+        with col1:
+            er_visits_6mo = st.number_input("ER Visits (last 12 months)", min_value=0, step=1, key="er_visits_6mo")
+            hospitalizations_6mo = st.number_input("Hospitalizations (last 12 months)", min_value=0, step=1, key="hospitalizations_6mo")
+            subjective_risk = st.selectbox(
+                "Subjective Risk Level",
+                [
+                    "Select one",
+                    "Level 6 - in danger of dying or institutionalized within 1 yr",
+                    "Level 5 - complications of chronic conditions or high risk social determinants of health",
+                    "Level 4 - unstable chronic conditions but no complications",
+                    "Level 3 - stable chronic conditions",
+                    "Level 2 - healthy, some out of range biometrics",
+                    "Level 1 - healthy, in range biometrics"
+                ],
+                index=0,
+                key="subjective_risk"
+            )
+            provider_mh_concerns = st.checkbox("Provider: Mental Health Concerns", key="provider_mh_concerns")
+            provider_mh_fields = [
+                ("provider_mh_schizophrenia", "Schizophrenia"),
+                ("provider_mh_depression", "Depression"),
+                ("provider_mh_anxiety", "Anxiety"),
+                ("provider_mh_stress", "Stress/PTSD"),
+                ("provider_mh_adhd", "ADHD"),
+                ("provider_mh_bipolar", "Bipolar Disorder"),
+                ("provider_mh_suicidal", "Suicidal Ideation")
+            ]
+            provider_mh_values = {}
+            for col, label in provider_mh_fields:
+                provider_mh_values[col] = st.checkbox(label, key=col)
+            active_specialists = st.text_input("Active Specialists (comma-separated)", key="active_specialists")
+        with col2:
+            code_status = st.selectbox("Code Status", ["Select one", "Full Code", "DNR", "Limited", "Unknown"], index=0, key="code_status")
+            cognitive_function = st.selectbox("Cognitive Function", ["Select one", "Intact", "Mild Impairment", "Moderate", "Severe"], index=0, key="cognitive_function")
+            functional_status = st.selectbox(
+                "Functional Status Summary",
+                [
+                    "Select one",
+                    "Ambulatory without fall risk",
+                    "Ambulatory with fall risk requiring device",
+                    "Wheelchair",
+                    "Bedbound",
+                ],
+                index=0,
+                key="functional_status",
+            )
+            goc_value = st.selectbox("GOC (Goals of Care)", ["Select one", "Full", "Palliative", "Hospice", "Unknown"], index=0, key="goc_value")
+            goals_of_care = st.text_area("Goals of Care (brief)", key="goals_of_care")
+            active_concerns = st.text_area("Active Concerns", key="active_concerns")
+
+    notes = st.text_area("Notes / Clinical Summary", key=f"{key_prefix}_notes")
+
+    if st.button("Log Task", key=f"{key_prefix}_log_task"):
+            if not selected_patient_name or not selected_billing:
+                st.warning("Please select a patient and ensure a billing code is available before saving.")
+            else:
+                selected_patient = patient_map.get(selected_patient_name)
+                if not selected_patient:
+                    st.error("Selected patient not found. Refresh and try again.")
+                else:
+                    try:
+                        # Append notes to patient and save a provider task record using selected billing code
+                        billing_code_to_use = selected_billing.get('billing_code') if selected_billing else None
+
+                        database.save_daily_task(
+                            provider_id=user_id,
+                            patient_id=selected_patient['patient_id'],
+                            task_date=task_date,
+                            task_description=f"Primary Care Visit - {billing_code_to_use or 'Unknown'}",
+                            notes=notes,
+                            billing_code=billing_code_to_use
+                        )
+
+                        # Attempt to persist risk/clinical fields into patients table if columns exist
+                        try:
+                            conn = database.get_db_connection()
+
+                            # Prepare base params for clinical fields
+                            # Store subjective_risk as string value only
+                            # Convert placeholders to None so DB gets NULL when user hasn't selected a value
+                            functional_status_val = None if (functional_status == "Select one") else functional_status
+                            subjective_risk_val = None if (subjective_risk == "Select one") else subjective_risk
+                            code_status_val = None if (code_status == "Select one") else code_status
+                            cognitive_function_val = None if (cognitive_function == "Select one") else cognitive_function
+
+                            base_params = [
+                                er_visits_6mo,
+                                hospitalizations_6mo,
+                                subjective_risk_val,
+                                1 if provider_mh_concerns else 0,
+                                provider_mh_values.get("provider_mh_schizophrenia", False),
+                                provider_mh_values.get("provider_mh_depression", False),
+                                provider_mh_values.get("provider_mh_anxiety", False),
+                                provider_mh_values.get("provider_mh_stress", False),
+                                provider_mh_values.get("provider_mh_adhd", False),
+                                provider_mh_values.get("provider_mh_bipolar", False),
+                                provider_mh_values.get("provider_mh_suicidal", False),
+                                active_specialists,
+                                code_status_val,
+                                cognitive_function_val,
+                                functional_status_val,
+                                goals_of_care,
+                                active_concerns
+                            ]
+
+                            # If provider entered notes, append them with a dated header; otherwise leave notes unchanged
+                            notes_text = (notes or '').strip()
+                            if notes_text:
+                                # Build header with Date of Service
+                                try:
+                                    date_str = pd.to_datetime(task_date).date().isoformat()
+                                except Exception:
+                                    date_str = str(task_date)
+
+                                header = """*************************************************************************\n""" + f"Date {date_str}\n" + "*************************************************************************\n"
+                                notes_combined = header + notes_text
+
+                                # Append to patient notes (if empty set, else append with spacing)
+                                conn.execute("""
+                                    UPDATE patients SET
+                                        er_count_1yr = ?,
+                                        hospitalization_count_1yr = ?,
+                                        subjective_risk_level = ?,
+                                        mental_health_concerns = ?,
+                                        provider_mh_schizophrenia = ?,
+                                        provider_mh_depression = ?,
+                                        provider_mh_anxiety = ?,
+                                        provider_mh_stress = ?,
+                                        provider_mh_adhd = ?,
+                                        provider_mh_bipolar = ?,
+                                        provider_mh_suicidal = ?,
+                                        active_specialists = ?,
+                                        code_status = ?,
+                                        cognitive_function = ?,
+                                        functional_status = ?,
+                                        goals_of_care = ?,
+                                        chronic_conditions_provider = ?,
+                                        last_visit_date = ?,
+                                        notes = CASE WHEN notes IS NULL OR trim(notes) = '' THEN ? ELSE notes || '\n\n' || ? END
+                                    WHERE patient_id = ?
+                                """, tuple(base_params + [date_str, notes_combined, notes_combined, selected_patient['patient_id']]))
+                            else:
+                                # No new notes provided; update only clinical fields
+                                conn.execute("""
+                                    UPDATE patients SET
+                                        er_count_1yr = ?,
+                                        hospitalization_count_1yr = ?,
+                                        subjective_risk_level = ?,
+                                        mental_health_concerns = ?,
+                                        provider_mh_schizophrenia = ?,
+                                        provider_mh_depression = ?,
+                                        provider_mh_anxiety = ?,
+                                        provider_mh_stress = ?,
+                                        provider_mh_adhd = ?,
+                                        provider_mh_bipolar = ?,
+                                        provider_mh_suicidal = ?,
+                                        active_specialists = ?,
+                                        code_status = ?,
+                                        cognitive_function = ?,
+                                        functional_status = ?,
+                                        goals_of_care = ?,
+                                        chronic_conditions_provider = ?,
+                                        last_visit_date = ?
+                                    WHERE patient_id = ?
+                                """, tuple(base_params + [date_str, selected_patient['patient_id']]))
+
+                            conn.commit()
+                            conn.close()
+                            st.success("Task saved and clinical fields persisted to patient record.")
+                        except Exception as e:
+                            st.warning("Task saved. Clinical fields were not persisted to patient record (check schema).")
+
+                    except Exception as e:
+                        st.error(f"Error saving task: {e}")
+
+    st.markdown("---")
 
     # # Additional zip code information section
     # st.subheader("Zip Code Information")
@@ -702,3 +517,666 @@ def show_patient_list_section(user_id):
     # st.write(f"Active patients: {active_patients}")
     # st.write(f"Time served this month: {time_string}")
     # st.write(f"Available task types: {len(task_options)}")
+
+def show_unfiltered_patient_summary(patients_list=None, height=900):
+    """
+    Display an unfiltered patient summary table (no provider filtering) using
+    the same columns, ordering and Last Visit conditional coloring used in
+    the provider view.
+
+    - patients_list: optional list of patient dicts. If None, will try
+      database.get_all_patients() then database.get_patient_assignment_overview().
+    - height: pixel height for the displayed table.
+    """
+    # Lazy import / fallbacks
+    try:
+        if patients_list is None:
+            # Prefer the denormalized patient_panel table which already contains
+            # coordinator_name/provider_name/last_visit_date fields used by the UI.
+            try:
+                patients_list = database.get_all_patient_panel()
+            except Exception:
+                try:
+                    patients_list = database.get_all_patients()
+                except Exception:
+                    patients_list = database.get_patient_assignment_overview()
+    except Exception:
+        patients_list = patients_list or []
+
+    if not patients_list:
+        st.info("No patients available to display.")
+        return
+
+    # Required columns and display names (same as provider view)
+    required_columns = [
+        ('status', 'Status'),
+        ('goals_of_care', 'GOC'),
+        ('code_status', 'Code Status'),
+        ('first_name', 'First Name'),
+        ('last_name', 'Last Name'),
+        ('facility', 'Facility'),
+        ('assigned_coordinator', 'Assigned Coordinator'),
+        ('last_visit_date', 'Last Visit Date'),
+        ('service_type', 'Service Type'),
+        ('phone_primary', 'Phone Number'),
+    ]
+
+    try:
+        patients_df = pd.DataFrame(patients_list)
+
+        # patient_panel already provides human-readable coordinator/provider fields
+        # but normalize a few common keys to 'assigned_coordinator' to be safe.
+        if 'coordinator_name' in patients_df.columns and 'assigned_coordinator' not in patients_df.columns:
+            patients_df['assigned_coordinator'] = patients_df['coordinator_name']
+        elif 'coordinator_full_name' in patients_df.columns and 'assigned_coordinator' not in patients_df.columns:
+            patients_df['assigned_coordinator'] = patients_df['coordinator_full_name']
+        else:
+            # fallback: try mapping by id if present
+            try:
+                coordinators = database.get_users_by_role(36) or []
+                coord_map = {c['user_id']: c.get('full_name') or c.get('username') for c in coordinators}
+                coord_map.update({str(k): v for k, v in list(coord_map.items())})
+            except Exception:
+                coord_map = {}
+            coord_id_fields = ['assigned_coordinator_id', 'coordinator_user_id', 'assigned_coordinator_user_id', 'coord_id']
+            mapped = False
+            for fld in coord_id_fields:
+                if fld in patients_df.columns:
+                    patients_df['assigned_coordinator'] = patients_df[fld].map(lambda x: coord_map.get(x) if x in coord_map else coord_map.get(str(x)) if pd.notna(x) else 'Unassigned')
+                    mapped = True
+                    break
+            if not mapped and 'assigned_coordinator' not in patients_df.columns:
+                patients_df['assigned_coordinator'] = None
+
+        # Normalize last-visit column: accept several possible source column names
+        possible_last_visit_cols = ['last_visit_date', 'last_visit', 'last_visit_dt', 'last_visit_at', 'last_visit_timestamp', 'most_recent_visit', 'last_visit_date_iso']
+        found = None
+        for c in possible_last_visit_cols:
+            if c in patients_df.columns:
+                found = c
+                break
+        if found and found != 'last_visit_date':
+            patients_df['last_visit_date'] = patients_df[found]
+
+        # Ensure required columns exist
+        for col, _ in required_columns:
+            if col not in patients_df.columns:
+                patients_df[col] = None
+
+        display_columns = [col for col, _ in required_columns]
+        column_names = [name for _, name in required_columns]
+
+        display_df = patients_df[display_columns].copy()
+        display_df.columns = column_names
+
+        # Normalize last visit date to YYYY-MM-DD strings (or None)
+        if 'Last Visit Date' in display_df.columns:
+            def _format_date(val):
+                try:
+                    ts = pd.to_datetime(val, errors='coerce')
+                    return ts.strftime('%Y-%m-%d') if not pd.isna(ts) else None
+                except Exception:
+                    return None
+            display_df['Last Visit Date'] = display_df['Last Visit Date'].apply(_format_date)
+
+        import datetime as _dt
+
+        def color_patient_name(row):
+            color = ''
+            last_visit = row.get('Last Visit Date')
+            today = _dt.datetime.now().date()
+            if last_visit:
+                try:
+                    last_visit_dt = pd.to_datetime(last_visit, errors='coerce')
+                    if not pd.isna(last_visit_dt):
+                        last_visit_dt = last_visit_dt.date()
+                        delta = (today - last_visit_dt).days
+                        if delta > 60:
+                            color = 'background-color: #ffcccc; color: #a00;'
+                        elif 30 < delta <= 60:
+                            color = 'background-color: #fff3cd; color: #a67c00;'
+                        elif 0 <= delta <= 30:
+                            color = 'background-color: #d4edda; color: #155724;'
+                except Exception:
+                    pass
+            return color
+
+        def style_patient_names(df):
+            return df.style.apply(lambda row: [color_patient_name(row) if col in ['First Name', 'Last Name'] else '' for col in df.columns], axis=1)
+
+        try:
+            # Try to display with styling first
+            st.dataframe(
+                style_patient_names(display_df),
+                height=height,
+                use_container_width=True,
+                column_config={
+                    "Status": st.column_config.TextColumn("Status", width=None),
+                    "GOC": st.column_config.TextColumn("GOC", width=None),
+                    "Code Status": st.column_config.TextColumn("Code Status", width=None),
+                    "First Name": st.column_config.TextColumn("First Name", width=None),
+                    "Last Name": st.column_config.TextColumn("Last Name", width=None),
+                    "Facility": st.column_config.TextColumn("Facility", width=None),
+                    "Assigned Coordinator": st.column_config.TextColumn("Assigned Coordinator", width=None),
+                    "Last Visit Date": st.column_config.DateColumn("Last Visit Date", width=None),
+                    "Service Type": st.column_config.TextColumn("Service Type", width=None),
+                    "Phone Number": st.column_config.TextColumn("Phone Number", width=None)
+                },
+                hide_index=True,
+                # autosize_columns removed (not needed)
+            )
+        except Exception as styling_error:
+            # If styling fails due to compatibility issues, fall back to plain display
+            st.warning("⚠️ Color mapping temporarily unavailable due to styling compatibility. Displaying plain table.")
+            st.dataframe(
+                display_df,
+                height=height,
+                use_container_width=True,
+                column_config={
+                    "Status": st.column_config.TextColumn("Status", width=None),
+                    "GOC": st.column_config.TextColumn("GOC", width=None),
+                    "Code Status": st.column_config.TextColumn("Code Status", width=None),
+                    "First Name": st.column_config.TextColumn("First Name", width=None),
+                    "Last Name": st.column_config.TextColumn("Last Name", width=None),
+                    "Facility": st.column_config.TextColumn("Facility", width=None),
+                    "Assigned Coordinator": st.column_config.TextColumn("Assigned Coordinator", width=None),
+                    "Last Visit Date": st.column_config.DateColumn("Last Visit Date", width=None),
+                    "Service Type": st.column_config.TextColumn("Service Type", width=None),
+                    "Phone Number": st.column_config.TextColumn("Phone Number", width=None)
+                },
+                hide_index=True,
+            )
+
+    except Exception as e:
+        st.error(f"Error rendering unfiltered patient summary: {e}")
+        try:
+            st.dataframe(pd.DataFrame(patients_list), height=height, use_container_width=True)
+            st.dataframe(pd.DataFrame(patients_list), height=height, use_container_width=True)
+        except Exception:
+            st.write("Unable to render patient table.")
+
+
+def show_provider_onboarding_queue(user_id, onboarding_queue):
+    """Display the provider's onboarding queue for initial TV visits"""
+    st.subheader("Onboarding Queue & Initial TV Visits")
+    
+    st.info(f"You have {len(onboarding_queue)} patients assigned for initial TV visits")
+    
+    # Display onboarding queue table
+    st.markdown("### Patients Assigned for Initial TV Visits")
+    
+    if onboarding_queue:
+        # Sort onboarding_queue by last_name, then first_name
+        onboarding_queue = sorted(
+            onboarding_queue,
+            key=lambda p: (str(p.get('last_name', '')).lower(), str(p.get('first_name', '')).lower())
+        )
+        # Create a table of patients
+        patients_data = []
+        for patient in onboarding_queue:
+            # Format specialist requirements
+            requirements = []
+            if patient.get('hypertension'): requirements.append("Hypertension")
+            if patient.get('mental_health_concerns'): requirements.append("Mental Health")
+            if patient.get('dementia'): requirements.append("Dementia")
+            if patient.get('annual_well_visit'): requirements.append("Annual Wellness")
+            
+            requirements_str = " | ".join(requirements) if requirements else "No special requirements"
+            
+            patients_data.append({
+                "Patient Name": f"{patient['first_name']} {patient['last_name']}",
+                "DOB": patient.get('date_of_birth', ''),
+                "Phone": patient.get('phone_primary', ''),
+                "TV Appointment": f"{patient.get('tv_date', 'Not scheduled')} {patient.get('tv_time', '')}".strip(),
+                "Special Requirements": requirements_str,
+                "Created": patient.get('created_date', '')[:10] if patient.get('created_date') else ''
+            })
+        
+        # Display as dataframe
+        df = pd.DataFrame(patients_data)
+        # Default sort by Patient Name (last name)
+        if not df.empty:
+            # Try to split Patient Name for sorting
+            df['Last Name'] = df['Patient Name'].apply(lambda x: x.split(' ')[-1] if isinstance(x, str) and ' ' in x else x)
+            df = df.sort_values(by=['Last Name', 'Patient Name'], ascending=True)
+            df = df.drop(columns=['Last Name'])
+        st.data_editor(df, use_container_width=True, hide_index=True, num_rows="dynamic")
+    else:
+        st.warning("No patients assigned for initial TV visits.")
+    
+    # Daily task entries for onboarding queue
+    st.markdown("### 📝 Initial TV Visit Task Logging")
+    st.info("Complete 'PCP-Visit Telehealth (TE) (NEW pt)' tasks for your assigned onboarding patients")
+    
+    # Force refresh of session state to ensure fresh data
+    if st.button("Refresh Patient Data", key="refresh_onboarding_data"):
+        session_key = f'onboarding_tasks_data_{user_id}'
+        if session_key in st.session_state:
+            del st.session_state[session_key]
+        st.rerun()
+    
+    # Initialize session state for onboarding tasks (refresh every time if no data)
+    session_key = f'onboarding_tasks_data_{user_id}'
+    if session_key not in st.session_state or not st.session_state[session_key] or len(st.session_state[session_key]) != len(onboarding_queue):
+        # Always refresh if patient count changed or data is stale
+        st.session_state[session_key] = []
+        for patient in onboarding_queue:
+            st.session_state[session_key].append({
+                'patient_name': f"{patient['first_name']} {patient['last_name']}",
+                'patient_id': patient.get('patient_id'),
+                'onboarding_id': patient['onboarding_id'],
+                'task_type': "PCP-Visit Telehealth (TE) (NEW pt)",
+                'date': pd.to_datetime('today').date(),
+                'notes': '',
+                'specialist_requirements': {
+                    'hypertension': patient.get('hypertension', False),
+                    'mental_health_concerns': patient.get('mental_health_concerns', False),
+                    'dementia': patient.get('dementia', False),
+                    'annual_well_visit': patient.get('annual_well_visit', False)
+                }
+            })
+    
+    # Create task entries for each onboarding patient
+    for i, task_entry in enumerate(st.session_state[session_key]):
+        if i < len(onboarding_queue):  # Only show tasks for current queue
+            st.markdown(f"#### Initial TV Task {i+1}: {task_entry['patient_name']}")
+            
+            # Show specialist requirements prominently - make them interactive for provider to confirm
+            requirements = task_entry.get('specialist_requirements', {})
+            st.markdown("**Confirm Specialist Requirements for this Patient:**")
+            st.markdown("*Review and confirm specialist needs during the initial TV visit*")
+            
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                task_entry['confirm_hypertension'] = st.checkbox(
+                    "Hypertension", 
+                    value=requirements.get('hypertension', False),
+                    key=f"hypertension_{i}",
+                    help="Check if patient needs hypertension management"
+                )
+            with col2:
+                task_entry['confirm_mental_health'] = st.checkbox(
+                    "Mental Health", 
+                    value=requirements.get('mental_health_concerns', False),
+                    key=f"mental_health_{i}",
+                    help="Check if patient needs mental health support"
+                )
+            with col3:
+                task_entry['confirm_dementia'] = st.checkbox(
+                    "Dementia Care", 
+                    value=requirements.get('dementia', False),
+                    key=f"dementia_{i}",
+                    help="Check if patient needs dementia care"
+                )
+            with col4:
+                task_entry['confirm_annual_wellness'] = st.checkbox(
+                    "Annual Wellness", 
+                    value=requirements.get('annual_well_visit', False),
+                    key=f"annual_wellness_{i}",
+                    help="Check if patient needs annual wellness visit"
+                )
+            
+            # Show any changes from initial assessment
+            changes = []
+            if task_entry.get('confirm_hypertension') != requirements.get('hypertension', False):
+                changes.append(f"Hypertension: {'Added' if task_entry.get('confirm_hypertension') else 'Removed'}")
+            if task_entry.get('confirm_mental_health') != requirements.get('mental_health_concerns', False):
+                changes.append(f"Mental Health: {'Added' if task_entry.get('confirm_mental_health') else 'Removed'}")
+            if task_entry.get('confirm_dementia') != requirements.get('dementia', False):
+                changes.append(f"Dementia Care: {'Added' if task_entry.get('confirm_dementia') else 'Removed'}")
+            if task_entry.get('confirm_annual_wellness') != requirements.get('annual_well_visit', False):
+                changes.append(f"Annual Wellness: {'Added' if task_entry.get('confirm_annual_wellness') else 'Removed'}")
+            
+            if changes:
+                st.info(f"**Changes from initial assessment:** {', '.join(changes)}")
+            
+            st.divider()
+            
+            # Task entry form
+            col1, col2 = st.columns([1, 2])
+            
+            with col1:
+                task_entry['date'] = st.date_input(f"Date {i+1}", value=task_entry.get('date', pd.to_datetime('today').date()), key=f"onb_date_{i}")
+            
+            with col2:
+                st.write(f"**Patient:** {task_entry['patient_name']}")
+                st.write(f"**Task:** {task_entry['task_type']}")
+            
+            task_entry['notes'] = st.text_area(f"Visit Notes {i+1}", value=task_entry.get('notes', ''), key=f"onb_notes_{i}", 
+                                               placeholder="Document visit details, patient response, any concerns...")
+            
+            # Submit button
+            if st.button(f"Complete Initial TV Visit {i+1}", key=f"complete_onb_task_{i}", type="primary"):
+                if task_entry.get('patient_name') and task_entry.get('task_type'):
+                    try:
+                        # Get provider_id
+                        provider_id = database.get_provider_id_from_user_id(user_id)
+                        if provider_id:
+                            # Save the task (this will automatically update onboarding workflow)
+                            success = database.save_daily_task(
+                                provider_id=provider_id,
+                                patient_id=task_entry.get('patient_id'),
+                                task_date=task_entry['date'],
+                                task_description=task_entry['task_type'],
+                                notes=task_entry['notes']
+                            )
+                            
+                            # Update specialist requirements based on provider's confirmation during TV visit
+                            if success and task_entry.get('onboarding_id'):
+                                conn = database.get_db_connection()
+                                try:
+                                    conn.execute("""
+                                        UPDATE onboarding_patients 
+                                        SET hypertension = ?,
+                                            mental_health_concerns = ?,
+                                            dementia = ?,
+                                            annual_well_visit = ?,
+                                            initial_tv_completed = 1,
+                                            initial_tv_completed_date = ?,
+                                            updated_date = CURRENT_TIMESTAMP
+                                        WHERE onboarding_id = ?
+                                    """, (
+                                        task_entry.get('confirm_hypertension', False),
+                                        task_entry.get('confirm_mental_health', False),
+                                        task_entry.get('confirm_dementia', False),
+                                        task_entry.get('confirm_annual_wellness', False),
+                                        task_entry['date'],
+                                        task_entry.get('onboarding_id')
+                                    ))
+                                    conn.commit()
+                                    conn.close()
+                                except Exception as e:
+                                    st.error(f"Error updating specialist requirements: {e}")
+                            
+                            if success:
+                                st.success(f"Initial TV visit completed for {task_entry['patient_name']}. Specialist requirements confirmed and patient removed from onboarding queue.")
+                                # Refresh the page to update the queue
+                                st.rerun()
+                            else:
+                                st.error("Failed to save the task. Please try again.")
+                        else:
+                            st.error("Provider ID not found. Please contact administrator.")
+                    except Exception as e:
+                        st.error(f"Error completing visit: {e}")
+                else:
+                    st.warning("Please fill in all required fields (Patient name, Task type, and Notes).")
+            
+            st.markdown("---")
+    
+
+
+
+def show_team_management_section():
+    """Team Management section with Provider Patient Visit Breakdown and complete patient panel"""
+    st.subheader(get_section_title(SectionTitles.PATIENT_ASSIGNMENTS))
+    
+    # --- Provider Patient Visit Breakdown Section ---
+    st.markdown("#### 📊 Provider Patient Visit Breakdown")
+    
+    try:
+        # Get all patient panel data
+        patient_panel_data = database.get_all_patient_panel() if hasattr(database, 'get_all_patient_panel') else []
+        
+        if patient_panel_data:
+            patients_df = pd.DataFrame(patient_panel_data)
+            
+            # Normalize last_visit columns into a consistent 'Last Visit Date' string
+            last_visit_cols = [col for col in patients_df.columns if 'last_visit' in col.lower()]
+            for col in last_visit_cols:
+                if col != 'Last Visit Date':
+                    patients_df[col] = patients_df[col].apply(
+                        lambda x: pd.to_datetime(x, errors='coerce').strftime('%Y-%m-%d') if pd.notnull(pd.to_datetime(x, errors='coerce')) else None
+                    )
+            
+            # Create 'Last Visit Date' column from available last_visit columns
+            if 'last_visit_date' in patients_df.columns:
+                patients_df['Last Visit Date'] = patients_df['last_visit_date'].apply(
+                    lambda x: pd.to_datetime(x, errors='coerce').strftime('%Y-%m-%d') if pd.notnull(pd.to_datetime(x, errors='coerce')) else None
+                )
+            elif 'last_visit' in patients_df.columns:
+                patients_df['Last Visit Date'] = patients_df['last_visit'].apply(
+                    lambda x: pd.to_datetime(x, errors='coerce').strftime('%Y-%m-%d') if pd.notnull(pd.to_datetime(x, errors='coerce')) else None
+                )
+            else:
+                patients_df['Last Visit Date'] = None
+            
+            # Fill missing Last Visit Date values from coordinator_tasks and provider_tasks
+            def _fill_missing_last_visit_from_tasks(df, db):
+                try:
+                    missing_mask = df['Last Visit Date'].isna() | (df['Last Visit Date'] == '')
+                    missing_patients = df[missing_mask]
+                    if missing_patients.empty:
+                        return {}
+                    
+                    pids = [str(pid) for pid in missing_patients['patient_id'].dropna().unique()]
+                    if not pids:
+                        return {}
+                    
+                    placeholders = ', '.join(['?' for _ in pids])
+                    select_templates = [
+                        f"SELECT patient_id, date(date) as dt FROM coordinator_tasks WHERE patient_id IN ({placeholders})",
+                        f"SELECT patient_id, date(date) as dt FROM provider_tasks WHERE patient_id IN ({placeholders})",
+                        f"SELECT patient_id, date(dos) as dt FROM provider_tasks WHERE patient_id IN ({placeholders})"
+                    ]
+                    
+                    union_sql = '\nUNION ALL\n'.join(select_templates)
+                    final_sql = f"WITH dates AS ({union_sql}) SELECT patient_id, MAX(dt) as last_visit FROM dates WHERE dt IS NOT NULL GROUP BY patient_id"
+                    
+                    params = pids * len(select_templates)
+                    
+                    conn = database.get_db_connection()
+                    try:
+                        rows = conn.execute(final_sql, params).fetchall()
+                    finally:
+                        conn.close()
+                    
+                    result = {}
+                    for r in rows:
+                        try:
+                            if r[1]:
+                                result[r[0]] = str(r[1])
+                        except Exception:
+                            continue
+                    return result
+                except Exception:
+                    return {}
+            
+            # Attempt to enrich missing Last Visit Dates from task tables
+            try:
+                inferred = _fill_missing_last_visit_from_tasks(patients_df, database)
+                if inferred:
+                    def _maybe_fill(row):
+                        if row.get('Last Visit Date'):
+                            return row.get('Last Visit Date')
+                        pid = row.get('patient_id')
+                        if pid in inferred:
+                            return inferred[pid]
+                        return None
+                    patients_df['Last Visit Date'] = patients_df.apply(_maybe_fill, axis=1)
+            except Exception:
+                pass
+            
+            import datetime as _dt
+            today = _dt.datetime.now().date()
+            
+            def get_delta(row):
+                last_visit = row.get('Last Visit Date')
+                if last_visit:
+                    try:
+                        last_visit_dt = pd.to_datetime(last_visit, errors='coerce')
+                        if not pd.isna(last_visit_dt):
+                            last_visit_dt = last_visit_dt.date()
+                            return (today - last_visit_dt).days
+                    except Exception:
+                        return None
+                return None
+            
+            patients_df['days_since_last_visit'] = patients_df.apply(get_delta, axis=1)
+            
+            # Color mapping for patient name columns
+            def color_patient_name(row):
+                color = ''
+                delta = row.get('days_since_last_visit')
+                if delta is not None:
+                    if delta > 60:
+                        color = 'background-color: #ffcccc; color: #a00;'
+                    elif 30 < delta <= 60:
+                        color = 'background-color: #fff3cd; color: #a67c00;'
+                    elif 0 <= delta <= 30:
+                        color = 'background-color: #d4edda; color: #155724;'
+                return color
+            
+            # Decide which name columns to style
+            name_cols = []
+            for cand in ['First Name', 'Last Name', 'first_name', 'last_name', 'patient_first_name', 'patient_last_name']:
+                if cand in patients_df.columns:
+                    name_cols.append(cand)
+            
+            def style_names(df):
+                def _row_style(row):
+                    styles = []
+                    row_style = color_patient_name(row)
+                    for col in df.columns:
+                        if col in name_cols:
+                            styles.append(row_style)
+                        else:
+                            styles.append('')
+                    return styles
+                return df.style.apply(lambda r: _row_style(r), axis=1)
+            
+            # Categorize patients by visit recency
+            seen_30 = patients_df[(patients_df['days_since_last_visit'] >= 0) & (patients_df['days_since_last_visit'] <= 30)].copy()
+            seen_31_60 = patients_df[(patients_df['days_since_last_visit'] > 30) & (patients_df['days_since_last_visit'] <= 60)].copy()
+            not_seen_60 = patients_df[(patients_df['days_since_last_visit'] > 60) | (patients_df['days_since_last_visit'].isna())].copy()
+            
+            # Columns to show in breakdown tables
+            breakdown_cols = [col for col in ['status', 'patient_id', 'first_name', 'last_name', 'dob', 'provider_name', 'coordinator_name', 'goc', 'code', 'Last Visit Date', 'last_visit_service_type'] if col in patients_df.columns]
+            
+            def show_styled_table(df, height):
+                try:
+                    styled = style_names(df[breakdown_cols])
+                    st.dataframe(styled, height=height, use_container_width=True)
+                except Exception:
+                    st.dataframe(df[breakdown_cols], height=height, use_container_width=True)
+            
+            # Check if provider information is available
+            provider_col = None
+            for col in ['provider_name', 'provider', 'assigned_provider']:
+                if col in patients_df.columns:
+                    provider_col = col
+                    break
+            
+            if provider_col:
+                # Provider statistics summary
+                providers = patients_df[provider_col].fillna('Unassigned').unique()
+                provider_stats = []
+                
+                for provider in providers:
+                    seen_30_count = len(seen_30[seen_30[provider_col].fillna('') == provider]) if not seen_30.empty and provider_col in seen_30.columns else 0
+                    seen_31_60_count = len(seen_31_60[seen_31_60[provider_col].fillna('') == provider]) if not seen_31_60.empty and provider_col in seen_31_60.columns else 0
+                    not_seen_60_count = len(not_seen_60[not_seen_60[provider_col].fillna('') == provider]) if not not_seen_60.empty and provider_col in not_seen_60.columns else 0
+                    total_count = seen_30_count + seen_31_60_count + not_seen_60_count
+                    
+                    provider_stats.append({
+                        'Provider': provider,
+                        '🟢 Seen ≤30 days': seen_30_count,
+                        '🟡 Seen 31-60 days': seen_31_60_count,
+                        '🔴 Not seen >60 days': not_seen_60_count,
+                        'Total Patients': total_count
+                    })
+                
+                if provider_stats:
+                    stats_df = pd.DataFrame(provider_stats)
+                    st.dataframe(stats_df, use_container_width=True, hide_index=True)
+                else:
+                    st.info("No provider data available.")
+                
+                st.markdown("---")
+                for label, df_cat in [
+                    ("Patients seen in the last 30 days", seen_30),
+                    ("Patients seen 1mo <> 2mo", seen_31_60),
+                    ("Patients NOT seen by Regional Provider in 2mo", not_seen_60)
+                ]:
+                    # Use expandable sections with color-coded titles
+                    if "last 30 days" in label:
+                        expander_title = f"🟢 {label} by Provider"
+                    elif "1mo <> 2mo" in label:
+                        expander_title = f"🟡 {label} by Provider"
+                    else:
+                        expander_title = f"🔴 {label} by Provider"
+                    
+                    with st.expander(expander_title, expanded=False):
+                        grouped = df_cat.groupby(provider_col)
+                        if grouped.ngroups == 0:
+                            st.info(f"No providers have patients in this category.")
+                        else:
+                            for prov, prov_df in grouped:
+                                st.markdown(f"**Provider: {prov}** ({len(prov_df)} patients)")
+                                if prov_df.empty:
+                                    st.info("No patients for this provider in this category.")
+                                else:
+                                    show_styled_table(prov_df, 300)
+                                st.markdown("---")
+            else:
+                st.info("Provider information not available in patient data.")
+            
+            st.markdown("---")
+            
+            # --- Complete Patient Panel with Active/Inactive Sections ---
+            st.markdown("#### 👥 Complete Patient Panel")
+            
+            # Define active status patterns
+            active_statuses = ['Active', 'Active-Geri', 'Active-PCP']
+            
+            # Split patients into active and inactive
+            if 'status' in patients_df.columns:
+                # Active patients: status starts with 'Active'
+                active_patients = patients_df[
+                    patients_df['status'].fillna('').astype(str).str.strip().isin(active_statuses) |
+                    patients_df['status'].fillna('').astype(str).str.strip().str.startswith('Active')
+                ].copy()
+                
+                # Inactive patients: everything else
+                inactive_patients = patients_df[
+                    ~(patients_df['status'].fillna('').astype(str).str.strip().isin(active_statuses) |
+                      patients_df['status'].fillna('').astype(str).str.strip().str.startswith('Active'))
+                ].copy()
+            else:
+                # If no status column, treat all as active
+                active_patients = patients_df.copy()
+                inactive_patients = pd.DataFrame()
+            
+            # --- Active Patients Section ---
+            st.markdown(f"##### 🟢 Active Patients ({len(active_patients)})")
+            if not active_patients.empty:
+                try:
+                    styled_active = style_names(active_patients)
+                    st.dataframe(styled_active, height=600, use_container_width=True)
+                except Exception:
+                    st.dataframe(active_patients, height=600, use_container_width=True)
+            else:
+                st.info("No active patients found.")
+            
+            # --- Inactive Patients Section (Expandable) ---
+            with st.expander(f"🔴 Inactive Patients ({len(inactive_patients)})", expanded=False):
+                if not inactive_patients.empty:
+                    try:
+                        styled_inactive = style_names(inactive_patients)
+                        st.dataframe(styled_inactive, height=400, use_container_width=True)
+                    except Exception:
+                        st.dataframe(inactive_patients, height=400, use_container_width=True)
+                else:
+                    st.info("No inactive patients found.")
+        else:
+            st.info("No patient data available for visit breakdown analysis.")
+    except Exception as e:
+        st.error(f"Error loading team management data: {e}")
+
+
+# show_psl_monthly_view was removed per P0 scope (PSL Monthly View no longer used).
+# The function body is preserved here commented out in case it needs to be restored later.
+"""
+def show_psl_monthly_view(user_id):
+    # Original PSL Monthly View implementation commented out.
+    pass
+"""

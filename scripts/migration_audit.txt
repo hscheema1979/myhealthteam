@@ -1,0 +1,222 @@
+Migration Audit Report
+======================
+
+STATUS: UNKNOWN
+-- ZEN Medical System - Database Schema Enhancement Script -- Implementation of P0 Enhancement Requirements -- Date: September 22, 2025 -- Disable foreign key constraints during schema changes PRAGMA foreign_keys = OFF
+
+STATUS: UNKNOWN
+-- ======================================== -- ONBOARDING DATA ENHANCEMENTS (Stage 1) -- ======================================== -- Stage 1: Contact Information Fields ALTER TABLE onboarding_patients ADD COLUMN appointment_contact_name TEXT
+
+STATUS: APPLIED
+ALTER TABLE onboarding_patients ADD COLUMN appointment_contact_phone TEXT
+Object: onboarding_patients.appointment_contact_phone
+
+STATUS: APPLIED
+ALTER TABLE onboarding_patients ADD COLUMN appointment_contact_email TEXT
+Object: onboarding_patients.appointment_contact_email
+
+STATUS: APPLIED
+ALTER TABLE onboarding_patients ADD COLUMN medical_contact_name TEXT
+Object: onboarding_patients.medical_contact_name
+
+STATUS: APPLIED
+ALTER TABLE onboarding_patients ADD COLUMN medical_contact_phone TEXT
+Object: onboarding_patients.medical_contact_phone
+
+STATUS: APPLIED
+ALTER TABLE onboarding_patients ADD COLUMN medical_contact_email TEXT
+Object: onboarding_patients.medical_contact_email
+
+STATUS: UNKNOWN
+-- ======================================== -- ONBOARDING DATA ENHANCEMENTS (Stage 2) -- ======================================== -- Stage 2: Medical Provider Information ALTER TABLE onboarding_patients ADD COLUMN primary_care_provider TEXT
+
+STATUS: APPLIED
+ALTER TABLE onboarding_patients ADD COLUMN pcp_last_seen DATE
+Object: onboarding_patients.pcp_last_seen
+
+STATUS: APPLIED
+ALTER TABLE onboarding_patients ADD COLUMN active_specialist TEXT
+Object: onboarding_patients.active_specialist
+
+STATUS: APPLIED
+ALTER TABLE onboarding_patients ADD COLUMN specialist_last_seen DATE
+Object: onboarding_patients.specialist_last_seen
+
+STATUS: APPLIED
+ALTER TABLE onboarding_patients ADD COLUMN chronic_conditions_onboarding TEXT
+Object: onboarding_patients.chronic_conditions_onboarding
+
+STATUS: UNKNOWN
+-- Mental Health Checkboxes (Stage 2) ALTER TABLE onboarding_patients ADD COLUMN mh_schizophrenia BOOLEAN DEFAULT FALSE
+
+STATUS: APPLIED
+ALTER TABLE onboarding_patients ADD COLUMN mh_depression BOOLEAN DEFAULT FALSE
+Object: onboarding_patients.mh_depression
+
+STATUS: APPLIED
+ALTER TABLE onboarding_patients ADD COLUMN mh_anxiety BOOLEAN DEFAULT FALSE
+Object: onboarding_patients.mh_anxiety
+
+STATUS: APPLIED
+ALTER TABLE onboarding_patients ADD COLUMN mh_stress BOOLEAN DEFAULT FALSE
+Object: onboarding_patients.mh_stress
+
+STATUS: APPLIED
+ALTER TABLE onboarding_patients ADD COLUMN mh_adhd BOOLEAN DEFAULT FALSE
+Object: onboarding_patients.mh_adhd
+
+STATUS: APPLIED
+ALTER TABLE onboarding_patients ADD COLUMN mh_bipolar BOOLEAN DEFAULT FALSE
+Object: onboarding_patients.mh_bipolar
+
+STATUS: APPLIED
+ALTER TABLE onboarding_patients ADD COLUMN mh_suicidal BOOLEAN DEFAULT FALSE
+Object: onboarding_patients.mh_suicidal
+
+STATUS: UNKNOWN
+-- ======================================== -- PROVIDER CLINICAL DATA ENHANCEMENTS -- ======================================== -- Patient Panel Updates (for Provider Dashboard) ALTER TABLE patients ADD COLUMN last_visit_date DATE
+
+STATUS: APPLIED
+ALTER TABLE patients ADD COLUMN facility TEXT
+Object: patients.facility
+
+STATUS: APPLIED
+ALTER TABLE patients ADD COLUMN assigned_coordinator_id INTEGER
+Object: patients.assigned_coordinator_id
+
+STATUS: UNKNOWN
+-- Clinical Data Collection ALTER TABLE patients ADD COLUMN er_count_1yr INTEGER
+
+STATUS: APPLIED
+ALTER TABLE patients ADD COLUMN hospitalization_count_1yr INTEGER
+Object: patients.hospitalization_count_1yr
+
+STATUS: APPLIED
+ALTER TABLE patients ADD COLUMN clinical_biometric TEXT
+Object: patients.clinical_biometric
+
+STATUS: APPLIED
+ALTER TABLE patients ADD COLUMN chronic_conditions_provider TEXT
+Object: patients.chronic_conditions_provider
+
+STATUS: APPLIED
+ALTER TABLE patients ADD COLUMN cancer_history TEXT
+Object: patients.cancer_history
+
+STATUS: APPLIED
+ALTER TABLE patients ADD COLUMN subjective_risk_level INTEGER
+Object: patients.subjective_risk_level
+
+STATUS: UNKNOWN
+-- 1-6 scale -- Provider Mental Health Assessment Checkboxes ALTER TABLE patients ADD COLUMN provider_mh_schizophrenia BOOLEAN DEFAULT FALSE
+
+STATUS: APPLIED
+ALTER TABLE patients ADD COLUMN provider_mh_depression BOOLEAN DEFAULT FALSE
+Object: patients.provider_mh_depression
+
+STATUS: APPLIED
+ALTER TABLE patients ADD COLUMN provider_mh_anxiety BOOLEAN DEFAULT FALSE
+Object: patients.provider_mh_anxiety
+
+STATUS: APPLIED
+ALTER TABLE patients ADD COLUMN provider_mh_stress BOOLEAN DEFAULT FALSE
+Object: patients.provider_mh_stress
+
+STATUS: APPLIED
+ALTER TABLE patients ADD COLUMN provider_mh_adhd BOOLEAN DEFAULT FALSE
+Object: patients.provider_mh_adhd
+
+STATUS: APPLIED
+ALTER TABLE patients ADD COLUMN provider_mh_bipolar BOOLEAN DEFAULT FALSE
+Object: patients.provider_mh_bipolar
+
+STATUS: APPLIED
+ALTER TABLE patients ADD COLUMN provider_mh_suicidal BOOLEAN DEFAULT FALSE
+Object: patients.provider_mh_suicidal
+
+STATUS: UNKNOWN
+-- Additional Clinical Fields ALTER TABLE patients ADD COLUMN active_specialists TEXT
+
+STATUS: APPLIED
+ALTER TABLE patients ADD COLUMN code_status TEXT
+Object: patients.code_status
+
+STATUS: APPLIED
+ALTER TABLE patients ADD COLUMN cognitive_function TEXT
+Object: patients.cognitive_function
+
+STATUS: APPLIED
+ALTER TABLE patients ADD COLUMN functional_status TEXT
+Object: patients.functional_status
+
+STATUS: APPLIED
+ALTER TABLE patients ADD COLUMN goals_of_care TEXT
+Object: patients.goals_of_care
+
+STATUS: APPLIED
+ALTER TABLE patients ADD COLUMN active_concerns TEXT
+Object: patients.active_concerns
+
+STATUS: UNKNOWN
+-- ======================================== -- COORDINATOR ENHANCEMENTS -- ======================================== -- Provider Assignment Tracking (if not already exists) ALTER TABLE onboarding_patients ADD COLUMN assigned_provider_user_id INTEGER
+
+STATUS: UNKNOWN
+-- TV Visit Scheduling Fields ALTER TABLE onboarding_patients ADD COLUMN tv_date DATE
+
+STATUS: APPLIED
+ALTER TABLE onboarding_patients ADD COLUMN tv_time TIME
+Object: onboarding_patients.tv_time
+
+STATUS: APPLIED
+ALTER TABLE onboarding_patients ADD COLUMN tv_scheduled BOOLEAN DEFAULT FALSE
+Object: onboarding_patients.tv_scheduled
+
+STATUS: APPLIED
+ALTER TABLE onboarding_patients ADD COLUMN patient_notified BOOLEAN DEFAULT FALSE
+Object: onboarding_patients.patient_notified
+
+STATUS: UNKNOWN
+-- ======================================== -- CREATE INDEXES FOR PERFORMANCE -- ======================================== -- Patient-related indexes CREATE INDEX IF NOT EXISTS idx_patients_last_visit_date ON patients(last_visit_date)
+
+STATUS: APPLIED
+CREATE INDEX IF NOT EXISTS idx_patients_risk_level ON patients(subjective_risk_level)
+Object: index.idx_patients_risk_level
+
+STATUS: APPLIED
+CREATE INDEX IF NOT EXISTS idx_patients_coordinator ON patients(assigned_coordinator_id)
+Object: index.idx_patients_coordinator
+
+STATUS: UNKNOWN
+-- Onboarding workflow indexes CREATE INDEX IF NOT EXISTS idx_onboarding_stage1 ON onboarding_patients(stage1_complete)
+
+STATUS: APPLIED
+CREATE INDEX IF NOT EXISTS idx_onboarding_stage2 ON onboarding_patients(stage2_complete)
+Object: index.idx_onboarding_stage2
+
+STATUS: APPLIED
+CREATE INDEX IF NOT EXISTS idx_onboarding_provider_assignment ON onboarding_patients(assigned_provider_user_id)
+Object: index.idx_onboarding_provider_assignment
+
+STATUS: UNKNOWN
+-- Coordinator task performance indexes CREATE INDEX IF NOT EXISTS idx_coordinator_tasks_date ON coordinator_tasks(task_date)
+
+STATUS: APPLIED
+CREATE INDEX IF NOT EXISTS idx_coordinator_tasks_coordinator ON coordinator_tasks(coordinator_id)
+Object: index.idx_coordinator_tasks_coordinator
+
+STATUS: APPLIED
+CREATE INDEX IF NOT EXISTS idx_coordinator_tasks_patient ON coordinator_tasks(patient_id)
+Object: index.idx_coordinator_tasks_patient
+
+STATUS: UNKNOWN
+-- ======================================== -- RE-ENABLE CONSTRAINTS -- ======================================== PRAGMA foreign_keys = ON
+
+STATUS: UNKNOWN
+-- ======================================== -- VERIFICATION QUERIES -- ======================================== -- Verify onboarding_patients table structure -- SELECT sql FROM sqlite_master WHERE type='table' AND name='onboarding_patients'
+
+STATUS: UNKNOWN
+-- Verify patients table structure -- SELECT sql FROM sqlite_master WHERE type='table' AND name='patients'
+
+STATUS: UNKNOWN
+-- Check indexes created -- SELECT name FROM sqlite_master WHERE type='index' AND name LIKE 'idx_%'
+

@@ -9,6 +9,7 @@ MyHealthTeam is a web-based healthcare management platform that provides role-ba
 ## 🚀 Features
 
 ### Role-Based Dashboards
+
 - **Admin Dashboard**: Complete system oversight, user management, and system analytics
 - **Care Provider Dashboard**: Patient management, task tracking, and care coordination
 - **Care Coordinator Dashboard**: Patient assignment, workflow coordination, and billing management
@@ -17,6 +18,7 @@ MyHealthTeam is a web-based healthcare management platform that provides role-ba
 - **Onboarding Dashboard**: New patient and provider onboarding workflows
 
 ### Key Capabilities
+
 - Patient care workflow automation
 - Provider task management and tracking
 - Monthly and weekly performance summaries
@@ -56,23 +58,27 @@ MyHealthTeam is a web-based healthcare management platform that provides role-ba
 ## 🏃‍♂️ Getting Started
 
 ### Prerequisites
+
 - Python 3.8+
 - pip package manager
 
 ### Installation
 
 1. Clone the repository:
+
 ```bash
 git clone https://github.com/creative-adventures/myhealthteam.git
 cd myhealthteam
 ```
 
 2. Install required packages:
+
 ```bash
 pip install streamlit pandas plotly sqlite3 numpy matplotlib
 ```
 
 3. Run the application:
+
 ```bash
 streamlit run app.py
 ```
@@ -82,6 +88,7 @@ streamlit run app.py
 ## 📊 Database Schema
 
 The application uses SQLite with the following key tables:
+
 - `users` - User authentication and role management
 - `patients` - Patient information and status
 - `providers` - Healthcare provider details
@@ -101,6 +108,7 @@ The application uses SQLite with the following key tables:
 ## 📝 Documentation
 
 Comprehensive documentation is available in the `docs/` directory:
+
 - System architecture and design
 - Workflow specifications
 - API documentation

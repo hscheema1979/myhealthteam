@@ -14,7 +14,7 @@ ONBOARDING_STEPS = [
 
 def show_workflow_stepper(patient_data):
     """Display a visual stepper showing the current progress of the onboarding workflow"""
-    st.markdown("### 🔄 Onboarding Progress")
+    st.markdown("### Onboarding Progress")
     
     # Determine current step based on completion status
     current_step = 1
@@ -91,10 +91,10 @@ def show_workflow_stepper(patient_data):
     
     # Status text
     if progress_percentage == 1.0:
-        st.success("🎉 Onboarding workflow completed!")
+        st.success("Onboarding workflow completed!")
     else:
         completed_steps = sum(1 for step in ONBOARDING_STEPS if patient_data.get(step["stage_field"], False))
-        st.info(f"📊 Progress: {completed_steps}/{len(ONBOARDING_STEPS)} steps completed")
+        st.info(f"Progress: {completed_steps}/{len(ONBOARDING_STEPS)} steps completed")
     
     return current_step
 
@@ -113,7 +113,7 @@ def show_patient_intake_form(current_user_id):
         with col1:
             first_name = st.text_input("First Name*", key="first_name")
             last_name = st.text_input("Last Name*", key="last_name")
-            date_of_birth = st.date_input("Date of Birth*", key="dob")
+            date_of_birth = st.date_input("Date of Birth*", key="dob", min_value=datetime(1900, 1, 1).date(), max_value=datetime(2100, 12, 31).date())
             phone_primary = st.text_input("Primary Phone*", key="phone_primary")
             
         with col2:
@@ -126,7 +126,13 @@ def show_patient_intake_form(current_user_id):
         st.markdown("### Address Information")
         address_street = st.text_input("Street Address*", key="address_street")
         address_city = st.text_input("City*", key="address_city")
-        address_state = st.selectbox("State*", ["CA", "NY", "TX", "FL", "IL", "PA", "OH", "GA"], key="address_state")
+        address_state = st.selectbox("State*", [
+            "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "DC", "FL", 
+            "GA", "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", 
+            "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", 
+            "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", 
+            "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"
+        ], key="address_state")
         address_zip = st.text_input("ZIP Code*", key="address_zip")
         
         # Insurance Information
@@ -143,7 +149,7 @@ def show_patient_intake_form(current_user_id):
         
         # Patient Status and Facility Assignment
         st.markdown("### Patient Status & Assignment")
-        patient_status = st.selectbox("Patient Status", ["Active", "Inactive", "Deceased"], key="patient_status")
+        patient_status = st.selectbox("Patient Status", ["Active", "Active-Geri", "Active-PCP"], key="patient_status")
         
         # Facility Assignment - Get facilities from database
         try:
@@ -156,6 +162,14 @@ def show_patient_intake_form(current_user_id):
             facility_options = ["San Francisco", "Los Angeles", "San Diego", "Sacramento", "Add New Facility"]
             
         facility_assignment = st.selectbox("Referring Facility", facility_options, key="facility_assignment")
+        # Appointment & Medical Contact (P0 additions)
+        st.markdown("### Appointment & Medical Contacts")
+        appointment_contact_name = st.text_input("Appointment Contact Name", key="appointment_contact_name")
+        appointment_contact_phone = st.text_input("Appointment Contact Phone", key="appointment_contact_phone")
+        appointment_contact_email = st.text_input("Appointment Contact Email", key="appointment_contact_email")
+        medical_contact_name = st.text_input("Medical Contact Name", key="medical_contact_name")
+        medical_contact_phone = st.text_input("Medical Contact Phone", key="medical_contact_phone")
+        medical_contact_email = st.text_input("Medical Contact Email", key="medical_contact_email")
         
         # Submit button
         col1, col2 = st.columns([1, 4])
@@ -163,6 +177,7 @@ def show_patient_intake_form(current_user_id):
             submitted = st.form_submit_button("Start Workflow", type="primary")
         with col2:
             if st.form_submit_button("Cancel"):
+                st.session_state['show_intake_form'] = False
                 st.session_state['onboarding_mode'] = None
                 st.rerun()
         
@@ -198,15 +213,25 @@ def show_patient_intake_form(current_user_id):
                     # Create onboarding workflow instance
                     onboarding_id = database.create_onboarding_workflow_instance(patient_data, current_user_id)
                     
-                    st.success(f"✅ Patient {first_name} {last_name} onboarding workflow started!")
+                    st.success(f"Patient {first_name} {last_name} onboarding workflow started!")
                     
                     # Mark Stage 1 as complete since we just completed registration
                     database.update_onboarding_stage_completion(onboarding_id, 1, True)
+                    # Persist additional appointment/medical contact fields
+                    database.update_onboarding_checkbox_data(onboarding_id, {
+                        'appointment_contact_name': appointment_contact_name,
+                        'appointment_contact_phone': appointment_contact_phone,
+                        'appointment_contact_email': appointment_contact_email,
+                        'medical_contact_name': medical_contact_name,
+                        'medical_contact_phone': medical_contact_phone,
+                        'medical_contact_email': medical_contact_email
+                    })
                     
-                    # Switch to resume mode for next stage
+                    # Clear the intake form flag and switch to resume mode for next stage
+                    st.session_state['show_intake_form'] = False
                     st.session_state['current_onboarding_id'] = onboarding_id
                     st.session_state['onboarding_mode'] = 'resume'
-                    st.info("🔄 Proceeding to Stage 2: Eligibility Verification...")
+                    st.info("Proceeding to Stage 2: Eligibility Verification...")
                     st.rerun()
                         
                 except Exception as e:
@@ -217,32 +242,16 @@ def show_resume_onboarding_form(patient_details, current_user_id):
     
     # Patient header info
     patient_name = f"{patient_details['first_name']} {patient_details['last_name']}"
-    st.subheader(f"📋 Continue Onboarding: {patient_name}")
+    st.subheader(f"Continue Onboarding: {patient_name}")
     
     # Progress indicator
     stages = ['Registration', 'Eligibility', 'Chart Creation', 'Intake Processing', 'TV Scheduling']
-    current_stage = 1
-    if patient_details['stage5_complete']: current_stage = 5
-    elif patient_details['stage4_complete']: current_stage = 5  
-    elif patient_details['stage3_complete']: current_stage = 4
-    elif patient_details['stage2_complete']: current_stage = 3
-    elif patient_details['stage1_complete']: current_stage = 2
-    
-    # Show progress bar
-    progress_text = f"Stage {current_stage}/5: {stages[current_stage-1]}"
-    st.progress(current_stage / 5, text=progress_text)
-    
-    # Stage-specific forms
-    if current_stage == 2:
-        show_eligibility_verification_form(patient_details, current_user_id)
-    elif current_stage == 3:
-        show_chart_creation_form(patient_details, current_user_id)
-    elif current_stage == 4:
-        show_intake_processing_form(patient_details, current_user_id)
-    elif current_stage == 5:
-        show_tv_scheduling_form(patient_details, current_user_id)
-    else:
-        st.success("🎉 All stages complete! Ready for handoff to PCPM.")
+    # Compute how many steps are completed
+    completed_steps = sum(1 for s in stages if patient_details.get(f'stage{stages.index(s)+1}_complete', False))
+
+    # If all steps complete, show handoff
+    if completed_steps >= len(stages):
+        st.success("All stages complete! Ready for handoff to PCPM.")
         if st.button("Complete Handoff"):
             # Mark as completed
             conn = database.get_db_connection()
@@ -253,6 +262,27 @@ def show_resume_onboarding_form(patient_details, current_user_id):
             st.session_state['onboarding_mode'] = None
             st.success("Patient successfully handed off to PCPM!")
             st.rerun()
+        return
+
+    # Otherwise show next incomplete stage
+    current_stage = completed_steps + 1
+
+    # Show progress bar
+    progress_text = f"Stage {current_stage}/5: {stages[current_stage-1]}"
+    st.progress((current_stage - 1) / len(stages))
+    st.info(progress_text)
+
+    # Stage-specific forms
+    if current_stage == 1:
+        st.info("Registration not yet completed. Please complete Stage 1 registration before proceeding.")
+    elif current_stage == 2:
+        show_eligibility_verification_form(patient_details, current_user_id)
+    elif current_stage == 3:
+        show_chart_creation_form(patient_details, current_user_id)
+    elif current_stage == 4:
+        show_intake_processing_form(patient_details, current_user_id)
+    elif current_stage == 5:
+        show_tv_scheduling_form(patient_details, current_user_id)
 
 def show_eligibility_verification_form(patient_details, current_user_id):
     """Stage 2: Eligibility Verification"""
@@ -264,7 +294,7 @@ def show_eligibility_verification_form(patient_details, current_user_id):
         
     with col2:
         # Patient info card
-        with st.expander("📋 Patient Info", expanded=False):
+        with st.expander("Patient Info", expanded=False):
             st.write(f"**Insurance:** {patient_details.get('insurance_provider', 'N/A')}")
             st.write(f"**Policy #:** {patient_details.get('policy_number', 'N/A')}")
             st.write(f"**Group #:** {patient_details.get('group_number', 'N/A')}")
@@ -272,29 +302,123 @@ def show_eligibility_verification_form(patient_details, current_user_id):
     with st.form("eligibility_form"):
         st.markdown("#### Eligibility Check")
         
+        # Get existing values with proper defaults
+        existing_eligibility_status = patient_details.get('eligibility_status', 'Pending Verification')
+        eligibility_options = ["Eligible", "Not Eligible", "Pending Verification", "Needs Follow-up"]
+        
+        # Find index of existing value, default to 'Pending Verification' if not found
+        try:
+            default_index = eligibility_options.index(existing_eligibility_status)
+        except ValueError:
+            default_index = eligibility_options.index('Pending Verification')
+        
         eligibility_status = st.selectbox(
             "Eligibility Status*", 
-            ["Eligible", "Not Eligible", "Pending Verification", "Needs Follow-up"],
+            eligibility_options,
+            index=default_index,
             key="eligibility_status"
         )
         
-        eligibility_verified = st.checkbox("✅ Eligibility Verified", key="eligibility_verified")
+        eligibility_verified = st.checkbox(
+            "Eligibility Verified", 
+            value=patient_details.get('eligibility_verified', False),
+            key="eligibility_verified"
+        )
         
         eligibility_notes = st.text_area(
             "Verification Notes", 
+            value=patient_details.get('eligibility_notes', ''),
             placeholder="Enter details about insurance verification, coverage limitations, etc.",
             key="eligibility_notes"
+        )
+
+        # Stage 2 additions: Primary care and mental health checkboxes
+        st.markdown("### Clinical & Mental Health Intake")
+        primary_care_provider = st.text_input(
+            "Primary Care Provider", 
+            value=patient_details.get('primary_care_provider', ''),
+            key="primary_care_provider"
+        )
+        
+        # Handle date input with existing value
+        existing_pcp_date = patient_details.get('pcp_last_seen')
+        pcp_last_seen_value = None
+        if existing_pcp_date:
+            try:
+                from datetime import datetime
+                pcp_last_seen_value = datetime.strptime(existing_pcp_date, '%Y-%m-%d').date()
+            except (ValueError, TypeError):
+                pcp_last_seen_value = None
+        
+        pcp_last_seen = st.date_input(
+            "PCP Last Seen", 
+            value=pcp_last_seen_value,
+            key="pcp_last_seen"
+        )
+
+        st.markdown("#### Mental Health Conditions (check all that apply)")
+        mh_schizophrenia = st.checkbox(
+            "Schizophrenia", 
+            value=patient_details.get('mh_schizophrenia', False),
+            key="mh_schizophrenia"
+        )
+        mh_depression = st.checkbox(
+            "Depression", 
+            value=patient_details.get('mh_depression', False),
+            key="mh_depression"
+        )
+        mh_anxiety = st.checkbox(
+            "Anxiety", 
+            value=patient_details.get('mh_anxiety', False),
+            key="mh_anxiety"
+        )
+        mh_stress = st.checkbox(
+            "Stress", 
+            value=patient_details.get('mh_stress', False),
+            key="mh_stress"
+        )
+        mh_adhd = st.checkbox(
+            "ADHD", 
+            value=patient_details.get('mh_adhd', False),
+            key="mh_adhd"
+        )
+        mh_bipolar = st.checkbox(
+            "Bipolar", 
+            value=patient_details.get('mh_bipolar', False),
+            key="mh_bipolar"
+        )
+        mh_suicidal = st.checkbox(
+            "Suicidal Ideation", 
+            value=patient_details.get('mh_suicidal', False),
+            key="mh_suicidal"
         )
         
         col1, col2, col3 = st.columns([1, 1, 2])
         with col1:
             if st.form_submit_button("Complete Stage 2", type="primary"):
+                # Save eligibility and clinical fields (always save data)
+                checkbox_payload = {
+                    'eligibility_status': eligibility_status,
+                    'eligibility_notes': eligibility_notes,
+                    'eligibility_verified': eligibility_verified,
+                    'mh_schizophrenia': mh_schizophrenia,
+                    'mh_depression': mh_depression,
+                    'mh_anxiety': mh_anxiety,
+                    'mh_stress': mh_stress,
+                    'mh_adhd': mh_adhd,
+                    'mh_bipolar': mh_bipolar,
+                    'mh_suicidal': mh_suicidal,
+                    'primary_care_provider': primary_care_provider,
+                    'pcp_last_seen': pcp_last_seen.strftime('%Y-%m-%d') if pcp_last_seen else None,
+                }
+                database.update_onboarding_checkbox_data(patient_details['onboarding_id'], checkbox_payload)
+                st.success('Stage 2 data saved')
+
                 if eligibility_verified:
-                    # Update stage completion
+                    # Mark stage complete and update related tasks
                     database.update_onboarding_stage_completion(patient_details['onboarding_id'], 2, True)
-                    
-                    # Update task status
-                    # Find eligibility tasks and mark complete
+
+                    # Update task status - find eligibility tasks and mark complete
                     tasks = patient_details.get('tasks', [])
                     for task in tasks:
                         if task['task_stage'] == 2:
@@ -302,14 +426,30 @@ def show_eligibility_verification_form(patient_details, current_user_id):
                                 task['task_id'], 'Complete', current_user_id,
                                 {'eligibility_verified': True}
                             )
-                    
-                    st.success("✅ Stage 2 Complete! Moving to Chart Creation...")
+
+                    st.success("Stage 2 Complete! Moving to Chart Creation...")
                     st.rerun()
                 else:
-                    st.error("Please verify eligibility status before proceeding.")
+                    st.error("Eligibility not verified. Data saved—please verify eligibility to proceed.")
         
         with col2:
             if st.form_submit_button("Save Progress"):
+                # Save progress for Stage 2 (eligibility/clinical fields)
+                checkbox_payload = {
+                    'eligibility_status': eligibility_status,
+                    'eligibility_notes': eligibility_notes,
+                    'eligibility_verified': eligibility_verified,
+                    'primary_care_provider': primary_care_provider,
+                    'pcp_last_seen': pcp_last_seen.strftime('%Y-%m-%d') if pcp_last_seen else None,
+                    'mh_schizophrenia': mh_schizophrenia,
+                    'mh_depression': mh_depression,
+                    'mh_anxiety': mh_anxiety,
+                    'mh_stress': mh_stress,
+                    'mh_adhd': mh_adhd,
+                    'mh_bipolar': mh_bipolar,
+                    'mh_suicidal': mh_suicidal
+                }
+                database.update_onboarding_checkbox_data(patient_details['onboarding_id'], checkbox_payload)
                 st.info("Progress saved! You can resume later.")
         
         with col3:
@@ -324,12 +464,26 @@ def show_chart_creation_form(patient_details, current_user_id):
     with st.form("chart_creation_form"):
         st.info("Create patient chart in EMed system and assign facility")
         
-        emed_chart_created = st.checkbox("✅ EMed Chart Created", key="emed_chart_created")
-        chart_id = st.text_input("EMed Chart ID", key="chart_id", help="Enter the EMed chart ID number")
-        facility_confirmed = st.checkbox("✅ Facility Assignment Confirmed", key="facility_confirmed")
+        emed_chart_created = st.checkbox(
+            "EMed Chart Created", 
+            value=patient_details.get('emed_chart_created', False),
+            key="emed_chart_created"
+        )
+        chart_id = st.text_input(
+            "EMed Chart ID", 
+            value=patient_details.get('chart_id', ''),
+            key="chart_id", 
+            help="Enter the EMed chart ID number"
+        )
+        facility_confirmed = st.checkbox(
+            "Facility Assignment Confirmed", 
+            value=patient_details.get('facility_confirmed', False),
+            key="facility_confirmed"
+        )
         
         chart_notes = st.text_area(
             "Chart Creation Notes",
+            value=patient_details.get('chart_notes', ''),
             placeholder="Enter any notes about chart creation, facility assignment, or issues encountered",
             key="chart_notes"
         )
@@ -337,6 +491,15 @@ def show_chart_creation_form(patient_details, current_user_id):
         col1, col2, col3 = st.columns([1, 1, 2])
         with col1:
             if st.form_submit_button("Complete Stage 3", type="primary"):
+                # Save chart creation data
+                chart_data = {
+                    'emed_chart_created': emed_chart_created,
+                    'chart_id': chart_id,
+                    'facility_confirmed': facility_confirmed,
+                    'chart_notes': chart_notes
+                }
+                database.update_onboarding_checkbox_data(patient_details['onboarding_id'], chart_data)
+                
                 if emed_chart_created and facility_confirmed:
                     database.update_onboarding_stage_completion(patient_details['onboarding_id'], 3, True)
                     
@@ -349,13 +512,21 @@ def show_chart_creation_form(patient_details, current_user_id):
                                 {'emed_chart_created': True}
                             )
                     
-                    st.success("✅ Stage 3 Complete! Moving to Intake Processing...")
+                    st.success("Stage 3 Complete! Moving to Intake Processing...")
                     st.rerun()
                 else:
                     st.error("Please confirm chart creation and facility assignment.")
         
         with col2:
             if st.form_submit_button("Save Progress"):
+                # Save chart creation data
+                chart_data = {
+                    'emed_chart_created': emed_chart_created,
+                    'chart_id': chart_id,
+                    'facility_confirmed': facility_confirmed,
+                    'chart_notes': chart_notes
+                }
+                database.update_onboarding_checkbox_data(patient_details['onboarding_id'], chart_data)
                 st.info("Progress saved!")
         
         with col3:
@@ -368,97 +539,123 @@ def show_intake_processing_form(patient_details, current_user_id):
     st.markdown("### Stage 4: Intake Processing & Documentation")
     
     with st.form("intake_processing_form"):
-        st.info("Complete patient intake, collect documentation, and conduct prescreen call")
+        st.info("Complete patient intake, collect documentation, and conduct intake call")
         
         col1, col2 = st.columns(2)
         
         with col1:
             st.markdown("#### Documentation")
-            medical_records_requested = st.checkbox("✅ Medical Records Requested", 
+            medical_records_requested = st.checkbox("Medical Records Requested", 
                                                    key="medical_records_requested",
                                                    value=patient_details.get('medical_records_requested', False))
-            referral_documents_received = st.checkbox("✅ Referral Documents Received", 
+            referral_documents_received = st.checkbox("Referral Documents Received", 
                                                      key="referral_documents_received",
                                                      value=patient_details.get('referral_documents_received', False))
-            insurance_cards_received = st.checkbox("✅ Insurance Cards Received", 
+            insurance_cards_received = st.checkbox("Insurance Cards / Face Sheet Received", 
                                                   key="insurance_cards_received",
                                                   value=patient_details.get('insurance_cards_received', False))
-            emed_signature_received = st.checkbox("✅ EMED Signature Received", 
+            emed_signature_received = st.checkbox("EMED Signature Received", 
                                                 key="emed_signature_received",
                                                 value=patient_details.get('emed_signature_received', False))
+            annual_well_visit = st.checkbox("Annual Well Visit", 
+                                           key="annual_well_visit",
+                                           value=patient_details.get('annual_well_visit', False))
         
         with col2:
             st.markdown("#### Patient Contact")
-            prescreen_completed = st.checkbox("✅ Prescreen Call Completed", key="prescreen_completed")
-            patient_contacted = st.checkbox("✅ Patient Successfully Contacted", key="patient_contacted")
-        
-        # Add specialist requirements section
-        st.markdown("#### Specialist Requirements")
-        col3, col4 = st.columns(2)
-        
-        with col3:
-            hypertension = st.checkbox("🩺 Hypertension", 
-                                     key="hypertension",
-                                     value=patient_details.get('hypertension', False))
-            mental_health_concerns = st.checkbox("🧠 Mental Health Concerns", 
-                                                key="mental_health_concerns",
-                                                value=patient_details.get('mental_health_concerns', False))
-        
-        with col4:
-            dementia = st.checkbox("🧠 Dementia", 
-                                 key="dementia",
-                                 value=patient_details.get('dementia', False))
-            st.write("") # Empty space for alignment
+            intake_call_completed = st.checkbox(
+                "Intake Call Completed", 
+                value=patient_details.get('intake_call_completed', False),
+                key="intake_call_completed"
+            )
             
         intake_notes = st.text_area(
             "Intake Processing Notes",
+            value=patient_details.get('intake_notes', ''),
             placeholder="Document any issues with medical records, patient contact attempts, special requirements, etc.",
             key="intake_notes"
+        )
+        
+        # Stage 4 additions: Specialist and chronic conditions
+        st.markdown("### Specialist & Clinical Conditions")
+        active_specialist = st.text_input(
+            "Active Specialist", 
+            value=patient_details.get('active_specialist', ''),
+            key="active_specialist"
+        )
+        
+        # Handle date input with existing value
+        existing_specialist_date = patient_details.get('specialist_last_seen')
+        specialist_last_seen_value = None
+        if existing_specialist_date:
+            try:
+                from datetime import datetime
+                specialist_last_seen_value = datetime.strptime(existing_specialist_date, '%Y-%m-%d').date()
+            except (ValueError, TypeError):
+                specialist_last_seen_value = None
+        
+        specialist_last_seen = st.date_input(
+            "Specialist Last Seen", 
+            value=specialist_last_seen_value,
+            key="specialist_last_seen"
+        )
+        
+        chronic_conditions_onboarding = st.text_area(
+            "Chronic Conditions (comma-separated)", 
+            value=patient_details.get('chronic_conditions_onboarding', ''),
+            key="chronic_conditions_onboarding"
         )
         
         col1, col2, col3 = st.columns([1, 1, 2])
         with col1:
             if st.form_submit_button("Complete Stage 4", type="primary"):
-                if prescreen_completed and referral_documents_received:
-                    # Save all checkbox data
-                    checkbox_data = {
-                        'medical_records_requested': medical_records_requested,
-                        'referral_documents_received': referral_documents_received,
-                        'insurance_cards_received': insurance_cards_received,
-                        'emed_signature_received': emed_signature_received,
-                        'hypertension': hypertension,
-                        'mental_health_concerns': mental_health_concerns,
-                        'dementia': dementia
-                    }
-                    database.update_onboarding_checkbox_data(patient_details['onboarding_id'], checkbox_data)
-                    
+                # Save intake processing checkbox/fields
+                checkbox_data = {
+                    'medical_records_requested': medical_records_requested,
+                    'referral_documents_received': referral_documents_received,
+                    'insurance_cards_received': insurance_cards_received,
+                    'emed_signature_received': emed_signature_received,
+                    'annual_well_visit': annual_well_visit,
+                    'intake_notes': intake_notes,
+                    'intake_call_completed': intake_call_completed,
+                    'active_specialist': active_specialist,
+                    'specialist_last_seen': specialist_last_seen.strftime('%Y-%m-%d') if specialist_last_seen else None,
+                    'chronic_conditions_onboarding': chronic_conditions_onboarding
+                }
+                database.update_onboarding_checkbox_data(patient_details['onboarding_id'], checkbox_data)
+
+                # Require BOTH intake call completion AND insurance cards/face sheet before completing
+                if intake_call_completed and insurance_cards_received:
                     database.update_onboarding_stage_completion(patient_details['onboarding_id'], 4, True)
-                    
+
                     # Update tasks
                     tasks = patient_details.get('tasks', [])
                     for task in tasks:
                         if task['task_stage'] == 4:
                             database.update_onboarding_task_status(
                                 task['task_id'], 'Complete', current_user_id,
-                                {'prescreen_completed': True, 'documents_received': True}
+                                {'intake_call_completed': True, 'documents_received': True}
                             )
-                    
-                    st.success("✅ Stage 4 Complete! Moving to TV Scheduling...")
+
+                    st.success("Stage 4 Complete! Moving to TV Scheduling...")
                     st.rerun()
                 else:
-                    st.error("Please complete prescreen call and confirm documents received.")
+                    st.error("Please complete the intake call and confirm insurance cards/face sheet are received before proceeding.")
         
         with col2:
             if st.form_submit_button("Save Progress"):
-                # Save checkbox data even when just saving progress
+                # Save checkbox data and clinical fields when saving progress
                 checkbox_data = {
                     'medical_records_requested': medical_records_requested,
                     'referral_documents_received': referral_documents_received,
                     'insurance_cards_received': insurance_cards_received,
                     'emed_signature_received': emed_signature_received,
-                    'hypertension': hypertension,
-                    'mental_health_concerns': mental_health_concerns,
-                    'dementia': dementia
+                    'annual_well_visit': annual_well_visit,
+                    'intake_notes': intake_notes,
+                    'intake_call_completed': intake_call_completed,
+                    'active_specialist': active_specialist,
+                    'specialist_last_seen': specialist_last_seen.strftime('%Y-%m-%d') if specialist_last_seen else None,
+                    'chronic_conditions_onboarding': chronic_conditions_onboarding
                 }
                 database.update_onboarding_checkbox_data(patient_details['onboarding_id'], checkbox_data)
                 st.info("Progress saved!")
@@ -469,42 +666,118 @@ def show_intake_processing_form(patient_details, current_user_id):
                 st.rerun()
 
 def show_tv_scheduling_form(patient_details, current_user_id):
-    """Stage 5: TV Scheduling & PCPM Handoff"""
-    st.markdown("### Stage 5: Telehealth Visit Scheduling & PCPM Handoff")
+    """Stage 5: TV Scheduling & Provider + Coordinator Assignments"""
+    st.markdown("### Stage 5: TV Scheduling & Provider + Coordinator Assignments")
     
     with st.form("tv_scheduling_form"):
-        st.info("Schedule initial telehealth visit with PCPM and prepare for handoff")
+        st.info("Schedule initial telehealth visit and assign provider and coordinator")
         
         col1, col2 = st.columns(2)
         
         with col1:
             st.markdown("#### TV Scheduling")
-            tv_scheduled = st.checkbox("✅ Initial TV Scheduled", key="tv_scheduled")
+            tv_scheduled = st.checkbox("Initial TV Scheduled", key="tv_scheduled")
             tv_date = st.date_input("TV Appointment Date", key="tv_date")
             tv_time = st.time_input("TV Appointment Time", key="tv_time")
+            patient_notified = st.checkbox("Patient Notified of TV Appointment", key="patient_notified")
+            initial_tv_completed = st.checkbox("Initial TV Visit Completed", key="initial_tv_completed")
             
         with col2:
-            st.markdown("#### PCPM Assignment")
-            # Get PCPM users from database
+            st.markdown("#### Provider Assignment for Initial TV")
+            # Get Provider users from database
             try:
-                pcpm_users = database.get_users_by_role("PCPM")  # Assuming this function exists
-                pcpm_options = [f"{u['full_name']} ({u['username']})" for u in pcpm_users] if pcpm_users else ["No PCPM Available"]
+                provider_users = database.get_users_by_role("CP")  # Use role abbreviation CP for Care Provider
+                provider_options = ["Select Provider..."] + [f"{u['full_name']} ({u['username']})" for u in provider_users] if provider_users else ["No Providers Available"]
             except:
-                pcpm_options = ["PCPM Assignment Needed"]
+                provider_options = ["Provider Assignment Needed"]
                 
-            assigned_pcpm = st.selectbox("Assign PCPM", pcpm_options, key="assigned_pcpm")
-            patient_notified = st.checkbox("✅ Patient Notified of TV Appointment", key="patient_notified")
+            assigned_provider = st.selectbox("Assign Provider", provider_options, key="assigned_provider")
         
-        handoff_notes = st.text_area(
-            "Handoff Notes for PCPM",
-            placeholder="Provide summary of patient status, special considerations, and any important notes for the PCPM",
-            key="handoff_notes"
-        )
+        # Additional assignment sections
+        st.markdown("#### Post-Initial TV Assignments")
+        col3, col4 = st.columns(2)
+        
+        with col3:
+            st.markdown("**Regional Provider Assignment**")
+            try:
+                regional_provider_users = database.get_users_by_role("CP")  # Use CP role for providers
+                regional_provider_options = ["Select Regional Provider..."] + [f"{u['full_name']} ({u['username']})" for u in regional_provider_users] if regional_provider_users else ["No Providers Available"]
+            except:
+                regional_provider_options = ["Regional Provider Assignment Needed"]
+            
+            assigned_regional_provider = st.selectbox("Assign Regional Provider", regional_provider_options, key="assigned_regional_provider")
+        
+        with col4:
+            st.markdown("**Coordinator Assignment**")
+            try:
+                coordinator_users = database.get_users_by_role("CC")  # Use CC role for Care Coordinators
+                coordinator_options = ["Select Coordinator..."] + [f"{u['full_name']} ({u['username']})" for u in coordinator_users] if coordinator_users else ["No Coordinators Available"]
+            except:
+                coordinator_options = ["Coordinator Assignment Needed"]
+            
+            assigned_coordinator = st.selectbox("Assign Coordinator", coordinator_options, key="assigned_coordinator")
         
         col1, col2, col3 = st.columns([1, 1, 2])
         with col1:
-            if st.form_submit_button("Complete Handoff", type="primary"):
-                if tv_scheduled and patient_notified:
+            if st.form_submit_button("Complete Stage 5", type="primary"):
+                # Revised completion requirements: Check if regional provider and coordinator are assigned in patient table
+                # (not just the onboarding form fields)
+                
+                # Check if patient exists in patients table and has regional provider + coordinator assigned
+                patient_id = patient_details.get('patient_id')
+                regional_provider_assigned = False
+                coordinator_assigned_in_patient_table = False
+                
+                if patient_id:
+                    conn = database.get_db_connection()
+                    try:
+                        # Check for regional provider assignment in patient_assignments table
+                        cursor = conn.execute("""
+                            SELECT pa.provider_id, u.full_name
+                            FROM patient_assignments pa
+                            JOIN users u ON pa.provider_id = u.user_id
+                            WHERE pa.patient_id = ? AND pa.provider_id IS NOT NULL 
+                            AND pa.status = 'active'
+                        """, (patient_id,))
+                        regional_provider = cursor.fetchone()
+                        regional_provider_assigned = regional_provider is not None
+                        
+                        # Check for coordinator assignment in patient_assignments table  
+                        cursor = conn.execute("""
+                            SELECT pa.coordinator_id, u.full_name
+                            FROM patient_assignments pa
+                            JOIN users u ON pa.coordinator_id = u.user_id
+                            WHERE pa.patient_id = ? AND pa.coordinator_id IS NOT NULL 
+                            AND pa.status = 'active'
+                        """, (patient_id,))
+                        coordinator = cursor.fetchone()
+                        coordinator_assigned_in_patient_table = coordinator is not None
+                        
+                    except Exception as e:
+                        st.error(f"Error checking patient assignments: {e}")
+                    finally:
+                        conn.close()
+                
+                # New completion requirements: Basic onboarding steps PLUS regional provider and coordinator in patient table
+                basic_requirements_met = tv_scheduled and patient_notified and initial_tv_completed
+                assignments_complete = regional_provider_assigned and coordinator_assigned_in_patient_table
+                
+                if basic_requirements_met and assignments_complete:
+                    # Save Stage 5 data including provider assignment
+                    database.update_onboarding_stage5_completion(
+                        patient_details['onboarding_id'], 
+                        tv_date, 
+                        tv_time, 
+                        assigned_provider, 
+                        assigned_coordinator
+                    )
+                    
+                    # Add patient to patients table and keep onboarding data
+                    try:
+                        database.insert_patient_from_onboarding(patient_details['onboarding_id'])
+                    except Exception as e:
+                        st.warning(f"Patient table insertion warning: {e}")
+                    
                     database.update_onboarding_stage_completion(patient_details['onboarding_id'], 5, True)
                     
                     # Update tasks
@@ -513,19 +786,59 @@ def show_tv_scheduling_form(patient_details, current_user_id):
                         if task['task_stage'] == 5:
                             database.update_onboarding_task_status(
                                 task['task_id'], 'Complete', current_user_id,
-                                {'tv_scheduled': True, 'handoff_complete': True}
+                                {
+                                    'tv_scheduled': True, 
+                                    'initial_tv_completed': True,
+                                    'provider_assigned': True,
+                                    'coordinator_assigned': True
+                                }
                             )
                     
-                    st.success("🎉 Onboarding Complete! Patient ready for PCPM assignment.")
+                    st.success("Stage 5 Complete! Patient onboarding workflow finished.")
                     st.balloons()
                     st.session_state['onboarding_mode'] = None
                     st.rerun()
                 else:
-                    st.error("Please complete TV scheduling and confirm patient notification.")
+                    # Provide detailed error message about what's missing
+                    missing_items = []
+                    if not tv_scheduled:
+                        missing_items.append("TV visit scheduled")
+                    if not patient_notified:
+                        missing_items.append("Patient notified")
+                    if not initial_tv_completed:
+                        missing_items.append("Initial TV visit completed")
+                    if not regional_provider_assigned:
+                        missing_items.append("Regional provider assigned in patient table (by onboarding team)")
+                    if not coordinator_assigned_in_patient_table:
+                        missing_items.append("Coordinator assigned in patient table (by onboarding team)")
+                    
+                    error_msg = "Cannot complete onboarding. Missing: " + ", ".join(missing_items)
+                    st.error(error_msg)
+                    
+                    if not assignments_complete:
+                        st.warning("⚠️ **Revised Workflow**: The onboarding team must assign a regional provider and coordinator in the patient table before onboarding can be completed. The 'Save Progress' button can be used to save partial progress.")
         
         with col2:
             if st.form_submit_button("Save Progress"):
-                st.info("Progress saved!")
+                # Collect form data
+                form_data = {
+                    'tv_date': tv_date,
+                    'tv_time': tv_time,
+                    'assigned_provider': assigned_provider,
+                    'assigned_coordinator': assigned_coordinator,
+                    'tv_scheduled': tv_scheduled,
+                    'patient_notified': patient_notified,
+                    'initial_tv_completed': initial_tv_completed
+                }
+                
+                # Save the progress to database
+                if database.save_onboarding_tv_scheduling_progress(patient_details['onboarding_id'], form_data):
+                    st.success("✅ Progress saved successfully! Your changes have been saved to the database.")
+                    # Refresh the patient details to show updated data
+                    st.session_state['view_patient_details'] = database.get_onboarding_patient_details(patient_details['onboarding_id'])
+                    st.rerun()
+                else:
+                    st.error("❌ Failed to save progress. Please try again.")
         
         with col3:
             if st.form_submit_button("Back to Queue"):
@@ -542,7 +855,7 @@ def show():
         return
     
     # Create tabs - Queue first!
-    tab1, tab2, tab3, tab4 = st.tabs(["Patient Queue", "New Patient Intake", "Processing Status", "Facility Management"])
+    tab1, tab2, tab3 = st.tabs(["Patient Queue", "Processing Status", "Facility Management"])
     
     # Tab 1: Patient Queue (Primary Tab)
     with tab1:
@@ -577,7 +890,7 @@ def show():
                         "Priority": st.column_config.TextColumn("Priority", width="small"),
                         "Status": st.column_config.TextColumn("Status", width="small"),
                         "Created": st.column_config.TextColumn("Created", width="small"),
-                        "Last Update": st.column_config.TextColumn("Last Update", width="medium"),
+                        "Last Update": st.column_config.TextColumn("Last Update", width="medium")
                     },
                     hide_index=True
                 )
@@ -615,6 +928,12 @@ def show():
                                     st.session_state['view_patient_details'] = patient_details
                                     st.rerun()
                         
+                        with col3:
+                            if st.button("Assign to Me", key="assign_to_me"):
+                                database.update_onboarding_patient_assignment(selected_id, current_user_id)
+                                st.success("Patient assigned to you!")
+                                st.rerun()
+                        
                         # Show patient workflow stepper if details are being viewed
                         if 'view_patient_details' in st.session_state:
                             patient_details = st.session_state['view_patient_details']
@@ -628,7 +947,7 @@ def show():
                                 current_step = show_workflow_stepper(patient_details)
                                 
                                 # Patient details in expandable sections
-                                with st.expander("📋 Patient Information", expanded=False):
+                                with st.expander("Patient Information", expanded=False):
                                     col1, col2 = st.columns(2)
                                     with col1:
                                         st.write(f"**DOB:** {patient_details.get('date_of_birth', 'N/A')}")
@@ -641,7 +960,7 @@ def show():
                                         st.write(f"**Insurance:** {patient_details.get('insurance_provider', 'N/A')}")
                                         st.write(f"**Facility:** {patient_details.get('facility_assignment', 'N/A')}")
                                 
-                                with st.expander("🏥 Medical Information", expanded=False):
+                                with st.expander("Medical Information", expanded=False):
                                     col1, col2 = st.columns(2)
                                     with col1:
                                         st.write(f"**Hypertension:** {'Yes' if patient_details.get('hypertension', False) else 'No'}")
@@ -653,11 +972,11 @@ def show():
                                 with st.expander("📄 Document Status", expanded=False):
                                     col1, col2 = st.columns(2)
                                     with col1:
-                                        st.write(f"**Medical Records:** {'✅ Received' if patient_details.get('medical_records_requested', False) else '❌ Pending'}")
-                                        st.write(f"**Referral Documents:** {'✅ Received' if patient_details.get('referral_documents_received', False) else '❌ Pending'}")
+                                        st.write(f"**Medical Records:** {'Received' if patient_details.get('medical_records_requested', False) else 'Pending'}")
+                                        st.write(f"**Referral Documents:** {'Received' if patient_details.get('referral_documents_received', False) else 'Pending'}")
                                     with col2:
-                                        st.write(f"**Insurance Cards:** {'✅ Received' if patient_details.get('insurance_cards_received', False) else '❌ Pending'}")
-                                        st.write(f"**eMed Signature:** {'✅ Received' if patient_details.get('emed_signature_received', False) else '❌ Pending'}")
+                                        st.write(f"**Insurance Cards:** {'Received' if patient_details.get('insurance_cards_received', False) else 'Pending'}")
+                                        st.write(f"**eMed Signature:** {'Received' if patient_details.get('emed_signature_received', False) else 'Pending'}")
                                 
                                 # Action buttons for the current step
                                 st.markdown("### 🎯 Next Actions")
@@ -678,7 +997,7 @@ def show():
                                         st.rerun()
                                 
                                 with col3:
-                                    if st.button("📋 Assign POT", key="assign_pot"):
+                                    if st.button("Assign POT", key="assign_pot"):
                                         # Add POT assignment logic here
                                         st.info("POT assignment functionality coming soon...")
                                 
@@ -687,14 +1006,6 @@ def show():
                                         if 'view_patient_details' in st.session_state:
                                             del st.session_state['view_patient_details']
                                         st.rerun()
-                                    st.session_state['viewing_patient'] = patient_details
-                                    st.rerun()
-                        
-                        with col3:
-                            if st.button("Assign to Me", key="assign_to_me"):
-                                database.update_onboarding_patient_assignment(selected_id, current_user_id)
-                                st.success("Patient assigned to you!")
-                                st.rerun()
             else:
                 st.info("No patients currently in the onboarding queue.")
                 
@@ -710,25 +1021,30 @@ def show():
             st.write("Begin the onboarding process for a new patient referral.")
         with col2:
             if st.button("🆕 Start New Patient", key="start_new_patient", type="primary"):
-                st.session_state['onboarding_mode'] = 'new'
-                st.session_state['current_onboarding_id'] = None
+                st.session_state['show_intake_form'] = True
                 st.success("Ready to start new patient onboarding!")
                 st.rerun()
-
-    # Tab 2: New Patient Intake (Conditional Display)
-    with tab2:
-        # Check if we should show the intake form
+        
+        # Show intake form popup at bottom of queue tab when requested
+        if st.session_state.get('show_intake_form', False):
+            st.markdown("---")
+            st.markdown("## New Patient Registration - Stage 1")
+            st.info("Complete the patient registration form to start the onboarding workflow.")
+            
+            # Show the intake form
+            show_patient_intake_form(current_user_id)
+            
+            # Add a cancel button
+            if st.button("❌ Cancel Registration", key="cancel_registration"):
+                st.session_state['show_intake_form'] = False
+                st.rerun()
+        
+        # Handle resume onboarding mode in the queue tab
         onboarding_mode = st.session_state.get('onboarding_mode', None)
         current_onboarding_id = st.session_state.get('current_onboarding_id', None)
         
-        if onboarding_mode == 'new':
-            st.subheader("📋 New Patient Registration - Stage 1")
-            st.info("Complete the patient registration form to start the onboarding workflow.")
-            
-            # Show new patient intake form
-            show_patient_intake_form(current_user_id)
-            
-        elif onboarding_mode == 'resume' and current_onboarding_id:
+        if onboarding_mode == 'resume' and current_onboarding_id:
+            st.markdown("---")
             # Load existing patient data and show appropriate stage form
             patient_details = database.get_onboarding_patient_details(current_onboarding_id)
             if patient_details:
@@ -736,29 +1052,9 @@ def show():
             else:
                 st.error("Could not load patient details for onboarding.")
                 st.session_state['onboarding_mode'] = None
-        else:
-            # Default state - no form shown
-            st.subheader("Patient Intake & Workflow Management")
-            st.info("👆 Use the **Patient Queue** tab to start new patient onboarding or resume existing workflows.")
-            
-            col1, col2 = st.columns([1, 1])
-            with col1:
-                st.markdown("### Quick Actions Available:")
-                st.write("• **Start New Patient** - Begin fresh onboarding")
-                st.write("• **Resume Onboarding** - Continue existing workflow")
-                st.write("• **View Details** - See patient information")
-                st.write("• **Assign to Me** - Take ownership")
-                
-            with col2:
-                st.markdown("### Workflow Stages:")
-                st.write("1. **Patient Registration** - Basic information")
-                st.write("2. **Eligibility Verification** - Insurance check")
-                st.write("3. **Chart Creation** - EMed setup")
-                st.write("4. **Intake Processing** - Documentation") 
-                st.write("5. **TV Scheduling** - Provider handoff")
 
-    # Tab 3: Processing Status 
-    with tab3:
+    # Tab 2: Processing Status 
+    with tab2:
         st.subheader("Onboarding Processing Status")
         
         # Get processing status data from database
@@ -798,7 +1094,7 @@ def show():
                     column_config={
                         "Stage": st.column_config.TextColumn("Stage", width="large"),
                         "Count": st.column_config.NumberColumn("Count", format="%.0f", width="small"),
-                        "Status": st.column_config.TextColumn("Status", width="small"),
+                        "Status": st.column_config.TextColumn("Status", width="small")
                     },
                     hide_index=True
                 )
@@ -822,67 +1118,8 @@ def show():
         except Exception as e:
             st.error(f"Error loading processing status: {e}")
 
-    # Tab 4: Facility Management
-    with tab4:
-        st.subheader("Processing Status")
-        
-        # Mock processing status data
-        status_data = [
-            {"Stage": "New Referrals", "Count": 12, "Status": "Active"},
-            {"Stage": "Eligibility Verification", "Count": 8, "Status": "In Progress"},
-            {"Stage": "Chart Creation", "Count": 5, "Status": "In Progress"},
-            {"Stage": "Intake Processing", "Count": 3, "Status": "Pending"},
-            {"Stage": "Scheduling", "Count": 2, "Status": "Ready"},
-            {"Stage": "Handoff to PCPM", "Count": 1, "Status": "Completed"},
-        ]
-        
-        df = pd.DataFrame(status_data)
-        st.dataframe(
-            df, 
-            use_container_width=True,
-            column_config={
-                "Stage": st.column_config.TextColumn("Stage", width="large"),
-                "Count": st.column_config.NumberColumn("Count", format="%.0f", width="small"),
-                "Status": st.column_config.TextColumn("Status", width="medium"),
-            },
-            hide_index=True
-        )
-        
-        # Daily metrics
-        st.markdown("### Daily Metrics")
-        col1, col2, col3, col4 = st.columns(4)
-        col1.metric("Patients Today", "24")
-        col2.metric("Completed", "18")
-        col3.metric("Pending", "6")
-        col4.metric("Completion Rate", "75%")
-        
-        # Recent activities
-        st.markdown("### Recent Activities")
-        activities = [
-            "Patient Smith, John - Eligibility verified",
-            "Patient Johnson, Mary - Chart created in EMed",
-            "Patient Williams, Robert - Medical records received",
-            "Patient Brown, Patricia - Initial assessment completed",
-        ]
-        
-        for activity in activities:
-            st.write(f"• {activity}")
-
-    # Add a quick reference section
-    st.markdown("---")
-    st.subheader("Onboarding Workflow Reference")
-    st.write("""
-    **ZEN Medical Onboarding Workflow (POT):**
-    1. **Patient Registration** - Collect basic patient information
-    2. **Eligibility Verification** - Verify insurance coverage
-    3. **Chart Creation** - Create EMed patient chart
-    4. **Intake Processing** - Collect medical records and documentation
-    5. **Initial TV Scheduling** - Schedule provider visit
-    6. **Handoff to PCPM** - Prepare patient for provider assignment
-    """)
-    
-    # Facility Management Tab Content
-    with tab4:
+    # Tab 3: Facility Management
+    with tab3:
         st.subheader("Facility Management")
         st.markdown("### Add New Facility")
         
@@ -909,3 +1146,16 @@ def show():
                         st.error(f"Error adding facility: {e}")
                 else:
                     st.error("Facility name is required")
+
+    # Add a quick reference section
+    st.markdown("---")
+    st.subheader("Onboarding Workflow Reference")
+    st.write("""
+    **ZEN Medical Onboarding Workflow (POT):**
+    1. **Patient Registration** - Collect basic patient information
+    2. **Eligibility Verification** - Verify insurance coverage
+    3. **Chart Creation** - Create EMed patient chart
+    4. **Intake Processing** - Collect medical records and documentation
+    5. **Initial TV Scheduling** - Schedule provider visit
+    6. **Handoff to PCPM** - Prepare patient for provider assignment
+    """)

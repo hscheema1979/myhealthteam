@@ -1,0 +1,66 @@
+SOURCE TABLES COMPARISON SUMMARY
+================================
+
+Date: September 23, 2025
+
+OVERVIEW
+--------
+This report compares name+DOB entries from three source tables:
+- SOURCE_PATIENT_DATA (using Last, First, DOB and LAST FIRST DOB columns)
+- SOURCE_COORDINATOR_TASKS_HISTORY (using Pt Name column)
+- SOURCE_PROVIDER_TASKS_HISTORY (using Patient Last, First DOB and Patient Last, First DOB.1 columns)
+
+After filtering out noise (televisit, appt, no answer, etc.) and validating date formats, we identified 2,951 unique name+DOB combinations across all tables.
+
+KEY FINDINGS
+------------
+
+1. TOTAL UNIQUE ENTRIES: 2,951
+   - This represents the total number of distinct patient names+DOBs found across all three source tables after filtering.
+
+2. ENTRIES FOUND IN MULTIPLE TABLES:
+   - 1,728 entries (58.6%) appear in only one table
+   - 1,223 entries (41.4%) appear in two or more tables
+   - 1,223 entries represent potential data overlaps between tables
+
+3. MOST COMMON ENTRIES (Top 10):
+   1. CHAN, TIFFANIE 07/16/1997 (15 occurrences)
+   2. CHAVEZ, ANNA 07/23/1999 (15 occurrences)
+   3. CIFELLI, VINCENT 04/25/2006 (15 occurrences)
+   4. COLOMBO, BEVERLY 01/03/1969 (15 occurrences)
+   5. CORRALES, RAUL 12/11/1982 (15 occurrences)
+   6. DE LA LUZ, MIRIAM 11/13/2001 (15 occurrences)
+   7. DENNIS, KELVIAUNA 08/01/2002 (15 occurrences)
+   8. DIAZ, AURORA 02/20/1978 (15 occurrences)
+   9. DOAN, MILEY 10/22/2008 (15 occurrences)
+   10. ERAUSQUIN, SOFIA 03/07/2002 (15 occurrences)
+
+4. TABLE DISTRIBUTION:
+   - SOURCE_COORDINATOR_TASKS_HISTORY: 349,676 raw values → 2,951 unique filtered entries
+   - SOURCE_PROVIDER_TASKS_HISTORY: 13,450 raw values → 2,951 unique filtered entries
+   - SOURCE_PATIENT_DATA: 4,933 raw values → 2,951 unique filtered entries
+
+5. DATA OVERLAP ANALYSIS:
+   - The high number of overlapping entries (41.4%) suggests significant data duplication across tables
+   - This indicates that the same patient information is being recorded in multiple systems
+   - The most common entries (15 occurrences) appear in SOURCE_COORDINATOR_TASKS_HISTORY, suggesting this table may be the primary source of patient data
+
+6. NOTABLE OBSERVATIONS:
+   - The name format varies between tables: 
+     * SOURCE_COORDINATOR_TASKS_HISTORY: "Last, First DOB" format
+     * SOURCE_PROVIDER_TASKS_HISTORY: "Last, First DOB" format
+     * SOURCE_PATIENT_DATA: Uses both separate Last/First/DOB columns and combined "LAST FIRST DOB" column
+   - Some entries have inconsistent formatting (e.g., "PALMA, ANNA\n2/22/1943" with line break)
+   - The date format is consistently MM/DD/YYYY across all tables
+
+RECOMMENDATIONS
+---------------
+1. Data Consolidation: Consider consolidating these tables into a single patient master record system to eliminate duplication
+2. Standardization: Standardize the name format across all tables to "Last, First DOB" format
+3. Data Quality: Investigate the 1,728 entries that appear in only one table to determine if they represent unique patients or data entry errors
+4. Validation: Implement validation rules to prevent noise entries (televisit, appt, etc.) from being entered in the future
+5. Integration: Use the 1,223 overlapping entries as a basis for creating a unified patient identifier system
+
+CONCLUSION
+----------
+The comparison reveals significant data overlap between the three source tables, with 41.4% of entries appearing in multiple tables. This suggests that patient data is being duplicated across systems. The most common entries appear in SOURCE_COORDINATOR_TASKS_HISTORY, indicating this may be the primary source of patient data. Recommendations focus on data consolidation, standardization, and quality improvement to create a more reliable patient data system.

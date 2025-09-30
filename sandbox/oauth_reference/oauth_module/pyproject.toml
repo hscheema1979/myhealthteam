@@ -1,0 +1,114 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "google-oauth-streamlit"
+version = "1.0.0"
+authors = [
+    {name = "Harpreet Singh", email = "harpreet@myhealthteam.org"},
+]
+description = "Simple Google OAuth integration for Streamlit applications"
+readme = "INTEGRATION_GUIDE.md"
+license = {text = "MIT"}
+requires-python = ">=3.8"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Framework :: Streamlit",
+    "Topic :: Internet :: WWW/HTTP :: Session",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: System :: Systems Administration :: Authentication/Directory",
+]
+keywords = [
+    "streamlit",
+    "oauth",
+    "google",
+    "authentication",
+    "login",
+    "security",
+    "web",
+    "app"
+]
+dependencies = [
+    "streamlit>=1.28.0",
+    "requests>=2.31.0",
+    "python-dotenv>=1.0.0",
+    "urllib3>=2.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "black>=23.0.0",
+    "flake8>=6.0.0",
+    "mypy>=1.0.0",
+]
+examples = [
+    "pandas>=2.0.0",
+    "numpy>=1.24.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/yourusername/google-oauth-streamlit"
+Documentation = "https://github.com/yourusername/google-oauth-streamlit/blob/main/INTEGRATION_GUIDE.md"
+Repository = "https://github.com/yourusername/google-oauth-streamlit"
+"Bug Reports" = "https://github.com/yourusername/google-oauth-streamlit/issues"
+
+[project.scripts]
+google-oauth-streamlit = "google_oauth_streamlit.oauth_module:main"
+
+[tool.setuptools.packages.find]
+include = ["google_oauth_streamlit*"]
+
+[tool.setuptools.package-data]
+google_oauth_streamlit = ["*.md", "*.txt", "*.template"]
+
+[tool.black]
+line-length = 88
+target-version = ['py38']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "--cov=google_oauth_streamlit --cov-report=html --cov-report=term-missing"

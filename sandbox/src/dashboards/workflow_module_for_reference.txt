@@ -1,0 +1,483 @@
+with col2:
+        st.markdown("**Ongoing Workflows**")
+        
+        try:
+            # Get ongoing workflows. If user is Coordinator Manager (CM, role 40)
+            # show all active workflows so they can act on workflows even when not assigned directly.
+            # Lead Coordinator (37) should NOT get the global override.
+            if 40 in user_role_ids:
+                ongoing_workflows = get_ongoing_workflows(None, user_role_ids=user_role_ids)
+            else:
+                ongoing_workflows = get_ongoing_workflows(coordinator_id, user_role_ids=user_role_ids)
+            
+            if ongoing_workflows:
+                # Create a dataframe for better display with progress information
+                workflow_data = []
+                for wf in ongoing_workflows:
+                    # Include coordinator who started the workflow (if present) for CM visibility
+                    workflow_data.append({
+                        "Patient": wf.get('patient_name', 'Unknown'),
+                        "Workflow": wf.get('workflow_type', 'N/A'),
+                        "Progress": wf.get('progress_text', 'N/A'),
+                        "Stage": wf.get('current_stage', 'In Progress'),
+                        "Created": wf.get('created_date', 'N/A'),
+                        "Status": wf.get('workflow_status', 'Active'),
+                        "StarterCoordinatorId": wf.get('coordinator_id'),
+                        "ID": wf.get('instance_id', 0)  # Hidden column for actions
+                    })
+                
+                df = pd.DataFrame(workflow_data)
+                
+                # Display workflow table with progress
+                st.dataframe(
+                    df.drop('ID', axis=1),  # Hide the ID column
+                    use_container_width=True,
+                    height=300,
+                    column_config={
+                        "Patient": st.column_config.TextColumn("Patient", width="medium"),
+                        "Workflow": st.column_config.TextColumn("Workflow Type", width="large"),
+                        "Progress": st.column_config.TextColumn("Progress", width="small"),
+                        "Stage": st.column_config.TextColumn("Current Stage", width="medium"),
+                        "Created": st.column_config.TextColumn("Created", width="small"),
+                        "Status": st.column_config.TextColumn("Status", width="small")
+                    },
+                    hide_index=True
+                )
+                
+                # Enhanced Workflow Action Interface
+                st.markdown("**Workflow Management**")
+                
+                # Select workflow for actions
+                if workflow_data:
+                    workflow_options = {f"{wf['Patient']} - {wf['Workflow']} (ID: {wf['ID']})": wf['ID'] for wf in workflow_data}
+                    selected_workflow_text = st.selectbox(
+                        "Select Workflow for Action:",
+                        list(workflow_options.keys()),
+                        key="workflow_action_select"
+                    )
+                    selected_instance_id = workflow_options[selected_workflow_text]
+
+                    # If current user is CM, show who started the workflow and the next incomplete step
+                    if 40 in user_role_ids:
+                        try:
+                            conn = database.get_db_connection()
+                            starter = conn.execute("SELECT coordinator_id FROM workflow_instances WHERE instance_id = ?", (selected_instance_id,)).fetchone()
+                            conn.close()
+                            starter_cid = starter['coordinator_id'] if starter else None
+                        except Exception:
+                            starter_cid = None
+
+                        if starter_cid:
+                            # Resolve coordinator name
+                            try:
+                                conn = database.get_db_connection()
+                                row = conn.execute("SELECT first_name, last_name FROM coordinators WHERE coordinator_id = ?", (starter_cid,)).fetchone()
+                                conn.close()
+                                starter_name = f"{row['first_name']} {row['last_name']}" if row else 'Unknown'
+                            except Exception:
+                                starter_name = 'Unknown'
+                        else:
+                            starter_name = 'Unassigned'
+
+                        st.info(f"Coordinator who started this workflow: {starter_name}")
+                        # Show next incomplete step for CM
+                        try:
+                            prog = database.get_workflow_progress(selected_instance_id)
+                            next_step = None
+                            if prog:
+                                for s in prog:
+                                    if not s.get('completed'):
+                                        next_step = s
+                                        break
+                            if next_step:
+                                st.caption(f"Next incomplete step: {next_step.get('task_name')} (Step {next_step.get('step_order')})")
+                        except Exception:
+                            pass
+                    
+                    # Action buttons row
+                    wf_col1, wf_col2, wf_col3, wf_col4 = st.columns(4)
+                    
+                    with wf_col1:
+                        # Toggle resume workflow flag (render happens below to avoid deep column nesting)
+                        resume_state_key = f"resume_workflow_state_{selected_instance_id}"
+                        if resume_state_key not in st.session_state:
+                            st.session_state[resume_state_key] = False
+                        if st.button("Resume Workflow", use_container_width=True, key=f"resume_workflow_{selected_instance_id}"):
+                            st.session_state[resume_state_key] = not st.session_state.get(resume_state_key, False)
+                    
+                    with wf_col2:
+                        if st.button("Complete Next Step", use_container_width=True, key="complete_step"):
+                            try:
+                                progress = database.get_workflow_progress(selected_instance_id)
+                                if progress:
+                                    # Find next incomplete step
+                                    next_step = None
+                                    for step in progress:
+                                        if not step['completed']:
+                                            next_step = step
+                                            break
+                                    
+                                    if next_step:
+                                        st.info(f"Ready to complete: {next_step['task_name']} (Step {next_step['step_order']})")
+                                        
+                                        with st.form(f"complete_step_{selected_instance_id}"):
+                                            duration = st.number_input("Duration (minutes)", min_value=0, value=30)
+                                            notes = st.text_area("Completion Notes", placeholder="Add any notes about completing this step...")
+                                            
+                                            if st.form_submit_button("Mark Step Complete"):
+                                                # If the current user is an LC/CM they may not have a coordinator_id
+                                                exec_coordinator_id = coordinator_id
+                                                if exec_coordinator_id is None and (37 in user_role_ids or 40 in user_role_ids):
+                                                    exec_coordinator_id = None
+
+                                                success = database.complete_workflow_step(
+                                                    instance_id=selected_instance_id,
+                                                    step_id=next_step['step_id'],
+                                                    coordinator_id=exec_coordinator_id,
+                                                    duration_minutes=duration,
+                                                    notes=notes
+                                                )
+                                                
+                                                if success:
+                                                    st.success(f"Completed: {next_step['task_name']}")
+                                                    st.rerun()
+                                                else:
+                                                    st.error("Failed to complete step")
+                                    else:
+                                        st.info("All steps completed for this workflow!")
+                                else:
+                                    st.warning("No workflow steps found")
+                            except Exception as e:
+                                st.error(f"Error completing step: {e}")
+                    
+                    with wf_col3:
+                        if st.button("Add Note", use_container_width=True, key="add_note"):
+                            with st.form(f"add_note_{selected_instance_id}"):
+                                note_text = st.text_area("Workflow Note", placeholder="Add a note or update about this workflow...")
+                                if st.form_submit_button("Add Note"):
+                                    # Add as a coordinator task
+                                    try:
+                                        conn = database.get_db_connection()
+                                        conn.execute("""
+                                            INSERT INTO coordinator_tasks (
+                                                coordinator_id, patient_id, task_date, task_type, 
+                                                duration_minutes, notes
+                                            ) 
+                                            SELECT ?, ct.patient_id, date('now'), ?, 0, ?
+                                            FROM coordinator_tasks ct
+                                            WHERE ct.task_type LIKE 'WORKFLOW_START|' || ?
+                                            LIMIT 1
+                                        """, (
+                                            coordinator_id,
+                                            f"WORKFLOW_NOTE|{selected_instance_id}",
+                                            f"Workflow Note: {note_text}",
+                                            selected_instance_id
+                                        ))
+                                        conn.commit()
+                                        conn.close()
+                                        st.success("Note added to workflow")
+                                        st.rerun()
+                                    except Exception as e:
+                                        st.error(f"Error adding note: {e}")
+                    
+                    with wf_col4:
+                        if st.button("Complete Workflow", use_container_width=True, key="complete_workflow"):
+                            try:
+                                conn = database.get_db_connection()
+
+                                # Count total steps for this workflow's template
+                                total_steps_row = conn.execute(
+                                    "SELECT COUNT(*) as cnt FROM workflow_steps ws JOIN workflow_instances wi ON ws.template_id = wi.template_id WHERE wi.instance_id = ?",
+                                    (selected_instance_id,)
+                                ).fetchone()
+                                total_steps = total_steps_row['cnt'] if total_steps_row is not None else 0
+
+                                # Count recorded completed steps via coordinator_tasks
+                                completed_steps_row = conn.execute(
+                                    "SELECT COUNT(*) as cnt FROM coordinator_tasks WHERE task_type LIKE ?",
+                                    (f'WORKFLOW_STEP|{selected_instance_id}|%',)
+                                ).fetchone()
+                                completed_steps = completed_steps_row['cnt'] if completed_steps_row is not None else 0
+
+                                if completed_steps >= total_steps and total_steps > 0:
+                                    conn.execute("UPDATE workflow_instances SET workflow_status = 'Completed' WHERE instance_id = ?", (selected_instance_id,))
+                                    conn.commit()
+                                    conn.close()
+                                    st.success("Workflow marked as completed!")
+                                    st.rerun()
+                                else:
+                                    st.warning(f"This workflow has {completed_steps}/{total_steps} recorded steps. Marking it completed now may hide remaining work.")
+                                    confirm_key = f"force_complete_confirm_{selected_instance_id}"
+                                    if st.checkbox("I understand and want to force-complete this workflow (record an override).", key=confirm_key):
+                                        if st.button("Force Complete Workflow", key=f"force_complete_btn_{selected_instance_id}"):
+                                            try:
+                                                # Record an override coordinator task for audit
+                                                conn.execute("INSERT INTO coordinator_tasks (coordinator_id, patient_id, task_date, task_type, duration_minutes, notes) SELECT ?, ct.patient_id, date('now'), ?, 0, ? FROM coordinator_tasks ct WHERE ct.task_type LIKE 'WORKFLOW_START|' || ? LIMIT 1", (
+                                                    coordinator_id,
+                                                    f"WORKFLOW_OVERRIDE|{selected_instance_id}",
+                                                    f"Force-completed by coordinator_id {coordinator_id}",
+                                                    selected_instance_id
+                                                ))
+                                                conn.execute("UPDATE workflow_instances SET workflow_status = 'Completed' WHERE instance_id = ?", (selected_instance_id,))
+                                                conn.commit()
+                                                conn.close()
+                                                st.success("Workflow force-completed and override recorded.")
+                                                st.rerun()
+                                            except Exception as e:
+                                                st.error(f"Error force-completing workflow: {e}")
+                            except Exception as e:
+                                st.error(f"Error completing workflow: {e}")
+                
+                    # After action buttons, render workflow steps if resumed (rendering here avoids deep nesting)
+                    resume_state_key = f"resume_workflow_state_{selected_instance_id}"
+                    if st.session_state.get(resume_state_key):
+                        try:
+                            progress = database.get_workflow_progress(selected_instance_id)
+                            if progress:
+                                st.subheader(f"Resume Workflow - {progress[0]['template_name']}")
+                                # Get patient name for this workflow
+                                patient_name = "Unknown Patient"
+                                try:
+                                    conn = database.get_db_connection()
+                                    patient_row = conn.execute("""
+                                        SELECT p.first_name || ' ' || p.last_name as patient_name
+                                        FROM workflow_instances wi
+                                        JOIN patients p ON wi.patient_id = p.patient_id
+                                        WHERE wi.instance_id = ?
+                                    """, (selected_instance_id,)).fetchone()
+                                    if patient_row:
+                                        patient_name = patient_row['patient_name']
+                                    conn.close()
+                                except Exception as e:
+                                    print(f"Error getting patient name: {e}")
+
+                                # Render each step as a full-width module like daily tasks
+                                for p in progress:
+                                    step_id = p.get('step_id')
+                                    step_order = p.get('step_order')
+                                    task_name = p.get('task_name')
+                                    owner = p.get('owner')
+                                    completed = p.get('completed')
+                                    completed_date = p.get('completed_date')
+
+                                    st.markdown("---")
+                                    st.markdown(f"#### Step {step_order}: {task_name}")
+                                    
+                                    # Patient and Task in same row - disabled dropdowns for familiar visual
+                                    pat_col, task_col = st.columns(2)
+                                    with pat_col:
+                                        st.selectbox(
+                                            "Patient", 
+                                            [patient_name], 
+                                            index=0, 
+                                            disabled=True, 
+                                            key=f"patient_select_{step_id}",
+                                            label_visibility="collapsed"
+                                        )
+                                    with task_col:
+                                        st.selectbox(
+                                            "Task", 
+                                            [task_name], 
+                                            index=0, 
+                                            disabled=True, 
+                                            key=f"task_select_{step_id}",
+                                            label_visibility="collapsed"
+                                        )
+                                    
+                                    st.caption(f"Owner: {owner}")
+
+                                    if completed:
+                                        st.success(f"Completed on: {completed_date}")
+                                        # Display completion notes in read-only format
+                                        completion_notes = p.get('completion_notes', '').strip()
+                                        if completion_notes:
+                                            st.info(f"**Notes:** {completion_notes}")
+                                    else:
+                                        # Compact timer module - minimalistic design
+                                        timer_key = f"wf_{selected_instance_id}_step_{step_id}_timer"
+                                        start_key = f"{timer_key}_start"
+                                        stop_key = f"{timer_key}_stop"
+                                        running_key = f"{timer_key}_running"
+
+                                        # Initialize timer state
+                                        if start_key not in st.session_state:
+                                            st.session_state[start_key] = None
+                                            st.session_state[stop_key] = None
+                                            st.session_state[running_key] = False
+
+                                        # Calculate duration in seconds
+                                        start_time = st.session_state[start_key]
+                                        stop_time = st.session_state[stop_key]
+                                        is_running = st.session_state[running_key]
+
+                                        if is_running and start_time:
+                                            duration_seconds = int((datetime.now() - start_time).total_seconds())
+                                        elif stop_time and start_time:
+                                            total_duration = (stop_time - start_time).total_seconds()
+                                            duration_seconds = int(total_duration)
+                                        else:
+                                            duration_seconds = 0
+
+                                        # Compact timer controls - 4 columns: timer, start/stop, reset, duration
+                                        timer_display_col, start_stop_col, reset_col, duration_col = st.columns([1, 1, 1, 1])
+
+                                        with timer_display_col:
+                                            minutes, seconds = divmod(duration_seconds, 60)
+                                            js_start_time = "null"
+                                            if start_time and is_running:
+                                                js_start_time = str(int(start_time.timestamp() * 1000))
+
+                                            timer_html = f"""
+                                            <div id="timer-{timer_key}" style="
+                                                font-family: 'Courier New', monospace; 
+                                                font-size: 18px; 
+                                                font-weight: bold; 
+                                                color: {'#28a745' if is_running else '#6c757d'};
+                                                margin: 0;
+                                                padding: 0;
+                                                line-height: 1.2;
+                                                display: inline-block;
+                                            ">
+                                                {minutes:02d}:{seconds:02d}
+                                            </div>
+                                            
+                                            <script>
+                                            (function() {{
+                                                const timerId = '{timer_key}';
+                                                const isRunning = {str(is_running).lower()};
+                                                const startTime = {js_start_time};
+                                                
+                                                function updateTimer() {{
+                                                    const display = document.getElementById('timer-' + timerId);
+                                                    if (!display || !isRunning || !startTime) return;
+                                                    
+                                                    const now = new Date().getTime();
+                                                    const elapsed = Math.floor((now - startTime) / 1000);
+                                                    const minutes = Math.floor(elapsed / 60);
+                                                    const seconds = elapsed % 60;
+                                                    
+                                                    display.textContent = 
+                                                        String(minutes).padStart(2, '0') + ':' + 
+                                                        String(seconds).padStart(2, '0');
+                                                }}
+                                                
+                                                if (isRunning && startTime) {{
+                                                    updateTimer();
+                                                    const interval = setInterval(function() {{
+                                                        const display = document.getElementById('timer-' + timerId);
+                                                        if (!display) {{
+                                                            clearInterval(interval);
+                                                            return;
+                                                        }}
+                                                        updateTimer();
+                                                    }}, 1000);
+                                                }}
+                                            }})();
+                                            </script>
+                                            """
+                                            
+                                            components.html(timer_html, height=25)
+
+                                        with start_stop_col:
+                                            if is_running:
+                                                if st.button("Stop", key=f"stop_{timer_key}", type="secondary"):
+                                                    st.session_state[stop_key] = datetime.now()
+                                                    st.session_state[running_key] = False
+                                                    st.rerun()
+                                            else:
+                                                if st.button("Start", key=f"start_{timer_key}", type="primary"):
+                                                    st.session_state[start_key] = datetime.now()
+                                                    st.session_state[stop_key] = None
+                                                    st.session_state[running_key] = True
+                                                    st.rerun()
+
+                                        with reset_col:
+                                            if st.button("Reset", key=f"reset_{timer_key}"):
+                                                st.session_state[start_key] = None
+                                                st.session_state[stop_key] = None
+                                                st.session_state[running_key] = False
+                                                st.rerun()
+
+                                        with duration_col:
+                                            # Convert elapsed seconds to precise duration for input field
+                                            elapsed_seconds = duration_seconds
+
+                                            # Convert elapsed seconds to precise duration for the input field
+                                            if elapsed_seconds > 0 and stop_time and start_time:
+                                                # Calculate precise duration with milliseconds
+                                                precise_duration = (stop_time - start_time).total_seconds()
+                                                total_minutes = int(precise_duration // 60)
+                                                remaining_seconds = int(precise_duration % 60)
+                                                milliseconds = int((precise_duration % 1) * 1000)
+
+                                                # Format as "X min Y sec Z ms" for the input field help text
+                                                duration_display = f"{total_minutes} min {remaining_seconds} sec {milliseconds} ms"
+                                                duration_minutes = max(1, total_minutes + (1 if remaining_seconds > 0 else 0))  # Round up
+                                                help_text = f"Timer result: {duration_display}"
+                                            else:
+                                                duration_minutes = 30  # Default duration
+                                                help_text = "Use timer above"
+
+                                            # Compact duration input
+                                            duration_key = f"duration_wf_{selected_instance_id}_step_{step_id}"
+                                            step_duration = st.number_input(
+                                                "Duration (min)", 
+                                                min_value=1, 
+                                                value=duration_minutes, 
+                                                key=duration_key,
+                                                help=help_text,
+                                                label_visibility="collapsed"
+                                            )
+
+                                        # Compact notes area
+                                        note_key = f"wf_{selected_instance_id}_step_{step_id}_note"
+                                        notes = st.text_area("Notes", value=st.session_state.get(note_key, ""), key=note_key, height=80, label_visibility="collapsed")
+
+                                        # Compact complete button
+                                        if st.button(f"Complete Step {step_order}", key=f"complete_step_{selected_instance_id}_{step_id}", use_container_width=True, type="primary"):
+                                            # calculate minutes from elapsed or input
+                                            minutes = step_duration
+                                            if elapsed_seconds > 0:
+                                                minutes = max(1, int(elapsed_seconds // 60) + (1 if elapsed_seconds % 60 > 0 else 0))
+                                            exec_coordinator_id = coordinator_id
+                                            if exec_coordinator_id is None and (37 in user_role_ids or 40 in user_role_ids):
+                                                exec_coordinator_id = None
+
+                                            success = database.complete_workflow_step(
+                                                instance_id=selected_instance_id,
+                                                step_id=step_id,
+                                                coordinator_id=exec_coordinator_id,
+                                                duration_minutes=minutes,
+                                                notes=notes
+                                            )
+                                            if success:
+                                                st.success(f"Step {step_order} completed")
+                                                # Keep workflow open to show updated status
+                                                st.rerun()
+                                            else:
+                                                st.error("Failed to complete step")
+                            else:
+                                st.warning("No progress data found for this workflow")
+                        except Exception as e:
+                            st.error(f"Error loading workflow progress: {e}")
+            else:
+                st.info("No ongoing workflows found for this coordinator.")
+                
+                # # Show available workflow templates from database
+                # st.markdown("**Available Workflow Templates**")
+                # try:
+                #     templates = database.get_workflow_templates()
+                #     if templates:
+                #         for template in templates[:8]:  # Show first 8 templates
+                #             template_name = template['template_name']
+                #             if st.button(f"Start {template_name}", key=f"start_{template['template_id']}", use_container_width=True):
+                #                 st.info(f"Starting {template_name} workflow - select a patient first")
+                #     else:
+                #         st.warning("No workflow templates found in database")
+                # except Exception as e:
+                #     st.error(f"Error loading workflow templates: {e}")
+                #     if st.button(f"Start {wf_type}", key=f"start_{wf_type}", use_container_width=True):
+                #         st.info(f"Starting {wf_type} workflow - select a patient first")
+        
+        except Exception as e:
+            st.error(f"Error loading ongoing workflows: {str(e)}")
