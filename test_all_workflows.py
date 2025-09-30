@@ -7,18 +7,24 @@ import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
 
-from database import get_db_connection
 import sqlite3
 from datetime import datetime
 
+def get_db_connection():
+    """Get database connection"""
+    db_path = 'production.db'
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    return conn
+
 def authenticate_test_user():
-    """Authenticate the test user dianela@"""
+    """Authenticate the test user dianela@myhealthteam.org"""
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         
         # Check if test user exists
-        cursor.execute("SELECT user_id, email FROM users WHERE email = ?", ("dianela@",))
+        cursor.execute("SELECT user_id, email FROM users WHERE email = ?", ("dianela@myhealthteam.org",))
         user = cursor.fetchone()
         
         if user:
@@ -26,7 +32,7 @@ def authenticate_test_user():
             conn.close()
             return user[0]
         else:
-            print("✗ Test user 'dianela@' not found")
+            print("✗ Test user 'dianela@myhealthteam.org' not found")
             conn.close()
             return None
             
