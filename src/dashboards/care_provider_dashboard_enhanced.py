@@ -31,13 +31,13 @@ def show(user_id, user_role_ids=None):
     
     st.title("Care Provider Dashboard")
     
+    # Check for onboarding queue for all care providers
+    onboarding_queue = database.get_provider_onboarding_queue(user_id)
+    
     if has_cpm_role:
         st.info(f"{TextStyle.INFO_INDICATOR}: Manager Access - You have additional management tabs available")
         
-        # Always check for onboarding queue for CPM role
-        onboarding_queue = database.get_provider_onboarding_queue(user_id)
-        
-        # Create tabs with management functionality - single tab creation for CPM
+        # Create tabs with management functionality for CPM
         if onboarding_queue and len(onboarding_queue) > 0:
             tab1, tab2, tab3, tab4 = st.tabs(["My Patients", "Team Management", "Onboarding Queue & Initial TV Visits", "Phone Reviews"])
             
@@ -64,30 +64,33 @@ def show(user_id, user_role_ids=None):
             with tab3:
                 show_phone_review_entry(mode="cp", user_id=user_id)
     else:
-        # Regular care provider (non-manager) tabs
-        tab1, tab2 = st.tabs(["My Patients", "Phone Reviews"])
-        
-        with tab1:
-            show_patient_list_section(user_id, section_id="cp_patients")
+        # Regular care provider tabs - include onboarding queue if they have assigned patients
+        if onboarding_queue and len(onboarding_queue) > 0:
+            tab1, tab2, tab3 = st.tabs(["My Patients", "Onboarding Queue & Initial TV Visits", "Phone Reviews"])
             
-        with tab2:
-            show_phone_review_entry(mode="cp", user_id=user_id)
+            with tab1:
+                show_patient_list_section(user_id, section_id="cp_patients_with_queue")
+                
+            with tab2:
+                show_provider_onboarding_queue(user_id, onboarding_queue)
+                
+            with tab3:
+                show_phone_review_entry(mode="cp", user_id=user_id)
+        else:
+            tab1, tab2 = st.tabs(["My Patients", "Phone Reviews"])
+            
+            with tab1:
+                show_patient_list_section(user_id, section_id="cp_patients")
+                
+            with tab2:
+                show_phone_review_entry(mode="cp", user_id=user_id)
 
 def show_patient_list_section(user_id, section_id=None):
 
-    # Map user_id to provider_id
-    provider_id = None
-    try:
-        provider_id = database.get_provider_id_from_user_id(user_id)
-    except Exception:
-        provider_id = None
-
     # Get all assigned patients for this provider (no filtering)
+    # Note: get_provider_patient_panel_enhanced expects user_id, not provider_id
     try:
-        if provider_id is not None:
-            patient_data_list = database.get_provider_patient_panel_enhanced(provider_id)
-        else:
-            patient_data_list = []
+        patient_data_list = database.get_provider_patient_panel_enhanced(user_id)
     except Exception as e:
         st.error(f"Error fetching patient data: {e}")
         patient_data_list = []
@@ -410,6 +413,7 @@ def show_patient_list_section(user_id, section_id=None):
                             subjective_risk_val = None if (subjective_risk == "Select one") else subjective_risk
                             code_status_val = None if (code_status == "Select one") else code_status
                             cognitive_function_val = None if (cognitive_function == "Select one") else cognitive_function
+                            goc_value_val = None if (goc_value == "Select one") else goc_value
 
                             base_params = [
                                 er_visits_6mo,
@@ -428,7 +432,8 @@ def show_patient_list_section(user_id, section_id=None):
                                 cognitive_function_val,
                                 functional_status_val,
                                 goals_of_care,
-                                active_concerns
+                                active_concerns,
+                                goc_value_val
                             ]
 
                             # If provider entered notes, append them with a dated header; otherwise leave notes unchanged
@@ -463,6 +468,7 @@ def show_patient_list_section(user_id, section_id=None):
                                         functional_status = ?,
                                         goals_of_care = ?,
                                         chronic_conditions_provider = ?,
+                                        goc_value = ?,
                                         last_visit_date = ?,
                                         notes = CASE WHEN notes IS NULL OR trim(notes) = '' THEN ? ELSE notes || '\n\n' || ? END
                                     WHERE patient_id = ?
@@ -488,9 +494,34 @@ def show_patient_list_section(user_id, section_id=None):
                                         functional_status = ?,
                                         goals_of_care = ?,
                                         chronic_conditions_provider = ?,
+                                        goc_value = ?,
                                         last_visit_date = ?
                                     WHERE patient_id = ?
                                 """, tuple(base_params + [date_str, selected_patient['patient_id']]))
+
+                            # Also update patient_panel table with clinical fields
+                            conn.execute("""
+                                UPDATE patient_panel SET
+                                    er_count_1yr = ?,
+                                    hospitalization_count_1yr = ?,
+                                    subjective_risk_level = ?,
+                                    mental_health_concerns = ?,
+                                    provider_mh_schizophrenia = ?,
+                                    provider_mh_depression = ?,
+                                    provider_mh_anxiety = ?,
+                                    provider_mh_stress = ?,
+                                    provider_mh_adhd = ?,
+                                    provider_mh_bipolar = ?,
+                                    provider_mh_suicidal = ?,
+                                    active_specialists = ?,
+                                    code_status = ?,
+                                    cognitive_function = ?,
+                                    functional_status = ?,
+                                    goals_of_care = ?,
+                                    chronic_conditions_provider = ?,
+                                    goc_value = ?
+                                WHERE patient_id = ?
+                            """, tuple(base_params + [selected_patient['patient_id']]))
 
                             conn.commit()
                             conn.close()

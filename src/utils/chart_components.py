@@ -128,7 +128,7 @@ def display_provider_weekly_summary_chart(provider_id=None, show_all=False, titl
 
 def create_line_chart(df, show_all):
     """Create line chart showing trends over time"""
-    st.markdown("### 📈 Time Trends")
+    st.markdown("### Time Trends")
     
     # Metric selection
     metrics = st.multiselect(
@@ -221,7 +221,7 @@ def create_line_chart(df, show_all):
 
 def create_bar_chart(df, show_all):
     """Create bar chart for weekly comparisons"""
-    st.markdown("### 📊 Weekly Comparison")
+    st.markdown("### Weekly Comparison")
     
     metric = st.selectbox(
         "Select metric:",
@@ -301,7 +301,7 @@ def create_scatter_chart(df, show_all):
 
 def create_area_chart(df, show_all):
     """Create area chart showing cumulative performance"""
-    st.markdown("### 📈 Cumulative Performance")
+    st.markdown("### Cumulative Performance")
     
     # Calculate cumulative metrics
     if show_all:
@@ -343,7 +343,7 @@ def create_area_chart(df, show_all):
 
 def create_multi_metric_dashboard(df, show_all):
     """Create dashboard with multiple small charts"""
-    st.markdown("### 📊 Multi-Metric Dashboard")
+    st.markdown("### Multi-Metric Dashboard")
     
     col1, col2 = st.columns(2)
     

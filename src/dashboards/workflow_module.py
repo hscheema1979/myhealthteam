@@ -660,7 +660,7 @@ def show_workflow_management(user_id, coordinator_id, active_patients, user_role
                 resume_state_key = f"resume_state_{selected_instance_id}"
                 if resume_state_key not in st.session_state:
                     st.session_state[resume_state_key] = False
-                btn_col1, btn_col2, btn_col3 = st.columns([1, 1, 1])
+                btn_col1, btn_col2 = st.columns([1, 1])
                 with btn_col1:
                     if st.button("Resume Workflow", key=resume_btn_key):
                         st.session_state[resume_state_key] = True
@@ -668,14 +668,6 @@ def show_workflow_management(user_id, coordinator_id, active_patients, user_role
                     if st.button("Complete Next Step", key=f"complete_next_{selected_instance_id}"):
                         try:
                             msg = complete_next_step(selected_instance_id, user_id)
-                            st.success(msg)
-                            st.rerun()
-                        except Exception as e:
-                            st.error(f"Error: {e}")
-                with btn_col3:
-                    if st.button("Assign to Me", key=f"assign_me_{selected_instance_id}"):
-                        try:
-                            msg = assign_workflow_to_me(selected_instance_id, user_id)
                             st.success(msg)
                             st.rerun()
                         except Exception as e:
