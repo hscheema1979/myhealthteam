@@ -169,6 +169,13 @@ cython_debug/
 *.db-shm
 *.db-wal
 *.backup
+*.bak
+*.db.bak*
+*.db.backup*
+*.db_backup*
+production.db*
+development.db*
+sandbox.db*
 
 # Log files
 *.log
