@@ -1,293 +1,232 @@
 """
-Comprehensive workflow testing script for all coordinator workflows.
-Tests each workflow systematically with progress saves at each step.
+Comprehensive Workflow Testing Script
+Tests all coordinator workflows for test user dianela@ with password test4
 """
 
 import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
+import time
+from database import authenticate_user, get_user_role_ids, get_db_connection
+from dashboards.workflow_module import (
+    get_workflow_templates, 
+    create_workflow_instance, 
+    get_workflow_template_steps,
+    complete_workflow_step
+)
 
-import sqlite3
-from datetime import datetime
-
-def get_db_connection():
-    """Get database connection"""
-    db_path = 'production.db'
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
-    return conn
-
-def authenticate_test_user():
-    """Authenticate the test user dianela@myhealthteam.org"""
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
+class WorkflowTester:
+    def __init__(self, test_email="dianela@", test_password="test4"):
+        self.test_email = test_email
+        self.test_password = test_password
+        self.user_data = None
+        self.user_id = None
+        self.coordinator_id = None
+        self.user_role_ids = []
+        self.test_results = []
         
-        # Check if test user exists
-        cursor.execute("SELECT user_id, email FROM users WHERE email = ?", ("dianela@myhealthteam.org",))
-        user = cursor.fetchone()
+    def authenticate_test_user(self):
+        """Authenticate the test user"""
+        print(f"🔐 Authenticating test user: {self.test_email}")
         
-        if user:
-            print(f"✓ Test user authenticated: {user[1]} (ID: {user[0]})")
-            conn.close()
-            return user[0]
-        else:
-            print("✗ Test user 'dianela@myhealthteam.org' not found")
-            conn.close()
-            return None
+        self.user_data = authenticate_user(self.test_email, self.test_password)
+        if not self.user_data:
+            print(f"❌ Authentication failed for {self.test_email}")
+            return False
             
-    except Exception as e:
-        print(f"✗ Authentication error: {e}")
-        return None
-
-def get_test_patient():
-    """Get a test patient ID for workflow testing"""
-    try:
+        self.user_id = self.user_data['user_id']
+        self.coordinator_id = self.user_id  # Assuming coordinator_id = user_id for test
+        self.user_role_ids = get_user_role_ids(self.user_id)
+        
+        print(f"✅ Authentication successful!")
+        print(f"   User ID: {self.user_id}")
+        print(f"   Role IDs: {self.user_role_ids}")
+        print(f"   Name: {self.user_data.get('first_name', '')} {self.user_data.get('last_name', '')}")
+        return True
+    
+    def get_test_patient_id(self):
+        """Get a test patient ID for workflow testing"""
         conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        # Get first available patient
-        cursor.execute("SELECT patient_id, first_name, last_name FROM patients LIMIT 1")
-        patient = cursor.fetchone()
-        
-        if patient:
-            print(f"✓ Test patient: {patient[1]} {patient[2]} (ID: {patient[0]})")
+        try:
+            # Get first available patient
+            patient = conn.execute("SELECT patient_id FROM patients LIMIT 1").fetchone()
+            if patient:
+                return patient['patient_id']
+            else:
+                print("❌ No patients found in database")
+                return None
+        finally:
             conn.close()
-            return patient[0]
-        else:
-            print("✗ No test patients found")
-            conn.close()
-            return None
+    
+    def test_workflow_template(self, template_id, template_name):
+        """Test a single workflow template completely"""
+        print(f"\n🔄 Testing Workflow: {template_name} (ID: {template_id})")
+        
+        test_result = {
+            'template_id': template_id,
+            'template_name': template_name,
+            'status': 'PENDING',
+            'instance_id': None,
+            'steps_completed': 0,
+            'total_steps': 0,
+            'errors': []
+        }
+        
+        try:
+            # Get workflow steps
+            steps = get_workflow_template_steps(template_id)
+            test_result['total_steps'] = len(steps)
+            print(f"   📋 Total steps: {len(steps)}")
             
-    except Exception as e:
-        print(f"✗ Error getting test patient: {e}")
-        return None
-
-def get_workflow_templates():
-    """Get all workflow templates excluding Future workflows"""
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
+            # Get test patient
+            patient_id = self.get_test_patient_id()
+            if not patient_id:
+                test_result['errors'].append("No test patient available")
+                test_result['status'] = 'FAILED'
+                return test_result
+            
+            # Create workflow instance
+            print(f"   🆕 Creating workflow instance for patient {patient_id}")
+            instance_id = create_workflow_instance(
+                template_id=template_id,
+                patient_id=patient_id,
+                coordinator_id=self.coordinator_id,
+                notes=f"Test workflow created by automated test for {template_name}"
+            )
+            
+            if not instance_id:
+                test_result['errors'].append("Failed to create workflow instance")
+                test_result['status'] = 'FAILED'
+                return test_result
+                
+            test_result['instance_id'] = instance_id
+            print(f"   ✅ Workflow instance created: {instance_id}")
+            
+            # Complete each step with progress saves
+            for i, step in enumerate(steps, 1):
+                step_id = step['step_id']
+                step_name = step['task_name']
+                
+                print(f"   📝 Step {i}/{len(steps)}: {step_name}")
+                
+                # Save progress (simulate work time)
+                time.sleep(0.5)  # Brief pause to simulate work
+                
+                # Complete the step
+                success = complete_workflow_step(
+                    instance_id=instance_id,
+                    step_id=step_id,
+                    coordinator_id=self.coordinator_id,
+                    duration_minutes=5,  # Standard 5 minutes per step
+                    notes=f"Automated test completion of step: {step_name}"
+                )
+                
+                if success:
+                    test_result['steps_completed'] += 1
+                    print(f"   ✅ Step {i} completed successfully")
+                else:
+                    error_msg = f"Failed to complete step {i}: {step_name}"
+                    test_result['errors'].append(error_msg)
+                    print(f"   ❌ {error_msg}")
+                    break
+            
+            # Check final status
+            if test_result['steps_completed'] == test_result['total_steps']:
+                test_result['status'] = 'COMPLETED'
+                print(f"   🎉 Workflow {template_name} completed successfully!")
+            else:
+                test_result['status'] = 'PARTIAL'
+                print(f"   ⚠️  Workflow {template_name} partially completed ({test_result['steps_completed']}/{test_result['total_steps']})")
+                
+        except Exception as e:
+            error_msg = f"Exception during workflow test: {str(e)}"
+            test_result['errors'].append(error_msg)
+            test_result['status'] = 'ERROR'
+            print(f"   💥 {error_msg}")
         
-        cursor.execute("""
-            SELECT template_id, template_name 
-            FROM workflow_templates 
-            WHERE template_name NOT LIKE '%Future%'
-            ORDER BY template_name
-        """)
+        return test_result
+    
+    def run_all_workflow_tests(self):
+        """Run tests for all workflow templates"""
+        print("🚀 Starting Comprehensive Workflow Testing")
+        print("=" * 60)
         
-        templates = cursor.fetchall()
-        conn.close()
-        return templates
+        # Authenticate
+        if not self.authenticate_test_user():
+            return False
         
-    except Exception as e:
-        print(f"✗ Error getting workflow templates: {e}")
-        return []
-
-def create_workflow_instance(user_id, patient_id, template_id, template_name):
-    """Create a new workflow instance"""
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
+        # Get all workflow templates (excluding Future)
+        print(f"\n📋 Getting workflow templates...")
+        templates = get_workflow_templates()
+        non_future_templates = [t for t in templates if 'Future' not in t['template_name']]
         
-        # Create workflow instance
-        cursor.execute("""
-            INSERT INTO workflow_instances 
-            (template_id, template_name, patient_id, coordinator_id, workflow_status, created_at)
-            VALUES (?, ?, ?, ?, 'active', ?)
-        """, (template_id, template_name, patient_id, user_id, datetime.now()))
+        print(f"Found {len(non_future_templates)} workflow templates to test:")
+        for template in non_future_templates:
+            print(f"   - {template['template_name']} (ID: {template['template_id']})")
         
-        workflow_instance_id = cursor.lastrowid
-        conn.commit()
-        conn.close()
+        # Test each workflow
+        print(f"\n🧪 Beginning workflow tests...")
+        for template in non_future_templates:
+            result = self.test_workflow_template(
+                template['template_id'], 
+                template['template_name']
+            )
+            self.test_results.append(result)
         
-        print(f"  ✓ Created workflow instance ID: {workflow_instance_id}")
-        return workflow_instance_id
-        
-    except Exception as e:
-        print(f"  ✗ Error creating workflow instance: {e}")
-        return None
-
-def get_workflow_steps(template_id):
-    """Get workflow steps based on template - using fixed 6-step structure"""
-    try:
-        # Based on the database schema, workflows have up to 6 steps
-        # We'll return a standard set of steps for testing
-        steps = [
-            (1, "Step 1", 1),
-            (2, "Step 2", 2),
-            (3, "Step 3", 3),
-            (4, "Step 4", 4),
-            (5, "Step 5", 5),
-            (6, "Step 6", 6)
-        ]
-        return steps
-        
-    except Exception as e:
-        print(f"  ✗ Error getting workflow steps: {e}")
-        return []
-
-def complete_workflow_step(workflow_instance_id, step_id, step_name):
-    """Complete a workflow step with progress save"""
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        # Update the specific step column in workflow_instances
-        step_complete_col = f"step{step_id}_complete"
-        step_date_col = f"step{step_id}_date"
-        step_completed_by_col = f"step{step_id}_completed_by"
-        
-        cursor.execute(f"""
-            UPDATE workflow_instances 
-            SET {step_complete_col} = 1, 
-                {step_date_col} = ?,
-                {step_completed_by_col} = 'test_user',
-                updated_at = ?
-            WHERE instance_id = ?
-        """, (datetime.now().date(), datetime.now(), workflow_instance_id))
-        
-        conn.commit()
-        conn.close()
-        
-        print(f"    ✓ Completed step: {step_name}")
+        # Print summary
+        self.print_test_summary()
         return True
+    
+    def print_test_summary(self):
+        """Print comprehensive test summary"""
+        print("\n" + "=" * 60)
+        print("📊 WORKFLOW TESTING SUMMARY")
+        print("=" * 60)
         
-    except Exception as e:
-        print(f"    ✗ Error completing step '{step_name}': {e}")
-        return False
-
-def complete_workflow(workflow_instance_id):
-    """Mark workflow as completed"""
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
+        completed = len([r for r in self.test_results if r['status'] == 'COMPLETED'])
+        partial = len([r for r in self.test_results if r['status'] == 'PARTIAL'])
+        failed = len([r for r in self.test_results if r['status'] in ['FAILED', 'ERROR']])
+        total = len(self.test_results)
         
-        cursor.execute("""
-            UPDATE workflow_instances 
-            SET workflow_status = 'completed', 
-                completed_at = ?,
-                updated_at = ?
-            WHERE instance_id = ?
-        """, (datetime.now(), datetime.now(), workflow_instance_id))
+        print(f"Total Workflows Tested: {total}")
+        print(f"✅ Completed Successfully: {completed}")
+        print(f"⚠️  Partially Completed: {partial}")
+        print(f"❌ Failed/Error: {failed}")
+        print(f"Success Rate: {(completed/total*100):.1f}%")
         
-        conn.commit()
-        conn.close()
+        print(f"\n📋 Detailed Results:")
+        for result in self.test_results:
+            status_icon = {
+                'COMPLETED': '✅',
+                'PARTIAL': '⚠️ ',
+                'FAILED': '❌',
+                'ERROR': '💥'
+            }.get(result['status'], '❓')
+            
+            print(f"{status_icon} {result['template_name']}")
+            print(f"   Instance ID: {result['instance_id']}")
+            print(f"   Steps: {result['steps_completed']}/{result['total_steps']}")
+            
+            if result['errors']:
+                print(f"   Errors:")
+                for error in result['errors']:
+                    print(f"     - {error}")
         
-        print(f"  ✓ Workflow marked as completed")
-        return True
-        
-    except Exception as e:
-        print(f"  ✗ Error completing workflow: {e}")
-        return False
-
-def test_workflow(user_id, patient_id, template_id, template_name):
-    """Test a complete workflow from start to finish"""
-    print(f"\n{'='*60}")
-    print(f"Testing Workflow: {template_name}")
-    print(f"{'='*60}")
-    
-    # Create workflow instance
-    workflow_instance_id = create_workflow_instance(user_id, patient_id, template_id, template_name)
-    if not workflow_instance_id:
-        return {"success": False, "error": "Failed to create workflow instance"}
-    
-    # Get workflow steps
-    steps = get_workflow_steps(template_id)
-    if not steps:
-        return {"success": False, "error": "No workflow steps found"}
-    
-    print(f"  Found {len(steps)} steps to complete")
-    
-    # Complete each step
-    completed_steps = 0
-    failed_steps = []
-    
-    for step_id, step_name, step_order in steps:
-        success = complete_workflow_step(workflow_instance_id, step_id, step_name)
-        if success:
-            completed_steps += 1
-        else:
-            failed_steps.append(step_name)
-    
-    # Mark workflow as completed if all steps succeeded
-    workflow_completed = False
-    if completed_steps == len(steps):
-        workflow_completed = complete_workflow(workflow_instance_id)
-    
-    result = {
-        "success": workflow_completed,
-        "workflow_instance_id": workflow_instance_id,
-        "total_steps": len(steps),
-        "completed_steps": completed_steps,
-        "failed_steps": failed_steps,
-        "workflow_completed": workflow_completed
-    }
-    
-    print(f"  Result: {completed_steps}/{len(steps)} steps completed")
-    if failed_steps:
-        print(f"  Failed steps: {', '.join(failed_steps)}")
-    
-    return result
+        print("\n" + "=" * 60)
+        print("🏁 Testing Complete!")
 
 def main():
-    """Main testing function"""
-    print("Starting Comprehensive Workflow Testing")
-    print("=" * 60)
+    """Main test execution"""
+    tester = WorkflowTester()
+    success = tester.run_all_workflow_tests()
     
-    # Authenticate test user
-    user_id = authenticate_test_user()
-    if not user_id:
-        print("Cannot proceed without valid test user")
-        return
+    if success:
+        print("\n✅ All workflow tests completed successfully!")
+    else:
+        print("\n❌ Workflow testing failed!")
+        return 1
     
-    # Get test patient
-    patient_id = get_test_patient()
-    if not patient_id:
-        print("Cannot proceed without valid test patient")
-        return
-    
-    # Get workflow templates
-    templates = get_workflow_templates()
-    if not templates:
-        print("No workflow templates found")
-        return
-    
-    print(f"\nFound {len(templates)} workflow templates to test")
-    
-    # Test each workflow
-    results = []
-    successful_workflows = 0
-    
-    for template_id, template_name in templates:
-        result = test_workflow(user_id, patient_id, template_id, template_name)
-        result["template_name"] = template_name
-        result["template_id"] = template_id
-        results.append(result)
-        
-        if result["success"]:
-            successful_workflows += 1
-    
-    # Print comprehensive summary
-    print(f"\n{'='*60}")
-    print(f"COMPREHENSIVE TESTING SUMMARY")
-    print(f"{'='*60}")
-    print(f"Total workflows tested: {len(templates)}")
-    print(f"Successful workflows: {successful_workflows}")
-    print(f"Failed workflows: {len(templates) - successful_workflows}")
-    print(f"Success rate: {(successful_workflows/len(templates)*100):.1f}%")
-    
-    print(f"\nDetailed Results:")
-    print("-" * 60)
-    
-    for result in results:
-        status = "✓ PASS" if result["success"] else "✗ FAIL"
-        print(f"{status} | {result['template_name']}")
-        print(f"     Steps: {result['completed_steps']}/{result['total_steps']}")
-        if result['failed_steps']:
-            print(f"     Failed: {', '.join(result['failed_steps'])}")
-        print(f"     Instance ID: {result['workflow_instance_id']}")
-        print()
+    return 0
 
 if __name__ == "__main__":
-    main()
+    exit(main())

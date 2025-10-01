@@ -244,6 +244,15 @@ def show_resume_onboarding_form(patient_details, current_user_id):
     patient_name = f"{patient_details['first_name']} {patient_details['last_name']}"
     st.subheader(f"Continue Onboarding: {patient_name}")
     
+    # Navigation
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        st.info("Resume workflow from current stage")
+    with col2:
+        if st.button("❌ Back to Queue", key="back_to_queue_resume"):
+            st.session_state['onboarding_mode'] = None
+            st.rerun()
+    
     # Progress indicator
     stages = ['Registration', 'Eligibility', 'Chart Creation', 'Intake Processing', 'TV Scheduling']
     # Compute how many steps are completed
@@ -288,10 +297,9 @@ def show_eligibility_verification_form(patient_details, current_user_id):
     """Stage 2: Eligibility Verification"""
     st.markdown("### Stage 2: Insurance Eligibility Verification")
     
-    col1, col2 = st.columns([2, 1])
+    col1, col2 = st.columns([3, 1])
     with col1:
         st.info("Verify patient's insurance coverage and eligibility status")
-        
     with col2:
         # Patient info card
         with st.expander("Patient Info", expanded=False):
@@ -461,8 +469,9 @@ def show_chart_creation_form(patient_details, current_user_id):
     """Stage 3: EMed Chart Creation"""
     st.markdown("### Stage 3: EMed Chart Creation")
     
+    st.info("Create patient chart in EMed system and assign facility")
+    
     with st.form("chart_creation_form"):
-        st.info("Create patient chart in EMed system and assign facility")
         
         emed_chart_created = st.checkbox(
             "EMed Chart Created", 
@@ -538,8 +547,9 @@ def show_intake_processing_form(patient_details, current_user_id):
     """Stage 4: Intake Processing & Documentation"""
     st.markdown("### Stage 4: Intake Processing & Documentation")
     
+    st.info("Complete patient intake, collect documentation, and conduct intake call")
+    
     with st.form("intake_processing_form"):
-        st.info("Complete patient intake, collect documentation, and conduct intake call")
         
         col1, col2 = st.columns(2)
         
@@ -669,56 +679,107 @@ def show_tv_scheduling_form(patient_details, current_user_id):
     """Stage 5: TV Scheduling & Provider + Coordinator Assignments"""
     st.markdown("### Stage 5: TV Scheduling & Provider + Coordinator Assignments")
     
-    with st.form("tv_scheduling_form"):
-        st.info("Schedule initial telehealth visit and assign provider and coordinator")
+    # Store form data in session state to persist across form submissions
+    if 'tv_form_data' not in st.session_state:
+        st.session_state.tv_form_data = {
+            'tv_scheduled': patient_details.get('tv_scheduled', False),
+            'tv_date': patient_details.get('tv_date'),
+            'tv_time': patient_details.get('tv_time'),
+            'patient_notified': patient_details.get('patient_notified', False),
+            'initial_tv_completed': patient_details.get('initial_tv_completed', False),
+            'assigned_provider': patient_details.get('assigned_provider', 'Select Provider...'),
+            'assigned_coordinator': patient_details.get('assigned_coordinator', 'Select Coordinator...')
+        }
+    
+    st.info("Schedule initial telehealth visit and assign provider and coordinator")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("#### TV Scheduling")
+        tv_scheduled = st.checkbox("Initial TV Scheduled", 
+                                 value=st.session_state.tv_form_data['tv_scheduled'],
+                                 key="tv_scheduled")
+        tv_date = st.date_input("TV Appointment Date", 
+                              value=st.session_state.tv_form_data['tv_date'],
+                              key="tv_date")
+        tv_time = st.time_input("TV Appointment Time", 
+                              value=st.session_state.tv_form_data['tv_time'],
+                              key="tv_time")
+        patient_notified = st.checkbox("Patient Notified of TV Appointment", 
+                                     value=st.session_state.tv_form_data['patient_notified'],
+                                     key="patient_notified")
+        initial_tv_completed = st.checkbox("Initial TV Visit Completed", 
+                                         value=st.session_state.tv_form_data['initial_tv_completed'],
+                                         key="initial_tv_completed")
         
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.markdown("#### TV Scheduling")
-            tv_scheduled = st.checkbox("Initial TV Scheduled", key="tv_scheduled")
-            tv_date = st.date_input("TV Appointment Date", key="tv_date")
-            tv_time = st.time_input("TV Appointment Time", key="tv_time")
-            patient_notified = st.checkbox("Patient Notified of TV Appointment", key="patient_notified")
-            initial_tv_completed = st.checkbox("Initial TV Visit Completed", key="initial_tv_completed")
+    with col2:
+        st.markdown("#### Provider Assignment for Initial TV")
+        # Get Provider users from database
+        try:
+            provider_users = database.get_users_by_role("CP")  # Use role abbreviation CP for Care Provider
+            provider_options = ["Select Provider..."] + [f"{u['full_name']} ({u['username']})" for u in provider_users] if provider_users else ["No Providers Available"]
+        except:
+            provider_options = ["Provider Assignment Needed"]
             
-        with col2:
-            st.markdown("#### Provider Assignment for Initial TV")
-            # Get Provider users from database
-            try:
-                provider_users = database.get_users_by_role("CP")  # Use role abbreviation CP for Care Provider
-                provider_options = ["Select Provider..."] + [f"{u['full_name']} ({u['username']})" for u in provider_users] if provider_users else ["No Providers Available"]
-            except:
-                provider_options = ["Provider Assignment Needed"]
-                
-            assigned_provider = st.selectbox("Assign Provider", provider_options, key="assigned_provider")
-        
-        # Additional assignment sections
-        st.markdown("#### Post-Initial TV Assignments")
-        col3, col4 = st.columns(2)
-        
-        with col3:
-            st.markdown("**Regional Provider Assignment**")
-            try:
-                regional_provider_users = database.get_users_by_role("CP")  # Use CP role for providers
-                regional_provider_options = ["Select Regional Provider..."] + [f"{u['full_name']} ({u['username']})" for u in regional_provider_users] if regional_provider_users else ["No Providers Available"]
-            except:
-                regional_provider_options = ["Regional Provider Assignment Needed"]
+        # Find current selection index
+        current_provider = st.session_state.tv_form_data['assigned_provider']
+        provider_index = 0
+        if current_provider in provider_options:
+            provider_index = provider_options.index(current_provider)
             
-            assigned_regional_provider = st.selectbox("Assign Regional Provider", regional_provider_options, key="assigned_regional_provider")
+        assigned_provider = st.selectbox("Assign Provider", provider_options, 
+                                       index=provider_index,
+                                       key="assigned_provider")
+    
+    # Additional assignment sections
+    st.markdown("#### Post-Initial TV Assignments")
+    col3, col4 = st.columns(2)
+    
+    with col3:
+        st.markdown("**Regional Provider Assignment**")
+        try:
+            regional_provider_users = database.get_users_by_role("CP")  # Use CP role for providers
+            regional_provider_options = ["Select Regional Provider..."] + [f"{u['full_name']} ({u['username']})" for u in regional_provider_users] if regional_provider_users else ["No Providers Available"]
+        except:
+            regional_provider_options = ["Regional Provider Assignment Needed"]
         
-        with col4:
-            st.markdown("**Coordinator Assignment**")
-            try:
-                coordinator_users = database.get_users_by_role("CC")  # Use CC role for Care Coordinators
-                coordinator_options = ["Select Coordinator..."] + [f"{u['full_name']} ({u['username']})" for u in coordinator_users] if coordinator_users else ["No Coordinators Available"]
-            except:
-                coordinator_options = ["Coordinator Assignment Needed"]
+        assigned_regional_provider = st.selectbox("Assign Regional Provider", regional_provider_options, key="assigned_regional_provider")
+    
+    with col4:
+        st.markdown("**Coordinator Assignment**")
+        try:
+            coordinator_users = database.get_users_by_role("CC")  # Use CC role for Care Coordinators
+            coordinator_options = ["Select Coordinator..."] + [f"{u['full_name']} ({u['username']})" for u in coordinator_users] if coordinator_users else ["No Coordinators Available"]
+        except:
+            coordinator_options = ["Coordinator Assignment Needed"]
+        
+        # Find current selection index
+        current_coordinator = st.session_state.tv_form_data['assigned_coordinator']
+        coordinator_index = 0
+        if current_coordinator in coordinator_options:
+            coordinator_index = coordinator_options.index(current_coordinator)
             
-            assigned_coordinator = st.selectbox("Assign Coordinator", coordinator_options, key="assigned_coordinator")
+        assigned_coordinator = st.selectbox("Assign Coordinator", coordinator_options,
+                                          index=coordinator_index,
+                                          key="assigned_coordinator")
+    
+    # Update session state with current form values
+    st.session_state.tv_form_data.update({
+        'tv_scheduled': tv_scheduled,
+        'tv_date': tv_date,
+        'tv_time': tv_time,
+        'patient_notified': patient_notified,
+        'initial_tv_completed': initial_tv_completed,
+        'assigned_provider': assigned_provider,
+        'assigned_coordinator': assigned_coordinator
+    })
         
-        col1, col2, col3 = st.columns([1, 1, 2])
-        with col1:
+    # Action buttons in separate forms to avoid conflicts
+    col1, col2, col3 = st.columns([1, 1, 2])
+    
+    with col1:
+        with st.form("complete_stage5_form"):
             if st.form_submit_button("Complete Stage 5", type="primary"):
                 # Revised completion requirements: Check if regional provider and coordinator are assigned in patient table
                 # (not just the onboarding form fields)
@@ -758,18 +819,21 @@ def show_tv_scheduling_form(patient_details, current_user_id):
                     finally:
                         conn.close()
                 
-                # New completion requirements: Basic onboarding steps PLUS regional provider and coordinator in patient table
-                basic_requirements_met = tv_scheduled and patient_notified and initial_tv_completed
+                # Stage 5 completion requirements: TV scheduled, patient notified, initial TV completed, AND regional assignments
+                # The initial handoff to Initial TV Provider happens when provider is assigned (separate from stage completion)
+                basic_requirements_met = (st.session_state.tv_form_data['tv_scheduled'] and 
+                                        st.session_state.tv_form_data['patient_notified'] and
+                                        st.session_state.tv_form_data['initial_tv_completed'])
                 assignments_complete = regional_provider_assigned and coordinator_assigned_in_patient_table
                 
                 if basic_requirements_met and assignments_complete:
                     # Save Stage 5 data including provider assignment
                     database.update_onboarding_stage5_completion(
                         patient_details['onboarding_id'], 
-                        tv_date, 
-                        tv_time, 
-                        assigned_provider, 
-                        assigned_coordinator
+                        st.session_state.tv_form_data['tv_date'], 
+                        st.session_state.tv_form_data['tv_time'], 
+                        st.session_state.tv_form_data['assigned_provider'], 
+                        st.session_state.tv_form_data['assigned_coordinator']
                     )
                     
                     # Add patient to patients table and keep onboarding data
@@ -801,11 +865,11 @@ def show_tv_scheduling_form(patient_details, current_user_id):
                 else:
                     # Provide detailed error message about what's missing
                     missing_items = []
-                    if not tv_scheduled:
+                    if not st.session_state.tv_form_data['tv_scheduled']:
                         missing_items.append("TV visit scheduled")
-                    if not patient_notified:
+                    if not st.session_state.tv_form_data['patient_notified']:
                         missing_items.append("Patient notified")
-                    if not initial_tv_completed:
+                    if not st.session_state.tv_form_data['initial_tv_completed']:
                         missing_items.append("Initial TV visit completed")
                     if not regional_provider_assigned:
                         missing_items.append("Regional provider assigned in patient table (by onboarding team)")
@@ -817,30 +881,41 @@ def show_tv_scheduling_form(patient_details, current_user_id):
                     
                     if not assignments_complete:
                         st.warning("⚠️ **Revised Workflow**: The onboarding team must assign a regional provider and coordinator in the patient table before onboarding can be completed. The 'Save Progress' button can be used to save partial progress.")
-        
-        with col2:
+    
+    with col2:
+        with st.form("save_progress_form"):
             if st.form_submit_button("Save Progress"):
-                # Collect form data
+                # Collect form data from session state
                 form_data = {
-                    'tv_date': tv_date,
-                    'tv_time': tv_time,
-                    'assigned_provider': assigned_provider,
-                    'assigned_coordinator': assigned_coordinator,
-                    'tv_scheduled': tv_scheduled,
-                    'patient_notified': patient_notified,
-                    'initial_tv_completed': initial_tv_completed
+                    'tv_date': st.session_state.tv_form_data['tv_date'],
+                    'tv_time': st.session_state.tv_form_data['tv_time'],
+                    'assigned_provider': st.session_state.tv_form_data['assigned_provider'],
+                    'assigned_coordinator': st.session_state.tv_form_data['assigned_coordinator'],
+                    'tv_scheduled': st.session_state.tv_form_data['tv_scheduled'],
+                    'patient_notified': st.session_state.tv_form_data['patient_notified'],
+                    'initial_tv_completed': st.session_state.tv_form_data['initial_tv_completed']
                 }
                 
                 # Save the progress to database
-                if database.save_onboarding_tv_scheduling_progress(patient_details['onboarding_id'], form_data):
-                    st.success("✅ Progress saved successfully! Your changes have been saved to the database.")
-                    # Refresh the patient details to show updated data
-                    st.session_state['view_patient_details'] = database.get_onboarding_patient_details(patient_details['onboarding_id'])
-                    st.rerun()
-                else:
-                    st.error("❌ Failed to save progress. Please try again.")
-        
-        with col3:
+                try:
+                    result = database.save_onboarding_tv_scheduling_progress(patient_details['onboarding_id'], form_data)
+                    
+                    if result:
+                        st.success("✅ Progress saved successfully! Your changes have been saved to the database.")
+                        # Refresh the patient details to show updated data
+                        st.session_state['view_patient_details'] = database.get_onboarding_patient_details(patient_details['onboarding_id'])
+                        st.rerun()
+                    else:
+                        st.error("❌ Failed to save progress. Please try again.")
+                except Exception as e:
+                    st.error(f"❌ Exception during save: {e}")
+                    # Show more detailed error information
+                    import traceback
+                    with st.expander("Error Details"):
+                        st.code(traceback.format_exc())
+    
+    with col3:
+        with st.form("back_to_queue_form"):
             if st.form_submit_button("Back to Queue"):
                 st.session_state['onboarding_mode'] = None
                 st.rerun()
@@ -869,12 +944,19 @@ def show():
                 # Create DataFrame for display
                 queue_df = pd.DataFrame(onboarding_queue)
                 
-                # Format display columns
+                # Format display columns with TV completion status
                 display_df = pd.DataFrame({
                     "Patient": queue_df['patient_name'],
                     "Current Stage": queue_df['current_stage'], 
                     "Priority": queue_df['priority_status'],
                     "Assigned POT": queue_df['assigned_pot_name'].fillna('Unassigned'),
+                    "TV Status": queue_df.apply(lambda row: 
+                        "Completed" if row.get('initial_tv_completed') == 1 
+                        else f"Assigned to {row.get('initial_tv_provider', 'Not Assigned')}" if row.get('initial_tv_provider') 
+                        else "Not Assigned", axis=1),
+                    "Action Required": queue_df.apply(lambda row: 
+                        "Complete Stage 5" if row.get('ready_for_stage5_completion') == 1 
+                        else "", axis=1),
                     "Created": pd.to_datetime(queue_df['created_date']).dt.strftime('%m/%d/%Y'),
                     "Last Update": pd.to_datetime(queue_df['updated_date']).dt.strftime('%m/%d/%Y %H:%M')
                 })
@@ -883,12 +965,12 @@ def show():
                     display_df, 
                     use_container_width=True,
                     column_config={
-                        "Patient ID": st.column_config.NumberColumn("Patient ID", format="%.0f", width="small"),
-                        "First Name": st.column_config.TextColumn("First Name", width="medium"),
-                        "Last Name": st.column_config.TextColumn("Last Name", width="medium"),
-                        "Stage": st.column_config.TextColumn("Stage", width="medium"),
+                        "Patient": st.column_config.TextColumn("Patient", width="medium"),
+                        "Current Stage": st.column_config.TextColumn("Current Stage", width="medium"),
                         "Priority": st.column_config.TextColumn("Priority", width="small"),
-                        "Status": st.column_config.TextColumn("Status", width="small"),
+                        "Assigned POT": st.column_config.TextColumn("Assigned POT", width="medium"),
+                        "TV Status": st.column_config.TextColumn("TV Status", width="medium"),
+                        "Action Required": st.column_config.TextColumn("Action Required", width="medium"),
                         "Created": st.column_config.TextColumn("Created", width="small"),
                         "Last Update": st.column_config.TextColumn("Last Update", width="medium")
                     },
@@ -928,11 +1010,7 @@ def show():
                                     st.session_state['view_patient_details'] = patient_details
                                     st.rerun()
                         
-                        with col3:
-                            if st.button("Assign to Me", key="assign_to_me"):
-                                database.update_onboarding_patient_assignment(selected_id, current_user_id)
-                                st.success("Patient assigned to you!")
-                                st.rerun()
+
                         
                         # Show patient workflow stepper if details are being viewed
                         if 'view_patient_details' in st.session_state:
@@ -941,7 +1019,7 @@ def show():
                             # Only show if it's the same patient
                             if patient_details['onboarding_id'] == selected_id:
                                 st.markdown("---")
-                                st.markdown(f"## 👤 {patient_details['first_name']} {patient_details['last_name']}")
+                                st.markdown(f"## {patient_details['first_name']} {patient_details['last_name']}")
                                 
                                 # Show workflow stepper
                                 current_step = show_workflow_stepper(patient_details)
@@ -979,8 +1057,8 @@ def show():
                                         st.write(f"**eMed Signature:** {'Received' if patient_details.get('emed_signature_received', False) else 'Pending'}")
                                 
                                 # Action buttons for the current step
-                                st.markdown("### 🎯 Next Actions")
-                                col1, col2, col3, col4 = st.columns(4)
+                                st.markdown("### Next Actions")
+                                col1, col2 = st.columns(2)
                                 
                                 with col1:
                                     if st.button("📝 Continue Workflow", key="continue_workflow"):
@@ -990,18 +1068,6 @@ def show():
                                         st.rerun()
                                 
                                 with col2:
-                                    if st.button("✏️ Edit Patient Info", key="edit_patient"):
-                                        st.session_state['current_onboarding_id'] = selected_id
-                                        st.session_state['onboarding_mode'] = 'edit'
-                                        st.success("Editing patient information...")
-                                        st.rerun()
-                                
-                                with col3:
-                                    if st.button("Assign POT", key="assign_pot"):
-                                        # Add POT assignment logic here
-                                        st.info("POT assignment functionality coming soon...")
-                                
-                                with col4:
                                     if st.button("❌ Close Details", key="close_details"):
                                         if 'view_patient_details' in st.session_state:
                                             del st.session_state['view_patient_details']

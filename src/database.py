@@ -246,24 +246,42 @@ def get_onboarding_patient_details(onboarding_id):
     """Get detailed onboarding patient information for stepper display"""
     conn = get_db_connection()
     try:
+        # Get onboarding patient data
         patient = conn.execute("""
             SELECT * FROM onboarding_patients 
             WHERE onboarding_id = ?
         """, (onboarding_id,)).fetchone()
         
         if patient:
-            return dict(patient)
+            patient_dict = dict(patient)
+            
+            # Check if patient exists in patients table and get actual initial_tv_completed status
+            if patient_dict.get('patient_id'):
+                patients_data = conn.execute("""
+                    SELECT initial_tv_completed, initial_tv_completed_date, initial_tv_notes
+                    FROM patients 
+                    WHERE patient_id = ?
+                """, (patient_dict['patient_id'],)).fetchone()
+                
+                if patients_data:
+                    # Override onboarding table values with actual patients table values
+                    patient_dict['initial_tv_completed'] = patients_data['initial_tv_completed'] or False
+                    patient_dict['initial_tv_completed_date'] = patients_data['initial_tv_completed_date']
+                    patient_dict['initial_tv_notes'] = patients_data['initial_tv_notes']
+            
+            return patient_dict
         return None
     finally:
         conn.close()
 
 def get_onboarding_queue():
-    """Get the current onboarding queue with patient status"""
+    """Get the current onboarding queue with patient status and TV completion info"""
     conn = get_db_connection()
     try:
         queue = conn.execute("""
             SELECT 
                 op.onboarding_id,
+                op.patient_id,
                 op.first_name || ' ' || op.last_name as patient_name,
                 op.stage1_complete,
                 op.stage2_complete,
@@ -285,9 +303,22 @@ def get_onboarding_queue():
                     WHEN op.created_date > datetime('now', '-3 days') THEN 'Medium'
                     ELSE 'Normal'
                 END as priority_status,
-                COALESCE(u.full_name, 'Unassigned') as assigned_pot_name
+                COALESCE(u.full_name, 'Unassigned') as assigned_pot_name,
+                -- TV completion status from patients table
+                COALESCE(p.initial_tv_completed, 0) as initial_tv_completed,
+                p.initial_tv_completed_date,
+                p.initial_tv_provider,
+                -- Check if ready for Stage 5 completion
+                CASE 
+                    WHEN op.stage4_complete = 1 
+                         AND op.stage5_complete = 0 
+                         AND COALESCE(p.initial_tv_completed, 0) = 1 
+                    THEN 1 
+                    ELSE 0 
+                END as ready_for_stage5_completion
             FROM onboarding_patients op
             LEFT JOIN users u ON op.assigned_pot_user_id = u.user_id
+            LEFT JOIN patients p ON op.patient_id = p.patient_id
             WHERE op.patient_status = 'Active'
             ORDER BY op.created_date ASC
         """).fetchall()
@@ -373,19 +404,19 @@ def get_provider_onboarding_queue(provider_user_id):
     """Get onboarding patients assigned to a specific provider for initial TV visits"""
     conn = get_db_connection()
     try:
-        # Find the provider_id from user_id
+        # Get the provider's full name from user_id
         provider_cursor = conn.execute("""
-            SELECT provider_id FROM providers WHERE user_id = ?
+            SELECT full_name FROM users WHERE user_id = ?
         """, (provider_user_id,))
         provider_result = provider_cursor.fetchone()
         
         if not provider_result:
             return []
             
-        provider_id = provider_result[0]
+        provider_full_name = provider_result[0]
         
         # Get onboarding patients assigned to this provider who need initial TV visit
-        # Look for patients where stage5_complete = 1 (TV scheduled) but initial_tv_completed = 0
+        # Look for patients where initial_tv_provider matches provider's full name and initial_tv_completed = 0
         onboarding_patients = conn.execute("""
             SELECT 
                 op.onboarding_id,
@@ -404,15 +435,13 @@ def get_provider_onboarding_queue(provider_user_id):
                 op.tv_time,
                 op.assigned_provider_user_id,
                 op.initial_tv_completed,
-                u.full_name as assigned_provider_name
+                op.initial_tv_provider
             FROM onboarding_patients op
-            LEFT JOIN users u ON op.assigned_provider_user_id = u.user_id
-            WHERE op.assigned_provider_user_id = ? 
-            AND op.stage5_complete = 1 
+            WHERE op.initial_tv_provider = ? 
             AND (op.initial_tv_completed = 0 OR op.initial_tv_completed IS NULL)
-            AND op.patient_status = 'Active'
+            AND op.patient_status IN ('Active', 'Active-Geri')
             ORDER BY op.tv_date ASC, op.created_date ASC
-        """, (provider_user_id,)).fetchall()
+        """, (provider_full_name,)).fetchall()
         
         return [dict(patient) for patient in onboarding_patients]
         
@@ -456,6 +485,12 @@ def save_onboarding_tv_scheduling_progress(onboarding_id, form_data):
         if tv_date and hasattr(tv_date, 'strftime'):
             tv_date = tv_date.strftime('%Y-%m-%d')
         
+        # Extract provider name for initial_tv_provider field
+        initial_tv_provider = None
+        if form_data.get('assigned_provider') and form_data['assigned_provider'] != "Select Provider...":
+            # Extract the full name from the format "Full Name (username)"
+            initial_tv_provider = form_data['assigned_provider'].split('(')[0].strip()
+
         # Update onboarding patient record with partial progress
         conn.execute("""
             UPDATE onboarding_patients
@@ -463,6 +498,7 @@ def save_onboarding_tv_scheduling_progress(onboarding_id, form_data):
                 tv_time = ?,
                 assigned_provider_user_id = ?,
                 assigned_coordinator_user_id = ?,
+                initial_tv_provider = ?,
                 updated_date = CURRENT_TIMESTAMP
             WHERE onboarding_id = ?
         """, (
@@ -470,6 +506,7 @@ def save_onboarding_tv_scheduling_progress(onboarding_id, form_data):
             tv_time,
             provider_user_id,
             coordinator_user_id,
+            initial_tv_provider,
             onboarding_id
         ))
         
@@ -654,19 +691,69 @@ def get_tasks_by_user(user_id):
     return tasks
 
 def add_user(username, password, first_name, last_name, email, role_name):
+    """
+    Add a new user with plain text password (will be hashed)
+    
+    Args:
+        username: User's username
+        password: Plain text password (will be hashed)
+        first_name: User's first name
+        last_name: User's last name
+        email: User's email
+        role_name: Role name to assign
+    """
+    import hashlib
+    
+    # Hash the password before storing
+    hashed_password = hashlib.sha256(password.encode()).hexdigest()
+    
     conn = get_db_connection()
     try:
         role = conn.execute('SELECT role_id FROM roles WHERE role_name = ?', (role_name,)).fetchone()
         if role:
             role_id = role['role_id']
             cursor = conn.execute("INSERT INTO users (username, password, first_name, last_name, email, status, hire_date) VALUES (?, ?, ?, ?, ?, 'active', CURRENT_DATE)",
-                                  (username, password, first_name, last_name, email))
+                                  (username, hashed_password, first_name, last_name, email))
             user_id = cursor.lastrowid
             conn.execute("INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)",
                          (user_id, role_id))
             conn.commit()
+            return user_id
+        return None
     except sqlite3.Error as e:
         print(f"Database error: {e}")
+        return None
+    finally:
+        conn.close()
+
+def add_user_with_hashed_password(username, hashed_password, first_name, last_name, email, role_name):
+    """
+    Add a new user with pre-hashed password
+    
+    Args:
+        username: User's username
+        hashed_password: Already hashed password
+        first_name: User's first name
+        last_name: User's last name
+        email: User's email
+        role_name: Role name to assign
+    """
+    conn = get_db_connection()
+    try:
+        role = conn.execute('SELECT role_id FROM roles WHERE role_name = ?', (role_name,)).fetchone()
+        if role:
+            role_id = role['role_id']
+            cursor = conn.execute("INSERT INTO users (username, password, first_name, last_name, email, status, hire_date) VALUES (?, ?, ?, ?, ?, 'active', CURRENT_DATE)",
+                                  (username, hashed_password, first_name, last_name, email))
+            user_id = cursor.lastrowid
+            conn.execute("INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)",
+                         (user_id, role_id))
+            conn.commit()
+            return user_id
+        return None
+    except sqlite3.Error as e:
+        print(f"Database error: {e}")
+        return None
     finally:
         conn.close()
 
@@ -1041,9 +1128,10 @@ def save_daily_task(provider_id, patient_id, task_date, task_description, notes,
                 SET last_visit_date = ?,
                     initial_tv_completed_date = ?,
                     initial_tv_notes = ?,
-                    initial_tv_provider = ?
+                    initial_tv_provider = ?,
+                    service_type = ?
                 WHERE patient_id = ?
-            """, (task_date, task_date, notes, provider_name, pid))
+            """, (task_date, task_date, notes, provider_name, task_description, pid))
 
             # Update initial TV fields in patient_panel table
             conn.execute("""
@@ -1052,24 +1140,27 @@ def save_daily_task(provider_id, patient_id, task_date, task_description, notes,
                     initial_tv_completed = 1,
                     initial_tv_completed_date = ?,
                     initial_tv_notes = ?,
-                    initial_tv_provider = ?
+                    initial_tv_provider = ?,
+                    last_visit_service_type = ?
                 WHERE patient_id = ?
-            """, (task_date, task_date, notes, provider_name, pid))
+            """, (task_date, task_date, notes, provider_name, task_description, pid))
         else:
-            # For non-initial TV tasks, just update last_visit_date
-            # Update last_visit_date in patients table
+            # For non-initial TV tasks, update last_visit_date and service_type
+            # Update last_visit_date and service_type in patients table
             conn.execute("""
                 UPDATE patients 
-                SET last_visit_date = ?
+                SET last_visit_date = ?,
+                    service_type = ?
                 WHERE patient_id = ?
-            """, (task_date, pid))
+            """, (task_date, task_description, pid))
 
-            # Update last_visit_date in patient_panel table
+            # Update last_visit_date and service_type in patient_panel table
             conn.execute("""
                 UPDATE patient_panel 
-                SET last_visit_date = ?
+                SET last_visit_date = ?,
+                    last_visit_service_type = ?
                 WHERE patient_id = ?
-            """, (task_date, pid))
+            """, (task_date, task_description, pid))
 
         conn.commit()
         return True
