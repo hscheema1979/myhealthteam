@@ -105,6 +105,85 @@ def get_patient_current_stage_name(patient_data):
             return step_info["title"]
     return "Workflow Complete"
 
+def get_action_required_blockers(row):
+    """Determine specific blockers preventing completion of the current stage"""
+    current_stage = row['current_stage']
+    blockers = []
+    
+    # Always check for POT assignment first (applies to all stages)
+    if not row.get('assigned_pot_name') or row.get('assigned_pot_name') == 'Unassigned':
+        blockers.append("Assign POT user")
+    
+    # Stage 1: Patient Registration blockers
+    if current_stage == 'Stage 1: Patient Registration':
+        if not row.get('first_name'):
+            blockers.append("Enter patient first name")
+        if not row.get('last_name'):
+            blockers.append("Enter patient last name")
+        if not row.get('date_of_birth'):
+            blockers.append("Enter date of birth")
+        if not row.get('phone_primary'):
+            blockers.append("Enter primary phone number")
+        if not row.get('address_street'):
+            blockers.append("Enter street address")
+        if not row.get('address_city'):
+            blockers.append("Enter city")
+        if not row.get('address_state'):
+            blockers.append("Select state")
+        if not row.get('address_zip'):
+            blockers.append("Enter ZIP code")
+    
+    # Stage 2: Eligibility Verification blockers
+    elif current_stage == 'Stage 2: Eligibility Verification':
+        if not row.get('insurance_provider'):
+            blockers.append("Enter insurance provider")
+        if not row.get('policy_number'):
+            blockers.append("Enter insurance policy number")
+        if not row.get('eligibility_verified'):
+            blockers.append("Verify insurance eligibility")
+        if not row.get('insurance_cards_received'):
+            blockers.append("Receive insurance cards/face sheet")
+    
+    # Stage 3: Chart Creation blockers
+    elif current_stage == 'Stage 3: Chart Creation':
+        if not row.get('emed_chart_created'):
+            blockers.append("Create eMed patient chart")
+        if not row.get('facility_confirmed'):
+            blockers.append("Confirm facility assignment")
+        if not row.get('chart_id'):
+            blockers.append("Enter chart ID")
+    
+    # Stage 4: Intake Processing blockers
+    elif current_stage == 'Stage 4: Intake Processing':
+        if not row.get('intake_call_completed'):
+            blockers.append("Complete intake call")
+        if not row.get('insurance_cards_received'):
+            blockers.append("Receive insurance cards/face sheet")
+        if not row.get('medical_records_requested'):
+            blockers.append("Request medical records")
+    
+    # Stage 5: TV Visit Scheduling blockers
+    elif current_stage == 'Stage 5: TV Scheduling':
+        if not row.get('assigned_provider_user_id'):
+            blockers.append("Assign provider")
+        elif not row.get('tv_scheduled'):
+            blockers.append("Schedule TV visit")
+        elif not row.get('initial_tv_completed'):
+            blockers.append("Complete initial TV visit")
+    
+    # Workflow Complete
+    elif current_stage == 'Completed - Ready for Handoff':
+        return "Complete workflow handoff"
+    
+    # Return appropriate message based on blockers found
+    if len(blockers) == 0:
+        return "Ready to proceed"
+    elif len(blockers) == 1:
+        return blockers[0]
+    else:
+        # Show the first blocker with count of additional ones
+        return f"{blockers[0]} (+{len(blockers)-1} more)"
+
 def show_patient_intake_form(current_user_id):
     """Show new patient intake form for Stage 1 registration"""
     with st.form("patient_intake_form"):
@@ -135,23 +214,14 @@ def show_patient_intake_form(current_user_id):
         ], key="address_state")
         address_zip = st.text_input("ZIP Code*", key="address_zip")
         
-        # Insurance Information
-        st.markdown("### Insurance Information")
-        insurance_provider = st.text_input("Primary Insurance Provider", key="insurance_provider")
-        policy_number = st.text_input("Policy Number", key="policy_number")
-        group_number = st.text_input("Group Number", key="group_number")
-        
         # Referral Information
         st.markdown("### Referral Information")
         referral_source = st.text_input("Referral Source", key="referral_source")
         referring_provider = st.text_input("Referring Provider", key="referring_provider")
         referral_date = st.date_input("Referral Date", key="referral_date")
         
-        # Patient Status and Facility Assignment
-        st.markdown("### Patient Status & Assignment")
-        patient_status = st.selectbox("Patient Status", ["Active", "Active-Geri", "Active-PCP"], key="patient_status")
-        
         # Facility Assignment - Get facilities from database
+        st.markdown("### Facility Assignment")
         try:
             conn = database.get_db_connection()
             facilities = conn.execute("SELECT facility_name FROM facilities ORDER BY facility_name").fetchall()
@@ -162,14 +232,6 @@ def show_patient_intake_form(current_user_id):
             facility_options = ["San Francisco", "Los Angeles", "San Diego", "Sacramento", "Add New Facility"]
             
         facility_assignment = st.selectbox("Referring Facility", facility_options, key="facility_assignment")
-        # Appointment & Medical Contact (P0 additions)
-        st.markdown("### Appointment & Medical Contacts")
-        appointment_contact_name = st.text_input("Appointment Contact Name", key="appointment_contact_name")
-        appointment_contact_phone = st.text_input("Appointment Contact Phone", key="appointment_contact_phone")
-        appointment_contact_email = st.text_input("Appointment Contact Email", key="appointment_contact_email")
-        medical_contact_name = st.text_input("Medical Contact Name", key="medical_contact_name")
-        medical_contact_phone = st.text_input("Medical Contact Phone", key="medical_contact_phone")
-        medical_contact_email = st.text_input("Medical Contact Email", key="medical_contact_email")
         
         # Submit button
         col1, col2 = st.columns([1, 4])
@@ -200,13 +262,9 @@ def show_patient_intake_form(current_user_id):
                         'address_city': address_city,
                         'address_state': address_state,
                         'address_zip': address_zip,
-                        'insurance_provider': insurance_provider,
-                        'policy_number': policy_number,
-                        'group_number': group_number,
                         'referral_source': referral_source,
                         'referring_provider': referring_provider,
                         'referral_date': referral_date.isoformat() if referral_date else None,
-                        'patient_status': patient_status,
                         'facility_assignment': facility_assignment if facility_assignment != "Add New Facility" else None
                     }
                     
@@ -308,6 +366,25 @@ def show_eligibility_verification_form(patient_details, current_user_id):
             st.write(f"**Group #:** {patient_details.get('group_number', 'N/A')}")
     
     with st.form("eligibility_form"):
+        st.markdown("#### Insurance Information")
+        
+        # Insurance input fields
+        insurance_provider = st.text_input(
+            "Primary Insurance Provider*", 
+            value=patient_details.get('insurance_provider', ''),
+            key="insurance_provider"
+        )
+        policy_number = st.text_input(
+            "Policy Number*", 
+            value=patient_details.get('policy_number', ''),
+            key="policy_number"
+        )
+        group_number = st.text_input(
+            "Group Number", 
+            value=patient_details.get('group_number', ''),
+            key="group_number"
+        )
+        
         st.markdown("#### Eligibility Check")
         
         # Get existing values with proper defaults
@@ -404,23 +481,30 @@ def show_eligibility_verification_form(patient_details, current_user_id):
         col1, col2, col3 = st.columns([1, 1, 2])
         with col1:
             if st.form_submit_button("Complete Stage 2", type="primary"):
-                # Save eligibility and clinical fields (always save data)
-                checkbox_payload = {
-                    'eligibility_status': eligibility_status,
-                    'eligibility_notes': eligibility_notes,
-                    'eligibility_verified': eligibility_verified,
-                    'mh_schizophrenia': mh_schizophrenia,
-                    'mh_depression': mh_depression,
-                    'mh_anxiety': mh_anxiety,
-                    'mh_stress': mh_stress,
-                    'mh_adhd': mh_adhd,
-                    'mh_bipolar': mh_bipolar,
-                    'mh_suicidal': mh_suicidal,
-                    'primary_care_provider': primary_care_provider,
-                    'pcp_last_seen': pcp_last_seen.strftime('%Y-%m-%d') if pcp_last_seen else None,
-                }
-                database.update_onboarding_checkbox_data(patient_details['onboarding_id'], checkbox_payload)
-                st.success('Stage 2 data saved')
+                # Validate required insurance fields
+                if not insurance_provider or not policy_number:
+                    st.error("Please fill in all required insurance fields (marked with *)")
+                else:
+                    # Save insurance, eligibility and clinical fields (always save data)
+                    checkbox_payload = {
+                        'insurance_provider': insurance_provider,
+                        'policy_number': policy_number,
+                        'group_number': group_number,
+                        'eligibility_status': eligibility_status,
+                        'eligibility_notes': eligibility_notes,
+                        'eligibility_verified': eligibility_verified,
+                        'mh_schizophrenia': mh_schizophrenia,
+                        'mh_depression': mh_depression,
+                        'mh_anxiety': mh_anxiety,
+                        'mh_stress': mh_stress,
+                        'mh_adhd': mh_adhd,
+                        'mh_bipolar': mh_bipolar,
+                        'mh_suicidal': mh_suicidal,
+                        'primary_care_provider': primary_care_provider,
+                        'pcp_last_seen': pcp_last_seen.strftime('%Y-%m-%d') if pcp_last_seen else None,
+                    }
+                    database.update_onboarding_checkbox_data(patient_details['onboarding_id'], checkbox_payload)
+                    st.success('Stage 2 data saved')
 
                 if eligibility_verified:
                     # Mark stage complete and update related tasks
@@ -442,8 +526,11 @@ def show_eligibility_verification_form(patient_details, current_user_id):
         
         with col2:
             if st.form_submit_button("Save Progress"):
-                # Save progress for Stage 2 (eligibility/clinical fields)
+                # Save progress for Stage 2 (insurance, eligibility, and clinical fields)
                 checkbox_payload = {
+                    'insurance_provider': insurance_provider,
+                    'policy_number': policy_number,
+                    'group_number': group_number,
                     'eligibility_status': eligibility_status,
                     'eligibility_notes': eligibility_notes,
                     'eligibility_verified': eligibility_verified,
@@ -561,9 +648,6 @@ def show_intake_processing_form(patient_details, current_user_id):
             referral_documents_received = st.checkbox("Referral Documents Received", 
                                                      key="referral_documents_received",
                                                      value=patient_details.get('referral_documents_received', False))
-            insurance_cards_received = st.checkbox("Insurance Cards / Face Sheet Received", 
-                                                  key="insurance_cards_received",
-                                                  value=patient_details.get('insurance_cards_received', False))
             emed_signature_received = st.checkbox("EMED Signature Received", 
                                                 key="emed_signature_received",
                                                 value=patient_details.get('emed_signature_received', False))
@@ -584,6 +668,55 @@ def show_intake_processing_form(patient_details, current_user_id):
             value=patient_details.get('intake_notes', ''),
             placeholder="Document any issues with medical records, patient contact attempts, special requirements, etc.",
             key="intake_notes"
+        )
+        
+        # Appointment & Medical Contacts
+        st.markdown("### Appointment & Medical Contacts")
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("#### Appointment Contact")
+            appointment_contact_name = st.text_input(
+                "Appointment Contact Name", 
+                value=patient_details.get('appointment_contact_name', ''),
+                key="appointment_contact_name"
+            )
+            appointment_contact_phone = st.text_input(
+                "Appointment Contact Phone", 
+                value=patient_details.get('appointment_contact_phone', ''),
+                key="appointment_contact_phone"
+            )
+            appointment_contact_email = st.text_input(
+                "Appointment Contact Email", 
+                value=patient_details.get('appointment_contact_email', ''),
+                key="appointment_contact_email"
+            )
+        
+        with col2:
+            st.markdown("#### Medical Contact")
+            medical_contact_name = st.text_input(
+                "Medical Contact Name", 
+                value=patient_details.get('medical_contact_name', ''),
+                key="medical_contact_name"
+            )
+            medical_contact_phone = st.text_input(
+                "Medical Contact Phone", 
+                value=patient_details.get('medical_contact_phone', ''),
+                key="medical_contact_phone"
+            )
+            medical_contact_email = st.text_input(
+                "Medical Contact Email", 
+                value=patient_details.get('medical_contact_email', ''),
+                key="medical_contact_email"
+            )
+        
+        # Patient Status
+        st.markdown("### Patient Status")
+        patient_status = st.selectbox(
+            "Patient Status", 
+            ["Active", "Active-Geri", "Active-PCP"], 
+            index=["Active", "Active-Geri", "Active-PCP"].index(patient_details.get('patient_status', 'Active')) if patient_details.get('patient_status') in ["Active", "Active-Geri", "Active-PCP"] else 0,
+            key="patient_status"
         )
         
         # Stage 4 additions: Specialist and chronic conditions
@@ -623,19 +756,25 @@ def show_intake_processing_form(patient_details, current_user_id):
                 checkbox_data = {
                     'medical_records_requested': medical_records_requested,
                     'referral_documents_received': referral_documents_received,
-                    'insurance_cards_received': insurance_cards_received,
                     'emed_signature_received': emed_signature_received,
                     'annual_well_visit': annual_well_visit,
                     'intake_notes': intake_notes,
                     'intake_call_completed': intake_call_completed,
+                    'appointment_contact_name': appointment_contact_name,
+                    'appointment_contact_phone': appointment_contact_phone,
+                    'appointment_contact_email': appointment_contact_email,
+                    'medical_contact_name': medical_contact_name,
+                    'medical_contact_phone': medical_contact_phone,
+                    'medical_contact_email': medical_contact_email,
+                    'patient_status': patient_status,
                     'active_specialist': active_specialist,
                     'specialist_last_seen': specialist_last_seen.strftime('%Y-%m-%d') if specialist_last_seen else None,
                     'chronic_conditions_onboarding': chronic_conditions_onboarding
                 }
                 database.update_onboarding_checkbox_data(patient_details['onboarding_id'], checkbox_data)
 
-                # Require BOTH intake call completion AND insurance cards/face sheet before completing
-                if intake_call_completed and insurance_cards_received:
+                # Require intake call completion before completing
+                if intake_call_completed:
                     database.update_onboarding_stage_completion(patient_details['onboarding_id'], 4, True)
 
                     # Update tasks
@@ -644,13 +783,13 @@ def show_intake_processing_form(patient_details, current_user_id):
                         if task['task_stage'] == 4:
                             database.update_onboarding_task_status(
                                 task['task_id'], 'Complete', current_user_id,
-                                {'intake_call_completed': True, 'documents_received': True}
+                                {'intake_call_completed': True}
                             )
 
                     st.success("Stage 4 Complete! Moving to TV Scheduling...")
                     st.rerun()
                 else:
-                    st.error("Please complete the intake call and confirm insurance cards/face sheet are received before proceeding.")
+                    st.error("Please complete the intake call before proceeding.")
         
         with col2:
             if st.form_submit_button("Save Progress"):
@@ -658,11 +797,17 @@ def show_intake_processing_form(patient_details, current_user_id):
                 checkbox_data = {
                     'medical_records_requested': medical_records_requested,
                     'referral_documents_received': referral_documents_received,
-                    'insurance_cards_received': insurance_cards_received,
                     'emed_signature_received': emed_signature_received,
                     'annual_well_visit': annual_well_visit,
                     'intake_notes': intake_notes,
                     'intake_call_completed': intake_call_completed,
+                    'appointment_contact_name': appointment_contact_name,
+                    'appointment_contact_phone': appointment_contact_phone,
+                    'appointment_contact_email': appointment_contact_email,
+                    'medical_contact_name': medical_contact_name,
+                    'medical_contact_phone': medical_contact_phone,
+                    'medical_contact_email': medical_contact_email,
+                    'patient_status': patient_status,
                     'active_specialist': active_specialist,
                     'specialist_last_seen': specialist_last_seen.strftime('%Y-%m-%d') if specialist_last_seen else None,
                     'chronic_conditions_onboarding': chronic_conditions_onboarding
@@ -967,17 +1112,7 @@ def show():
                         "Completed" if row.get('initial_tv_completed') == 1 
                         else f"Assigned to {row.get('initial_tv_provider', 'Not Assigned')}" if row.get('initial_tv_provider') 
                         else "Not Assigned", axis=1),
-                    "Action Required": queue_df.apply(lambda row: 
-                        "Ready for Handoff - Complete workflow" if row['current_stage'] == 'Workflow Complete'
-                        else "Schedule Initial TV Visit" if row['current_stage'] == 'TV Visit Scheduling' and not row.get('initial_tv_provider')
-                        else "Complete Initial TV Visit" if row['current_stage'] == 'TV Visit Scheduling' and row.get('initial_tv_provider') and not row.get('initial_tv_completed')
-                        else "Mark Stage 5 Complete" if row['current_stage'] == 'TV Visit Scheduling' and row.get('initial_tv_completed') == 1
-                        else "Process medical records & documentation" if row['current_stage'] == 'Intake Processing'
-                        else "Create patient chart in system" if row['current_stage'] == 'Chart Creation'
-                        else "Verify insurance & eligibility" if row['current_stage'] == 'Eligibility Verification'
-                        else "Complete patient registration form" if row['current_stage'] == 'Patient Registration'
-                        else "Assign POT user" if not row.get('assigned_pot_name') or row.get('assigned_pot_name') == 'Unassigned'
-                        else "", axis=1),
+                    "Action Required": queue_df.apply(get_action_required_blockers, axis=1),
                     "Created": pd.to_datetime(queue_df['created_date']).dt.strftime('%m/%d/%Y'),
                     "Last Update": pd.to_datetime(queue_df['updated_date']).dt.strftime('%m/%d/%Y %H:%M')
                 })
