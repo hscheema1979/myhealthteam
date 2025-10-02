@@ -660,6 +660,16 @@ def update_onboarding_stage5_completion(onboarding_id, tv_date, tv_time, assigne
             if provider_result:
                 provider_user_id = provider_result[0]
         
+        # Extract coordinator user_id from the selection format "Full Name (username)"
+        coordinator_user_id = None
+        if assigned_coordinator and assigned_coordinator != "Select Coordinator...":
+            # Get the username from the format "Full Name (username)"
+            username = assigned_coordinator.split('(')[-1].replace(')', '').strip()
+            coordinator_cursor = conn.execute("SELECT user_id FROM users WHERE username = ?", (username,))
+            coordinator_result = coordinator_cursor.fetchone()
+            if coordinator_result:
+                coordinator_user_id = coordinator_result[0]
+        
         # Convert time and date objects to strings if needed
         if tv_time and hasattr(tv_time, 'strftime'):
             tv_time = tv_time.strftime('%H:%M:%S')
@@ -678,10 +688,11 @@ def update_onboarding_stage5_completion(onboarding_id, tv_date, tv_time, assigne
             SET tv_date = ?,
                 tv_time = ?,
                 assigned_provider_user_id = ?,
+                assigned_coordinator_user_id = ?,
                 initial_tv_provider = ?,
                 updated_date = CURRENT_TIMESTAMP
             WHERE onboarding_id = ?
-        """, (tv_date, tv_time, provider_user_id, initial_tv_provider, onboarding_id))
+        """, (tv_date, tv_time, provider_user_id, coordinator_user_id, initial_tv_provider, onboarding_id))
         
         conn.commit()
         return True

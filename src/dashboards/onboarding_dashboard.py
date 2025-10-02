@@ -847,10 +847,10 @@ def show_tv_scheduling_form(patient_details, current_user_id):
         patient_notified = st.checkbox("Patient Notified of TV Appointment", 
                                      value=st.session_state.tv_form_data['patient_notified'],
                                      key="patient_notified")
-        initial_tv_completed = st.checkbox("Initial TV Visit Completed", 
+        initial_tv_completed = st.checkbox("Initial TV Visit Completed (Verify in EMED)", 
                                          value=st.session_state.tv_form_data['initial_tv_completed'],
                                          key="initial_tv_completed")
-        
+            
     with col2:
         st.markdown("#### Provider Assignment for Initial TV")
         # Get Provider users from database
