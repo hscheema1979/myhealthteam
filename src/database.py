@@ -550,87 +550,64 @@ def save_onboarding_tv_scheduling_progress(onboarding_id, form_data):
             """, (onboarding_id,)).fetchone()
             
             if patient_info:
-                # Generate text-based patient_id using the same function as insert_patient_from_onboarding
+                # Generate text-based patient_id for consistency
                 text_patient_id = generate_patient_id(
                     patient_info['first_name'] or '',
                     patient_info['last_name'] or '',
                     patient_info['date_of_birth'] or ''
                 )
                 
-                # 1. Update the patient_id in onboarding_patients table
-                conn.execute("""
-                    UPDATE onboarding_patients 
-                    SET patient_id = ? 
-                    WHERE onboarding_id = ?
-                """, (text_patient_id, onboarding_id))
+                # Only update existing patient records - patient creation is handled by insert_patient_from_onboarding
+                # Check if patient already exists in patients table
+                existing_patient = conn.execute("""
+                    SELECT patient_id FROM patients WHERE patient_id = ?
+                """, (text_patient_id,)).fetchone()
                 
-                # 2. Create or update patient record in patients table
-                conn.execute("""
-                    INSERT OR REPLACE INTO patients (
-                        patient_id, first_name, last_name, date_of_birth, phone_primary, email, 
-                        address_street, address_city, address_state, address_zip, insurance_primary, insurance_policy_number,
-                        emergency_contact_name, emergency_contact_phone, initial_tv_provider, created_date, updated_date
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-                """, (
-                    text_patient_id,
-                    patient_info['first_name'],
-                    patient_info['last_name'], 
-                    patient_info['date_of_birth'],
-                    patient_info['phone_primary'],
-                    patient_info['email'],
-                    patient_info['address_street'],
-                    patient_info['address_city'],
-                    patient_info['address_state'],
-                    patient_info['address_zip'],
-                    patient_info['insurance_provider'],
-                    patient_info['policy_number'],
-                    patient_info['emergency_contact_name'],
-                    patient_info['emergency_contact_phone'],
-                    initial_tv_provider
-                ))
-                
-                # 3. Create or update patient assignment in patient_assignments table
-                # Check if assignment already exists for this patient
-                existing = conn.execute("""
-                    SELECT assignment_id FROM patient_assignments 
-                    WHERE patient_id = ? AND assignment_type = ? AND status = 'active'
-                """, (text_patient_id, "onboarding")).fetchone()
-                
-                if existing:
-                    # Update existing assignment
+                if existing_patient:
+                    # Patient exists - only update the initial_tv_provider and updated_date
+                    # Preserve all other existing patient data
                     conn.execute("""
-                        UPDATE patient_assignments 
-                        SET provider_id = ?, coordinator_id = ?, priority_level = ?, 
-                            notes = ?, updated_date = datetime('now'), updated_by = ?
-                        WHERE assignment_id = ?
-                    """, (provider_user_id, coordinator_user_id, "medium", 
-                          "Assignment created from onboarding TV scheduling progress", None, existing['assignment_id']))
+                        UPDATE patients 
+                        SET initial_tv_provider = ?, updated_date = datetime('now')
+                        WHERE patient_id = ?
+                    """, (initial_tv_provider, text_patient_id))
+                    
+                    # Update patient assignment in patient_assignments table
+                    # Check if assignment already exists for this patient
+                    existing = conn.execute("""
+                        SELECT assignment_id FROM patient_assignments 
+                        WHERE patient_id = ? AND assignment_type = ? AND status = 'active'
+                    """, (text_patient_id, "onboarding")).fetchone()
+                    
+                    if existing:
+                        # Update existing assignment
+                        conn.execute("""
+                            UPDATE patient_assignments 
+                            SET provider_id = ?, coordinator_id = ?, priority_level = ?, 
+                                notes = ?, updated_date = datetime('now'), updated_by = ?
+                            WHERE assignment_id = ?
+                        """, (provider_user_id, coordinator_user_id, "medium", 
+                              "Assignment updated from onboarding TV scheduling progress", None, existing['assignment_id']))
+                    
+                    # Update assignments in patient_panel table
+                    if provider_user_id:
+                        conn.execute("""
+                            INSERT OR REPLACE INTO patient_panel (
+                                patient_id, provider_id, status, created_date, updated_date
+                            ) VALUES (?, ?, 'active', datetime('now'), datetime('now'))
+                        """, (text_patient_id, provider_user_id))
+                    
+                    if coordinator_user_id:
+                        conn.execute("""
+                            INSERT OR REPLACE INTO patient_panel (
+                                patient_id, coordinator_id, status, created_date, updated_date
+                            ) VALUES (?, ?, 'active', datetime('now'), datetime('now'))
+                        """, (text_patient_id, coordinator_user_id))
                 else:
-                    # Create new assignment
-                    conn.execute("""
-                        INSERT INTO patient_assignments (
-                            patient_id, provider_id, coordinator_id, assignment_date, 
-                            assignment_type, status, priority_level, notes, 
-                            created_date, updated_date, created_by, updated_by
-                        ) VALUES (?, ?, ?, datetime('now'), ?, ?, ?, ?, 
-                                 datetime('now'), datetime('now'), ?, ?)
-                    """, (text_patient_id, provider_user_id, coordinator_user_id, "onboarding", 
-                          "active", "medium", "Assignment created from onboarding TV scheduling progress", None, None))
-                
-                # 4. Create or update assignments in patient_panel table
-                if provider_user_id:
-                    conn.execute("""
-                        INSERT OR REPLACE INTO patient_panel (
-                            patient_id, provider_id, status, created_date, updated_date
-                        ) VALUES (?, ?, 'active', datetime('now'), datetime('now'))
-                    """, (text_patient_id, provider_user_id))
-                
-                if coordinator_user_id:
-                    conn.execute("""
-                        INSERT OR REPLACE INTO patient_panel (
-                            patient_id, coordinator_id, status, created_date, updated_date
-                        ) VALUES (?, ?, 'active', datetime('now'), datetime('now'))
-                    """, (text_patient_id, coordinator_user_id))
+                    # Patient doesn't exist yet - this is expected for revisions before Stage 5 completion
+                    # Just update the onboarding record with provider/coordinator assignments
+                    # Patient creation will be handled by insert_patient_from_onboarding during Stage 5 completion
+                    pass
         
         conn.commit()
         return True
@@ -682,6 +659,11 @@ def update_onboarding_stage5_completion(onboarding_id, tv_date, tv_time, assigne
             # Extract the full name from the format "Full Name (username)"
             initial_tv_provider = assigned_provider.split('(')[0].strip()
         
+        # Get patient_id from onboarding record to create patient assignment
+        patient_cursor = conn.execute("SELECT patient_id FROM onboarding_patients WHERE onboarding_id = ?", (onboarding_id,))
+        patient_result = patient_cursor.fetchone()
+        patient_id = patient_result[0] if patient_result else None
+        
         # Update onboarding patient record
         conn.execute("""
             UPDATE onboarding_patients
@@ -693,6 +675,35 @@ def update_onboarding_stage5_completion(onboarding_id, tv_date, tv_time, assigne
                 updated_date = CURRENT_TIMESTAMP
             WHERE onboarding_id = ?
         """, (tv_date, tv_time, provider_user_id, coordinator_user_id, initial_tv_provider, onboarding_id))
+        
+        # Create or update patient assignment record if we have a patient_id and assignments
+        if patient_id and (provider_user_id or coordinator_user_id):
+            # Check if assignment already exists for this patient
+            existing = conn.execute("""
+                SELECT assignment_id FROM patient_assignments 
+                WHERE patient_id = ? AND assignment_type = 'onboarding' AND status = 'active'
+            """, (patient_id,)).fetchone()
+            
+            if existing:
+                # Update existing assignment
+                conn.execute("""
+                    UPDATE patient_assignments 
+                    SET provider_id = ?, coordinator_id = ?, 
+                        notes = 'Updated from onboarding Stage 5 completion', 
+                        updated_date = datetime('now')
+                    WHERE assignment_id = ?
+                """, (provider_user_id, coordinator_user_id, existing['assignment_id']))
+            else:
+                # Create new assignment
+                conn.execute("""
+                    INSERT INTO patient_assignments (
+                        patient_id, provider_id, coordinator_id, assignment_date, 
+                        assignment_type, status, priority_level, notes, 
+                        created_date, updated_date
+                    ) VALUES (?, ?, ?, datetime('now'), 'onboarding', 'active', 'medium', 
+                             'Assignment created from onboarding Stage 5 completion', 
+                             datetime('now'), datetime('now'))
+                """, (patient_id, provider_user_id, coordinator_user_id))
         
         conn.commit()
         return True
