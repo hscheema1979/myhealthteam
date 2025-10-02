@@ -11,6 +11,7 @@ from src.dashboards.phone_review import show_phone_review_entry
 import pandas as pd
 from src import database
 import numpy as np
+import calendar
 from datetime import datetime, timedelta
 from src.config.ui_style_config import TextStyle, SectionTitles, get_section_title, get_metric_label
 import streamlit as st
@@ -29,11 +30,6 @@ def show(user_id, user_role_ids=None):
     # Check if user has Care Provider Manager role (role_id 38)
     has_cpm_role = 38 in user_role_ids
     
-    # Check if user has billing access (admin@ or harpreet@ emails only)
-    current_user = st.session_state.get('authenticated_user')
-    user_email = current_user.get('email', '') if current_user else ''
-    has_billing_access = user_email.startswith('admin@') or user_email.startswith('harpreet@')
-    
     st.title("Care Provider Dashboard")
     
     # Check for onboarding queue for all care providers
@@ -44,10 +40,7 @@ def show(user_id, user_role_ids=None):
         
         # Create tabs with management functionality for CPM
         if onboarding_queue and len(onboarding_queue) > 0:
-            if has_billing_access:
-                tab1, tab2, tab3, tab4, tab5 = st.tabs(["My Patients", "Team Management", "Onboarding Queue & Initial TV Visits", "Phone Reviews", "Billing Status"])
-            else:
-                tab1, tab2, tab3, tab4 = st.tabs(["My Patients", "Team Management", "Onboarding Queue & Initial TV Visits", "Phone Reviews"])
+            tab1, tab2, tab3, tab4, tab5 = st.tabs(["My Patients", "Team Management", "Onboarding Queue & Initial TV Visits", "Phone Reviews", "Task Review"])
             
             with tab1:
                 show_patient_list_section(user_id, section_id="cpm_patients_with_queue")
@@ -61,14 +54,10 @@ def show(user_id, user_role_ids=None):
             with tab4:
                 show_phone_review_entry(mode="cp", user_id=user_id)
                 
-            if has_billing_access:
-                with tab5:
-                    show_billing_status_section(user_id)
+            with tab5:
+                show_task_review_section(user_id)
         else:
-            if has_billing_access:
-                tab1, tab2, tab3, tab4 = st.tabs(["My Patients", "Team Management", "Phone Reviews", "Billing Status"])
-            else:
-                tab1, tab2, tab3 = st.tabs(["My Patients", "Team Management", "Phone Reviews"])
+            tab1, tab2, tab3, tab4 = st.tabs(["My Patients", "Team Management", "Phone Reviews", "Task Review"])
             
             with tab1:
                 show_patient_list_section(user_id, section_id="cpm_patients_no_queue")
@@ -79,16 +68,12 @@ def show(user_id, user_role_ids=None):
             with tab3:
                 show_phone_review_entry(mode="cp", user_id=user_id)
                 
-            if has_billing_access:
-                with tab4:
-                    show_billing_status_section(user_id)
+            with tab4:
+                show_task_review_section(user_id)
     else:
         # Regular care provider tabs - include onboarding queue if they have assigned patients
         if onboarding_queue and len(onboarding_queue) > 0:
-            if has_billing_access:
-                tab1, tab2, tab3, tab4 = st.tabs(["My Patients", "Onboarding Queue & Initial TV Visits", "Phone Reviews", "Billing Status"])
-            else:
-                tab1, tab2, tab3 = st.tabs(["My Patients", "Onboarding Queue & Initial TV Visits", "Phone Reviews"])
+            tab1, tab2, tab3, tab4 = st.tabs(["My Patients", "Onboarding Queue & Initial TV Visits", "Phone Reviews", "Task Review"])
             
             with tab1:
                 show_patient_list_section(user_id, section_id="cp_patients_with_queue")
@@ -99,14 +84,10 @@ def show(user_id, user_role_ids=None):
             with tab3:
                 show_phone_review_entry(mode="cp", user_id=user_id)
                 
-            if has_billing_access:
-                with tab4:
-                    show_billing_status_section(user_id)
+            with tab4:
+                show_task_review_section(user_id)
         else:
-            if has_billing_access:
-                tab1, tab2, tab3 = st.tabs(["My Patients", "Phone Reviews", "Billing Status"])
-            else:
-                tab1, tab2 = st.tabs(["My Patients", "Phone Reviews"])
+            tab1, tab2, tab3 = st.tabs(["My Patients", "Phone Reviews", "Task Review"])
             
             with tab1:
                 show_patient_list_section(user_id, section_id="cp_patients")
@@ -114,9 +95,8 @@ def show(user_id, user_role_ids=None):
             with tab2:
                 show_phone_review_entry(mode="cp", user_id=user_id)
                 
-            if has_billing_access:
-                with tab3:
-                    show_billing_status_section(user_id)
+            with tab3:
+                show_task_review_section(user_id)
 
 def show_patient_list_section(user_id, section_id=None):
 
@@ -1370,3 +1350,111 @@ def show_billing_status_section(user_id):
     except Exception as e:
         st.error(f"Error loading billing status data: {e}")
         print(f"Billing status error: {e}")
+
+
+def show_task_review_section(user_id):
+    """Display monthly task review for providers with month selection"""
+    try:
+        st.subheader("Task Review")
+        
+        # Get available provider task tables using SQLite syntax
+        conn = database.get_db_connection()
+        try:
+            query = """
+            SELECT name 
+            FROM sqlite_master 
+            WHERE type='table' 
+            AND name LIKE 'provider_tasks_%'
+            ORDER BY name DESC
+            """
+            
+            result = conn.execute(query).fetchall()
+            if not result:
+                st.info("No monthly task tables found.")
+                return
+                
+            # Extract available months from table names
+            available_months = []
+            for row in result:
+                table_name = row[0]
+                # Extract year and month from table name (e.g., provider_tasks_2025_08)
+                parts = table_name.split('_')
+                if len(parts) >= 4:
+                    year = parts[2]
+                    month = parts[3]
+                    try:
+                        month_name = calendar.month_name[int(month)]
+                        display_name = f"{month_name} {year}"
+                        available_months.append((display_name, table_name))
+                    except (ValueError, IndexError):
+                        continue
+            
+            if not available_months:
+                st.info("No valid monthly task tables found.")
+                return
+                
+            # Month selection
+            selected_option = st.selectbox(
+                "Select Month:",
+                available_months,
+                format_func=lambda x: x[0]
+            )
+            
+            if selected_option:
+                selected_display, selected_table = selected_option
+                
+                # Get provider tasks for selected month using SQLite syntax
+                provider_query = f"""
+                SELECT 
+                    patient_name,
+                    task_date,
+                    duration_minutes,
+                    notes,
+                    service_type
+                FROM {selected_table}
+                WHERE user_id = ?
+                ORDER BY task_date DESC
+                """
+                
+                provider_tasks = conn.execute(provider_query, (user_id,)).fetchall()
+                
+                if provider_tasks:
+                    # Convert to DataFrame
+                    df = pd.DataFrame(provider_tasks, columns=['Patient Name', 'DOS', 'Duration', 'Notes', 'Service Type'])
+                    
+                    # Format the DOS column
+                    df['DOS'] = pd.to_datetime(df['DOS']).dt.strftime('%Y-%m-%d')
+                    
+                    # Display summary
+                    total_tasks = len(df)
+                    total_duration = df['Duration'].sum() if 'Duration' in df.columns else 0
+                    
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.metric("Total Tasks", total_tasks)
+                    with col2:
+                        st.metric("Total Duration (minutes)", total_duration)
+                    
+                    # Display the tasks table
+                    st.dataframe(
+                        df,
+                        use_container_width=True,
+                        hide_index=True
+                    )
+                    
+                    # Download option
+                    csv = df.to_csv(index=False)
+                    st.download_button(
+                        label="Download Tasks as CSV",
+                        data=csv,
+                        file_name=f"provider_tasks_{selected_display.replace(' ', '_')}.csv",
+                        mime="text/csv"
+                    )
+                else:
+                    st.info(f"No tasks found for {selected_display}")
+        finally:
+            conn.close()
+                
+    except Exception as e:
+        st.error(f"Error loading task review data: {e}")
+        print(f"Task review error: {e}")

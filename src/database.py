@@ -569,8 +569,8 @@ def save_onboarding_tv_scheduling_progress(onboarding_id, form_data):
                     INSERT OR REPLACE INTO patients (
                         patient_id, first_name, last_name, date_of_birth, phone_primary, email, 
                         address_street, address_city, address_state, address_zip, insurance_primary, insurance_policy_number,
-                        emergency_contact_name, emergency_contact_phone, created_date, updated_date
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+                        emergency_contact_name, emergency_contact_phone, initial_tv_provider, created_date, updated_date
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
                 """, (
                     text_patient_id,
                     patient_info['first_name'],
@@ -585,7 +585,8 @@ def save_onboarding_tv_scheduling_progress(onboarding_id, form_data):
                     patient_info['insurance_provider'],
                     patient_info['policy_number'],
                     patient_info['emergency_contact_name'],
-                    patient_info['emergency_contact_phone']
+                    patient_info['emergency_contact_phone'],
+                    initial_tv_provider
                 ))
                 
                 # 3. Create or update patient assignment in patient_assignments table

@@ -19,14 +19,14 @@ Write-Host "====================================================================
 
 # Change to the sandbox directory
 Write-Host "Changing to sandbox directory..." -ForegroundColor Green
-Set-Location "D:\Git\myhealthteam2\Streamlit\sandbox"
+Set-Location "D:\Git\myhealthteam2\Dev"
 
 # Verify we're in the right place
 $currentPath = Get-Location
 Write-Host "Current directory: $currentPath" -ForegroundColor Green
 
 # Check if app.py exists
-$appPath = "D:\Git\myhealthteam2\Streamlit\sandbox\app.py"
+$appPath = "D:\Git\myhealthteam2\Dev\app.py"
 if (Test-Path $appPath) {
     Write-Host "Found app.py at: $appPath" -ForegroundColor Green
 }

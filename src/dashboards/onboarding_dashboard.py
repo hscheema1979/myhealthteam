@@ -904,6 +904,11 @@ def show_tv_scheduling_form(patient_details, current_user_id):
                         st.success("✅ Progress saved successfully! Your changes have been saved to the database.")
                         # Refresh the patient details to show updated data
                         st.session_state['view_patient_details'] = database.get_onboarding_patient_details(patient_details['onboarding_id'])
+                        # Force queue refresh by setting a flag to reload queue data
+                        st.session_state['force_queue_refresh'] = True
+                        # Small delay to ensure database transaction is fully committed
+                        import time
+                        time.sleep(0.1)
                         st.rerun()
                     else:
                         st.error("❌ Failed to save progress. Please try again.")
@@ -938,6 +943,14 @@ def show():
         
         # Get current onboarding queue
         try:
+            # Check if we need to force refresh the queue data
+            if st.session_state.get('force_queue_refresh', False):
+                # Clear the flag
+                st.session_state['force_queue_refresh'] = False
+                # Add a small delay to ensure database changes are visible
+                import time
+                time.sleep(0.05)
+            
             onboarding_queue = database.get_onboarding_queue()
             
             if onboarding_queue:
