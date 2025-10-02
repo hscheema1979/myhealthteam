@@ -1378,11 +1378,21 @@ def update_onboarding_stage_completion(onboarding_id, stage_number, completed=Tr
     conn = get_db_connection()
     try:
         stage_field = f"stage{stage_number}_complete"
-        conn.execute(f"""
-            UPDATE onboarding_patients 
-            SET {stage_field} = ?, updated_date = datetime('now')
-            WHERE onboarding_id = ?
-        """, (completed, onboarding_id))
+        
+        # If completing stage 5, also set completed_date to mark patient as fully completed
+        if stage_number == 5 and completed:
+            conn.execute(f"""
+                UPDATE onboarding_patients 
+                SET {stage_field} = ?, completed_date = datetime('now'), updated_date = datetime('now')
+                WHERE onboarding_id = ?
+            """, (completed, onboarding_id))
+        else:
+            conn.execute(f"""
+                UPDATE onboarding_patients 
+                SET {stage_field} = ?, updated_date = datetime('now')
+                WHERE onboarding_id = ?
+            """, (completed, onboarding_id))
+        
         conn.commit()
     finally:
         conn.close()
@@ -2663,6 +2673,98 @@ def create_patient_assignment(patient_id, provider_id=None, coordinator_id=None,
         return True
     except Exception as e:
         print(f"Error creating patient assignment: {e}")
+        return False
+    finally:
+        conn.close()
+
+
+def get_provider_billing_summary(provider_id):
+    """Get billing summary for a specific provider from provider_weekly_summary_with_billing"""
+    conn = get_db_connection()
+    try:
+        query = """
+        SELECT 
+            provider_id,
+            provider_name,
+            week_start_date,
+            week_end_date,
+            year,
+            week_number,
+            total_tasks_completed,
+            total_time_spent_minutes,
+            billing_code,
+            billing_code_description,
+            status,
+            paid,
+            created_date,
+            updated_date
+        FROM provider_weekly_summary_with_billing
+        WHERE provider_id = ?
+        ORDER BY year DESC, week_number DESC
+        """
+        
+        df = pd.read_sql_query(query, conn, params=[provider_id])
+        return df
+    except Exception as e:
+        print(f"Error getting provider billing summary: {e}")
+        return pd.DataFrame()
+    finally:
+        conn.close()
+
+
+def get_provider_unbilled_tasks(provider_id):
+    """Get unbilled tasks for a specific provider"""
+    conn = get_db_connection()
+    try:
+        query = """
+        SELECT 
+            provider_task_id,
+            provider_id,
+            provider_name,
+            patient_name,
+            patient_id,
+            task_date,
+            month,
+            year,
+            billing_code,
+            billing_code_description,
+            task_description,
+            minutes_of_service,
+            status,
+            notes
+        FROM provider_tasks
+        WHERE provider_id = ?
+        AND year >= 2024
+        AND (billing_code IS NULL 
+             OR billing_code = '' 
+             OR billing_code = 'Not_Billable'
+             OR billing_code = 'PENDING')
+        ORDER BY task_date DESC
+        """
+        
+        df = pd.read_sql_query(query, conn, params=[provider_id])
+        return df
+    except Exception as e:
+        print(f"Error getting provider unbilled tasks: {e}")
+        return pd.DataFrame()
+    finally:
+        conn.close()
+
+
+def update_billing_status(provider_id, week_start_date, paid_status):
+    """Update the billing status (paid field) for a provider's weekly summary"""
+    conn = get_db_connection()
+    try:
+        conn.execute("""
+            UPDATE provider_weekly_summary_with_billing 
+            SET paid = ?, updated_date = CURRENT_TIMESTAMP
+            WHERE provider_id = ? AND week_start_date = ?
+        """, (paid_status, provider_id, week_start_date))
+        
+        conn.commit()
+        return True
+    except Exception as e:
+        print(f"Error updating billing status: {e}")
         return False
     finally:
         conn.close()

@@ -29,6 +29,11 @@ def show(user_id, user_role_ids=None):
     # Check if user has Care Provider Manager role (role_id 38)
     has_cpm_role = 38 in user_role_ids
     
+    # Check if user has billing access (admin@ or harpreet@ emails only)
+    current_user = st.session_state.get('authenticated_user')
+    user_email = current_user.get('email', '') if current_user else ''
+    has_billing_access = user_email.startswith('admin@') or user_email.startswith('harpreet@')
+    
     st.title("Care Provider Dashboard")
     
     # Check for onboarding queue for all care providers
@@ -39,7 +44,10 @@ def show(user_id, user_role_ids=None):
         
         # Create tabs with management functionality for CPM
         if onboarding_queue and len(onboarding_queue) > 0:
-            tab1, tab2, tab3, tab4 = st.tabs(["My Patients", "Team Management", "Onboarding Queue & Initial TV Visits", "Phone Reviews"])
+            if has_billing_access:
+                tab1, tab2, tab3, tab4, tab5 = st.tabs(["My Patients", "Team Management", "Onboarding Queue & Initial TV Visits", "Phone Reviews", "Billing Status"])
+            else:
+                tab1, tab2, tab3, tab4 = st.tabs(["My Patients", "Team Management", "Onboarding Queue & Initial TV Visits", "Phone Reviews"])
             
             with tab1:
                 show_patient_list_section(user_id, section_id="cpm_patients_with_queue")
@@ -52,8 +60,15 @@ def show(user_id, user_role_ids=None):
                 
             with tab4:
                 show_phone_review_entry(mode="cp", user_id=user_id)
+                
+            if has_billing_access:
+                with tab5:
+                    show_billing_status_section(user_id)
         else:
-            tab1, tab2, tab3 = st.tabs(["My Patients", "Team Management", "Phone Reviews"])
+            if has_billing_access:
+                tab1, tab2, tab3, tab4 = st.tabs(["My Patients", "Team Management", "Phone Reviews", "Billing Status"])
+            else:
+                tab1, tab2, tab3 = st.tabs(["My Patients", "Team Management", "Phone Reviews"])
             
             with tab1:
                 show_patient_list_section(user_id, section_id="cpm_patients_no_queue")
@@ -63,10 +78,17 @@ def show(user_id, user_role_ids=None):
                 
             with tab3:
                 show_phone_review_entry(mode="cp", user_id=user_id)
+                
+            if has_billing_access:
+                with tab4:
+                    show_billing_status_section(user_id)
     else:
         # Regular care provider tabs - include onboarding queue if they have assigned patients
         if onboarding_queue and len(onboarding_queue) > 0:
-            tab1, tab2, tab3 = st.tabs(["My Patients", "Onboarding Queue & Initial TV Visits", "Phone Reviews"])
+            if has_billing_access:
+                tab1, tab2, tab3, tab4 = st.tabs(["My Patients", "Onboarding Queue & Initial TV Visits", "Phone Reviews", "Billing Status"])
+            else:
+                tab1, tab2, tab3 = st.tabs(["My Patients", "Onboarding Queue & Initial TV Visits", "Phone Reviews"])
             
             with tab1:
                 show_patient_list_section(user_id, section_id="cp_patients_with_queue")
@@ -76,14 +98,25 @@ def show(user_id, user_role_ids=None):
                 
             with tab3:
                 show_phone_review_entry(mode="cp", user_id=user_id)
+                
+            if has_billing_access:
+                with tab4:
+                    show_billing_status_section(user_id)
         else:
-            tab1, tab2 = st.tabs(["My Patients", "Phone Reviews"])
+            if has_billing_access:
+                tab1, tab2, tab3 = st.tabs(["My Patients", "Phone Reviews", "Billing Status"])
+            else:
+                tab1, tab2 = st.tabs(["My Patients", "Phone Reviews"])
             
             with tab1:
                 show_patient_list_section(user_id, section_id="cp_patients")
                 
             with tab2:
                 show_phone_review_entry(mode="cp", user_id=user_id)
+                
+            if has_billing_access:
+                with tab3:
+                    show_billing_status_section(user_id)
 
 def show_patient_list_section(user_id, section_id=None):
 
@@ -1211,3 +1244,129 @@ def show_psl_monthly_view(user_id):
     # Original PSL Monthly View implementation commented out.
     pass
 """
+
+
+def show_billing_status_section(user_id):
+    """Display billing status for the provider - Billed vs Not Billed (P00)"""
+    st.markdown(get_section_title("Billing Status - Billed vs Not Billed"), unsafe_allow_html=True)
+    
+    try:
+        # Get billing summary data
+        billing_summary_df = database.get_provider_billing_summary(user_id)
+        unbilled_tasks_df = database.get_provider_unbilled_tasks(user_id)
+        
+        if billing_summary_df.empty and unbilled_tasks_df.empty:
+            st.info("No billing data available for this provider.")
+            return
+        
+        # Summary metrics
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            total_weeks = len(billing_summary_df)
+            st.metric("Total Weeks", total_weeks)
+        
+        with col2:
+            if not billing_summary_df.empty:
+                billed_weeks = len(billing_summary_df[billing_summary_df['paid'] == True])
+                st.metric("Billed Weeks", billed_weeks)
+            else:
+                st.metric("Billed Weeks", 0)
+        
+        with col3:
+            if not billing_summary_df.empty:
+                unbilled_weeks = len(billing_summary_df[billing_summary_df['paid'] == False])
+                st.metric("Unbilled Weeks", unbilled_weeks)
+            else:
+                st.metric("Unbilled Weeks", 0)
+        
+        with col4:
+            if total_weeks > 0:
+                billing_rate = (billed_weeks / total_weeks) * 100
+                st.metric("Billing Rate", f"{billing_rate:.1f}%")
+            else:
+                st.metric("Billing Rate", "0%")
+        
+        # Tabs for different views
+        tab1, tab2 = st.tabs(["Weekly Summary", "Unbilled Tasks"])
+        
+        with tab1:
+            st.markdown("#### Weekly Billing Summary")
+            if not billing_summary_df.empty:
+                # Add status filter
+                status_filter = st.selectbox(
+                    "Filter by Status", 
+                    ["All", "Billed", "Not Billed"], 
+                    key="billing_status_filter"
+                )
+                
+                # Filter data based on selection
+                filtered_df = billing_summary_df.copy()
+                if status_filter == "Billed":
+                    filtered_df = filtered_df[filtered_df['paid'] == True]
+                elif status_filter == "Not Billed":
+                    filtered_df = filtered_df[filtered_df['paid'] == False]
+                
+                # Display data with action buttons
+                if not filtered_df.empty:
+                    for idx, row in filtered_df.iterrows():
+                        col1, col2, col3 = st.columns([3, 1, 1])
+                        
+                        with col1:
+                            billing_status = "Billed" if row['paid'] else "Not Billed"
+                            st.write(f"**Week {row['week_number']}, {row['year']}** ({row['week_start_date']} to {row['week_end_date']})")
+                            st.write(f"Tasks: {row['total_tasks_completed']}, Minutes: {row['total_time_spent_minutes']}, Status: **{billing_status}**")
+                            st.write(f"Billing Code: {row['billing_code']} - {row['billing_code_description']}")
+                        
+                        with col2:
+                            if not row['paid']:
+                                if st.button("Mark as Billed", key=f"bill_{idx}"):
+                                    if database.update_billing_status(user_id, row['week_start_date'], True):
+                                        st.success("Marked as billed!")
+                                        st.rerun()
+                                    else:
+                                        st.error("Failed to update billing status")
+                        
+                        with col3:
+                            if row['paid']:
+                                if st.button("Mark as Unbilled", key=f"unbill_{idx}"):
+                                    if database.update_billing_status(user_id, row['week_start_date'], False):
+                                        st.success("Marked as unbilled!")
+                                        st.rerun()
+                                    else:
+                                        st.error("Failed to update billing status")
+                        
+                        st.divider()
+                else:
+                    st.info(f"No {status_filter.lower()} weeks found.")
+            else:
+                st.info("No weekly billing summary data available.")
+        
+        with tab2:
+            st.markdown("#### Unbilled Tasks")
+            if not unbilled_tasks_df.empty:
+                # Display unbilled tasks
+                display_df = unbilled_tasks_df.copy()
+                display_df['task_date'] = pd.to_datetime(display_df['task_date']).dt.strftime('%Y-%m-%d')
+                
+                # Show summary
+                st.write(f"**Total Unbilled Tasks:** {len(display_df)}")
+                
+                # Display the data
+                columns_to_show = [
+                    'task_date', 'patient_name', 'task_description', 
+                    'minutes_of_service', 'billing_code', 'status'
+                ]
+                
+                available_columns = [col for col in columns_to_show if col in display_df.columns]
+                st.dataframe(
+                    display_df[available_columns],
+                    use_container_width=True,
+                    height=400
+                )
+            else:
+                st.info("No unbilled tasks found.")
+    
+    except Exception as e:
+        st.error(f"Error loading billing status data: {e}")
+        print(f"Billing status error: {e}")

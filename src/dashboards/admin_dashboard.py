@@ -17,77 +17,144 @@ try:
 except ImportError:
     MITO_AVAILABLE = False
 def show():
+    global pd  # Explicitly declare pd as global to prevent UnboundLocalError
     from src.config.ui_style_config import TextStyle
     st.title("Admin Dashboard")
     user_id = st.session_state.get('user_id', None)
 
-    # New tab order: User Role Management, User Management, Staff Onboarding, Coordinator Tasks, Provider Tasks, Patient Info
-    tab_role, tab1, tab_onboard, tab_coord_tasks, tab_prov_tasks, tab3, tab_test = st.tabs([
+    # New tab order: User Role Management, User Management, Staff Onboarding, Coordinator Tasks, Provider Tasks, Patient Info, Billing
+    tab_role, tab1, tab_onboard, tab_coord_tasks, tab_prov_tasks, tab3, tab_billing, tab_test = st.tabs([
         "User Role Management",
         "User Management", 
         "Staff Onboarding",
         "Coordinator Tasks",
         "Provider Tasks",
         "Patient Info",
+        "Billing Report",
         "For Testing"
     ])
     # --- TAB: Coordinator Tasks ---
     with tab_coord_tasks:
         
-        # --- Coordinator Tasks: Total Minutes This Month Header ---
-        # We'll calculate the total from the Coordinator Monthly Summary DataFrame (df_summary)
-        # This is more robust and avoids local variable errors
-        summary_rows = db.get_coordinator_monthly_minutes_live()
-        total_minutes = None
-        if summary_rows:
-            try:
-                import pandas as pd
-                df_summary = pd.DataFrame(summary_rows)
-                if not df_summary.empty and 'total_minutes' in df_summary.columns:
-                    total_minutes = pd.to_numeric(df_summary['total_minutes'], errors='coerce').fillna(0).sum()
-            except Exception as e:
-                st.markdown(f"### Total Minutes This Month: _Error loading summary ({e})_")
-        if total_minutes is not None:
-            st.markdown(f"### Total Minutes This Month: **{int(total_minutes):,}**")
+        # --- Month Selection ---
+        import calendar
+        col1, col2 = st.columns([1, 3])
+        
+        with col1:
+            # Get current date
+            now = pd.Timestamp.now()
+            current_year = int(now.year)
+            current_month = int(now.month)
+            
+            # Get available months from coordinator_tasks tables
+            conn = db.get_db_connection()
+            available_tables = conn.execute("""
+                SELECT name FROM sqlite_master 
+                WHERE type='table' AND name LIKE 'coordinator_tasks_20%'
+                ORDER BY name DESC
+            """).fetchall()
+            conn.close()
+            
+            available_months = []
+            for table in available_tables:
+                table_name = table[0]
+                try:
+                    # Extract year and month from table name (coordinator_tasks_YYYY_MM)
+                    parts = table_name.split('_')
+                    if len(parts) >= 3:
+                        year = int(parts[2])
+                        month = int(parts[3])
+                        available_months.append((year, month))
+                except:
+                    continue
+            
+            # Sort by year, month descending (most recent first)
+            available_months.sort(reverse=True)
+            
+            # Create month options for selectbox
+            month_options = []
+            month_values = []
+            for year, month in available_months:
+                month_name = calendar.month_name[month]
+                option_text = f"{month_name} {year}"
+                month_options.append(option_text)
+                month_values.append((year, month))
+            
+            # Default to current month if available, otherwise first available
+            default_index = 0
+            for i, (year, month) in enumerate(month_values):
+                if year == current_year and month == current_month:
+                    default_index = i
+                    break
+            
+            if month_options:
+                selected_month_text = st.selectbox(
+                    "Select Month:",
+                    options=month_options,
+                    index=default_index
+                )
+                selected_year, selected_month = month_values[month_options.index(selected_month_text)]
+            else:
+                st.warning("No coordinator tasks data available")
+                selected_year, selected_month = current_year, current_month
+        
+        with col2:
+            st.markdown(f"### Coordinator Tasks - {calendar.month_name[selected_month]} {selected_year}")
+        
+        # --- Coordinator Tasks: Total Minutes Selected Month Header ---
+        table_name = f"coordinator_tasks_{selected_year}_{selected_month:02d}"
+        conn = db.get_db_connection()
+        table_exists = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table_name,)).fetchone()
+        
+        if table_exists:
+            total_minutes_query = f"SELECT SUM(duration_minutes) as total FROM {table_name} WHERE duration_minutes IS NOT NULL"
+            total_result = conn.execute(total_minutes_query).fetchone()
+            total_minutes = total_result[0] if total_result and total_result[0] else 0
+            st.markdown(f"### Total Minutes {calendar.month_name[selected_month]} {selected_year}: **{int(total_minutes):,}**")
         else:
-            st.markdown("### Total Minutes This Month: _No data available_")
+            st.markdown(f"### Total Minutes {calendar.month_name[selected_month]} {selected_year}: _No data available_")
+        
+        conn.close()
         # --- Patient and Coordinator Monthly Summary Tables Side-by-Side ---
         st.divider()
         col_patient, col_coord = st.columns(2)
         with col_patient:
-            st.subheader("Patient Monthly Summary (Current Month)")
+            st.subheader(f"Patient Monthly Summary ({calendar.month_name[selected_month]} {selected_year})")
             try:
-                import sqlite3
-                import pandas as pd
-                conn = db.get_db_connection()
-                now = pd.Timestamp.now()
-                year = int(now.year)
-                month = int(now.month)
-                table_name = f"coordinator_monthly_summary_{year}_{str(month).zfill(2)}"
-                table_exists = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table_name,)).fetchone()
-                if not table_exists:
-                    st.info(f"No coordinator monthly summary table found for current month ({table_name}).")
-                else:
-                    summary_df = pd.read_sql_query(f"SELECT * FROM {table_name}", conn)
+                if table_exists:
+                    conn = db.get_db_connection()
+                    
+                    # Get patient data with billing codes for selected month
+                    patient_query = f"""
+                    SELECT 
+                        p.patient_id,
+                        (p.first_name || ' ' || p.last_name) as patient_name,
+                        ct.task_type as billing_code,
+                        SUM(ct.duration_minutes) as total_minutes
+                    FROM {table_name} ct
+                    JOIN patients p ON ct.patient_id = p.patient_id
+                    WHERE ct.duration_minutes IS NOT NULL
+                    GROUP BY p.patient_id, p.first_name, p.last_name, ct.task_type
+                    ORDER BY p.patient_id, ct.task_type
+                    """
+                    
+                    patient_rows = conn.execute(patient_query).fetchall()
                     conn.close()
-                    if summary_df.empty or 'patient_id' not in summary_df.columns or 'total_minutes' not in summary_df.columns:
-                        st.info("No patient summary data available for the current month.")
-                    else:
-                        # Use centralized patient data aggregation functions
-                        from src.core_utils import aggregate_patient_data_by_patient_id, prepare_patient_summary_with_facility_mapping
+                    
+                    if patient_rows:
+                        df_patients = pd.DataFrame(patient_rows, columns=[
+                            'patient_id', 'patient_name', 'billing_code', 'total_minutes'
+                        ])
                         
-                        # Aggregate patient data by patient_id to avoid coordinator-patient duplicates
-                        aggregated_df = aggregate_patient_data_by_patient_id(summary_df)
+                        # Ensure total_minutes is numeric
+                        df_patients['total_minutes'] = pd.to_numeric(df_patients['total_minutes'], errors='coerce').fillna(0)
                         
-                        # Prepare summary DataFrame with patient names and facility mapping
-                        summary_df = prepare_patient_summary_with_facility_mapping(aggregated_df, db)
-                        st.write("Sorted by Sum of Minutes (lowest → highest):")
-
-                        # Partition into sections to reduce scrolling: red (<40), yellow (40-89), green/blue (>=90)
-                        red_df = summary_df[summary_df['Sum of Minutes'] < 40].copy()
-                        yellow_df = summary_df[(summary_df['Sum of Minutes'] >= 40) & (summary_df['Sum of Minutes'] < 90)].copy()
-                        greenblue_df = summary_df[summary_df['Sum of Minutes'] >= 90].copy()
-
+                        # Create patient totals (sum across all billing codes)
+                        patient_totals = df_patients.groupby(['patient_id', 'patient_name'])['total_minutes'].sum().reset_index()
+                        patient_totals = patient_totals.sort_values('total_minutes', ascending=True)  # lowest to highest
+                        patient_totals.rename(columns={'total_minutes': 'Sum of Minutes'}, inplace=True)
+                        
+                        # Color coding function
                         def _color_minutes(val):
                             try:
                                 v = float(val)
@@ -101,7 +168,14 @@ def show():
                                 return 'background-color: #90be6d; color: black'
                             else:
                                 return 'background-color: #89C2E0; color: black'
-
+                        
+                        # Partition into sections
+                        red_df = patient_totals[patient_totals['Sum of Minutes'] < 40].copy()
+                        yellow_df = patient_totals[(patient_totals['Sum of Minutes'] >= 40) & (patient_totals['Sum of Minutes'] < 90)].copy()
+                        greenblue_df = patient_totals[patient_totals['Sum of Minutes'] >= 90].copy()
+                        
+                        st.write("Sorted by Sum of Minutes (lowest → highest):")
+                        
                         with st.expander(f"Red (<40 minutes) — {len(red_df)} patients", expanded=(len(red_df) > 0 and len(red_df) <= 10)):
                             if red_df.empty:
                                 st.info("No patients in this category.")
@@ -131,190 +205,197 @@ def show():
                                     st.dataframe(styled, use_container_width=True)
                                 except Exception:
                                     st.dataframe(greenblue_df, use_container_width=True)
+                        
+                        # Add billing code breakdown section
+                        st.markdown("---")
+                        st.markdown("**Billing Code Breakdown:**")
+                        
+                        # Show detailed breakdown by billing code
+                        df_billing_display = df_patients[['patient_name', 'billing_code', 'total_minutes']].copy()
+                        df_billing_display.rename(columns={
+                            'patient_name': 'Patient Name',
+                            'billing_code': 'Billing Code',
+                            'total_minutes': 'Total Minutes'
+                        }, inplace=True)
+                        
+                        st.dataframe(df_billing_display, use_container_width=True)
+                        
+                    else:
+                        st.info("No patient data available for this month.")
+                else:
+                    st.info("No patient data available for this month.")
             except Exception as e:
                 st.error(f"Error loading patient monthly summary: {e}")
         with col_coord:
-            st.subheader("Coordinator Monthly Summary (Current Month)")
+            st.subheader(f"Coordinator Monthly Summary ({calendar.month_name[selected_month]} {selected_year})")
             try:
-                # Use live aggregation from database helper
-                summary_rows = db.get_coordinator_monthly_minutes_live()
-                if not summary_rows:
-                    st.info("No coordinator summary data available for the current month.")
-                else:
-                    import pandas as pd
-                    df_summary = pd.DataFrame(summary_rows)
-
-                    # Try to get coordinator names from the tasks table first (some tables include coordinator_name)
+                if table_exists:
                     conn = db.get_db_connection()
-                    now = pd.Timestamp.now()
-                    year = now.year
-                    month = now.month
-                    table_name = f"coordinator_tasks_{year}_{str(month).zfill(2)}"
-                    table_exists = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table_name,)).fetchone()
-                    id_to_name = {}
-                    def _safe_key(val):
-                        try:
-                            if pd.isna(val):
-                                return None
-                            return str(int(val))
-                        except Exception:
-                            return str(val)
+                    
+                    # Get coordinator summary for selected month
+                    coordinator_query = f"""
+                    SELECT 
+                        ct.coordinator_id,
+                        SUM(ct.duration_minutes) as total_minutes
+                    FROM {table_name} ct
+                    WHERE ct.duration_minutes IS NOT NULL
+                    GROUP BY ct.coordinator_id
+                    ORDER BY total_minutes ASC
+                    """
+                    
+                    coordinator_rows = conn.execute(coordinator_query).fetchall()
+                    
+                    if coordinator_rows:
+                        df_summary = pd.DataFrame(coordinator_rows, columns=['coordinator_id', 'total_minutes'])
+                        
+                        # Get coordinator names
+                        id_to_name = {}
+                        def _safe_key(val):
+                            try:
+                                if pd.isna(val):
+                                    return None
+                                return str(int(val))
+                            except Exception:
+                                return str(val)
 
-                    if table_exists:
+                        # Try to get coordinator names from the tasks table first
                         try:
-                            tasks_df = pd.read_sql_query(f"SELECT * FROM {table_name}", conn)
-                            if 'coordinator_name' in tasks_df.columns:
-                                mapping = tasks_df[['coordinator_id', 'coordinator_name']].dropna().drop_duplicates('coordinator_id')
+                            tasks_df = pd.read_sql_query(f"SELECT coordinator_id, coordinator_name FROM {table_name} WHERE coordinator_name IS NOT NULL", conn)
+                            if not tasks_df.empty:
+                                mapping = tasks_df.drop_duplicates('coordinator_id')
                                 for _, row in mapping.iterrows():
                                     key = _safe_key(row['coordinator_id'])
                                     if key:
                                         id_to_name[key] = row['coordinator_name']
                         except Exception:
-                            # ignore and fallback to users table
                             pass
-                    conn.close()
+                        
+                        conn.close()
 
-                    # Fallback to users table for coordinators
-                    if not id_to_name:
-                        coordinators = db.get_users_by_role(36)
-                        for c in coordinators:
-                            uid = c.get('user_id')
-                            if uid is None:
-                                continue
-                            id_to_name[_safe_key(uid)] = c.get('full_name', c.get('username', 'Unknown'))
+                        # Fallback to users table for coordinators
+                        if not id_to_name:
+                            coordinators = db.get_users_by_role(36)
+                            for c in coordinators:
+                                uid = c.get('user_id')
+                                if uid is None:
+                                    continue
+                                id_to_name[_safe_key(uid)] = c.get('full_name', c.get('username', 'Unknown'))
 
-                    # Normalize coordinator id keys and map
-                    df_summary['coord_key'] = df_summary['coordinator_id'].apply(lambda x: _safe_key(x) if pd.notna(x) else None)
-                    df_summary['Coordinator'] = df_summary['coord_key'].map(id_to_name).fillna(df_summary['coord_key'])
-                    df_summary = df_summary[['Coordinator', 'total_minutes']]
-                    df_summary = df_summary.rename(columns={'total_minutes': 'Sum of Minutes'})
-                    df_summary = df_summary.sort_values('Sum of Minutes', ascending=True)
-                    st.write("Sorted by Sum of Minutes (lowest → highest):")
-                    st.dataframe(df_summary, use_container_width=True)
+                        # Map coordinator names
+                        df_summary['coord_key'] = df_summary['coordinator_id'].apply(lambda x: _safe_key(x) if pd.notna(x) else None)
+                        df_summary['Coordinator'] = df_summary['coord_key'].map(id_to_name).fillna(df_summary['coord_key'])
+                        df_summary = df_summary[['Coordinator', 'total_minutes']]
+                        df_summary = df_summary.rename(columns={'total_minutes': 'Sum of Minutes'})
+                        df_summary = df_summary.sort_values('Sum of Minutes', ascending=True)
+                        st.write("Sorted by Sum of Minutes (lowest → highest):")
+                        st.dataframe(df_summary, use_container_width=True)
+                    else:
+                        st.info("No coordinator summary data available for this month.")
+                else:
+                    st.info("No coordinator summary data available for this month.")
             except Exception as e:
                 st.error(f"Error loading coordinator monthly summary: {e}")
-            st.subheader("Coordinator Tasks Table (Editable, Filterable, Sortable)")
+            st.subheader(f"Coordinator Tasks Table - {calendar.month_name[selected_month]} {selected_year} (Editable, Filterable, Sortable)")
         try:
-            import datetime
-            conn = db.get_db_connection()
-            # List all tables matching coordinator_task_YYYY_MM
-            table_query = "SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'coordinator_task_%' ORDER BY name DESC"
-            all_table_names = [row[0] for row in conn.execute(table_query).fetchall()]
-            conn.close()
-
-            # Compute current, last, and month before last table names
-            today = datetime.date.today()
-            months = []
-            for i in range(3):
-                year = today.year
-                month = today.month - i
-                while month <= 0:
-                    month += 12
-                    year -= 1
-                months.append((year, month))
-            valid_table_names = [f"coordinator_tasks_{y}_{str(m).zfill(2)}" for y, m in months]
-            # Only show tables that exist and are in the valid set
-            table_names = [t for t in valid_table_names if t in all_table_names]
-
-            if not table_names:
-                st.info("No coordinator task tables found for the last three months.")
-            else:
-                # --- FILTERS: Side-by-side layout (table selection integrated here) ---
-                filter_cols = st.columns(3)
-                with filter_cols[0]:
-                    st.markdown("**Monthly File**")
-                    selected_table = st.selectbox("Select Monthly File", table_names, key="monthly_file_selector")
+            # Use the selected month from above
+            selected_table = table_name  # This is already defined from the month selection above
+            
+            if table_exists:
                 # Load the selected table for filtering and display
-                if selected_table:
-                    conn = db.get_db_connection()
-                    df = pd.read_sql_query(f"SELECT * FROM {selected_table}", conn)
-                    # If patient_id is present, join with patients table for patient info
-                    if 'patient_id' in df.columns:
-                        try:
-                            patients = db.get_all_patients() if hasattr(db, 'get_all_patients') else []
-                            patients_df = pd.DataFrame(patients)
-                            required_cols = {'patient_id', 'first_name', 'last_name', 'dob'}
-                            if not patients_df.empty and required_cols.issubset(patients_df.columns):
-                                df = df.merge(
-                                    patients_df[['patient_id', 'first_name', 'last_name', 'dob']],
-                                    on='patient_id', how='left'
-                                )
-                                # Move patient info columns to front
-                                first_cols = [col for col in ['last_name', 'first_name', 'dob'] if col in df.columns]
-                                other_cols = [c for c in df.columns if c not in first_cols]
-                                df = df[first_cols + other_cols]
-                        except Exception as e:
-                            st.warning(f"Could not join patient info: {e}")
-                    conn.close()
-                    # Ensure coordinator_name is present
-                    if 'coordinator_name' not in df.columns:
-                        # Try to build mapping from coordinator_id to name
-                        id_to_name = {}
-                        # First, try from the tasks table itself
-                        if 'coordinator_id' in df.columns:
-                            # If coordinator_name is present in any row, use it
-                            if 'coordinator_name' in df.columns:
-                                mapping = df[['coordinator_id', 'coordinator_name']].dropna().drop_duplicates('coordinator_id')
-                                for _, row in mapping.iterrows():
-                                    key = str(row['coordinator_id'])
-                                    id_to_name[key] = row['coordinator_name']
-                            # Otherwise, fallback to users table
-                            if not id_to_name:
-                                coordinators = db.get_users_by_role(36) if hasattr(db, 'get_users_by_role') else []
-                                for c in coordinators:
-                                    uid = c.get('user_id')
-                                    name = c.get('full_name', c.get('username', 'Unknown'))
-                                    if uid is not None:
-                                        id_to_name[str(uid)] = name
-                            # Add coordinator_name column
-                            df['coordinator_name'] = df['coordinator_id'].apply(lambda x: id_to_name.get(str(x), str(x)) if pd.notna(x) else None)
+                conn = db.get_db_connection()
+                df = pd.read_sql_query(f"SELECT * FROM {selected_table}", conn)
+                # If patient_id is present, join with patients table for patient info
+                if 'patient_id' in df.columns:
+                    try:
+                        patients = db.get_all_patients() if hasattr(db, 'get_all_patients') else []
+                        patients_df = pd.DataFrame(patients)
+                        required_cols = {'patient_id', 'first_name', 'last_name', 'dob'}
+                        if not patients_df.empty and required_cols.issubset(patients_df.columns):
+                            df = df.merge(
+                                patients_df[['patient_id', 'first_name', 'last_name', 'dob']],
+                                on='patient_id', how='left'
+                            )
+                            # Move patient info columns to front
+                            first_cols = [col for col in ['last_name', 'first_name', 'dob'] if col in df.columns]
+                            other_cols = [c for c in df.columns if c not in first_cols]
+                            df = df[first_cols + other_cols]
+                    except Exception as e:
+                        st.warning(f"Could not join patient info: {e}")
+                
+                conn.close()
+                
+                # Ensure coordinator_name is present
+                if 'coordinator_name' not in df.columns:
+                    # Try to build mapping from coordinator_id to name
+                    id_to_name = {}
+                    # First, try from the tasks table itself
+                    if 'coordinator_id' in df.columns:
+                        # If coordinator_name is present in any row, use it
+                        if 'coordinator_name' in df.columns:
+                            mapping = df[['coordinator_id', 'coordinator_name']].dropna().drop_duplicates('coordinator_id')
+                            for _, row in mapping.iterrows():
+                                key = str(row['coordinator_id'])
+                                id_to_name[key] = row['coordinator_name']
+                        # Otherwise, fallback to users table
+                        if not id_to_name:
+                            coordinators = db.get_users_by_role(36) if hasattr(db, 'get_users_by_role') else []
+                            for c in coordinators:
+                                uid = c.get('user_id')
+                                name = c.get('full_name', c.get('username', 'Unknown'))
+                                if uid is not None:
+                                    id_to_name[str(uid)] = name
+                        # Add coordinator_name column
+                        df['coordinator_name'] = df['coordinator_id'].apply(lambda x: id_to_name.get(str(x), str(x)) if pd.notna(x) else None)
 
-                    with filter_cols[1]:
-                        st.markdown("**Coordinator Name**")
-                        coord_names = sorted(df['coordinator_name'].dropna().unique()) if 'coordinator_name' in df.columns else []
-                        selected_coord = st.selectbox("", ["All"] + coord_names, key="coord_name_selector")
-                    with filter_cols[2]:
-                        st.markdown("**Patient**")
-                        if 'Patient Name' in df.columns:
-                            patient_display = df[['patient_id', 'Patient Name']].drop_duplicates().dropna()
-                            patient_options = [f"{row['Patient Name']} ({row['patient_id']})" for _, row in patient_display.iterrows()]
-                            patient_map = {f"{row['Patient Name']} ({row['patient_id']})": row['patient_id'] for _, row in patient_display.iterrows()}
-                        elif 'patient_name' in df.columns:
-                            patient_display = df[['patient_id', 'patient_name']].drop_duplicates().dropna()
-                            patient_options = [f"{row['patient_name']} ({row['patient_id']})" for _, row in patient_display.iterrows()]
-                            patient_map = {f"{row['patient_name']} ({row['patient_id']})": row['patient_id'] for _, row in patient_display.iterrows()}
-                        else:
-                            patient_options = [str(pid) for pid in sorted(df['patient_id'].dropna().unique())] if 'patient_id' in df.columns else []
-                            patient_map = {str(pid): pid for pid in patient_options}
-                        selected_patient = st.selectbox("", ["All"] + patient_options, key="patient_selector")
-
-                    # Apply filters
-                    filtered_df = df.copy()
-                    if selected_coord != "All":
-                        filtered_df = filtered_df[filtered_df['coordinator_name'] == selected_coord]
-                    if selected_patient != "All":
-                        filtered_df = filtered_df[filtered_df['patient_id'] == patient_map[selected_patient]]
-
-                    if not filtered_df.empty:
-                        # Only show a fixed set of columns, no dropdown for selection
-                        # Move coordinator_name to the leftmost column
-                        preferred_order = [
-                            'coordinator_name', 'status', 'patient_id', 'patient_name', 'patient_full_name', 'first_name', 'last_name', 'dob',
-                            'task_type', 'duration_minutes', 'date', 'notes', 'Patient Name'
-                        ]
-                        show_cols = [col for col in preferred_order if col in filtered_df.columns]
-                        # Prefer patient_name/full_name, else first_name + last_name
-                        if 'patient_name' in show_cols:
-                            pass
-                        elif 'patient_full_name' in show_cols:
-                            pass
-                        elif 'first_name' in show_cols and 'last_name' in show_cols:
-                            # Combine first_name and last_name into a single column
-                            filtered_df['Patient Name'] = filtered_df['first_name'].fillna('') + ' ' + filtered_df['last_name'].fillna('')
-                            show_cols.append('Patient Name')
-                        st.data_editor(filtered_df[show_cols], use_container_width=True, num_rows="dynamic", height=700)
+                # Create filter columns
+                filter_cols = st.columns(3)
+                
+                with filter_cols[1]:
+                    st.markdown("**Coordinator Name**")
+                    coord_names = sorted(df['coordinator_name'].dropna().unique()) if 'coordinator_name' in df.columns else []
+                    selected_coord = st.selectbox("", ["All"] + coord_names, key="coord_name_selector")
+                with filter_cols[2]:
+                    st.markdown("**Patient**")
+                    if 'Patient Name' in df.columns:
+                        patient_display = df[['patient_id', 'Patient Name']].drop_duplicates().dropna()
+                        patient_options = [f"{row['Patient Name']} ({row['patient_id']})" for _, row in patient_display.iterrows()]
+                        patient_map = {f"{row['Patient Name']} ({row['patient_id']})": row['patient_id'] for _, row in patient_display.iterrows()}
+                    elif 'patient_name' in df.columns:
+                        patient_display = df[['patient_id', 'patient_name']].drop_duplicates().dropna()
+                        patient_options = [f"{row['patient_name']} ({row['patient_id']})" for _, row in patient_display.iterrows()]
+                        patient_map = {f"{row['patient_name']} ({row['patient_id']})": row['patient_id'] for _, row in patient_display.iterrows()}
                     else:
-                        st.info(f"No data in table {selected_table} after filtering.")
+                        patient_options = [str(pid) for pid in sorted(df['patient_id'].dropna().unique())] if 'patient_id' in df.columns else []
+                        patient_map = {str(pid): pid for pid in patient_options}
+                    selected_patient = st.selectbox("", ["All"] + patient_options, key="patient_selector")
+
+                # Apply filters
+                filtered_df = df.copy()
+                if selected_coord != "All":
+                    filtered_df = filtered_df[filtered_df['coordinator_name'] == selected_coord]
+                if selected_patient != "All":
+                    filtered_df = filtered_df[filtered_df['patient_id'] == patient_map[selected_patient]]
+
+                if not filtered_df.empty:
+                    # Only show a fixed set of columns, no dropdown for selection
+                    # Move coordinator_name to the leftmost column
+                    preferred_order = [
+                        'coordinator_name', 'status', 'patient_id', 'patient_name', 'patient_full_name', 'first_name', 'last_name', 'dob',
+                        'task_type', 'duration_minutes', 'date', 'notes', 'Patient Name'
+                    ]
+                    show_cols = [col for col in preferred_order if col in filtered_df.columns]
+                    # Prefer patient_name/full_name, else first_name + last_name
+                    if 'patient_name' in show_cols:
+                        pass
+                    elif 'patient_full_name' in show_cols:
+                        pass
+                    elif 'first_name' in show_cols and 'last_name' in show_cols:
+                        # Combine first_name and last_name into a single column
+                        filtered_df['Patient Name'] = filtered_df['first_name'].fillna('') + ' ' + filtered_df['last_name'].fillna('')
+                        show_cols.append('Patient Name')
+                    st.data_editor(filtered_df[show_cols], use_container_width=True, num_rows="dynamic", height=700)
+                else:
+                    st.info(f"No data in table {selected_table} after filtering.")
         except Exception as e:
             st.error(f"Error loading coordinator tasks: {e}")
 
@@ -1019,6 +1100,44 @@ def show():
                         st.info("No inactive patients found.")
         except Exception as e:
             st.error(f"Error loading patient data: {e}")
+
+    # --- TAB: Billing Report ---
+    with tab_billing:
+        # Check if user has access to billing dashboard (only admin@ and harpreet@ users)
+        current_user = st.session_state.get('authenticated_user')
+        user_email = current_user.get('email', '') if current_user else ''
+        
+        # Allow access only to admin@ and harpreet@ email addresses
+        if user_email.startswith('admin@') or user_email.startswith('harpreet@'):
+            # Create sub-tabs for different billing views
+            billing_tab1, billing_tab2 = st.tabs(["Monthly Billing (Coordinators)", "Weekly Billing (Providers)"])
+            
+            with billing_tab1:
+                st.subheader("Monthly Coordinator Billing")
+                st.markdown("Track coordinator billing by month using patient minutes and billing codes")
+                try:
+                    from src.dashboards.monthly_coordinator_billing_dashboard import display_monthly_coordinator_billing_dashboard
+                    display_monthly_coordinator_billing_dashboard()
+                except Exception as e:
+                    st.error(f"Error loading monthly coordinator billing dashboard: {e}")
+                    st.info("Please ensure the monthly coordinator billing dashboard module is properly configured.")
+            
+            with billing_tab2:
+                st.subheader("Weekly Provider Billing (P00)")
+                st.markdown("Track provider billing by week using provider tasks and billing status")
+                try:
+                    from src.dashboards.weekly_billing_dashboard import display_weekly_billing_dashboard
+                    display_weekly_billing_dashboard()
+                except Exception as e:
+                    st.error(f"Error loading weekly provider billing dashboard: {e}")
+                    st.info("Please ensure the weekly provider billing dashboard module is properly configured.")
+        else:
+            st.warning("Access Restricted")
+            st.info("Billing dashboard access is restricted to authorized users only.")
+            st.markdown("---")
+            st.markdown("**Contact Information:**")
+            st.markdown("- For billing access requests, please contact your system administrator")
+            st.markdown("- Current user email: `{}`".format(user_email if user_email else "Not available"))
 
     # --- TAB: For Testing ---
     with tab_test:

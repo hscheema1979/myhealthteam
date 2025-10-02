@@ -1,0 +1,2847 @@
+{
+  "test_metadata": {
+    "start_time": "2025-10-01T13:18:47.205571",
+    "end_time": "2025-10-01T13:23:32.596006",
+    "test_user": "dianela@myhealthteam.org",
+    "database_path": "production.db",
+    "test_iterations": 5
+  },
+  "test_results": {
+    "workflow_tests": [
+      {
+        "template_id": 7,
+        "template_name": "DME REFERRAL",
+        "iterations": [
+          {
+            "template_id": 7,
+            "template_name": "DME REFERRAL",
+            "iteration": 1,
+            "patient_id": "PASTION PERRY 07/13/1955",
+            "status": "FAILED",
+            "instance_id": 31,
+            "steps_completed": 0,
+            "total_steps": 3,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 34,
+                "step_name": "Send dme referral order, confirm receipt",
+                "owner": "CC",
+                "status": "ERROR",
+                "duration_seconds": 2.0056865215301514,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:18:47.257063",
+            "end_time": "2025-10-01T13:18:49.276577",
+            "duration_seconds": 2.0195062160491943
+          },
+          {
+            "template_id": 7,
+            "template_name": "DME REFERRAL",
+            "iteration": 2,
+            "patient_id": "LARSON JENNIFER 03/01/1946",
+            "status": "FAILED",
+            "instance_id": 32,
+            "steps_completed": 0,
+            "total_steps": 3,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 34,
+                "step_name": "Send dme referral order, confirm receipt",
+                "owner": "CC",
+                "status": "ERROR",
+                "duration_seconds": 2.005570650100708,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:18:51.277749",
+            "end_time": "2025-10-01T13:18:53.305401",
+            "duration_seconds": 2.027637243270874
+          },
+          {
+            "template_id": 7,
+            "template_name": "DME REFERRAL",
+            "iteration": 3,
+            "patient_id": "VAZQUEZ ARTURO 11/08/1947",
+            "status": "FAILED",
+            "instance_id": 33,
+            "steps_completed": 0,
+            "total_steps": 3,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 34,
+                "step_name": "Send dme referral order, confirm receipt",
+                "owner": "CC",
+                "status": "ERROR",
+                "duration_seconds": 2.007493734359741,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:18:55.306174",
+            "end_time": "2025-10-01T13:18:57.335455",
+            "duration_seconds": 2.0292677879333496
+          },
+          {
+            "template_id": 7,
+            "template_name": "DME REFERRAL",
+            "iteration": 4,
+            "patient_id": "CHOW SHUET 05/19/1932",
+            "status": "FAILED",
+            "instance_id": 34,
+            "steps_completed": 0,
+            "total_steps": 3,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 34,
+                "step_name": "Send dme referral order, confirm receipt",
+                "owner": "CC",
+                "status": "ERROR",
+                "duration_seconds": 2.006028413772583,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:18:59.336073",
+            "end_time": "2025-10-01T13:19:01.363570",
+            "duration_seconds": 2.0274839401245117
+          },
+          {
+            "template_id": 7,
+            "template_name": "DME REFERRAL",
+            "iteration": 5,
+            "patient_id": "ZAMORA GUZMAN MARIA 06/26/1943",
+            "status": "FAILED",
+            "instance_id": 35,
+            "steps_completed": 0,
+            "total_steps": 3,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 34,
+                "step_name": "Send dme referral order, confirm receipt",
+                "owner": "CC",
+                "status": "ERROR",
+                "duration_seconds": 2.0058822631835938,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:19:03.363986",
+            "end_time": "2025-10-01T13:19:05.395251",
+            "duration_seconds": 2.031247138977051
+          }
+        ],
+        "summary": {
+          "total_iterations": 5,
+          "completed": 0,
+          "partial": 0,
+          "failed": 5,
+          "success_rate": 0.0,
+          "average_duration_seconds": 2.027028465270996,
+          "average_steps_completed": 0.0
+        }
+      },
+      {
+        "template_id": 8,
+        "template_name": "HHC REFERRAL",
+        "iterations": [
+          {
+            "template_id": 8,
+            "template_name": "HHC REFERRAL",
+            "iteration": 1,
+            "patient_id": "PASTION PERRY 07/13/1955",
+            "status": "FAILED",
+            "instance_id": 36,
+            "steps_completed": 0,
+            "total_steps": 2,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 37,
+                "step_name": "Send hhc referral order, confirm receipt",
+                "owner": "CC",
+                "status": "ERROR",
+                "duration_seconds": 2.00581693649292,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:19:07.395606",
+            "end_time": "2025-10-01T13:19:09.422873",
+            "duration_seconds": 2.027249813079834
+          },
+          {
+            "template_id": 8,
+            "template_name": "HHC REFERRAL",
+            "iteration": 2,
+            "patient_id": "LARSON JENNIFER 03/01/1946",
+            "status": "FAILED",
+            "instance_id": 37,
+            "steps_completed": 0,
+            "total_steps": 2,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 37,
+                "step_name": "Send hhc referral order, confirm receipt",
+                "owner": "CC",
+                "status": "ERROR",
+                "duration_seconds": 2.005554437637329,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:19:11.423396",
+            "end_time": "2025-10-01T13:19:13.450178",
+            "duration_seconds": 2.026768922805786
+          },
+          {
+            "template_id": 8,
+            "template_name": "HHC REFERRAL",
+            "iteration": 3,
+            "patient_id": "VAZQUEZ ARTURO 11/08/1947",
+            "status": "FAILED",
+            "instance_id": 38,
+            "steps_completed": 0,
+            "total_steps": 2,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 37,
+                "step_name": "Send hhc referral order, confirm receipt",
+                "owner": "CC",
+                "status": "ERROR",
+                "duration_seconds": 2.007841110229492,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:19:15.450908",
+            "end_time": "2025-10-01T13:19:17.480267",
+            "duration_seconds": 2.029344320297241
+          },
+          {
+            "template_id": 8,
+            "template_name": "HHC REFERRAL",
+            "iteration": 4,
+            "patient_id": "CHOW SHUET 05/19/1932",
+            "status": "FAILED",
+            "instance_id": 39,
+            "steps_completed": 0,
+            "total_steps": 2,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 37,
+                "step_name": "Send hhc referral order, confirm receipt",
+                "owner": "CC",
+                "status": "ERROR",
+                "duration_seconds": 2.0054688453674316,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:19:19.481062",
+            "end_time": "2025-10-01T13:19:21.511246",
+            "duration_seconds": 2.030165433883667
+          },
+          {
+            "template_id": 8,
+            "template_name": "HHC REFERRAL",
+            "iteration": 5,
+            "patient_id": "ZAMORA GUZMAN MARIA 06/26/1943",
+            "status": "FAILED",
+            "instance_id": 40,
+            "steps_completed": 0,
+            "total_steps": 2,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 37,
+                "step_name": "Send hhc referral order, confirm receipt",
+                "owner": "CC",
+                "status": "ERROR",
+                "duration_seconds": 2.0062038898468018,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:19:23.511845",
+            "end_time": "2025-10-01T13:19:25.542587",
+            "duration_seconds": 2.030728340148926
+          }
+        ],
+        "summary": {
+          "total_iterations": 5,
+          "completed": 0,
+          "partial": 0,
+          "failed": 5,
+          "success_rate": 0.0,
+          "average_duration_seconds": 2.028851366043091,
+          "average_steps_completed": 0.0
+        }
+      },
+      {
+        "template_id": 6,
+        "template_name": "IMAGING FUTURE",
+        "iterations": [
+          {
+            "template_id": 6,
+            "template_name": "IMAGING FUTURE",
+            "iteration": 1,
+            "patient_id": "PASTION PERRY 07/13/1955",
+            "status": "FAILED",
+            "instance_id": 41,
+            "steps_completed": 0,
+            "total_steps": 5,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 29,
+                "step_name": "Send imaging order, confirm receipt",
+                "owner": "CC",
+                "status": "ERROR",
+                "duration_seconds": 2.0058350563049316,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:19:27.543543",
+            "end_time": "2025-10-01T13:19:29.574077",
+            "duration_seconds": 2.03052020072937
+          },
+          {
+            "template_id": 6,
+            "template_name": "IMAGING FUTURE",
+            "iteration": 2,
+            "patient_id": "LARSON JENNIFER 03/01/1946",
+            "status": "FAILED",
+            "instance_id": 42,
+            "steps_completed": 0,
+            "total_steps": 5,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 29,
+                "step_name": "Send imaging order, confirm receipt",
+                "owner": "CC",
+                "status": "ERROR",
+                "duration_seconds": 2.0060203075408936,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:19:31.574885",
+            "end_time": "2025-10-01T13:19:33.603865",
+            "duration_seconds": 2.028958320617676
+          },
+          {
+            "template_id": 6,
+            "template_name": "IMAGING FUTURE",
+            "iteration": 3,
+            "patient_id": "VAZQUEZ ARTURO 11/08/1947",
+            "status": "FAILED",
+            "instance_id": 43,
+            "steps_completed": 0,
+            "total_steps": 5,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 29,
+                "step_name": "Send imaging order, confirm receipt",
+                "owner": "CC",
+                "status": "ERROR",
+                "duration_seconds": 2.0063347816467285,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:19:35.605221",
+            "end_time": "2025-10-01T13:19:37.633652",
+            "duration_seconds": 2.028416633605957
+          },
+          {
+            "template_id": 6,
+            "template_name": "IMAGING FUTURE",
+            "iteration": 4,
+            "patient_id": "CHOW SHUET 05/19/1932",
+            "status": "FAILED",
+            "instance_id": 44,
+            "steps_completed": 0,
+            "total_steps": 5,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 29,
+                "step_name": "Send imaging order, confirm receipt",
+                "owner": "CC",
+                "status": "ERROR",
+                "duration_seconds": 2.0056796073913574,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:19:39.634499",
+            "end_time": "2025-10-01T13:19:41.661035",
+            "duration_seconds": 2.0265278816223145
+          },
+          {
+            "template_id": 6,
+            "template_name": "IMAGING FUTURE",
+            "iteration": 5,
+            "patient_id": "ZAMORA GUZMAN MARIA 06/26/1943",
+            "status": "FAILED",
+            "instance_id": 45,
+            "steps_completed": 0,
+            "total_steps": 5,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 29,
+                "step_name": "Send imaging order, confirm receipt",
+                "owner": "CC",
+                "status": "ERROR",
+                "duration_seconds": 2.0058889389038086,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:19:43.661912",
+            "end_time": "2025-10-01T13:19:45.694509",
+            "duration_seconds": 2.0325794219970703
+          }
+        ],
+        "summary": {
+          "total_iterations": 5,
+          "completed": 0,
+          "partial": 0,
+          "failed": 5,
+          "success_rate": 0.0,
+          "average_duration_seconds": 2.0294004917144775,
+          "average_steps_completed": 0.0
+        }
+      },
+      {
+        "template_id": 4,
+        "template_name": "IMAGING ROUTINE",
+        "iterations": [
+          {
+            "template_id": 4,
+            "template_name": "IMAGING ROUTINE",
+            "iteration": 1,
+            "patient_id": "PASTION PERRY 07/13/1955",
+            "status": "FAILED",
+            "instance_id": 46,
+            "steps_completed": 0,
+            "total_steps": 5,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 19,
+                "step_name": "Send imaging order, confirm receipt",
+                "owner": "CC",
+                "status": "ERROR",
+                "duration_seconds": 2.006340265274048,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:19:47.695075",
+            "end_time": "2025-10-01T13:19:49.728069",
+            "duration_seconds": 2.032977819442749
+          },
+          {
+            "template_id": 4,
+            "template_name": "IMAGING ROUTINE",
+            "iteration": 2,
+            "patient_id": "LARSON JENNIFER 03/01/1946",
+            "status": "FAILED",
+            "instance_id": 47,
+            "steps_completed": 0,
+            "total_steps": 5,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 19,
+                "step_name": "Send imaging order, confirm receipt",
+                "owner": "CC",
+                "status": "ERROR",
+                "duration_seconds": 2.0072457790374756,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:19:51.729354",
+            "end_time": "2025-10-01T13:19:53.762474",
+            "duration_seconds": 2.0330193042755127
+          },
+          {
+            "template_id": 4,
+            "template_name": "IMAGING ROUTINE",
+            "iteration": 3,
+            "patient_id": "VAZQUEZ ARTURO 11/08/1947",
+            "status": "FAILED",
+            "instance_id": 48,
+            "steps_completed": 0,
+            "total_steps": 5,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 19,
+                "step_name": "Send imaging order, confirm receipt",
+                "owner": "CC",
+                "status": "ERROR",
+                "duration_seconds": 2.0064377784729004,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:19:55.763053",
+            "end_time": "2025-10-01T13:19:57.791159",
+            "duration_seconds": 2.028087854385376
+          },
+          {
+            "template_id": 4,
+            "template_name": "IMAGING ROUTINE",
+            "iteration": 4,
+            "patient_id": "CHOW SHUET 05/19/1932",
+            "status": "FAILED",
+            "instance_id": 49,
+            "steps_completed": 0,
+            "total_steps": 5,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 19,
+                "step_name": "Send imaging order, confirm receipt",
+                "owner": "CC",
+                "status": "ERROR",
+                "duration_seconds": 2.0057880878448486,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:19:59.792374",
+            "end_time": "2025-10-01T13:20:01.820165",
+            "duration_seconds": 2.0277771949768066
+          },
+          {
+            "template_id": 4,
+            "template_name": "IMAGING ROUTINE",
+            "iteration": 5,
+            "patient_id": "ZAMORA GUZMAN MARIA 06/26/1943",
+            "status": "FAILED",
+            "instance_id": 50,
+            "steps_completed": 0,
+            "total_steps": 5,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 19,
+                "step_name": "Send imaging order, confirm receipt",
+                "owner": "CC",
+                "status": "ERROR",
+                "duration_seconds": 2.0072057247161865,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:20:03.821187",
+            "end_time": "2025-10-01T13:20:05.851655",
+            "duration_seconds": 2.0304505825042725
+          }
+        ],
+        "summary": {
+          "total_iterations": 5,
+          "completed": 0,
+          "partial": 0,
+          "failed": 5,
+          "success_rate": 0.0,
+          "average_duration_seconds": 2.030462551116943,
+          "average_steps_completed": 0.0
+        }
+      },
+      {
+        "template_id": 5,
+        "template_name": "IMAGING URGENT",
+        "iterations": [
+          {
+            "template_id": 5,
+            "template_name": "IMAGING URGENT",
+            "iteration": 1,
+            "patient_id": "PASTION PERRY 07/13/1955",
+            "status": "FAILED",
+            "instance_id": 51,
+            "steps_completed": 0,
+            "total_steps": 5,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 24,
+                "step_name": "Send imaging order, confirm receipt",
+                "owner": "CC",
+                "status": "ERROR",
+                "duration_seconds": 2.009166717529297,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:20:07.852216",
+            "end_time": "2025-10-01T13:20:09.883133",
+            "duration_seconds": 2.030900239944458
+          },
+          {
+            "template_id": 5,
+            "template_name": "IMAGING URGENT",
+            "iteration": 2,
+            "patient_id": "LARSON JENNIFER 03/01/1946",
+            "status": "FAILED",
+            "instance_id": 52,
+            "steps_completed": 0,
+            "total_steps": 5,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 24,
+                "step_name": "Send imaging order, confirm receipt",
+                "owner": "CC",
+                "status": "ERROR",
+                "duration_seconds": 2.0063066482543945,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:20:11.883778",
+            "end_time": "2025-10-01T13:20:13.916783",
+            "duration_seconds": 2.032987356185913
+          },
+          {
+            "template_id": 5,
+            "template_name": "IMAGING URGENT",
+            "iteration": 3,
+            "patient_id": "VAZQUEZ ARTURO 11/08/1947",
+            "status": "FAILED",
+            "instance_id": 53,
+            "steps_completed": 0,
+            "total_steps": 5,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 24,
+                "step_name": "Send imaging order, confirm receipt",
+                "owner": "CC",
+                "status": "ERROR",
+                "duration_seconds": 2.0076065063476562,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:20:15.917943",
+            "end_time": "2025-10-01T13:20:17.953620",
+            "duration_seconds": 2.035665273666382
+          },
+          {
+            "template_id": 5,
+            "template_name": "IMAGING URGENT",
+            "iteration": 4,
+            "patient_id": "CHOW SHUET 05/19/1932",
+            "status": "FAILED",
+            "instance_id": 54,
+            "steps_completed": 0,
+            "total_steps": 5,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 24,
+                "step_name": "Send imaging order, confirm receipt",
+                "owner": "CC",
+                "status": "ERROR",
+                "duration_seconds": 2.0071334838867188,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:20:19.954432",
+            "end_time": "2025-10-01T13:20:21.983782",
+            "duration_seconds": 2.0293326377868652
+          },
+          {
+            "template_id": 5,
+            "template_name": "IMAGING URGENT",
+            "iteration": 5,
+            "patient_id": "ZAMORA GUZMAN MARIA 06/26/1943",
+            "status": "FAILED",
+            "instance_id": 55,
+            "steps_completed": 0,
+            "total_steps": 5,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 24,
+                "step_name": "Send imaging order, confirm receipt",
+                "owner": "CC",
+                "status": "ERROR",
+                "duration_seconds": 2.0083425045013428,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:20:23.984395",
+            "end_time": "2025-10-01T13:20:26.018979",
+            "duration_seconds": 2.0345723628997803
+          }
+        ],
+        "summary": {
+          "total_iterations": 5,
+          "completed": 0,
+          "partial": 0,
+          "failed": 5,
+          "success_rate": 0.0,
+          "average_duration_seconds": 2.0326915740966798,
+          "average_steps_completed": 0.0
+        }
+      },
+      {
+        "template_id": 3,
+        "template_name": "LAB FUTURE",
+        "iterations": [
+          {
+            "template_id": 3,
+            "template_name": "LAB FUTURE",
+            "iteration": 1,
+            "patient_id": "PASTION PERRY 07/13/1955",
+            "status": "FAILED",
+            "instance_id": 56,
+            "steps_completed": 0,
+            "total_steps": 6,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 13,
+                "step_name": "Send lab order, confirm receipt",
+                "owner": "CC",
+                "status": "ERROR",
+                "duration_seconds": 2.0062429904937744,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:20:28.019397",
+            "end_time": "2025-10-01T13:20:30.048736",
+            "duration_seconds": 2.02932071685791
+          },
+          {
+            "template_id": 3,
+            "template_name": "LAB FUTURE",
+            "iteration": 2,
+            "patient_id": "LARSON JENNIFER 03/01/1946",
+            "status": "FAILED",
+            "instance_id": 57,
+            "steps_completed": 0,
+            "total_steps": 6,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 13,
+                "step_name": "Send lab order, confirm receipt",
+                "owner": "CC",
+                "status": "ERROR",
+                "duration_seconds": 2.0068674087524414,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:20:32.049545",
+            "end_time": "2025-10-01T13:20:34.079588",
+            "duration_seconds": 2.0300261974334717
+          },
+          {
+            "template_id": 3,
+            "template_name": "LAB FUTURE",
+            "iteration": 3,
+            "patient_id": "VAZQUEZ ARTURO 11/08/1947",
+            "status": "FAILED",
+            "instance_id": 58,
+            "steps_completed": 0,
+            "total_steps": 6,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 13,
+                "step_name": "Send lab order, confirm receipt",
+                "owner": "CC",
+                "status": "ERROR",
+                "duration_seconds": 2.005747079849243,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:20:36.080276",
+            "end_time": "2025-10-01T13:20:38.107756",
+            "duration_seconds": 2.0274665355682373
+          },
+          {
+            "template_id": 3,
+            "template_name": "LAB FUTURE",
+            "iteration": 4,
+            "patient_id": "CHOW SHUET 05/19/1932",
+            "status": "FAILED",
+            "instance_id": 59,
+            "steps_completed": 0,
+            "total_steps": 6,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 13,
+                "step_name": "Send lab order, confirm receipt",
+                "owner": "CC",
+                "status": "ERROR",
+                "duration_seconds": 2.0057923793792725,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:20:40.109237",
+            "end_time": "2025-10-01T13:20:42.128200",
+            "duration_seconds": 2.0189456939697266
+          },
+          {
+            "template_id": 3,
+            "template_name": "LAB FUTURE",
+            "iteration": 5,
+            "patient_id": "ZAMORA GUZMAN MARIA 06/26/1943",
+            "status": "FAILED",
+            "instance_id": 60,
+            "steps_completed": 0,
+            "total_steps": 6,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 13,
+                "step_name": "Send lab order, confirm receipt",
+                "owner": "CC",
+                "status": "ERROR",
+                "duration_seconds": 2.007761001586914,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:20:44.128865",
+            "end_time": "2025-10-01T13:20:46.158870",
+            "duration_seconds": 2.029987335205078
+          }
+        ],
+        "summary": {
+          "total_iterations": 5,
+          "completed": 0,
+          "partial": 0,
+          "failed": 5,
+          "success_rate": 0.0,
+          "average_duration_seconds": 2.027149295806885,
+          "average_steps_completed": 0.0
+        }
+      },
+      {
+        "template_id": 1,
+        "template_name": "LAB ROUTINE",
+        "iterations": [
+          {
+            "template_id": 1,
+            "template_name": "LAB ROUTINE",
+            "iteration": 1,
+            "patient_id": "PASTION PERRY 07/13/1955",
+            "status": "FAILED",
+            "instance_id": 61,
+            "steps_completed": 0,
+            "total_steps": 6,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 1,
+                "step_name": "Send lab order, confirm receipt",
+                "owner": "CC",
+                "status": "ERROR",
+                "duration_seconds": 2.0053915977478027,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:20:48.159571",
+            "end_time": "2025-10-01T13:20:50.186622",
+            "duration_seconds": 2.027035713195801
+          },
+          {
+            "template_id": 1,
+            "template_name": "LAB ROUTINE",
+            "iteration": 2,
+            "patient_id": "LARSON JENNIFER 03/01/1946",
+            "status": "FAILED",
+            "instance_id": 62,
+            "steps_completed": 0,
+            "total_steps": 6,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 1,
+                "step_name": "Send lab order, confirm receipt",
+                "owner": "CC",
+                "status": "ERROR",
+                "duration_seconds": 2.007044553756714,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:20:52.187212",
+            "end_time": "2025-10-01T13:20:54.216602",
+            "duration_seconds": 2.0293774604797363
+          },
+          {
+            "template_id": 1,
+            "template_name": "LAB ROUTINE",
+            "iteration": 3,
+            "patient_id": "VAZQUEZ ARTURO 11/08/1947",
+            "status": "FAILED",
+            "instance_id": 63,
+            "steps_completed": 0,
+            "total_steps": 6,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 1,
+                "step_name": "Send lab order, confirm receipt",
+                "owner": "CC",
+                "status": "ERROR",
+                "duration_seconds": 2.0059685707092285,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:20:56.217095",
+            "end_time": "2025-10-01T13:20:58.243588",
+            "duration_seconds": 2.0264768600463867
+          },
+          {
+            "template_id": 1,
+            "template_name": "LAB ROUTINE",
+            "iteration": 4,
+            "patient_id": "CHOW SHUET 05/19/1932",
+            "status": "FAILED",
+            "instance_id": 64,
+            "steps_completed": 0,
+            "total_steps": 6,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 1,
+                "step_name": "Send lab order, confirm receipt",
+                "owner": "CC",
+                "status": "ERROR",
+                "duration_seconds": 2.0063400268554688,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:21:00.244250",
+            "end_time": "2025-10-01T13:21:02.274527",
+            "duration_seconds": 2.030263662338257
+          },
+          {
+            "template_id": 1,
+            "template_name": "LAB ROUTINE",
+            "iteration": 5,
+            "patient_id": "ZAMORA GUZMAN MARIA 06/26/1943",
+            "status": "FAILED",
+            "instance_id": 65,
+            "steps_completed": 0,
+            "total_steps": 6,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 1,
+                "step_name": "Send lab order, confirm receipt",
+                "owner": "CC",
+                "status": "ERROR",
+                "duration_seconds": 2.0112078189849854,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:21:04.275118",
+            "end_time": "2025-10-01T13:21:06.317230",
+            "duration_seconds": 2.0420937538146973
+          }
+        ],
+        "summary": {
+          "total_iterations": 5,
+          "completed": 0,
+          "partial": 0,
+          "failed": 5,
+          "success_rate": 0.0,
+          "average_duration_seconds": 2.0310494899749756,
+          "average_steps_completed": 0.0
+        }
+      },
+      {
+        "template_id": 2,
+        "template_name": "LAB URGENT",
+        "iterations": [
+          {
+            "template_id": 2,
+            "template_name": "LAB URGENT",
+            "iteration": 1,
+            "patient_id": "PASTION PERRY 07/13/1955",
+            "status": "FAILED",
+            "instance_id": 66,
+            "steps_completed": 0,
+            "total_steps": 6,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 7,
+                "step_name": "Send lab order, confirm receipt",
+                "owner": "CC",
+                "status": "ERROR",
+                "duration_seconds": 2.0082499980926514,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:21:08.317983",
+            "end_time": "2025-10-01T13:21:10.349375",
+            "duration_seconds": 2.0313727855682373
+          },
+          {
+            "template_id": 2,
+            "template_name": "LAB URGENT",
+            "iteration": 2,
+            "patient_id": "LARSON JENNIFER 03/01/1946",
+            "status": "FAILED",
+            "instance_id": 67,
+            "steps_completed": 0,
+            "total_steps": 6,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 7,
+                "step_name": "Send lab order, confirm receipt",
+                "owner": "CC",
+                "status": "ERROR",
+                "duration_seconds": 2.0084803104400635,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:21:12.349963",
+            "end_time": "2025-10-01T13:21:14.382433",
+            "duration_seconds": 2.032452344894409
+          },
+          {
+            "template_id": 2,
+            "template_name": "LAB URGENT",
+            "iteration": 3,
+            "patient_id": "VAZQUEZ ARTURO 11/08/1947",
+            "status": "FAILED",
+            "instance_id": 68,
+            "steps_completed": 0,
+            "total_steps": 6,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 7,
+                "step_name": "Send lab order, confirm receipt",
+                "owner": "CC",
+                "status": "ERROR",
+                "duration_seconds": 2.0065736770629883,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:21:16.383502",
+            "end_time": "2025-10-01T13:21:18.411038",
+            "duration_seconds": 2.0275087356567383
+          },
+          {
+            "template_id": 2,
+            "template_name": "LAB URGENT",
+            "iteration": 4,
+            "patient_id": "CHOW SHUET 05/19/1932",
+            "status": "FAILED",
+            "instance_id": 69,
+            "steps_completed": 0,
+            "total_steps": 6,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 7,
+                "step_name": "Send lab order, confirm receipt",
+                "owner": "CC",
+                "status": "ERROR",
+                "duration_seconds": 2.0057029724121094,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:21:20.411424",
+            "end_time": "2025-10-01T13:21:22.442080",
+            "duration_seconds": 2.0306453704833984
+          },
+          {
+            "template_id": 2,
+            "template_name": "LAB URGENT",
+            "iteration": 5,
+            "patient_id": "ZAMORA GUZMAN MARIA 06/26/1943",
+            "status": "FAILED",
+            "instance_id": 70,
+            "steps_completed": 0,
+            "total_steps": 6,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 7,
+                "step_name": "Send lab order, confirm receipt",
+                "owner": "CC",
+                "status": "ERROR",
+                "duration_seconds": 2.0064737796783447,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:21:24.442846",
+            "end_time": "2025-10-01T13:21:26.470977",
+            "duration_seconds": 2.028107166290283
+          }
+        ],
+        "summary": {
+          "total_iterations": 5,
+          "completed": 0,
+          "partial": 0,
+          "failed": 5,
+          "success_rate": 0.0,
+          "average_duration_seconds": 2.030017280578613,
+          "average_steps_completed": 0.0
+        }
+      },
+      {
+        "template_id": 10,
+        "template_name": "MEDICAL RECORDS",
+        "iterations": [
+          {
+            "template_id": 10,
+            "template_name": "MEDICAL RECORDS",
+            "iteration": 1,
+            "patient_id": "PASTION PERRY 07/13/1955",
+            "status": "FAILED",
+            "instance_id": 71,
+            "steps_completed": 0,
+            "total_steps": 5,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 45,
+                "step_name": "Send medical records request, confirm receipt",
+                "owner": "CC",
+                "status": "ERROR",
+                "duration_seconds": 2.0057950019836426,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:21:28.472259",
+            "end_time": "2025-10-01T13:21:30.498736",
+            "duration_seconds": 2.0264644622802734
+          },
+          {
+            "template_id": 10,
+            "template_name": "MEDICAL RECORDS",
+            "iteration": 2,
+            "patient_id": "LARSON JENNIFER 03/01/1946",
+            "status": "FAILED",
+            "instance_id": 72,
+            "steps_completed": 0,
+            "total_steps": 5,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 45,
+                "step_name": "Send medical records request, confirm receipt",
+                "owner": "CC",
+                "status": "ERROR",
+                "duration_seconds": 2.007620334625244,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:21:32.499419",
+            "end_time": "2025-10-01T13:21:34.531248",
+            "duration_seconds": 2.0318164825439453
+          },
+          {
+            "template_id": 10,
+            "template_name": "MEDICAL RECORDS",
+            "iteration": 3,
+            "patient_id": "VAZQUEZ ARTURO 11/08/1947",
+            "status": "FAILED",
+            "instance_id": 73,
+            "steps_completed": 0,
+            "total_steps": 5,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 45,
+                "step_name": "Send medical records request, confirm receipt",
+                "owner": "CC",
+                "status": "ERROR",
+                "duration_seconds": 2.005756378173828,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:21:36.532588",
+            "end_time": "2025-10-01T13:21:38.562987",
+            "duration_seconds": 2.0303821563720703
+          },
+          {
+            "template_id": 10,
+            "template_name": "MEDICAL RECORDS",
+            "iteration": 4,
+            "patient_id": "CHOW SHUET 05/19/1932",
+            "status": "FAILED",
+            "instance_id": 74,
+            "steps_completed": 0,
+            "total_steps": 5,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 45,
+                "step_name": "Send medical records request, confirm receipt",
+                "owner": "CC",
+                "status": "ERROR",
+                "duration_seconds": 2.0067808628082275,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:21:40.563447",
+            "end_time": "2025-10-01T13:21:42.591332",
+            "duration_seconds": 2.0278751850128174
+          },
+          {
+            "template_id": 10,
+            "template_name": "MEDICAL RECORDS",
+            "iteration": 5,
+            "patient_id": "ZAMORA GUZMAN MARIA 06/26/1943",
+            "status": "FAILED",
+            "instance_id": 75,
+            "steps_completed": 0,
+            "total_steps": 5,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 45,
+                "step_name": "Send medical records request, confirm receipt",
+                "owner": "CC",
+                "status": "ERROR",
+                "duration_seconds": 2.0061042308807373,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:21:44.591813",
+            "end_time": "2025-10-01T13:21:46.621887",
+            "duration_seconds": 2.0300629138946533
+          }
+        ],
+        "summary": {
+          "total_iterations": 5,
+          "completed": 0,
+          "partial": 0,
+          "failed": 5,
+          "success_rate": 0.0,
+          "average_duration_seconds": 2.029320240020752,
+          "average_steps_completed": 0.0
+        }
+      },
+      {
+        "template_id": 13,
+        "template_name": "MEDICATION PROBLEM",
+        "iterations": [
+          {
+            "template_id": 13,
+            "template_name": "MEDICATION PROBLEM",
+            "iteration": 1,
+            "patient_id": "PASTION PERRY 07/13/1955",
+            "status": "FAILED",
+            "instance_id": 76,
+            "steps_completed": 0,
+            "total_steps": 1,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 56,
+                "step_name": "Acute Tele to Emed Calendar",
+                "owner": "LC",
+                "status": "ERROR",
+                "duration_seconds": 2.0055954456329346,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:21:48.622631",
+            "end_time": "2025-10-01T13:21:50.651085",
+            "duration_seconds": 2.0284388065338135
+          },
+          {
+            "template_id": 13,
+            "template_name": "MEDICATION PROBLEM",
+            "iteration": 2,
+            "patient_id": "LARSON JENNIFER 03/01/1946",
+            "status": "FAILED",
+            "instance_id": 77,
+            "steps_completed": 0,
+            "total_steps": 1,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 56,
+                "step_name": "Acute Tele to Emed Calendar",
+                "owner": "LC",
+                "status": "ERROR",
+                "duration_seconds": 2.007871627807617,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:21:52.651462",
+            "end_time": "2025-10-01T13:21:54.681372",
+            "duration_seconds": 2.0298986434936523
+          },
+          {
+            "template_id": 13,
+            "template_name": "MEDICATION PROBLEM",
+            "iteration": 3,
+            "patient_id": "VAZQUEZ ARTURO 11/08/1947",
+            "status": "FAILED",
+            "instance_id": 78,
+            "steps_completed": 0,
+            "total_steps": 1,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 56,
+                "step_name": "Acute Tele to Emed Calendar",
+                "owner": "LC",
+                "status": "ERROR",
+                "duration_seconds": 2.006023406982422,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:21:56.682128",
+            "end_time": "2025-10-01T13:21:58.711339",
+            "duration_seconds": 2.029200315475464
+          },
+          {
+            "template_id": 13,
+            "template_name": "MEDICATION PROBLEM",
+            "iteration": 4,
+            "patient_id": "CHOW SHUET 05/19/1932",
+            "status": "FAILED",
+            "instance_id": 79,
+            "steps_completed": 0,
+            "total_steps": 1,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 56,
+                "step_name": "Acute Tele to Emed Calendar",
+                "owner": "LC",
+                "status": "ERROR",
+                "duration_seconds": 2.011082172393799,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:22:00.712165",
+            "end_time": "2025-10-01T13:22:02.744142",
+            "duration_seconds": 2.0319650173187256
+          },
+          {
+            "template_id": 13,
+            "template_name": "MEDICATION PROBLEM",
+            "iteration": 5,
+            "patient_id": "ZAMORA GUZMAN MARIA 06/26/1943",
+            "status": "FAILED",
+            "instance_id": 80,
+            "steps_completed": 0,
+            "total_steps": 1,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 56,
+                "step_name": "Acute Tele to Emed Calendar",
+                "owner": "LC",
+                "status": "ERROR",
+                "duration_seconds": 2.007333993911743,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:22:04.744699",
+            "end_time": "2025-10-01T13:22:06.773046",
+            "duration_seconds": 2.028334140777588
+          }
+        ],
+        "summary": {
+          "total_iterations": 5,
+          "completed": 0,
+          "partial": 0,
+          "failed": 5,
+          "success_rate": 0.0,
+          "average_duration_seconds": 2.0295673847198485,
+          "average_steps_completed": 0.0
+        }
+      },
+      {
+        "template_id": 12,
+        "template_name": "MEDICATION REFILL",
+        "iterations": [
+          {
+            "template_id": 12,
+            "template_name": "MEDICATION REFILL",
+            "iteration": 1,
+            "patient_id": "PASTION PERRY 07/13/1955",
+            "status": "FAILED",
+            "instance_id": 81,
+            "steps_completed": 0,
+            "total_steps": 3,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 53,
+                "step_name": "Refill requested",
+                "owner": "CC",
+                "status": "ERROR",
+                "duration_seconds": 2.005756139755249,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:22:08.773369",
+            "end_time": "2025-10-01T13:22:10.802301",
+            "duration_seconds": 2.028918981552124
+          },
+          {
+            "template_id": 12,
+            "template_name": "MEDICATION REFILL",
+            "iteration": 2,
+            "patient_id": "LARSON JENNIFER 03/01/1946",
+            "status": "FAILED",
+            "instance_id": 82,
+            "steps_completed": 0,
+            "total_steps": 3,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 53,
+                "step_name": "Refill requested",
+                "owner": "CC",
+                "status": "ERROR",
+                "duration_seconds": 2.005527973175049,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:22:12.803101",
+            "end_time": "2025-10-01T13:22:14.831630",
+            "duration_seconds": 2.028517007827759
+          },
+          {
+            "template_id": 12,
+            "template_name": "MEDICATION REFILL",
+            "iteration": 3,
+            "patient_id": "VAZQUEZ ARTURO 11/08/1947",
+            "status": "FAILED",
+            "instance_id": 83,
+            "steps_completed": 0,
+            "total_steps": 3,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 53,
+                "step_name": "Refill requested",
+                "owner": "CC",
+                "status": "ERROR",
+                "duration_seconds": 2.0060293674468994,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:22:16.832062",
+            "end_time": "2025-10-01T13:22:18.859470",
+            "duration_seconds": 2.0273985862731934
+          },
+          {
+            "template_id": 12,
+            "template_name": "MEDICATION REFILL",
+            "iteration": 4,
+            "patient_id": "CHOW SHUET 05/19/1932",
+            "status": "FAILED",
+            "instance_id": 84,
+            "steps_completed": 0,
+            "total_steps": 3,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 53,
+                "step_name": "Refill requested",
+                "owner": "CC",
+                "status": "ERROR",
+                "duration_seconds": 2.0058321952819824,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:22:20.860092",
+            "end_time": "2025-10-01T13:22:22.890004",
+            "duration_seconds": 2.0298943519592285
+          },
+          {
+            "template_id": 12,
+            "template_name": "MEDICATION REFILL",
+            "iteration": 5,
+            "patient_id": "ZAMORA GUZMAN MARIA 06/26/1943",
+            "status": "FAILED",
+            "instance_id": 85,
+            "steps_completed": 0,
+            "total_steps": 3,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 53,
+                "step_name": "Refill requested",
+                "owner": "CC",
+                "status": "ERROR",
+                "duration_seconds": 2.006549835205078,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:22:24.890759",
+            "end_time": "2025-10-01T13:22:26.918145",
+            "duration_seconds": 2.027372121810913
+          }
+        ],
+        "summary": {
+          "total_iterations": 5,
+          "completed": 0,
+          "partial": 0,
+          "failed": 5,
+          "success_rate": 0.0,
+          "average_duration_seconds": 2.0284202098846436,
+          "average_steps_completed": 0.0
+        }
+      },
+      {
+        "template_id": 14,
+        "template_name": "POT_PATIENT_ONBOARDING",
+        "iterations": [
+          {
+            "template_id": 14,
+            "template_name": "POT_PATIENT_ONBOARDING",
+            "iteration": 1,
+            "patient_id": "PASTION PERRY 07/13/1955",
+            "status": "FAILED",
+            "instance_id": 86,
+            "steps_completed": 0,
+            "total_steps": 17,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 57,
+                "step_name": "Collect patient demographics",
+                "owner": "POT",
+                "status": "ERROR",
+                "duration_seconds": 2.0052716732025146,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:22:28.918554",
+            "end_time": "2025-10-01T13:22:30.949182",
+            "duration_seconds": 2.030601978302002
+          },
+          {
+            "template_id": 14,
+            "template_name": "POT_PATIENT_ONBOARDING",
+            "iteration": 2,
+            "patient_id": "LARSON JENNIFER 03/01/1946",
+            "status": "FAILED",
+            "instance_id": 87,
+            "steps_completed": 0,
+            "total_steps": 17,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 57,
+                "step_name": "Collect patient demographics",
+                "owner": "POT",
+                "status": "ERROR",
+                "duration_seconds": 2.0053815841674805,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:22:32.949977",
+            "end_time": "2025-10-01T13:22:34.976326",
+            "duration_seconds": 2.0263352394104004
+          },
+          {
+            "template_id": 14,
+            "template_name": "POT_PATIENT_ONBOARDING",
+            "iteration": 3,
+            "patient_id": "VAZQUEZ ARTURO 11/08/1947",
+            "status": "FAILED",
+            "instance_id": 88,
+            "steps_completed": 0,
+            "total_steps": 17,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 57,
+                "step_name": "Collect patient demographics",
+                "owner": "POT",
+                "status": "ERROR",
+                "duration_seconds": 2.006169080734253,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:22:36.977544",
+            "end_time": "2025-10-01T13:22:39.006984",
+            "duration_seconds": 2.029425859451294
+          },
+          {
+            "template_id": 14,
+            "template_name": "POT_PATIENT_ONBOARDING",
+            "iteration": 4,
+            "patient_id": "CHOW SHUET 05/19/1932",
+            "status": "FAILED",
+            "instance_id": 89,
+            "steps_completed": 0,
+            "total_steps": 17,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 57,
+                "step_name": "Collect patient demographics",
+                "owner": "POT",
+                "status": "ERROR",
+                "duration_seconds": 2.006431818008423,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:22:41.007785",
+            "end_time": "2025-10-01T13:22:43.037253",
+            "duration_seconds": 2.029454231262207
+          },
+          {
+            "template_id": 14,
+            "template_name": "POT_PATIENT_ONBOARDING",
+            "iteration": 5,
+            "patient_id": "ZAMORA GUZMAN MARIA 06/26/1943",
+            "status": "FAILED",
+            "instance_id": 90,
+            "steps_completed": 0,
+            "total_steps": 17,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 57,
+                "step_name": "Collect patient demographics",
+                "owner": "POT",
+                "status": "ERROR",
+                "duration_seconds": 2.006182909011841,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:22:45.037720",
+            "end_time": "2025-10-01T13:22:47.067198",
+            "duration_seconds": 2.029461145401001
+          }
+        ],
+        "summary": {
+          "total_iterations": 5,
+          "completed": 0,
+          "partial": 0,
+          "failed": 5,
+          "success_rate": 0.0,
+          "average_duration_seconds": 2.029055690765381,
+          "average_steps_completed": 0.0
+        }
+      },
+      {
+        "template_id": 11,
+        "template_name": "PRIOR AUTHORIZATION",
+        "iterations": [
+          {
+            "template_id": 11,
+            "template_name": "PRIOR AUTHORIZATION",
+            "iteration": 1,
+            "patient_id": "PASTION PERRY 07/13/1955",
+            "status": "FAILED",
+            "instance_id": 91,
+            "steps_completed": 0,
+            "total_steps": 3,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 50,
+                "step_name": "Complete & submit prior auth form",
+                "owner": "LC",
+                "status": "ERROR",
+                "duration_seconds": 2.0064353942871094,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:22:49.068416",
+            "end_time": "2025-10-01T13:22:51.102126",
+            "duration_seconds": 2.033693313598633
+          },
+          {
+            "template_id": 11,
+            "template_name": "PRIOR AUTHORIZATION",
+            "iteration": 2,
+            "patient_id": "LARSON JENNIFER 03/01/1946",
+            "status": "FAILED",
+            "instance_id": 92,
+            "steps_completed": 0,
+            "total_steps": 3,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 50,
+                "step_name": "Complete & submit prior auth form",
+                "owner": "LC",
+                "status": "ERROR",
+                "duration_seconds": 2.0058481693267822,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:22:53.102655",
+            "end_time": "2025-10-01T13:22:55.130334",
+            "duration_seconds": 2.0276622772216797
+          },
+          {
+            "template_id": 11,
+            "template_name": "PRIOR AUTHORIZATION",
+            "iteration": 3,
+            "patient_id": "VAZQUEZ ARTURO 11/08/1947",
+            "status": "FAILED",
+            "instance_id": 93,
+            "steps_completed": 0,
+            "total_steps": 3,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 50,
+                "step_name": "Complete & submit prior auth form",
+                "owner": "LC",
+                "status": "ERROR",
+                "duration_seconds": 2.009171724319458,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:22:57.130996",
+            "end_time": "2025-10-01T13:22:59.164968",
+            "duration_seconds": 2.033958673477173
+          },
+          {
+            "template_id": 11,
+            "template_name": "PRIOR AUTHORIZATION",
+            "iteration": 4,
+            "patient_id": "CHOW SHUET 05/19/1932",
+            "status": "FAILED",
+            "instance_id": 94,
+            "steps_completed": 0,
+            "total_steps": 3,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 50,
+                "step_name": "Complete & submit prior auth form",
+                "owner": "LC",
+                "status": "ERROR",
+                "duration_seconds": 2.008462429046631,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:23:01.165862",
+            "end_time": "2025-10-01T13:23:03.196669",
+            "duration_seconds": 2.030791997909546
+          },
+          {
+            "template_id": 11,
+            "template_name": "PRIOR AUTHORIZATION",
+            "iteration": 5,
+            "patient_id": "ZAMORA GUZMAN MARIA 06/26/1943",
+            "status": "FAILED",
+            "instance_id": 95,
+            "steps_completed": 0,
+            "total_steps": 3,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 50,
+                "step_name": "Complete & submit prior auth form",
+                "owner": "LC",
+                "status": "ERROR",
+                "duration_seconds": 2.0080103874206543,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:23:05.197589",
+            "end_time": "2025-10-01T13:23:07.227604",
+            "duration_seconds": 2.029999256134033
+          }
+        ],
+        "summary": {
+          "total_iterations": 5,
+          "completed": 0,
+          "partial": 0,
+          "failed": 5,
+          "success_rate": 0.0,
+          "average_duration_seconds": 2.031221103668213,
+          "average_steps_completed": 0.0
+        }
+      },
+      {
+        "template_id": 9,
+        "template_name": "SPECIALIST REFERRAL",
+        "iterations": [
+          {
+            "template_id": 9,
+            "template_name": "SPECIALIST REFERRAL",
+            "iteration": 1,
+            "patient_id": "PASTION PERRY 07/13/1955",
+            "status": "FAILED",
+            "instance_id": 96,
+            "steps_completed": 0,
+            "total_steps": 6,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 39,
+                "step_name": "Send specialist ref order +visit note, confirm receipt",
+                "owner": "CC",
+                "status": "ERROR",
+                "duration_seconds": 2.0064594745635986,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:23:09.228062",
+            "end_time": "2025-10-01T13:23:11.259376",
+            "duration_seconds": 2.031294107437134
+          },
+          {
+            "template_id": 9,
+            "template_name": "SPECIALIST REFERRAL",
+            "iteration": 2,
+            "patient_id": "LARSON JENNIFER 03/01/1946",
+            "status": "FAILED",
+            "instance_id": 97,
+            "steps_completed": 0,
+            "total_steps": 6,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 39,
+                "step_name": "Send specialist ref order +visit note, confirm receipt",
+                "owner": "CC",
+                "status": "ERROR",
+                "duration_seconds": 2.006326675415039,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:23:13.259733",
+            "end_time": "2025-10-01T13:23:15.288349",
+            "duration_seconds": 2.02860164642334
+          },
+          {
+            "template_id": 9,
+            "template_name": "SPECIALIST REFERRAL",
+            "iteration": 3,
+            "patient_id": "VAZQUEZ ARTURO 11/08/1947",
+            "status": "FAILED",
+            "instance_id": 98,
+            "steps_completed": 0,
+            "total_steps": 6,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 39,
+                "step_name": "Send specialist ref order +visit note, confirm receipt",
+                "owner": "CC",
+                "status": "ERROR",
+                "duration_seconds": 2.006666898727417,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:23:17.289027",
+            "end_time": "2025-10-01T13:23:19.317272",
+            "duration_seconds": 2.0282351970672607
+          },
+          {
+            "template_id": 9,
+            "template_name": "SPECIALIST REFERRAL",
+            "iteration": 4,
+            "patient_id": "CHOW SHUET 05/19/1932",
+            "status": "FAILED",
+            "instance_id": 99,
+            "steps_completed": 0,
+            "total_steps": 6,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 39,
+                "step_name": "Send specialist ref order +visit note, confirm receipt",
+                "owner": "CC",
+                "status": "ERROR",
+                "duration_seconds": 2.006027936935425,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:23:21.318760",
+            "end_time": "2025-10-01T13:23:23.347021",
+            "duration_seconds": 2.028233051300049
+          },
+          {
+            "template_id": 9,
+            "template_name": "SPECIALIST REFERRAL",
+            "iteration": 5,
+            "patient_id": "ZAMORA GUZMAN MARIA 06/26/1943",
+            "status": "FAILED",
+            "instance_id": 100,
+            "steps_completed": 0,
+            "total_steps": 6,
+            "step_details": [
+              {
+                "step_number": 1,
+                "step_id": 39,
+                "step_name": "Send specialist ref order +visit note, confirm receipt",
+                "owner": "CC",
+                "status": "ERROR",
+                "duration_seconds": 2.0061535835266113,
+                "errors": [
+                  "Exception: table coordinator_tasks_2025_10 has no column named source_system"
+                ]
+              }
+            ],
+            "errors": [],
+            "start_time": "2025-10-01T13:23:25.347821",
+            "end_time": "2025-10-01T13:23:27.375710",
+            "duration_seconds": 2.0278780460357666
+          }
+        ],
+        "summary": {
+          "total_iterations": 5,
+          "completed": 0,
+          "partial": 0,
+          "failed": 5,
+          "success_rate": 0.0,
+          "average_duration_seconds": 2.02884840965271,
+          "average_steps_completed": 0.0
+        }
+      }
+    ],
+    "provider_tests": [
+      {
+        "test_name": "Visit Task - In-Person",
+        "patient_id": "PASTION PERRY 07/13/1955",
+        "status": "COMPLETED",
+        "task_id": true,
+        "data_validation": {
+          "provider_tasks_table": false,
+          "provider_tasks_monthly_table": false,
+          "patient_info_updated": true
+        },
+        "errors": [],
+        "start_time": "2025-10-01T13:23:29.379972",
+        "end_time": "2025-10-01T13:23:29.411516"
+      },
+      {
+        "test_name": "Visit Task - Telehealth",
+        "patient_id": "LARSON JENNIFER 03/01/1946",
+        "status": "COMPLETED",
+        "task_id": true,
+        "data_validation": {
+          "provider_tasks_table": false,
+          "provider_tasks_monthly_table": false,
+          "patient_info_updated": true
+        },
+        "errors": [],
+        "start_time": "2025-10-01T13:23:30.412100",
+        "end_time": "2025-10-01T13:23:30.446793"
+      },
+      {
+        "test_name": "Phone Review",
+        "patient_id": "VAZQUEZ ARTURO 11/08/1947",
+        "status": "COMPLETED",
+        "task_id": true,
+        "data_validation": {
+          "provider_tasks_table": false,
+          "provider_tasks_monthly_table": false,
+          "patient_info_updated": true
+        },
+        "errors": [],
+        "start_time": "2025-10-01T13:23:31.447551",
+        "end_time": "2025-10-01T13:23:31.528014"
+      }
+    ],
+    "data_validation_tests": {
+      "coordinator_sync": {
+        "test_name": "Coordinator Task Synchronization",
+        "status": "PASSED",
+        "main_table_count": 151777,
+        "monthly_table_count": 365,
+        "sync_status": true,
+        "errors": []
+      },
+      "provider_sync": {
+        "test_name": "Provider Task Synchronization",
+        "status": "PASSED",
+        "main_table_count": 22874,
+        "monthly_table_count": 9,
+        "sync_status": true,
+        "errors": []
+      }
+    },
+    "database_verification_tests": [
+      {
+        "test_name": "Patient Table Views and Summaries",
+        "status": "PASSED",
+        "tables_checked": [
+          {
+            "table": "patients",
+            "record_count": 532,
+            "status": "OK"
+          },
+          {
+            "table": "patient_panel",
+            "record_count": 534,
+            "status": "OK"
+          },
+          {
+            "table": "patient_assignments",
+            "record_count": 496,
+            "status": "OK"
+          },
+          {
+            "table": "onboarding_patients",
+            "record_count": 12,
+            "status": "OK"
+          },
+          {
+            "table": "patient_visits",
+            "record_count": 1208,
+            "status": "OK"
+          }
+        ],
+        "errors": []
+      },
+      {
+        "test_name": "Data Consistency Verification",
+        "status": "PASSED",
+        "consistency_checks": [
+          {
+            "check": "Workflow instances have valid templates",
+            "orphaned_records": 0,
+            "status": "PASS"
+          },
+          {
+            "check": "Workflow steps have valid templates",
+            "orphaned_records": 0,
+            "status": "PASS"
+          }
+        ],
+        "errors": []
+      },
+      {
+        "test_name": "Foreign Key Integrity",
+        "status": "ERROR",
+        "integrity_violations": 0,
+        "errors": [
+          "Foreign key check error: foreign key mismatch - \"dashboard_patient_zip_map\" referencing \"patients\""
+        ]
+      },
+      {
+        "test_name": "Table Schema Verification",
+        "status": "PASSED",
+        "schema_checks": [
+          {
+            "table": "workflow_templates",
+            "expected_columns": [
+              "template_id",
+              "template_name"
+            ],
+            "actual_columns": [
+              "template_id",
+              "template_name"
+            ],
+            "missing_columns": [],
+            "status": "PASS"
+          },
+          {
+            "table": "workflow_steps",
+            "expected_columns": [
+              "step_id",
+              "template_id",
+              "step_order",
+              "task_name"
+            ],
+            "actual_columns": [
+              "step_id",
+              "template_id",
+              "step_order",
+              "task_name",
+              "owner",
+              "deliverable",
+              "cycle_time"
+            ],
+            "missing_columns": [],
+            "status": "PASS"
+          },
+          {
+            "table": "coordinator_tasks",
+            "expected_columns": [
+              "coordinator_task_id",
+              "task_id",
+              "patient_id",
+              "coordinator_id"
+            ],
+            "actual_columns": [
+              "coordinator_task_id",
+              "task_id",
+              "patient_id",
+              "coordinator_id",
+              "task_date",
+              "duration_minutes",
+              "task_type",
+              "notes"
+            ],
+            "missing_columns": [],
+            "status": "PASS"
+          },
+          {
+            "table": "provider_tasks",
+            "expected_columns": [
+              "provider_task_id",
+              "task_id",
+              "provider_id",
+              "patient_id"
+            ],
+            "actual_columns": [
+              "provider_task_id",
+              "task_id",
+              "provider_id",
+              "provider_name",
+              "patient_name",
+              "user_id",
+              "patient_id",
+              "status",
+              "notes",
+              "minutes_of_service",
+              "billing_code_id",
+              "created_date",
+              "updated_date",
+              "task_date",
+              "month",
+              "year",
+              "billing_code",
+              "billing_code_description",
+              "task_description",
+              "source_system",
+              "imported_at"
+            ],
+            "missing_columns": [],
+            "status": "PASS"
+          }
+        ],
+        "errors": []
+      }
+    ]
+  },
+  "test_log": [
+    {
+      "timestamp": "2025-10-01T13:18:47.205578",
+      "level": "INFO",
+      "message": "Starting Comprehensive Integration Test Suite",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:18:47.205779",
+      "level": "INFO",
+      "message": "============================================================",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:18:47.205953",
+      "level": "INFO",
+      "message": "Authenticating test user: dianela@myhealthteam.org",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:18:47.239622",
+      "level": "SUCCESS",
+      "message": "Authentication successful",
+      "details": {
+        "user_id": 8,
+        "role_ids": [
+          36
+        ],
+        "name": "Dianela Medez"
+      }
+    },
+    {
+      "timestamp": "2025-10-01T13:18:47.239859",
+      "level": "INFO",
+      "message": "Verifying database table structure",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:18:47.243703",
+      "level": "SUCCESS",
+      "message": "All required database tables exist",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:18:47.245826",
+      "level": "INFO",
+      "message": "Starting comprehensive workflow testing (5 iterations per workflow)",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:18:47.251585",
+      "level": "INFO",
+      "message": "Found 14 active workflow templates to test",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:18:47.256855",
+      "level": "INFO",
+      "message": "Testing workflow 'DME REFERRAL' - Iteration 1/5 - Patient PASTION PERRY 07/13/1955",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:18:51.277524",
+      "level": "INFO",
+      "message": "Testing workflow 'DME REFERRAL' - Iteration 2/5 - Patient LARSON JENNIFER 03/01/1946",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:18:55.305954",
+      "level": "INFO",
+      "message": "Testing workflow 'DME REFERRAL' - Iteration 3/5 - Patient VAZQUEZ ARTURO 11/08/1947",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:18:59.335850",
+      "level": "INFO",
+      "message": "Testing workflow 'DME REFERRAL' - Iteration 4/5 - Patient CHOW SHUET 05/19/1932",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:19:03.363720",
+      "level": "INFO",
+      "message": "Testing workflow 'DME REFERRAL' - Iteration 5/5 - Patient ZAMORA GUZMAN MARIA 06/26/1943",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:19:07.395379",
+      "level": "INFO",
+      "message": "Testing workflow 'HHC REFERRAL' - Iteration 1/5 - Patient PASTION PERRY 07/13/1955",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:19:11.423170",
+      "level": "INFO",
+      "message": "Testing workflow 'HHC REFERRAL' - Iteration 2/5 - Patient LARSON JENNIFER 03/01/1946",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:19:15.450678",
+      "level": "INFO",
+      "message": "Testing workflow 'HHC REFERRAL' - Iteration 3/5 - Patient VAZQUEZ ARTURO 11/08/1947",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:19:19.480771",
+      "level": "INFO",
+      "message": "Testing workflow 'HHC REFERRAL' - Iteration 4/5 - Patient CHOW SHUET 05/19/1932",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:19:23.511591",
+      "level": "INFO",
+      "message": "Testing workflow 'HHC REFERRAL' - Iteration 5/5 - Patient ZAMORA GUZMAN MARIA 06/26/1943",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:19:27.543313",
+      "level": "INFO",
+      "message": "Testing workflow 'IMAGING FUTURE' - Iteration 1/5 - Patient PASTION PERRY 07/13/1955",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:19:31.574550",
+      "level": "INFO",
+      "message": "Testing workflow 'IMAGING FUTURE' - Iteration 2/5 - Patient LARSON JENNIFER 03/01/1946",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:19:35.604693",
+      "level": "INFO",
+      "message": "Testing workflow 'IMAGING FUTURE' - Iteration 3/5 - Patient VAZQUEZ ARTURO 11/08/1947",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:19:39.634201",
+      "level": "INFO",
+      "message": "Testing workflow 'IMAGING FUTURE' - Iteration 4/5 - Patient CHOW SHUET 05/19/1932",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:19:43.661482",
+      "level": "INFO",
+      "message": "Testing workflow 'IMAGING FUTURE' - Iteration 5/5 - Patient ZAMORA GUZMAN MARIA 06/26/1943",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:19:47.694859",
+      "level": "INFO",
+      "message": "Testing workflow 'IMAGING ROUTINE' - Iteration 1/5 - Patient PASTION PERRY 07/13/1955",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:19:51.728916",
+      "level": "INFO",
+      "message": "Testing workflow 'IMAGING ROUTINE' - Iteration 2/5 - Patient LARSON JENNIFER 03/01/1946",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:19:55.762717",
+      "level": "INFO",
+      "message": "Testing workflow 'IMAGING ROUTINE' - Iteration 3/5 - Patient VAZQUEZ ARTURO 11/08/1947",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:19:59.792130",
+      "level": "INFO",
+      "message": "Testing workflow 'IMAGING ROUTINE' - Iteration 4/5 - Patient CHOW SHUET 05/19/1932",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:20:03.820865",
+      "level": "INFO",
+      "message": "Testing workflow 'IMAGING ROUTINE' - Iteration 5/5 - Patient ZAMORA GUZMAN MARIA 06/26/1943",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:20:07.851965",
+      "level": "INFO",
+      "message": "Testing workflow 'IMAGING URGENT' - Iteration 1/5 - Patient PASTION PERRY 07/13/1955",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:20:11.883512",
+      "level": "INFO",
+      "message": "Testing workflow 'IMAGING URGENT' - Iteration 2/5 - Patient LARSON JENNIFER 03/01/1946",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:20:15.917680",
+      "level": "INFO",
+      "message": "Testing workflow 'IMAGING URGENT' - Iteration 3/5 - Patient VAZQUEZ ARTURO 11/08/1947",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:20:19.954181",
+      "level": "INFO",
+      "message": "Testing workflow 'IMAGING URGENT' - Iteration 4/5 - Patient CHOW SHUET 05/19/1932",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:20:23.984158",
+      "level": "INFO",
+      "message": "Testing workflow 'IMAGING URGENT' - Iteration 5/5 - Patient ZAMORA GUZMAN MARIA 06/26/1943",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:20:28.019165",
+      "level": "INFO",
+      "message": "Testing workflow 'LAB FUTURE' - Iteration 1/5 - Patient PASTION PERRY 07/13/1955",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:20:32.049282",
+      "level": "INFO",
+      "message": "Testing workflow 'LAB FUTURE' - Iteration 2/5 - Patient LARSON JENNIFER 03/01/1946",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:20:36.080044",
+      "level": "INFO",
+      "message": "Testing workflow 'LAB FUTURE' - Iteration 3/5 - Patient VAZQUEZ ARTURO 11/08/1947",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:20:40.108939",
+      "level": "INFO",
+      "message": "Testing workflow 'LAB FUTURE' - Iteration 4/5 - Patient CHOW SHUET 05/19/1932",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:20:44.128631",
+      "level": "INFO",
+      "message": "Testing workflow 'LAB FUTURE' - Iteration 5/5 - Patient ZAMORA GUZMAN MARIA 06/26/1943",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:20:48.159335",
+      "level": "INFO",
+      "message": "Testing workflow 'LAB ROUTINE' - Iteration 1/5 - Patient PASTION PERRY 07/13/1955",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:20:52.186981",
+      "level": "INFO",
+      "message": "Testing workflow 'LAB ROUTINE' - Iteration 2/5 - Patient LARSON JENNIFER 03/01/1946",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:20:56.216862",
+      "level": "INFO",
+      "message": "Testing workflow 'LAB ROUTINE' - Iteration 3/5 - Patient VAZQUEZ ARTURO 11/08/1947",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:21:00.244019",
+      "level": "INFO",
+      "message": "Testing workflow 'LAB ROUTINE' - Iteration 4/5 - Patient CHOW SHUET 05/19/1932",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:21:04.274731",
+      "level": "INFO",
+      "message": "Testing workflow 'LAB ROUTINE' - Iteration 5/5 - Patient ZAMORA GUZMAN MARIA 06/26/1943",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:21:08.317750",
+      "level": "INFO",
+      "message": "Testing workflow 'LAB URGENT' - Iteration 1/5 - Patient PASTION PERRY 07/13/1955",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:21:12.349577",
+      "level": "INFO",
+      "message": "Testing workflow 'LAB URGENT' - Iteration 2/5 - Patient LARSON JENNIFER 03/01/1946",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:21:16.383027",
+      "level": "INFO",
+      "message": "Testing workflow 'LAB URGENT' - Iteration 3/5 - Patient VAZQUEZ ARTURO 11/08/1947",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:21:20.411161",
+      "level": "INFO",
+      "message": "Testing workflow 'LAB URGENT' - Iteration 4/5 - Patient CHOW SHUET 05/19/1932",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:21:24.442564",
+      "level": "INFO",
+      "message": "Testing workflow 'LAB URGENT' - Iteration 5/5 - Patient ZAMORA GUZMAN MARIA 06/26/1943",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:21:28.471715",
+      "level": "INFO",
+      "message": "Testing workflow 'MEDICAL RECORDS' - Iteration 1/5 - Patient PASTION PERRY 07/13/1955",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:21:32.499184",
+      "level": "INFO",
+      "message": "Testing workflow 'MEDICAL RECORDS' - Iteration 2/5 - Patient LARSON JENNIFER 03/01/1946",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:21:36.532288",
+      "level": "INFO",
+      "message": "Testing workflow 'MEDICAL RECORDS' - Iteration 3/5 - Patient VAZQUEZ ARTURO 11/08/1947",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:21:40.563222",
+      "level": "INFO",
+      "message": "Testing workflow 'MEDICAL RECORDS' - Iteration 4/5 - Patient CHOW SHUET 05/19/1932",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:21:44.591540",
+      "level": "INFO",
+      "message": "Testing workflow 'MEDICAL RECORDS' - Iteration 5/5 - Patient ZAMORA GUZMAN MARIA 06/26/1943",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:21:48.622367",
+      "level": "INFO",
+      "message": "Testing workflow 'MEDICATION PROBLEM' - Iteration 1/5 - Patient PASTION PERRY 07/13/1955",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:21:52.651232",
+      "level": "INFO",
+      "message": "Testing workflow 'MEDICATION PROBLEM' - Iteration 2/5 - Patient LARSON JENNIFER 03/01/1946",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:21:56.681885",
+      "level": "INFO",
+      "message": "Testing workflow 'MEDICATION PROBLEM' - Iteration 3/5 - Patient VAZQUEZ ARTURO 11/08/1947",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:22:00.711934",
+      "level": "INFO",
+      "message": "Testing workflow 'MEDICATION PROBLEM' - Iteration 4/5 - Patient CHOW SHUET 05/19/1932",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:22:04.744445",
+      "level": "INFO",
+      "message": "Testing workflow 'MEDICATION PROBLEM' - Iteration 5/5 - Patient ZAMORA GUZMAN MARIA 06/26/1943",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:22:08.773130",
+      "level": "INFO",
+      "message": "Testing workflow 'MEDICATION REFILL' - Iteration 1/5 - Patient PASTION PERRY 07/13/1955",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:22:12.802817",
+      "level": "INFO",
+      "message": "Testing workflow 'MEDICATION REFILL' - Iteration 2/5 - Patient LARSON JENNIFER 03/01/1946",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:22:16.831838",
+      "level": "INFO",
+      "message": "Testing workflow 'MEDICATION REFILL' - Iteration 3/5 - Patient VAZQUEZ ARTURO 11/08/1947",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:22:20.859799",
+      "level": "INFO",
+      "message": "Testing workflow 'MEDICATION REFILL' - Iteration 4/5 - Patient CHOW SHUET 05/19/1932",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:22:24.890486",
+      "level": "INFO",
+      "message": "Testing workflow 'MEDICATION REFILL' - Iteration 5/5 - Patient ZAMORA GUZMAN MARIA 06/26/1943",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:22:28.918278",
+      "level": "INFO",
+      "message": "Testing workflow 'POT_PATIENT_ONBOARDING' - Iteration 1/5 - Patient PASTION PERRY 07/13/1955",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:22:32.949732",
+      "level": "INFO",
+      "message": "Testing workflow 'POT_PATIENT_ONBOARDING' - Iteration 2/5 - Patient LARSON JENNIFER 03/01/1946",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:22:36.977239",
+      "level": "INFO",
+      "message": "Testing workflow 'POT_PATIENT_ONBOARDING' - Iteration 3/5 - Patient VAZQUEZ ARTURO 11/08/1947",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:22:41.007523",
+      "level": "INFO",
+      "message": "Testing workflow 'POT_PATIENT_ONBOARDING' - Iteration 4/5 - Patient CHOW SHUET 05/19/1932",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:22:45.037458",
+      "level": "INFO",
+      "message": "Testing workflow 'POT_PATIENT_ONBOARDING' - Iteration 5/5 - Patient ZAMORA GUZMAN MARIA 06/26/1943",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:22:49.067711",
+      "level": "INFO",
+      "message": "Testing workflow 'PRIOR AUTHORIZATION' - Iteration 1/5 - Patient PASTION PERRY 07/13/1955",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:22:53.102409",
+      "level": "INFO",
+      "message": "Testing workflow 'PRIOR AUTHORIZATION' - Iteration 2/5 - Patient LARSON JENNIFER 03/01/1946",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:22:57.130756",
+      "level": "INFO",
+      "message": "Testing workflow 'PRIOR AUTHORIZATION' - Iteration 3/5 - Patient VAZQUEZ ARTURO 11/08/1947",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:23:01.165623",
+      "level": "INFO",
+      "message": "Testing workflow 'PRIOR AUTHORIZATION' - Iteration 4/5 - Patient CHOW SHUET 05/19/1932",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:23:05.197345",
+      "level": "INFO",
+      "message": "Testing workflow 'PRIOR AUTHORIZATION' - Iteration 5/5 - Patient ZAMORA GUZMAN MARIA 06/26/1943",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:23:09.227817",
+      "level": "INFO",
+      "message": "Testing workflow 'SPECIALIST REFERRAL' - Iteration 1/5 - Patient PASTION PERRY 07/13/1955",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:23:13.259444",
+      "level": "INFO",
+      "message": "Testing workflow 'SPECIALIST REFERRAL' - Iteration 2/5 - Patient LARSON JENNIFER 03/01/1946",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:23:17.288796",
+      "level": "INFO",
+      "message": "Testing workflow 'SPECIALIST REFERRAL' - Iteration 3/5 - Patient VAZQUEZ ARTURO 11/08/1947",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:23:21.318209",
+      "level": "INFO",
+      "message": "Testing workflow 'SPECIALIST REFERRAL' - Iteration 4/5 - Patient CHOW SHUET 05/19/1932",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:23:25.347580",
+      "level": "INFO",
+      "message": "Testing workflow 'SPECIALIST REFERRAL' - Iteration 5/5 - Patient ZAMORA GUZMAN MARIA 06/26/1943",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:23:29.375821",
+      "level": "INFO",
+      "message": "Starting provider functionality testing",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:23:29.379777",
+      "level": "INFO",
+      "message": "Testing provider task: Visit Task - In-Person",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:23:30.411868",
+      "level": "INFO",
+      "message": "Testing provider task: Visit Task - Telehealth",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:23:31.447248",
+      "level": "INFO",
+      "message": "Testing provider task: Phone Review",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:23:32.529077",
+      "level": "INFO",
+      "message": "Testing data synchronization between main and monthly tables",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:23:32.569059",
+      "level": "INFO",
+      "message": "Running database verification tests",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:23:32.587286",
+      "level": "WARNING",
+      "message": "Database verification issues detected",
+      "details": {}
+    }
+  ]
+}

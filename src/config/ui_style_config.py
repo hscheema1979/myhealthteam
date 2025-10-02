@@ -170,3 +170,121 @@ CONSISTENCY RULES:
 4. Colors should reference ColorScheme constants
 5. No hardcoded emojis in any component
 """
+
+def apply_custom_css():
+    """Apply custom CSS styling for healthcare management system"""
+    import streamlit as st
+    
+    st.markdown("""
+    <style>
+    /* Main container styling */
+    .main .block-container {
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+        max-width: 1200px;
+    }
+    
+    /* Header styling */
+    .stMarkdown h1 {
+        color: #1f77b4;
+        font-weight: 600;
+        border-bottom: 2px solid #e0e0e0;
+        padding-bottom: 0.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .stMarkdown h2 {
+        color: #2c3e50;
+        font-weight: 500;
+        margin-top: 2rem;
+        margin-bottom: 1rem;
+    }
+    
+    .stMarkdown h3 {
+        color: #34495e;
+        font-weight: 500;
+        margin-top: 1.5rem;
+        margin-bottom: 0.75rem;
+    }
+    
+    /* Metric styling */
+    .metric-container {
+        background: white;
+        padding: 1rem;
+        border-radius: 8px;
+        border: 1px solid #e0e0e0;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    /* Button styling */
+    .stButton > button {
+        background-color: #1f77b4;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        padding: 0.5rem 1rem;
+        font-weight: 500;
+        transition: background-color 0.3s;
+    }
+    
+    .stButton > button:hover {
+        background-color: #1565c0;
+    }
+    
+    /* Table styling */
+    .dataframe {
+        border: 1px solid #e0e0e0;
+        border-radius: 4px;
+    }
+    
+    .dataframe th {
+        background-color: #f5f5f5;
+        font-weight: 600;
+        color: #2c3e50;
+    }
+    
+    /* Alert styling */
+    .stAlert {
+        border-radius: 4px;
+        border-left: 4px solid;
+    }
+    
+    .stAlert[data-baseweb="notification"] {
+        background-color: #f8f9fa;
+    }
+    
+    /* Success styling */
+    .success-indicator {
+        color: #2ca02c;
+        font-weight: 600;
+    }
+    
+    /* Error styling */
+    .error-indicator {
+        color: #d62728;
+        font-weight: 600;
+    }
+    
+    /* Warning styling */
+    .warning-indicator {
+        color: #ff7f0e;
+        font-weight: 600;
+    }
+    
+    /* Info styling */
+    .info-indicator {
+        color: #1f77b4;
+        font-weight: 600;
+    }
+    
+    /* Sidebar styling */
+    .css-1d391kg {
+        background-color: #f8f9fa;
+    }
+    
+    /* Remove default streamlit styling */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    </style>
+    """, unsafe_allow_html=True)

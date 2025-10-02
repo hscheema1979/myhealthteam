@@ -1,31 +1,50 @@
-import sys
+#!/usr/bin/env python3
+"""
+Check database schema to understand table structure
+"""
+
+import sqlite3
 import os
-sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
 
-from database import get_db_connection
-
-def check_schema():
+def main():
+    db_file = "production.db"
+    
+    if not os.path.exists(db_file):
+        print(f"ERROR: {db_file} not found")
+        return
+    
+    conn = sqlite3.connect(db_file)
+    cursor = conn.cursor()
+    
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        # Get all workflow-related tables
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE '%workflow%'")
+        # Get all tables
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
         tables = cursor.fetchall()
         
-        print('Workflow-related tables:')
+        print("=== DATABASE TABLES ===")
         for table in tables:
             table_name = table[0]
-            print(f'\n  Table: {table_name}')
-            cursor.execute(f'PRAGMA table_info({table_name})')
+            print(f"\nTable: {table_name}")
+            
+            # Get table schema
+            cursor.execute(f"PRAGMA table_info({table_name});")
             columns = cursor.fetchall()
+            
+            print("Columns:")
             for col in columns:
-                print(f'    {col[1]} ({col[2]})')
-        
-        conn.close()
-        
+                col_id, col_name, col_type, not_null, default_val, primary_key = col
+                print(f"  {col_name} ({col_type})")
+            
+            # Get row count
+            cursor.execute(f"SELECT COUNT(*) FROM {table_name};")
+            count = cursor.fetchone()[0]
+            print(f"Row count: {count}")
+            
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"ERROR: {e}")
+    
+    finally:
+        conn.close()
 
 if __name__ == "__main__":
-    check_schema()
+    main()

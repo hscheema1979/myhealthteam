@@ -1,0 +1,268 @@
+{
+  "schema_verification": [
+    {
+      "timestamp": "2025-10-01T13:16:55.992560",
+      "test_name": "Database Connectivity",
+      "status": "PASS",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:16:56.282087",
+      "test_name": "Table Schema: workflow_templates",
+      "status": "PASS",
+      "details": {
+        "columns_found": 2
+      }
+    },
+    {
+      "timestamp": "2025-10-01T13:16:56.566118",
+      "test_name": "Table Schema: workflow_steps",
+      "status": "PASS",
+      "details": {
+        "columns_found": 7
+      }
+    },
+    {
+      "timestamp": "2025-10-01T13:16:57.071307",
+      "test_name": "Table Schema: workflow_instances",
+      "status": "PASS",
+      "details": {
+        "columns_found": 52
+      }
+    },
+    {
+      "timestamp": "2025-10-01T13:16:58.138032",
+      "test_name": "Table Schema: coordinator_tasks",
+      "status": "PASS",
+      "details": {
+        "columns_found": 8
+      }
+    },
+    {
+      "timestamp": "2025-10-01T13:16:59.150013",
+      "test_name": "Table Schema: provider_tasks",
+      "status": "PASS",
+      "details": {
+        "columns_found": 21
+      }
+    },
+    {
+      "timestamp": "2025-10-01T13:16:59.614947",
+      "test_name": "Table Schema: patients",
+      "status": "PASS",
+      "details": {
+        "columns_found": 96
+      }
+    },
+    {
+      "timestamp": "2025-10-01T13:16:59.895688",
+      "test_name": "Table Schema: patient_panel",
+      "status": "PASS",
+      "details": {
+        "columns_found": 86
+      }
+    },
+    {
+      "timestamp": "2025-10-01T13:17:00.179216",
+      "test_name": "Table Schema: users",
+      "status": "PASS",
+      "details": {
+        "columns_found": 17
+      }
+    },
+    {
+      "timestamp": "2025-10-01T13:17:00.470634",
+      "test_name": "Table Schema: roles",
+      "status": "PASS",
+      "details": {
+        "columns_found": 3
+      }
+    },
+    {
+      "timestamp": "2025-10-01T13:17:00.616151",
+      "test_name": "Monthly Table Exists: coordinator_tasks_2025_10",
+      "status": "PASS",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:17:00.872994",
+      "test_name": "Monthly Table Schema: coordinator_tasks_2025_10",
+      "status": "FAIL",
+      "details": {
+        "error": "Schema mismatch with main table"
+      }
+    },
+    {
+      "timestamp": "2025-10-01T13:17:00.997826",
+      "test_name": "Monthly Table Exists: provider_tasks_2025_10",
+      "status": "PASS",
+      "details": {}
+    },
+    {
+      "timestamp": "2025-10-01T13:17:01.608039",
+      "test_name": "Monthly Table Schema: provider_tasks_2025_10",
+      "status": "FAIL",
+      "details": {
+        "error": "Schema mismatch with main table"
+      }
+    }
+  ],
+  "data_consistency": [
+    {
+      "timestamp": "2025-10-01T13:17:01.767658",
+      "test_name": "Workflow Instances Reference Valid Templates",
+      "status": "PASS",
+      "details": {
+        "count": 0
+      }
+    },
+    {
+      "timestamp": "2025-10-01T13:17:01.915280",
+      "test_name": "Workflow Steps Reference Valid Templates",
+      "status": "PASS",
+      "details": {
+        "count": 0
+      }
+    },
+    {
+      "timestamp": "2025-10-01T13:17:02.131800",
+      "test_name": "Coordinator Tasks Reference Valid Patients",
+      "status": "FAIL",
+      "details": {
+        "count": 151497,
+        "expected": 0,
+        "description": "Coordinator tasks with invalid patient references"
+      }
+    },
+    {
+      "timestamp": "2025-10-01T13:17:02.283632",
+      "test_name": "Provider Tasks Reference Valid Patients",
+      "status": "FAIL",
+      "details": {
+        "count": 22865,
+        "expected": 0,
+        "description": "Provider tasks with invalid patient references"
+      }
+    },
+    {
+      "timestamp": "2025-10-01T13:17:02.416232",
+      "test_name": "Patient Panel References Valid Patients",
+      "status": "FAIL",
+      "details": {
+        "count": 1,
+        "expected": 0,
+        "description": "Patient panel entries with invalid patient references"
+      }
+    }
+  ],
+  "synchronization_checks": [
+    {
+      "timestamp": "2025-10-01T13:17:02.935264",
+      "test_name": "Table Sync: coordinator_tasks <-> coordinator_tasks_2025_10",
+      "status": "WARNING",
+      "details": {
+        "error": "Could not check synchronization"
+      }
+    },
+    {
+      "timestamp": "2025-10-01T13:17:03.902439",
+      "test_name": "Table Sync: provider_tasks <-> provider_tasks_2025_10",
+      "status": "FAIL",
+      "details": {
+        "main_count": 22874,
+        "monthly_count": 9,
+        "missing_in_monthly": 9
+      }
+    }
+  ],
+  "integrity_checks": [
+    {
+      "timestamp": "2025-10-01T13:17:03.903210",
+      "test_name": "Foreign Key Integrity",
+      "status": "SKIPPED",
+      "details": {
+        "reason": "Schema migration in progress - foreign key constraints being updated"
+      }
+    },
+    {
+      "timestamp": "2025-10-01T13:17:05.819080",
+      "test_name": "Database Integrity Check",
+      "status": "PASS",
+      "details": {}
+    }
+  ],
+  "performance_metrics": [
+    {
+      "timestamp": "2025-10-01T13:17:06.277188",
+      "test_name": "Database Size",
+      "status": "INFO",
+      "details": {
+        "value": "303.89 MB",
+        "raw_value": "318652416"
+      }
+    },
+    {
+      "timestamp": "2025-10-01T13:17:06.979885",
+      "test_name": "Total Tables",
+      "status": "INFO",
+      "details": {
+        "value": "175",
+        "raw_value": "175"
+      }
+    },
+    {
+      "timestamp": "2025-10-01T13:17:07.623809",
+      "test_name": "Total Indexes",
+      "status": "INFO",
+      "details": {
+        "value": "76",
+        "raw_value": "76"
+      }
+    },
+    {
+      "timestamp": "2025-10-01T13:17:07.783039",
+      "test_name": "Workflow Templates Count",
+      "status": "INFO",
+      "details": {
+        "value": "14",
+        "raw_value": "14"
+      }
+    },
+    {
+      "timestamp": "2025-10-01T13:17:07.928740",
+      "test_name": "Active Workflow Instances",
+      "status": "INFO",
+      "details": {
+        "value": "10",
+        "raw_value": "10"
+      }
+    },
+    {
+      "timestamp": "2025-10-01T13:17:08.077638",
+      "test_name": "Total Patients",
+      "status": "INFO",
+      "details": {
+        "value": "532",
+        "raw_value": "532"
+      }
+    },
+    {
+      "timestamp": "2025-10-01T13:17:08.247241",
+      "test_name": "Coordinator Tasks (Current Month)",
+      "status": "INFO",
+      "details": {
+        "value": "365",
+        "raw_value": "365"
+      }
+    },
+    {
+      "timestamp": "2025-10-01T13:17:08.393763",
+      "test_name": "Provider Tasks (Current Month)",
+      "status": "INFO",
+      "details": {
+        "value": "9",
+        "raw_value": "9"
+      }
+    }
+  ]
+}

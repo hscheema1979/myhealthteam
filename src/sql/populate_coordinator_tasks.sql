@@ -23,8 +23,23 @@ INSERT INTO coordinator_tasks (
         task_type,
         notes
     )
-SELECT sch."Pt Name" as patient_id,
-    -- Keep raw for now
+-- Regular coordinator tasks from SOURCE_COORDINATOR_TASKS_HISTORY
+SELECT -- Standardized patient ID normalization
+    TRIM(
+        REPLACE(
+            REPLACE(
+                REPLACE(
+                    TRIM(REPLACE(sch."Pt Name", 'ZEN-', '')),
+                    ', ',
+                    ' '
+                ),
+                ',',
+                ' '
+            ),
+            '  ',
+            ' '
+        )
+    ) as patient_id,
     sch."Staff" as coordinator_id,
     -- Keep raw for now
     -- Standardize date format
@@ -55,7 +70,63 @@ WHERE sch."Pt Name" IS NOT NULL
     AND sch."Staff" != ''
     AND sch."Mins B" IS NOT NULL
     AND CAST(sch."Mins B" AS REAL) > 0
-    AND sch."Type" != 'Place holder.  Do not change this row data';
+    AND sch."Type" != 'Place holder.  Do not change this row data'
+
+UNION ALL
+
+-- RVZ care management tasks from SOURCE_PROVIDER_TASKS_HISTORY
+SELECT -- Standardized patient ID normalization for RVZ data
+    TRIM(
+        REPLACE(
+            REPLACE(
+                REPLACE(
+                    TRIM(REPLACE(sph."Patient Last, First DOB", 'ZEN-', '')),
+                    ', ',
+                    ' '
+                ),
+                ',',
+                ' '
+            ),
+            '  ',
+            ' '
+        )
+    ) as patient_id,
+    sph."Prov" as coordinator_id,
+    -- Standardize date format for RVZ data
+    CASE
+        WHEN sph."DOS" LIKE '__/__/____' THEN substr(sph."DOS", 7, 4) || '-' || printf(
+            '%02d',
+            CAST(substr(sph."DOS", 1, 2) AS INTEGER)
+        ) || '-' || printf(
+            '%02d',
+            CAST(substr(sph."DOS", 4, 2) AS INTEGER)
+        )
+        WHEN sph."DOS" LIKE '__/__/__' THEN '20' || substr(sph."DOS", 7, 2) || '-' || printf(
+            '%02d',
+            CAST(substr(sph."DOS", 1, 2) AS INTEGER)
+        ) || '-' || printf(
+            '%02d',
+            CAST(substr(sph."DOS", 4, 2) AS INTEGER)
+        )
+        ELSE sph."DOS"
+    END as task_date,
+    COALESCE(CAST(sph."Minutes" AS INTEGER), 0) as duration_minutes,
+    sph."Service" as task_type,
+    sph."Notes" as notes
+FROM "SOURCE_PROVIDER_TASKS_HISTORY" sph
+WHERE sph."Prov" LIKE '%ZEN-MAL%'
+    AND sph."Patient Last, First DOB" IS NOT NULL
+    AND sph."Patient Last, First DOB" != ''
+    AND sph."Patient Last, First DOB" != 'Aaa, Aaa'
+    AND sph."Patient Last, First DOB" != 'MOUSE, MICKEY'
+    AND sph."Service" IS NOT NULL
+    AND sph."Service" != ''
+    AND (
+        sph."Service" LIKE '%CM%PHONE%REVIEW%' 
+        OR sph."Service" LIKE '%cm%phone%review%'
+        OR sph."Service" LIKE '%Care%Coordination%'
+        OR sph."Service" LIKE '%TCM%'
+    );
 -- Step 4: Show results
 SELECT 'Import Complete' as status,
     (

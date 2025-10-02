@@ -1,9 +1,6 @@
 # Simple PowerShell script to consolidate CSV files
 Write-Host "Starting CSV consolidation process..."
 
-
-
-
 # Exclude RVZ from cmlog.csv, create separate rvz.csv
 Write-Host "Combining all CMLog_*.csv files in downloads (excluding RVZ) into cmlog.csv..."
 $downloadsDir = "../downloads"

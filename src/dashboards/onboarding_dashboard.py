@@ -955,7 +955,15 @@ def show():
                         else f"Assigned to {row.get('initial_tv_provider', 'Not Assigned')}" if row.get('initial_tv_provider') 
                         else "Not Assigned", axis=1),
                     "Action Required": queue_df.apply(lambda row: 
-                        "Complete Stage 5" if row.get('ready_for_stage5_completion') == 1 
+                        "Ready for Handoff - Complete workflow" if row['current_stage'] == 'Workflow Complete'
+                        else "Schedule Initial TV Visit" if row['current_stage'] == 'TV Visit Scheduling' and not row.get('initial_tv_provider')
+                        else "Complete Initial TV Visit" if row['current_stage'] == 'TV Visit Scheduling' and row.get('initial_tv_provider') and not row.get('initial_tv_completed')
+                        else "Mark Stage 5 Complete" if row['current_stage'] == 'TV Visit Scheduling' and row.get('initial_tv_completed') == 1
+                        else "Process medical records & documentation" if row['current_stage'] == 'Intake Processing'
+                        else "Create patient chart in system" if row['current_stage'] == 'Chart Creation'
+                        else "Verify insurance & eligibility" if row['current_stage'] == 'Eligibility Verification'
+                        else "Complete patient registration form" if row['current_stage'] == 'Patient Registration'
+                        else "Assign POT user" if not row.get('assigned_pot_name') or row.get('assigned_pot_name') == 'Unassigned'
                         else "", axis=1),
                     "Created": pd.to_datetime(queue_df['created_date']).dt.strftime('%m/%d/%Y'),
                     "Last Update": pd.to_datetime(queue_df['updated_date']).dt.strftime('%m/%d/%Y %H:%M')
@@ -993,8 +1001,15 @@ def show():
                     
                     if selected_patient:
                         selected_id = patient_options[selected_patient]
+                        selected_stage = selected_patient.split(' - ')[1]
                         
-                        col1, col2, col3 = st.columns(3)
+                        # Check if patient is ready for handoff
+                        is_ready_for_handoff = selected_stage == 'Completed - Ready for Handoff'
+                        
+                        if is_ready_for_handoff:
+                            col1, col2, col3 = st.columns(3)
+                        else:
+                            col1, col2, col3 = st.columns(3)
                         
                         with col1:
                             if st.button("Resume Onboarding", key="resume_onboarding"):
@@ -1009,6 +1024,21 @@ def show():
                                 if patient_details:
                                     st.session_state['view_patient_details'] = patient_details
                                     st.rerun()
+                        
+                        with col3:
+                            if is_ready_for_handoff:
+                                if st.button("✅ Complete Handoff", key="complete_handoff", type="primary"):
+                                    try:
+                                        # Mark patient as completed by setting completed_date
+                                        conn = database.get_db_connection()
+                                        conn.execute("UPDATE onboarding_patients SET completed_date = datetime('now'), updated_date = datetime('now') WHERE onboarding_id = ?", 
+                                                    (selected_id,))
+                                        conn.commit()
+                                        conn.close()
+                                        st.success(f"✅ Patient {selected_patient.split(' - ')[0]} handoff completed! Patient removed from onboarding queue.")
+                                        st.rerun()
+                                    except Exception as e:
+                                        st.error(f"Error completing handoff: {e}")
                         
 
                         
