@@ -165,15 +165,23 @@ def get_action_required_blockers(row):
     # Stage 5: TV Visit Scheduling blockers
     elif current_stage == 'Stage 5: TV Scheduling':
         if not row.get('assigned_provider_user_id'):
-            blockers.append("Assign provider")
+            blockers.append("Assign Initial TV Provider")
         elif not row.get('tv_scheduled'):
-            blockers.append("Schedule TV visit")
+            blockers.append("Schedule Initial TV")
         elif not row.get('initial_tv_completed'):
-            blockers.append("Complete initial TV visit")
+            # Check if provider has completed the task automatically
+            if row.get('provider_completed_initial_tv'):
+                blockers.append("Click Complete")
+            else:
+                blockers.append("Complete Initial TV (by provider)")
+        elif not row.get('regional_provider_assigned'):
+            blockers.append("Assign Regional Provider")
+        elif not row.get('coordinator_assigned'):
+            blockers.append("Assign Coordinator")
     
     # Workflow Complete
-    elif current_stage == 'Completed - Ready for Handoff':
-        return "Complete workflow handoff"
+    elif current_stage == 'Completed':
+        return "Onboarding complete"
     
     # Return appropriate message based on blockers found
     if len(blockers) == 0:
@@ -307,16 +315,10 @@ def show_resume_onboarding_form(patient_details, current_user_id):
     # Compute how many steps are completed
     completed_steps = sum(1 for s in stages if patient_details.get(f'stage{stages.index(s)+1}_complete', False))
 
-    # If all steps complete, show handoff
+    # All stages complete - onboarding workflow finished
     if completed_steps >= len(stages):
-        st.success("All stages complete! Ready for handoff to PCPM.")
-        if st.button("Complete Handoff"):
-            # Mark as completed
-            conn = database.get_db_connection()
-            conn.execute("UPDATE onboarding_patients SET completed_date = datetime('now') WHERE onboarding_id = ?", 
-                        (patient_details['onboarding_id'],))
-            conn.commit()
-            conn.close()
+        st.success("🎉 Onboarding Complete! Patient has been successfully onboarded and assigned to regional provider.")
+        if st.button("Return to Queue"):
             st.session_state['onboarding_mode'] = None
             st.success("Patient successfully handed off to PCPM!")
             st.rerun()
@@ -978,7 +980,15 @@ def show_tv_scheduling_form(patient_details, current_user_id):
                     except Exception as e:
                         st.warning(f"Patient table insertion warning: {e}")
                     
+                    # Complete Stage 5 and set patient status to 'Completed'
                     database.update_onboarding_stage_completion(patient_details['onboarding_id'], 5, True)
+                    database.update_onboarding_patient_status(patient_details['onboarding_id'], 'Completed')
+                    
+                    # Ensure data is transferred to patient_panel table
+                    try:
+                        database.sync_onboarding_to_patient_panel(patient_details['onboarding_id'])
+                    except Exception as e:
+                        st.warning(f"Patient panel sync warning: {e}")
                     
                     # Update tasks
                     tasks = patient_details.get('tasks', [])
@@ -994,7 +1004,7 @@ def show_tv_scheduling_form(patient_details, current_user_id):
                                 }
                             )
                     
-                    st.success("Stage 5 Complete! Patient onboarding workflow finished.")
+                    st.success("Stage 5 Complete! Patient onboarding workflow finished. Patient status set to 'Completed' and data transferred to patients and patient_panel tables.")
                     st.balloons()
                     st.session_state['onboarding_mode'] = None
                     st.rerun()
@@ -1142,13 +1152,7 @@ def show():
                         selected_id = patient_options[selected_patient]
                         selected_stage = selected_patient.split(' - ')[1]
                         
-                        # Check if patient is ready for handoff
-                        is_ready_for_handoff = selected_stage == 'Completed - Ready for Handoff'
-                        
-                        if is_ready_for_handoff:
-                            col1, col2, col3 = st.columns(3)
-                        else:
-                            col1, col2, col3 = st.columns(3)
+                        col1, col2, col3 = st.columns(3)
                         
                         with col1:
                             if st.button("Resume Onboarding", key="resume_onboarding"):
@@ -1165,19 +1169,8 @@ def show():
                                     st.rerun()
                         
                         with col3:
-                            if is_ready_for_handoff:
-                                if st.button("✅ Complete Handoff", key="complete_handoff", type="primary"):
-                                    try:
-                                        # Mark patient as completed by setting completed_date
-                                        conn = database.get_db_connection()
-                                        conn.execute("UPDATE onboarding_patients SET completed_date = datetime('now'), updated_date = datetime('now') WHERE onboarding_id = ?", 
-                                                    (selected_id,))
-                                        conn.commit()
-                                        conn.close()
-                                        st.success(f"✅ Patient {selected_patient.split(' - ')[0]} handoff completed! Patient removed from onboarding queue.")
-                                        st.rerun()
-                                    except Exception as e:
-                                        st.error(f"Error completing handoff: {e}")
+                            # Additional actions can be added here if needed
+                            pass
                         
 
                         
@@ -1311,7 +1304,7 @@ def show():
                     'Stage 3: Chart Creation',
                     'Stage 4: Intake Processing',
                     'Stage 5: TV Scheduling',
-                    'Completed - Ready for Handoff'
+                    'Completed'
                 ]
                 
                 for stage in stage_order:
@@ -1337,13 +1330,13 @@ def show():
                 # Daily metrics
                 st.markdown("### Daily Metrics")
                 total_patients = len(onboarding_queue)
-                completed_today = len([p for p in onboarding_queue if p['current_stage'] == 'Completed - Ready for Handoff'])
+                completed_today = len([p for p in onboarding_queue if p['current_stage'] == 'Completed'])
                 in_progress = total_patients - completed_today
                 completion_rate = f"{(completed_today/total_patients)*100:.0f}%" if total_patients > 0 else "0%"
                 
                 col1, col2, col3, col4 = st.columns(4)
                 col1.metric("Active Patients", total_patients)
-                col2.metric("Ready for Handoff", completed_today)
+                col2.metric("Completed Today", completed_today)
                 col3.metric("In Progress", in_progress)
                 col4.metric("Completion Rate", completion_rate)
                 
@@ -1391,6 +1384,5 @@ def show():
     2. **Eligibility Verification** - Verify insurance coverage
     3. **Chart Creation** - Create EMed patient chart
     4. **Intake Processing** - Collect medical records and documentation
-    5. **Initial TV Scheduling** - Schedule provider visit
-    6. **Handoff to PCPM** - Prepare patient for provider assignment
+    5. **TV Scheduling & Provider Assignment** - Schedule initial TV visit and assign regional provider
     """)

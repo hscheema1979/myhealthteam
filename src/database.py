@@ -666,15 +666,22 @@ def update_onboarding_stage5_completion(onboarding_id, tv_date, tv_time, assigne
         if tv_date and hasattr(tv_date, 'strftime'):
             tv_date = tv_date.strftime('%Y-%m-%d')
         
+        # Extract provider name for initial_tv_provider field
+        initial_tv_provider = None
+        if assigned_provider and assigned_provider != "Select Provider...":
+            # Extract the full name from the format "Full Name (username)"
+            initial_tv_provider = assigned_provider.split('(')[0].strip()
+        
         # Update onboarding patient record
         conn.execute("""
             UPDATE onboarding_patients
             SET tv_date = ?,
                 tv_time = ?,
                 assigned_provider_user_id = ?,
+                initial_tv_provider = ?,
                 updated_date = CURRENT_TIMESTAMP
             WHERE onboarding_id = ?
-        """, (tv_date, tv_time, provider_user_id, onboarding_id))
+        """, (tv_date, tv_time, provider_user_id, initial_tv_provider, onboarding_id))
         
         conn.commit()
         return True
@@ -1253,7 +1260,7 @@ def get_onboarding_queue():
             u.full_name AS assigned_pot_name,
             wi.workflow_status AS workflow_status,
             CASE 
-                WHEN op.stage5_complete = 1 THEN 'Completed - Ready for Handoff'
+                WHEN op.stage5_complete = 1 THEN 'Completed'
                 WHEN op.stage4_complete = 1 THEN 'Stage 5: TV Scheduling'
                 WHEN op.stage3_complete = 1 THEN 'Stage 4: Intake Processing'
                 WHEN op.stage2_complete = 1 THEN 'Stage 3: Chart Creation'
@@ -1262,7 +1269,7 @@ def get_onboarding_queue():
             END AS current_stage,
             CASE
                 WHEN op.completed_date IS NOT NULL THEN 'Completed'
-                WHEN op.stage5_complete = 1 THEN 'Ready for Handoff'
+                WHEN op.stage5_complete = 1 THEN 'Completed'
                 ELSE 'In Progress'
             END AS priority_status,
             op.created_date,
@@ -1297,15 +1304,27 @@ def get_onboarding_queue():
             op.tv_scheduled,
             op.initial_tv_completed,
             op.initial_tv_provider,
-            prov.full_name AS provider_name
+            op.provider_completed_initial_tv,
+            prov.full_name AS provider_name,
+            -- Check for regional provider and coordinator assignments
+            CASE WHEN pa_provider.provider_id IS NOT NULL THEN 1 ELSE 0 END AS regional_provider_assigned,
+            CASE WHEN pa_coordinator.coordinator_id IS NOT NULL THEN 1 ELSE 0 END AS coordinator_assigned,
+            reg_prov.full_name AS regional_provider_name,
+            coord.full_name AS coordinator_name
         FROM onboarding_patients op
         LEFT JOIN workflow_instances wi ON op.workflow_instance_id = wi.instance_id
         LEFT JOIN users u ON op.assigned_pot_user_id = u.user_id
         LEFT JOIN users prov ON op.assigned_provider_user_id = prov.user_id
+        LEFT JOIN patient_assignments pa_provider ON op.patient_id = pa_provider.patient_id 
+            AND pa_provider.provider_id IS NOT NULL AND pa_provider.status = 'active'
+        LEFT JOIN patient_assignments pa_coordinator ON op.patient_id = pa_coordinator.patient_id 
+            AND pa_coordinator.coordinator_id IS NOT NULL AND pa_coordinator.status = 'active'
+        LEFT JOIN users reg_prov ON pa_provider.provider_id = reg_prov.user_id
+        LEFT JOIN users coord ON pa_coordinator.coordinator_id = coord.user_id
         WHERE op.completed_date IS NULL
         ORDER BY 
             CASE 
-                WHEN op.stage5_complete = 1 THEN 1  -- Ready for handoff (highest priority)
+                WHEN op.stage5_complete = 1 THEN 1  -- Completed (highest priority)
                 WHEN op.stage4_complete = 1 THEN 2  -- Almost done
                 WHEN op.stage3_complete = 1 THEN 3
                 WHEN op.stage2_complete = 1 THEN 4
@@ -2797,6 +2816,24 @@ def update_billing_status(provider_id, week_start_date, paid_status):
         return True
     except Exception as e:
         print(f"Error updating billing status: {e}")
+        return False
+    finally:
+        conn.close()
+
+
+def update_onboarding_patient_status(onboarding_id, status):
+    """Update the patient_status of an onboarding patient"""
+    conn = get_db_connection()
+    try:
+        conn.execute("""
+            UPDATE onboarding_patients 
+            SET patient_status = ?, updated_date = CURRENT_TIMESTAMP 
+            WHERE onboarding_id = ?
+        """, (status, onboarding_id))
+        conn.commit()
+        return True
+    except Exception as e:
+        print(f"Error updating onboarding patient status: {e}")
         return False
     finally:
         conn.close()

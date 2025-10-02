@@ -46,8 +46,7 @@ Referral Intake → POT Patient Processing → Eligibility Verification → Char
 2. **Eligibility Check:** Verify patient insurance and eligibility status
 3. **Chart Creation:** Create patient chart in EMed with facility assignment
 4. **Intake Processing:** Perform patient intake including referral and medical records
-5. **TV Scheduling:** Schedule Initial TV with Provider Manager (PCPM)
-6. **Handoff Preparation:** Prepare complete patient file for PCPM assignment
+5. **TV Scheduling & Provider Assignment:** Schedule Initial TV and assign regional provider
 
 ---
 
@@ -285,38 +284,7 @@ const ProcessingChecklist = {
 
 ## Integration with Existing Workflows
 
-### 4.1 PCPM Workflow Integration
-
-**Handoff Process:**
-- Complete patient file preparation
-- Eligibility verification confirmation
-- Chart creation verification
-- Initial assessment notes
-- Scheduling coordination
-
-**Data Transfer:**
-```javascript
-const PCPMHandoff = {
-    patientId: String,
-    completedIntake: {
-        registrationComplete: Boolean,
-        eligibilityVerified: Boolean,
-        chartCreated: Boolean,
-        documentsCollected: Boolean,
-        initialAssessment: String
-    },
-    schedulingInfo: {
-        initialTVDate: Date,
-        patientAvailability: Array,
-        specialRequirements: String
-    },
-    handoffNotes: String,
-    handoffDate: Date,
-    handoffBy: String
-};
-```
-
-### 4.2 System Integration Points
+### 4.1 System Integration Points
 
 **EMed Integration:**
 - Chart creation API

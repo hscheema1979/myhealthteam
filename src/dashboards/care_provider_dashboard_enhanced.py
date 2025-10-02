@@ -917,6 +917,7 @@ def show_provider_onboarding_queue(user_id, onboarding_queue):
                                             annual_well_visit = ?,
                                             initial_tv_completed = 1,
                                             initial_tv_completed_date = ?,
+                                            provider_completed_initial_tv = 1,
                                             updated_date = CURRENT_TIMESTAMP
                                         WHERE onboarding_id = ?
                                     """, (

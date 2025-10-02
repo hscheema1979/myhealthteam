@@ -423,15 +423,10 @@ GROUP BY p.provider_id, p.provider_name, p.max_capacity;
    - Medical history and documentation gathering
    - Initial needs assessment and risk stratification
 
-2. **Provider Assignment Preparation**
-   - Geographic and specialty matching
-   - Provider capacity and availability check
-   - Handoff to PCPM for final assignment
-
-3. **Coordinator Assignment Preparation**
-   - Care complexity assessment
-   - Coordinator specialization matching
-   - Handoff to PCCM for final assignment
+2. **TV Scheduling & Provider Assignment**
+   - Schedule initial telemedicine visit
+   - Assign regional provider based on geographic and specialty matching
+   - Complete onboarding process
 
 ### Provider Workflow (PCP)
 

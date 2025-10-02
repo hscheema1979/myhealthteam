@@ -115,13 +115,13 @@ VALUES -- Stage 1: Patient Registration
         'Document all received materials and status',
         'Day3'
     ),
-    -- Stage 5: TV Scheduling & Handoff
+    -- Stage 5: TV Scheduling & Provider Assignment
     (
         14,
         14,
-        'Schedule Initial TV with PCPM',
+        'Schedule Initial TV',
         'POT',
-        'Schedule telehealth visit with provider manager',
+        'Schedule telehealth visit and assign regional provider',
         'Day3'
     ),
     (
@@ -130,21 +130,5 @@ VALUES -- Stage 1: Patient Registration
         'Notify patient of TV appointment',
         'POT',
         'Send appointment confirmation to patient',
-        'Day3'
-    ),
-    (
-        14,
-        16,
-        'Prepare handoff documentation',
-        'POT',
-        'Prepare complete patient file for handoff',
-        'Day3'
-    ),
-    (
-        14,
-        17,
-        'Complete handoff to PCPM',
-        'POT',
-        'Transfer patient to PCPM for provider assignment',
         'Day3'
     );

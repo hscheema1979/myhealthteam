@@ -70,7 +70,6 @@ CREATE TABLE IF NOT EXISTS onboarding_tasks (
     documents_received BOOLEAN DEFAULT FALSE,
     prescreen_completed BOOLEAN DEFAULT FALSE,
     tv_scheduled BOOLEAN DEFAULT FALSE,
-    handoff_complete BOOLEAN DEFAULT FALSE,
     -- Timestamps
     created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
