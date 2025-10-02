@@ -275,15 +275,6 @@ def show_patient_intake_form(current_user_id):
                     
                     # Mark Stage 1 as complete since we just completed registration
                     database.update_onboarding_stage_completion(onboarding_id, 1, True)
-                    # Persist additional appointment/medical contact fields
-                    database.update_onboarding_checkbox_data(onboarding_id, {
-                        'appointment_contact_name': appointment_contact_name,
-                        'appointment_contact_phone': appointment_contact_phone,
-                        'appointment_contact_email': appointment_contact_email,
-                        'medical_contact_name': medical_contact_name,
-                        'medical_contact_phone': medical_contact_phone,
-                        'medical_contact_email': medical_contact_email
-                    })
                     
                     # Clear the intake form flag and switch to resume mode for next stage
                     st.session_state['show_intake_form'] = False

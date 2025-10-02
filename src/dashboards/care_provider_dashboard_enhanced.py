@@ -1408,9 +1408,8 @@ def show_task_review_section(user_id):
                 SELECT 
                     patient_name,
                     task_date,
-                    duration_minutes,
-                    notes,
-                    service_type
+                    minutes_of_service,
+                    task_description
                 FROM {selected_table}
                 WHERE user_id = ?
                 ORDER BY task_date DESC
@@ -1420,7 +1419,7 @@ def show_task_review_section(user_id):
                 
                 if provider_tasks:
                     # Convert to DataFrame
-                    df = pd.DataFrame(provider_tasks, columns=['Patient Name', 'DOS', 'Duration', 'Notes', 'Service Type'])
+                    df = pd.DataFrame(provider_tasks, columns=['Patient Name', 'DOS', 'Duration', 'Service Type'])
                     
                     # Format the DOS column
                     df['DOS'] = pd.to_datetime(df['DOS']).dt.strftime('%Y-%m-%d')

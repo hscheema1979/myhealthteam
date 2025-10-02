@@ -1267,10 +1267,41 @@ def get_onboarding_queue():
             END AS priority_status,
             op.created_date,
             op.updated_date,
-            op.completed_date
+            op.completed_date,
+            -- Stage completion flags
+            op.stage1_complete,
+            op.stage2_complete,
+            op.stage3_complete,
+            op.stage4_complete,
+            op.stage5_complete,
+            -- Stage 1 blockers (Patient Registration)
+            op.first_name,
+            op.last_name,
+            op.date_of_birth,
+            op.phone_primary,
+            -- Stage 2 blockers (Eligibility Verification)
+            op.insurance_provider,
+            op.policy_number,
+            op.eligibility_verified,
+            op.insurance_cards_received,
+            op.eligibility_status,
+            -- Stage 3 blockers (Chart Creation)
+            op.emed_chart_created,
+            op.facility_confirmed,
+            op.chart_id,
+            -- Stage 4 blockers (Intake Processing)
+            op.intake_call_completed,
+            op.medical_records_requested,
+            -- Stage 5 blockers (TV Visit Scheduling)
+            op.assigned_provider_user_id,
+            op.tv_scheduled,
+            op.initial_tv_completed,
+            op.initial_tv_provider,
+            prov.full_name AS provider_name
         FROM onboarding_patients op
         LEFT JOIN workflow_instances wi ON op.workflow_instance_id = wi.instance_id
         LEFT JOIN users u ON op.assigned_pot_user_id = u.user_id
+        LEFT JOIN users prov ON op.assigned_provider_user_id = prov.user_id
         WHERE op.completed_date IS NULL
         ORDER BY 
             CASE 
