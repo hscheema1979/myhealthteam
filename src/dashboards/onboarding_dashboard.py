@@ -409,67 +409,6 @@ def show_eligibility_verification_form(patient_details, current_user_id):
             placeholder="Enter details about insurance verification, coverage limitations, etc.",
             key="eligibility_notes"
         )
-
-        # Stage 2 additions: Primary care and mental health checkboxes
-        st.markdown("### Clinical & Mental Health Intake")
-        primary_care_provider = st.text_input(
-            "Primary Care Provider", 
-            value=patient_details.get('primary_care_provider', ''),
-            key="primary_care_provider"
-        )
-        
-        # Handle date input with existing value
-        existing_pcp_date = patient_details.get('pcp_last_seen')
-        pcp_last_seen_value = None
-        if existing_pcp_date:
-            try:
-                from datetime import datetime
-                pcp_last_seen_value = datetime.strptime(existing_pcp_date, '%Y-%m-%d').date()
-            except (ValueError, TypeError):
-                pcp_last_seen_value = None
-        
-        pcp_last_seen = st.date_input(
-            "PCP Last Seen", 
-            value=pcp_last_seen_value,
-            key="pcp_last_seen"
-        )
-
-        st.markdown("#### Mental Health Conditions (check all that apply)")
-        mh_schizophrenia = st.checkbox(
-            "Schizophrenia", 
-            value=patient_details.get('mh_schizophrenia', False),
-            key="mh_schizophrenia"
-        )
-        mh_depression = st.checkbox(
-            "Depression", 
-            value=patient_details.get('mh_depression', False),
-            key="mh_depression"
-        )
-        mh_anxiety = st.checkbox(
-            "Anxiety", 
-            value=patient_details.get('mh_anxiety', False),
-            key="mh_anxiety"
-        )
-        mh_stress = st.checkbox(
-            "Stress", 
-            value=patient_details.get('mh_stress', False),
-            key="mh_stress"
-        )
-        mh_adhd = st.checkbox(
-            "ADHD", 
-            value=patient_details.get('mh_adhd', False),
-            key="mh_adhd"
-        )
-        mh_bipolar = st.checkbox(
-            "Bipolar", 
-            value=patient_details.get('mh_bipolar', False),
-            key="mh_bipolar"
-        )
-        mh_suicidal = st.checkbox(
-            "Suicidal Ideation", 
-            value=patient_details.get('mh_suicidal', False),
-            key="mh_suicidal"
-        )
         
         col1, col2, col3 = st.columns([1, 1, 2])
         with col1:
@@ -478,7 +417,7 @@ def show_eligibility_verification_form(patient_details, current_user_id):
                 if not insurance_provider or not policy_number:
                     st.error("Please fill in all required insurance fields (marked with *)")
                 else:
-                    # Save insurance, eligibility and clinical fields (always save data)
+                    # Save insurance and eligibility fields only
                     checkbox_payload = {
                         'insurance_provider': insurance_provider,
                         'policy_number': policy_number,
@@ -486,15 +425,6 @@ def show_eligibility_verification_form(patient_details, current_user_id):
                         'eligibility_status': eligibility_status,
                         'eligibility_notes': eligibility_notes,
                         'eligibility_verified': eligibility_verified,
-                        'mh_schizophrenia': mh_schizophrenia,
-                        'mh_depression': mh_depression,
-                        'mh_anxiety': mh_anxiety,
-                        'mh_stress': mh_stress,
-                        'mh_adhd': mh_adhd,
-                        'mh_bipolar': mh_bipolar,
-                        'mh_suicidal': mh_suicidal,
-                        'primary_care_provider': primary_care_provider,
-                        'pcp_last_seen': pcp_last_seen.strftime('%Y-%m-%d') if pcp_last_seen else None,
                     }
                     database.update_onboarding_checkbox_data(patient_details['onboarding_id'], checkbox_payload)
                     st.success('Stage 2 data saved')
@@ -742,10 +672,73 @@ def show_intake_processing_form(patient_details, current_user_id):
             key="chronic_conditions_onboarding"
         )
         
+        # Clinical Section - moved from Stage 2
+        st.markdown("### Clinical Information")
+        primary_care_provider = st.text_input(
+            "Primary Care Provider", 
+            value=patient_details.get('primary_care_provider', ''),
+            key="primary_care_provider"
+        )
+        
+        # Handle date input with existing value
+        existing_pcp_date = patient_details.get('pcp_last_seen')
+        pcp_last_seen_value = None
+        if existing_pcp_date:
+            try:
+                from datetime import datetime
+                pcp_last_seen_value = datetime.strptime(existing_pcp_date, '%Y-%m-%d').date()
+            except (ValueError, TypeError):
+                pcp_last_seen_value = None
+        
+        pcp_last_seen = st.date_input(
+            "PCP Last Seen", 
+            value=pcp_last_seen_value,
+            key="pcp_last_seen"
+        )
+
+        # Mental Health Section - moved from Stage 2
+        st.markdown("### Mental Health Conditions")
+        st.markdown("#### Check all that apply:")
+        mh_schizophrenia = st.checkbox(
+            "Schizophrenia", 
+            value=patient_details.get('mh_schizophrenia', False),
+            key="mh_schizophrenia"
+        )
+        mh_depression = st.checkbox(
+            "Depression", 
+            value=patient_details.get('mh_depression', False),
+            key="mh_depression"
+        )
+        mh_anxiety = st.checkbox(
+            "Anxiety", 
+            value=patient_details.get('mh_anxiety', False),
+            key="mh_anxiety"
+        )
+        mh_stress = st.checkbox(
+            "Stress", 
+            value=patient_details.get('mh_stress', False),
+            key="mh_stress"
+        )
+        mh_adhd = st.checkbox(
+            "ADHD", 
+            value=patient_details.get('mh_adhd', False),
+            key="mh_adhd"
+        )
+        mh_bipolar = st.checkbox(
+            "Bipolar", 
+            value=patient_details.get('mh_bipolar', False),
+            key="mh_bipolar"
+        )
+        mh_suicidal = st.checkbox(
+            "Suicidal Ideation", 
+            value=patient_details.get('mh_suicidal', False),
+            key="mh_suicidal"
+        )
+        
         col1, col2, col3 = st.columns([1, 1, 2])
         with col1:
             if st.form_submit_button("Complete Stage 4", type="primary"):
-                # Save intake processing checkbox/fields
+                # Save intake processing, clinical, and mental health fields
                 checkbox_data = {
                     'medical_records_requested': medical_records_requested,
                     'referral_documents_received': referral_documents_received,
@@ -762,7 +755,16 @@ def show_intake_processing_form(patient_details, current_user_id):
                     'patient_status': patient_status,
                     'active_specialist': active_specialist,
                     'specialist_last_seen': specialist_last_seen.strftime('%Y-%m-%d') if specialist_last_seen else None,
-                    'chronic_conditions_onboarding': chronic_conditions_onboarding
+                    'chronic_conditions_onboarding': chronic_conditions_onboarding,
+                    'primary_care_provider': primary_care_provider,
+                    'pcp_last_seen': pcp_last_seen.strftime('%Y-%m-%d') if pcp_last_seen else None,
+                    'mh_schizophrenia': mh_schizophrenia,
+                    'mh_depression': mh_depression,
+                    'mh_anxiety': mh_anxiety,
+                    'mh_stress': mh_stress,
+                    'mh_adhd': mh_adhd,
+                    'mh_bipolar': mh_bipolar,
+                    'mh_suicidal': mh_suicidal,
                 }
                 database.update_onboarding_checkbox_data(patient_details['onboarding_id'], checkbox_data)
 
@@ -786,7 +788,7 @@ def show_intake_processing_form(patient_details, current_user_id):
         
         with col2:
             if st.form_submit_button("Save Progress"):
-                # Save checkbox data and clinical fields when saving progress
+                # Save checkbox data, clinical, and mental health fields when saving progress
                 checkbox_data = {
                     'medical_records_requested': medical_records_requested,
                     'referral_documents_received': referral_documents_received,
@@ -803,7 +805,16 @@ def show_intake_processing_form(patient_details, current_user_id):
                     'patient_status': patient_status,
                     'active_specialist': active_specialist,
                     'specialist_last_seen': specialist_last_seen.strftime('%Y-%m-%d') if specialist_last_seen else None,
-                    'chronic_conditions_onboarding': chronic_conditions_onboarding
+                    'chronic_conditions_onboarding': chronic_conditions_onboarding,
+                    'primary_care_provider': primary_care_provider,
+                    'pcp_last_seen': pcp_last_seen.strftime('%Y-%m-%d') if pcp_last_seen else None,
+                    'mh_schizophrenia': mh_schizophrenia,
+                    'mh_depression': mh_depression,
+                    'mh_anxiety': mh_anxiety,
+                    'mh_stress': mh_stress,
+                    'mh_adhd': mh_adhd,
+                    'mh_bipolar': mh_bipolar,
+                    'mh_suicidal': mh_suicidal,
                 }
                 database.update_onboarding_checkbox_data(patient_details['onboarding_id'], checkbox_data)
                 st.info("Progress saved!")
