@@ -977,24 +977,59 @@ def show_tv_scheduling_form(patient_details, current_user_id):
                                         st.session_state.tv_form_data['patient_notified'] and
                                         st.session_state.tv_form_data['initial_tv_completed'])
                 
-                # Check if provider and coordinator are assigned in the patient_assignments table
+                # Save dropdown selections to patient_assignments table before checking
                 patient_id = patient_details.get('patient_id')
                 regional_provider_assigned = False
                 coordinator_assigned_in_patient_table = False
                 
                 if patient_id:
-                    # Check for regional provider assignment
+                    # Extract user IDs from dropdown selections
+                    provider_id = None
+                    coordinator_id = None
+                    
+                    # Get provider ID from dropdown selection
+                    if (st.session_state.get('assigned_regional_provider') and 
+                        st.session_state['assigned_regional_provider'] not in ['Select Regional Provider...', 'No Providers Available', 'Regional Provider Assignment Needed']):
+                        try:
+                            provider_users = database.get_users_by_role("CP")
+                            provider_map = {f"{u['full_name']} ({u['username']})": u['user_id'] for u in provider_users}
+                            provider_id = provider_map.get(st.session_state['assigned_regional_provider'])
+                        except:
+                            pass
+                    
+                    # Get coordinator ID from dropdown selection
+                    if (st.session_state.get('assigned_coordinator') and 
+                        st.session_state['assigned_coordinator'] not in ['Select Coordinator...', 'No Coordinators Available', 'Coordinator Assignment Needed']):
+                        try:
+                            coordinator_users = database.get_users_by_role("CC")
+                            coordinator_map = {f"{u['full_name']} ({u['username']})": u['user_id'] for u in coordinator_users}
+                            coordinator_id = coordinator_map.get(st.session_state['assigned_coordinator'])
+                        except:
+                            pass
+                    
+                    # Save assignments to patient_assignments table if selections were made
+                    if provider_id or coordinator_id:
+                        current_user_id = st.session_state.get('user_id', 1)  # Default to 1 if no user_id
+                        database.create_patient_assignment(
+                            patient_id=patient_id,
+                            provider_id=provider_id,
+                            coordinator_id=coordinator_id,
+                            assignment_type="onboarding",
+                            status="active",
+                            created_by=current_user_id
+                        )
+                    
+                    # Now check for assignments in the patient_assignments table
                     conn = database.get_db_connection()
                     provider_result = conn.execute("""
                         SELECT provider_id FROM patient_assignments 
-                        WHERE patient_id = ? AND provider_id IS NOT NULL AND status = 'Active'
+                        WHERE patient_id = ? AND provider_id IS NOT NULL AND status = 'active'
                     """, (patient_id,)).fetchall()
                     regional_provider_assigned = len(provider_result) > 0
                     
-                    # Check for coordinator assignment
                     coordinator_result = conn.execute("""
                         SELECT coordinator_id FROM patient_assignments 
-                        WHERE patient_id = ? AND coordinator_id IS NOT NULL AND status = 'Active'
+                        WHERE patient_id = ? AND coordinator_id IS NOT NULL AND status = 'active'
                     """, (patient_id,)).fetchall()
                     coordinator_assigned_in_patient_table = len(coordinator_result) > 0
                     conn.close()
