@@ -1671,6 +1671,12 @@ def transfer_onboarding_to_patient_table(onboarding_id):
             'provider_mh_bipolar': onboarding_dict.get('mh_bipolar', False),
             'provider_mh_suicidal': onboarding_dict.get('mh_suicidal', False),
             'annual_well_visit': onboarding_dict.get('annual_well_visit', False),
+            # CRITICAL MISSING FIELDS - Adding these now
+            'facility': onboarding_dict.get('facility_assignment'),  # Map facility_assignment to facility
+            'tv_date': onboarding_dict.get('tv_date'),
+            'tv_time': onboarding_dict.get('tv_time'),
+            'initial_tv_provider': onboarding_dict.get('initial_tv_provider'),
+            'assigned_coordinator_id': onboarding_dict.get('assigned_coordinator_user_id'),  # Map coordinator
             # New onboarding columns
             'eligibility_status': onboarding_dict.get('eligibility_status'),
             'eligibility_notes': onboarding_dict.get('eligibility_notes'),
@@ -2664,8 +2670,19 @@ def sync_onboarding_to_patient_panel(onboarding_id):
             'emergency_contact_phone': onboarding_dict.get('emergency_contact_phone'),
             'insurance_primary': onboarding_dict.get('insurance_provider'),
             'insurance_policy_number': onboarding_dict.get('policy_number'),
-            'assigned_coordinator_id': onboarding_dict.get('assigned_coordinator_id'),
-            'assigned_provider_id': onboarding_dict.get('assigned_provider_id'),
+            # CRITICAL MISSING FIELDS - Adding these now
+            'facility': onboarding_dict.get('facility_assignment'),  # Map facility_assignment to facility
+            'current_facility_id': onboarding_dict.get('facility_assignment'),  # Also map to current_facility_id
+            'provider_id': onboarding_dict.get('assigned_provider_user_id'),  # Map provider
+            'coordinator_id': onboarding_dict.get('assigned_coordinator_user_id'),  # Map coordinator
+            'initial_tv_completed_date': onboarding_dict.get('tv_date'),  # Map TV date
+            'initial_tv_provider': onboarding_dict.get('initial_tv_provider'),
+            'assigned_coordinator_id': onboarding_dict.get('assigned_coordinator_user_id'),  # Legacy field
+            'assigned_provider_id': onboarding_dict.get('assigned_provider_user_id'),  # Legacy field
+            # Medical conditions
+            'hypertension': onboarding_dict.get('hypertension', False),
+            'mental_health_concerns': onboarding_dict.get('mental_health_concerns', False),
+            'dementia': onboarding_dict.get('dementia', False),
             # New onboarding columns
             'eligibility_status': onboarding_dict.get('eligibility_status'),
             'eligibility_notes': onboarding_dict.get('eligibility_notes'),
