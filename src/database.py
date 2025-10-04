@@ -2642,11 +2642,12 @@ def sync_onboarding_to_patient_panel(onboarding_id):
         onboarding_dict = dict(onboarding)
         patient_id = onboarding_dict.get('patient_id')
         
-        if not patient_id:
-            # Call transfer_onboarding_to_patient_table to create patient_id if missing
-            patient_id = transfer_onboarding_to_patient_table(onboarding_id)
-            if not patient_id:
-                return None
+        # Always call transfer_onboarding_to_patient_table to ensure patients table is populated
+        transferred_patient_id = transfer_onboarding_to_patient_table(onboarding_id)
+        if transferred_patient_id:
+            patient_id = transferred_patient_id
+        elif not patient_id:
+            return None
 
         # Get existing patient_panel columns
         cur = conn.cursor()
