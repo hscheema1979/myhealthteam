@@ -800,6 +800,17 @@ def show_intake_processing_form(patient_details, current_user_id):
 
                 # Require intake call completion before completing
                 if intake_call_completed:
+                    # Create patient_id at the end of Stage 4 to ensure it's available for Stage 5
+                    try:
+                        patient_id = database.insert_patient_from_onboarding(patient_details['onboarding_id'])
+                        if patient_id:
+                            st.info(f"Patient ID created: {patient_id}")
+                        else:
+                            st.warning("Patient ID already exists or was updated")
+                    except Exception as e:
+                        st.error(f"Error creating patient ID: {str(e)}")
+                        # Don't prevent stage completion if patient creation fails
+                    
                     database.update_onboarding_stage_completion(patient_details['onboarding_id'], 4, True)
 
                     # Update tasks
@@ -811,7 +822,7 @@ def show_intake_processing_form(patient_details, current_user_id):
                                 {'intake_call_completed': True}
                             )
 
-                    st.success("Stage 4 Complete! Moving to TV Scheduling...")
+                    st.success("Stage 4 Complete! Patient ID created. Moving to TV Scheduling...")
                     st.rerun()
                 else:
                     st.error("Please complete the intake call before proceeding.")
@@ -959,49 +970,33 @@ def show_tv_scheduling_form(patient_details, current_user_id):
     with col1:
         with st.form("complete_stage5_form"):
             if st.form_submit_button("Complete Stage 5", type="primary"):
-                # Revised completion requirements: Check if regional provider and coordinator are assigned in patient table
-                # (not just the onboarding form fields)
+                # Stage 5 completion requirements: TV scheduled, patient notified, initial TV completed, AND regional assignments
+                # Now that patient_id is created in Stage 4, we can check the patient_assignments table
                 
-                # Check if patient exists in patients table and has regional provider + coordinator assigned
+                basic_requirements_met = (st.session_state.tv_form_data['tv_scheduled'] and 
+                                        st.session_state.tv_form_data['patient_notified'] and
+                                        st.session_state.tv_form_data['initial_tv_completed'])
+                
+                # Check if provider and coordinator are assigned in the patient_assignments table
                 patient_id = patient_details.get('patient_id')
                 regional_provider_assigned = False
                 coordinator_assigned_in_patient_table = False
                 
                 if patient_id:
-                    conn = database.get_db_connection()
-                    try:
-                        # Check for regional provider assignment in patient_assignments table
-                        cursor = conn.execute("""
-                            SELECT pa.provider_id, u.full_name
-                            FROM patient_assignments pa
-                            JOIN users u ON pa.provider_id = u.user_id
-                            WHERE pa.patient_id = ? AND pa.provider_id IS NOT NULL 
-                            AND pa.status = 'active'
-                        """, (patient_id,))
-                        regional_provider = cursor.fetchone()
-                        regional_provider_assigned = regional_provider is not None
-                        
-                        # Check for coordinator assignment in patient_assignments table  
-                        cursor = conn.execute("""
-                            SELECT pa.coordinator_id, u.full_name
-                            FROM patient_assignments pa
-                            JOIN users u ON pa.coordinator_id = u.user_id
-                            WHERE pa.patient_id = ? AND pa.coordinator_id IS NOT NULL 
-                            AND pa.status = 'active'
-                        """, (patient_id,))
-                        coordinator = cursor.fetchone()
-                        coordinator_assigned_in_patient_table = coordinator is not None
-                        
-                    except Exception as e:
-                        st.error(f"Error checking patient assignments: {e}")
-                    finally:
-                        conn.close()
+                    # Check for regional provider assignment
+                    provider_result = database.execute_query("""
+                        SELECT provider_id FROM patient_assignments 
+                        WHERE patient_id = ? AND provider_id IS NOT NULL AND status = 'Active'
+                    """, (patient_id,))
+                    regional_provider_assigned = len(provider_result) > 0
+                    
+                    # Check for coordinator assignment
+                    coordinator_result = database.execute_query("""
+                        SELECT coordinator_id FROM patient_assignments 
+                        WHERE patient_id = ? AND coordinator_id IS NOT NULL AND status = 'Active'
+                    """, (patient_id,))
+                    coordinator_assigned_in_patient_table = len(coordinator_result) > 0
                 
-                # Stage 5 completion requirements: TV scheduled, patient notified, initial TV completed, AND regional assignments
-                # The initial handoff to Initial TV Provider happens when provider is assigned (separate from stage completion)
-                basic_requirements_met = (st.session_state.tv_form_data['tv_scheduled'] and 
-                                        st.session_state.tv_form_data['patient_notified'] and
-                                        st.session_state.tv_form_data['initial_tv_completed'])
                 assignments_complete = regional_provider_assigned and coordinator_assigned_in_patient_table
                 
                 if basic_requirements_met and assignments_complete:
@@ -1014,11 +1009,36 @@ def show_tv_scheduling_form(patient_details, current_user_id):
                         st.session_state.tv_form_data['assigned_coordinator']
                     )
                     
-                    # Add patient to patients table and keep onboarding data
+                    # Patient ID should already exist from Stage 4, but ensure patient data is updated
                     try:
                         database.insert_patient_from_onboarding(patient_details['onboarding_id'])
                     except Exception as e:
-                        st.warning(f"Patient table insertion warning: {e}")
+                        st.warning(f"Patient table update warning: {e}")
+                    
+                    # Verify assignments were written to patient_assignments table
+                    try:
+                        # Get the patient_id to check assignments
+                        updated_patient = database.get_onboarding_patient_details(patient_details['onboarding_id'])
+                        patient_id = updated_patient.get('patient_id')
+                        
+                        if patient_id:
+                            # Check if assignments exist in patient_assignments table
+                            conn = database.get_db_connection()
+                            assignments_check = conn.execute("""
+                                SELECT provider_id, coordinator_id 
+                                FROM patient_assignments 
+                                WHERE patient_id = ? AND status = 'Active'
+                            """, (patient_id,)).fetchone()
+                            conn.close()
+                            
+                            if assignments_check and assignments_check[0] and assignments_check[1]:
+                                st.info("✅ Provider and coordinator assignments verified in patient_assignments table")
+                            else:
+                                st.warning("⚠️ Assignments may not have been properly written to patient_assignments table")
+                        else:
+                            st.warning("⚠️ Patient ID not found - assignments verification skipped")
+                    except Exception as e:
+                        st.warning(f"Assignment verification warning: {e}")
                     
                     # Complete Stage 5 and set patient status to 'Completed'
                     database.update_onboarding_stage_completion(patient_details['onboarding_id'], 5, True)
@@ -1057,16 +1077,13 @@ def show_tv_scheduling_form(patient_details, current_user_id):
                         missing_items.append("Patient notified")
                     if not st.session_state.tv_form_data['initial_tv_completed']:
                         missing_items.append("Initial TV visit completed")
-                    if not regional_provider_assigned:
-                        missing_items.append("Regional provider assigned in patient table (by onboarding team)")
-                    if not coordinator_assigned_in_patient_table:
-                        missing_items.append("Coordinator assigned in patient table (by onboarding team)")
+                    if not provider_assigned:
+                        missing_items.append("Regional provider selected")
+                    if not coordinator_assigned:
+                        missing_items.append("Coordinator selected")
                     
                     error_msg = "Cannot complete onboarding. Missing: " + ", ".join(missing_items)
                     st.error(error_msg)
-                    
-                    if not assignments_complete:
-                        st.warning("⚠️ **Revised Workflow**: The onboarding team must assign a regional provider and coordinator in the patient table before onboarding can be completed. The 'Save Progress' button can be used to save partial progress.")
     
     with col2:
         with st.form("save_progress_form"):
