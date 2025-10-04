@@ -1,0 +1,7 @@
+tunnel: 377c9109-a4a8-4e96-b2ca-74aaae3ca28f
+credentials-file: C:\Users\Harpreet\.cloudflared\377c9109-a4a8-4e96-b2ca-74aaae3ca28f.json
+
+ingress:
+  - hostname: app.myhealthteam.org
+    service: http://localhost:8501
+  - service: http_status:404

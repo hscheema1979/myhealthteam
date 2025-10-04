@@ -412,23 +412,11 @@ def show_eligibility_verification_form(patient_details, current_user_id):
         
         st.markdown("#### Annual Well Visit")
         
-        # Handle existing annual well visit date
-        existing_annual_well_visit = patient_details.get('annual_well_visit')
-        annual_well_visit_value = None
-        if existing_annual_well_visit:
-            try:
-                from datetime import datetime
-                if isinstance(existing_annual_well_visit, str):
-                    annual_well_visit_value = datetime.strptime(existing_annual_well_visit, '%Y-%m-%d').date()
-                elif hasattr(existing_annual_well_visit, 'date'):
-                    annual_well_visit_value = existing_annual_well_visit.date()
-            except (ValueError, TypeError):
-                annual_well_visit_value = None
-        
+        # Annual Well Visit date field with calendar input
         annual_well_visit = st.date_input(
-            "Annual Well Visit Date", 
-            value=annual_well_visit_value,
-            help="Select the date for the patient's annual wellness visit",
+            "Annual Well Visit Date",
+            value=patient_details.get('annual_well_visit'),
+            help="Select the date of the patient's annual well visit",
             key="annual_well_visit"
         )
         
@@ -439,7 +427,7 @@ def show_eligibility_verification_form(patient_details, current_user_id):
                 if not insurance_provider or not policy_number:
                     st.error("Please fill in all required insurance fields (marked with *)")
                 else:
-                    # Save insurance and eligibility fields including annual well visit
+                    # Save insurance and eligibility fields only
                     checkbox_payload = {
                         'insurance_provider': insurance_provider,
                         'policy_number': policy_number,
@@ -472,7 +460,7 @@ def show_eligibility_verification_form(patient_details, current_user_id):
         
         with col2:
             if st.form_submit_button("Save Progress"):
-                # Save progress for Stage 2 (insurance, eligibility, and annual well visit)
+                # Save progress for Stage 2 (insurance and eligibility fields only)
                 checkbox_payload = {
                     'insurance_provider': insurance_provider,
                     'policy_number': policy_number,
@@ -589,7 +577,6 @@ def show_intake_processing_form(patient_details, current_user_id):
             emed_signature_received = st.checkbox("EMED Signature Received", 
                                                 key="emed_signature_received",
                                                 value=patient_details.get('emed_signature_received', False))
-
         
         with col2:
             st.markdown("#### Patient Contact")
@@ -655,40 +642,35 @@ def show_intake_processing_form(patient_details, current_user_id):
             key="patient_status"
         )
         
-        # Stage 4 additions: Specialist and chronic conditions - TEMPORARILY COMMENTED OUT
-        # st.markdown("### Specialist & Clinical Conditions")
-        # active_specialist = st.text_input(
-        #     "Active Specialist", 
-        #     value=patient_details.get('active_specialist', ''),
-        #     key="active_specialist"
-        # )
+        # Stage 4 additions: Specialist and chronic conditions
+        st.markdown("### Specialist & Clinical Conditions")
+        active_specialist = st.text_input(
+            "Active Specialist", 
+            value=patient_details.get('active_specialist', ''),
+            key="active_specialist"
+        )
         
-        # # Handle date input with existing value
-        # existing_specialist_date = patient_details.get('specialist_last_seen')
-        # specialist_last_seen_value = None
-        # if existing_specialist_date:
-        #     try:
-        #         from datetime import datetime
-        #         specialist_last_seen_value = datetime.strptime(existing_specialist_date, '%Y-%m-%d').date()
-        #     except (ValueError, TypeError):
-        #         specialist_last_seen_value = None
+        # Handle date input with existing value
+        existing_specialist_date = patient_details.get('specialist_last_seen')
+        specialist_last_seen_value = None
+        if existing_specialist_date:
+            try:
+                from datetime import datetime
+                specialist_last_seen_value = datetime.strptime(existing_specialist_date, '%Y-%m-%d').date()
+            except (ValueError, TypeError):
+                specialist_last_seen_value = None
         
-        # specialist_last_seen = st.date_input(
-        #     "Specialist Last Seen", 
-        #     value=specialist_last_seen_value,
-        #     key="specialist_last_seen"
-        # )
+        specialist_last_seen = st.date_input(
+            "Specialist Last Seen", 
+            value=specialist_last_seen_value,
+            key="specialist_last_seen"
+        )
         
-        # chronic_conditions_onboarding = st.text_area(
-        #     "Chronic Conditions (comma-separated)", 
-        #     value=patient_details.get('chronic_conditions_onboarding', ''),
-        #     key="chronic_conditions_onboarding"
-        # )
-        
-        # Set default values for hidden specialist fields
-        active_specialist = ''
-        specialist_last_seen = None
-        chronic_conditions_onboarding = ''
+        chronic_conditions_onboarding = st.text_area(
+            "Chronic Conditions (comma-separated)", 
+            value=patient_details.get('chronic_conditions_onboarding', ''),
+            key="chronic_conditions_onboarding"
+        )
         
         # Clinical Section - moved from Stage 2
         st.markdown("### Clinical Information")
@@ -698,73 +680,60 @@ def show_intake_processing_form(patient_details, current_user_id):
             key="primary_care_provider"
         )
         
-        # PCP Last Seen - TEMPORARILY COMMENTED OUT
-        # # Handle date input with existing value
-        # existing_pcp_date = patient_details.get('pcp_last_seen')
-        # pcp_last_seen_value = None
-        # if existing_pcp_date:
-        #     try:
-        #         from datetime import datetime
-        #         pcp_last_seen_value = datetime.strptime(existing_pcp_date, '%Y-%m-%d').date()
-        #     except (ValueError, TypeError):
-        #         pcp_last_seen_value = None
+        # Handle date input with existing value
+        existing_pcp_date = patient_details.get('pcp_last_seen')
+        pcp_last_seen_value = None
+        if existing_pcp_date:
+            try:
+                from datetime import datetime
+                pcp_last_seen_value = datetime.strptime(existing_pcp_date, '%Y-%m-%d').date()
+            except (ValueError, TypeError):
+                pcp_last_seen_value = None
         
-        # pcp_last_seen = st.date_input(
-        #     "PCP Last Seen", 
-        #     value=pcp_last_seen_value,
-        #     key="pcp_last_seen"
-        # )
-        
-        # Set default value for hidden PCP Last Seen field
-        pcp_last_seen = None
+        pcp_last_seen = st.date_input(
+            "PCP Last Seen", 
+            value=pcp_last_seen_value,
+            key="pcp_last_seen"
+        )
 
-        # Mental Health Section - TEMPORARILY COMMENTED OUT
-        # st.markdown("### Mental Health Conditions")
-        # st.markdown("#### Check all that apply:")
-        # mh_schizophrenia = st.checkbox(
-        #     "Schizophrenia", 
-        #     value=patient_details.get('mh_schizophrenia', False),
-        #     key="mh_schizophrenia"
-        # )
-        # mh_depression = st.checkbox(
-        #     "Depression", 
-        #     value=patient_details.get('mh_depression', False),
-        #     key="mh_depression"
-        # )
-        # mh_anxiety = st.checkbox(
-        #     "Anxiety", 
-        #     value=patient_details.get('mh_anxiety', False),
-        #     key="mh_anxiety"
-        # )
-        # mh_stress = st.checkbox(
-        #     "Stress", 
-        #     value=patient_details.get('mh_stress', False),
-        #     key="mh_stress"
-        # )
-        # mh_adhd = st.checkbox(
-        #     "ADHD", 
-        #     value=patient_details.get('mh_adhd', False),
-        #     key="mh_adhd"
-        # )
-        # mh_bipolar = st.checkbox(
-        #     "Bipolar", 
-        #     value=patient_details.get('mh_bipolar', False),
-        #     key="mh_bipolar"
-        # )
-        # mh_suicidal = st.checkbox(
-        #     "Suicidal Ideation", 
-        #     value=patient_details.get('mh_suicidal', False),
-        #     key="mh_suicidal"
-        # )
-        
-        # Set default values for hidden mental health fields
-        mh_schizophrenia = False
-        mh_depression = False
-        mh_anxiety = False
-        mh_stress = False
-        mh_adhd = False
-        mh_bipolar = False
-        mh_suicidal = False
+        # Mental Health Section - moved from Stage 2
+        st.markdown("### Mental Health Conditions")
+        st.markdown("#### Check all that apply:")
+        mh_schizophrenia = st.checkbox(
+            "Schizophrenia", 
+            value=patient_details.get('mh_schizophrenia', False),
+            key="mh_schizophrenia"
+        )
+        mh_depression = st.checkbox(
+            "Depression", 
+            value=patient_details.get('mh_depression', False),
+            key="mh_depression"
+        )
+        mh_anxiety = st.checkbox(
+            "Anxiety", 
+            value=patient_details.get('mh_anxiety', False),
+            key="mh_anxiety"
+        )
+        mh_stress = st.checkbox(
+            "Stress", 
+            value=patient_details.get('mh_stress', False),
+            key="mh_stress"
+        )
+        mh_adhd = st.checkbox(
+            "ADHD", 
+            value=patient_details.get('mh_adhd', False),
+            key="mh_adhd"
+        )
+        mh_bipolar = st.checkbox(
+            "Bipolar", 
+            value=patient_details.get('mh_bipolar', False),
+            key="mh_bipolar"
+        )
+        mh_suicidal = st.checkbox(
+            "Suicidal Ideation", 
+            value=patient_details.get('mh_suicidal', False),
+            key="mh_suicidal"
+        )
         
         col1, col2, col3 = st.columns([1, 1, 2])
         with col1:
