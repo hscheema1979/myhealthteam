@@ -1819,6 +1819,12 @@ def transfer_onboarding_to_patient_table(onboarding_id):
 
         conn.commit()
         
+        # Sync data to patient_panel table
+        try:
+            sync_onboarding_to_patient_panel(onboarding_id)
+        except Exception as e:
+            print(f"Warning: Failed to sync to patient_panel: {e}")
+        
         return patient_id
 
     finally:
@@ -1853,50 +1859,47 @@ def insert_patient_from_onboarding(onboarding_id):
             
         onboarding_dict = dict(onboarding)
         
-        # Check if patient already exists in main table by name and DOB first
-        existing_patient = conn.execute("""
-            SELECT patient_id FROM patients 
-            WHERE first_name = ? AND last_name = ? AND date_of_birth = ?
-            AND patient_id IS NOT NULL
-            ORDER BY patient_id
-            LIMIT 1
-        """, (onboarding_dict['first_name'], onboarding_dict['last_name'], onboarding_dict['date_of_birth'])).fetchone()
+        # Check if patient already exists in main table
+        existing_patient = None
+        if onboarding_dict.get('patient_id'):
+            existing_patient = conn.execute("""
+                SELECT patient_id FROM patients WHERE patient_id = ?
+            """, (onboarding_dict['patient_id'],)).fetchone()
         
         if existing_patient:
-            # Use existing patient - update with latest onboarding data
-            text_patient_id = existing_patient['patient_id']
-            conn.execute("""
-                UPDATE patients SET
-                    first_name = ?, last_name = ?, date_of_birth = ?, gender = ?,
-                    phone_primary = ?, email = ?,
-                    address_street = ?, address_city = ?, address_state = ?, address_zip = ?,
-                    emergency_contact_name = ?, emergency_contact_phone = ?,
-                    insurance_primary = ?, insurance_policy_number = ?,
-                    medical_records_requested = ?, referral_documents_received = ?,
-                    insurance_cards_received = ?, emed_signature_received = ?,
-                    hypertension = ?, mental_health_concerns = ?, dementia = ?,
-                    appointment_contact_name = COALESCE(?, appointment_contact_name),
-                    appointment_contact_phone = COALESCE(?, appointment_contact_phone),
-                    appointment_contact_email = COALESCE(?, appointment_contact_email),
-                    medical_contact_name = COALESCE(?, medical_contact_name),
-                    medical_contact_phone = COALESCE(?, medical_contact_phone),
-                    medical_contact_email = COALESCE(?, medical_contact_email),
-                    primary_care_provider = COALESCE(?, primary_care_provider),
-                    pcp_last_seen = COALESCE(?, pcp_last_seen),
-                    last_annual_wellness_visit = ?,
-                    assigned_coordinator_id = ?,
-                    updated_date = CURRENT_TIMESTAMP
-                WHERE patient_id = ?
-            """,
-            (
-                onboarding_dict['first_name'], onboarding_dict['last_name'],
-                onboarding_dict['date_of_birth'], onboarding_dict.get('gender'),
-                onboarding_dict.get('phone_primary'), onboarding_dict.get('email'),
-                onboarding_dict.get('address_street'), onboarding_dict.get('address_city'),
-                onboarding_dict.get('address_state'), onboarding_dict.get('address_zip'),
-                onboarding_dict.get('emergency_contact_name'), onboarding_dict.get('emergency_contact_phone'),
-                onboarding_dict.get('insurance_provider'), onboarding_dict.get('policy_number'),
-                onboarding_dict.get('medical_records_requested', False),
+            # Update existing patient with latest onboarding data, including assigned_coordinator_id
+                conn.execute("""
+                    UPDATE patients SET
+                        first_name = ?, last_name = ?, date_of_birth = ?, gender = ?,
+                        phone_primary = ?, email = ?,
+                        address_street = ?, address_city = ?, address_state = ?, address_zip = ?,
+                        emergency_contact_name = ?, emergency_contact_phone = ?,
+                        insurance_primary = ?, insurance_policy_number = ?,
+                        medical_records_requested = ?, referral_documents_received = ?,
+                        insurance_cards_received = ?, emed_signature_received = ?,
+                        hypertension = ?, mental_health_concerns = ?, dementia = ?,
+                        appointment_contact_name = COALESCE(?, appointment_contact_name),
+                        appointment_contact_phone = COALESCE(?, appointment_contact_phone),
+                        appointment_contact_email = COALESCE(?, appointment_contact_email),
+                        medical_contact_name = COALESCE(?, medical_contact_name),
+                        medical_contact_phone = COALESCE(?, medical_contact_phone),
+                        medical_contact_email = COALESCE(?, medical_contact_email),
+                        primary_care_provider = COALESCE(?, primary_care_provider),
+                        pcp_last_seen = COALESCE(?, pcp_last_seen),
+                        annual_well_visit = ?,
+                        assigned_coordinator_id = ?,
+                        updated_date = CURRENT_TIMESTAMP
+                    WHERE patient_id = ?
+                """,
+                (
+                    onboarding_dict['first_name'], onboarding_dict['last_name'],
+                    onboarding_dict['date_of_birth'], onboarding_dict.get('gender'),
+                    onboarding_dict.get('phone_primary'), onboarding_dict.get('email'),
+                    onboarding_dict.get('address_street'), onboarding_dict.get('address_city'),
+                    onboarding_dict.get('address_state'), onboarding_dict.get('address_zip'),
+                    onboarding_dict.get('emergency_contact_name'), onboarding_dict.get('emergency_contact_phone'),
+                    onboarding_dict.get('insurance_provider'), onboarding_dict.get('policy_number'),
+                    onboarding_dict.get('medical_records_requested', False),
                     onboarding_dict.get('referral_documents_received', False),
                     onboarding_dict.get('insurance_cards_received', False),
                     onboarding_dict.get('emed_signature_received', False),
@@ -1913,17 +1916,30 @@ def insert_patient_from_onboarding(onboarding_id):
                     onboarding_dict.get('pcp_last_seen'),
                     onboarding_dict.get('annual_well_visit', False),
                     onboarding_dict.get('assigned_coordinator_user_id'),
-                    text_patient_id
-                ))
-            
-            # Update onboarding record with the existing patient_id
-            conn.execute("""
-                UPDATE onboarding_patients SET patient_id = ? WHERE onboarding_id = ?
-            """, (text_patient_id, onboarding_id))
+                    onboarding_dict['patient_id']
+                )
+                )
+                text_patient_id = onboarding_dict['patient_id']
         else:
+            # Use existing patient_id if available, otherwise generate new one
+            if onboarding_dict.get('patient_id'):
+                text_patient_id = onboarding_dict['patient_id']
+            else:
+                text_patient_id = generate_patient_id(
+                    onboarding_dict.get('first_name', ''),
+                    onboarding_dict.get('last_name', ''),
+                    onboarding_dict.get('date_of_birth', '')
+                )
+                
+                # Update onboarding record with the text-based patient_id (for consistency)
+                conn.execute("""
+                    UPDATE onboarding_patients SET patient_id = ? WHERE onboarding_id = ?
+                """, (text_patient_id, onboarding_id))
+            
             # Create new patient record, including assigned_coordinator_id
             cursor = conn.execute("""
                 INSERT INTO patients (
+                    patient_id,
                     first_name, last_name, date_of_birth, gender, phone_primary, email,
                     address_street, address_city, address_state, address_zip,
                     emergency_contact_name, emergency_contact_phone,
@@ -1937,9 +1953,10 @@ def insert_patient_from_onboarding(onboarding_id):
                     last_annual_wellness_visit,
                     assigned_coordinator_id,
                     enrollment_date, created_date, status
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Active')
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Active')
             """,
             (
+                text_patient_id,
                 onboarding_dict['first_name'], onboarding_dict['last_name'],
                 onboarding_dict['date_of_birth'], onboarding_dict.get('gender'),
                 onboarding_dict.get('phone_primary'), onboarding_dict.get('email'),
@@ -1965,24 +1982,6 @@ def insert_patient_from_onboarding(onboarding_id):
                 onboarding_dict.get('annual_well_visit', False),
                 onboarding_dict.get('assigned_coordinator_user_id'),
             ))
-            integer_patient_id = cursor.lastrowid
-            
-            # Generate the text-based patient_id using the same function
-            text_patient_id = generate_patient_id(
-                onboarding_dict.get('first_name', ''),
-                onboarding_dict.get('last_name', ''),
-                onboarding_dict.get('date_of_birth', '')
-            )
-            
-            # Update the patient record with the generated text-based patient_id
-            conn.execute("""
-                UPDATE patients SET patient_id = ? WHERE ROWID = ?
-            """, (text_patient_id, integer_patient_id))
-            
-            # Update onboarding record with the text-based patient_id
-            conn.execute("""
-                UPDATE onboarding_patients SET patient_id = ? WHERE onboarding_id = ?
-            """, (text_patient_id, onboarding_id))
         
         # Create patient assignments in patient_assignments table using text-based patient_id
         provider_id = onboarding_dict.get('assigned_provider_user_id')
