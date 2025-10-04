@@ -969,7 +969,7 @@ def show_tv_scheduling_form(patient_details, current_user_id):
     
     with col1:
         with st.form("complete_stage5_form"):
-            if st.form_submit_button("Complete Stage 5", type="primary"):
+            if st.form_submit_button("Complete Stage 5", typeas="primary"):
                 # Stage 5 completion requirements: TV scheduled, patient notified, initial TV completed, AND regional assignments
                 # Now that patient_id is created in Stage 4, we can check the patient_assignments table
                 
@@ -1042,7 +1042,8 @@ def show_tv_scheduling_form(patient_details, current_user_id):
                         patient_details['onboarding_id'], 
                         st.session_state.tv_form_data['tv_date'], 
                         st.session_state.tv_form_data['tv_time'], 
-                        st.session_state.tv_form_data['assigned_provider'], 
+                        st.session_state.tv_form_data['assigned_provider'],  # Initial TV provider
+                        st.session_state.get('assigned_regional_provider', 'Select Regional Provider...'),  # Regional provider
                         st.session_state.tv_form_data['assigned_coordinator']
                     )
                     

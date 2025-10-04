@@ -623,19 +623,29 @@ def save_onboarding_tv_scheduling_progress(onboarding_id, form_data):
     finally:
         conn.close()
 
-def update_onboarding_stage5_completion(onboarding_id, tv_date, tv_time, assigned_provider, assigned_coordinator):
+def update_onboarding_stage5_completion(onboarding_id, tv_date, tv_time, assigned_initial_tv_provider, assigned_regional_provider, assigned_coordinator):
     """Update Stage 5 completion with provider assignment and TV scheduling details"""
     conn = get_db_connection()
     try:
-        # Extract provider user_id from the selection format "Full Name (username)"
-        provider_user_id = None
-        if assigned_provider and assigned_provider != "Select Provider...":
+        # Extract initial TV provider user_id from the selection format "Full Name (username)"
+        initial_tv_provider_user_id = None
+        if assigned_initial_tv_provider and assigned_initial_tv_provider != "Select Provider...":
             # Get the username from the format "Full Name (username)"
-            username = assigned_provider.split('(')[-1].replace(')', '').strip()
+            username = assigned_initial_tv_provider.split('(')[-1].replace(')', '').strip()
             provider_cursor = conn.execute("SELECT user_id FROM users WHERE username = ?", (username,))
             provider_result = provider_cursor.fetchone()
             if provider_result:
-                provider_user_id = provider_result[0]
+                initial_tv_provider_user_id = provider_result[0]
+        
+        # Extract regional provider user_id from the selection format "Full Name (username)"
+        regional_provider_user_id = None
+        if assigned_regional_provider and assigned_regional_provider != "Select Regional Provider...":
+            # Get the username from the format "Full Name (username)"
+            username = assigned_regional_provider.split('(')[-1].replace(')', '').strip()
+            provider_cursor = conn.execute("SELECT user_id FROM users WHERE username = ?", (username,))
+            provider_result = provider_cursor.fetchone()
+            if provider_result:
+                regional_provider_user_id = provider_result[0]
         
         # Extract coordinator user_id from the selection format "Full Name (username)"
         coordinator_user_id = None
@@ -655,16 +665,16 @@ def update_onboarding_stage5_completion(onboarding_id, tv_date, tv_time, assigne
         
         # Extract provider name for initial_tv_provider field
         initial_tv_provider = None
-        if assigned_provider and assigned_provider != "Select Provider...":
+        if assigned_initial_tv_provider and assigned_initial_tv_provider != "Select Provider...":
             # Extract the full name from the format "Full Name (username)"
-            initial_tv_provider = assigned_provider.split('(')[0].strip()
+            initial_tv_provider = assigned_initial_tv_provider.split('(')[0].strip()
         
         # Get patient_id from onboarding record to create patient assignment
         patient_cursor = conn.execute("SELECT patient_id FROM onboarding_patients WHERE onboarding_id = ?", (onboarding_id,))
         patient_result = patient_cursor.fetchone()
         patient_id = patient_result[0] if patient_result else None
         
-        # Update onboarding patient record
+        # Update onboarding patient record - use regional provider for assigned_provider_user_id
         conn.execute("""
             UPDATE onboarding_patients
             SET tv_date = ?,
@@ -674,10 +684,10 @@ def update_onboarding_stage5_completion(onboarding_id, tv_date, tv_time, assigne
                 initial_tv_provider = ?,
                 updated_date = CURRENT_TIMESTAMP
             WHERE onboarding_id = ?
-        """, (tv_date, tv_time, provider_user_id, coordinator_user_id, initial_tv_provider, onboarding_id))
+        """, (tv_date, tv_time, regional_provider_user_id, coordinator_user_id, initial_tv_provider, onboarding_id))
         
         # Create or update patient assignment record if we have a patient_id and assignments
-        if patient_id and (provider_user_id or coordinator_user_id):
+        if patient_id and (regional_provider_user_id or coordinator_user_id):
             # Check if assignment already exists for this patient
             existing = conn.execute("""
                 SELECT assignment_id FROM patient_assignments 
@@ -692,7 +702,7 @@ def update_onboarding_stage5_completion(onboarding_id, tv_date, tv_time, assigne
                         notes = 'Updated from onboarding Stage 5 completion', 
                         updated_date = datetime('now')
                     WHERE assignment_id = ?
-                """, (provider_user_id, coordinator_user_id, existing['assignment_id']))
+                """, (regional_provider_user_id, coordinator_user_id, existing['assignment_id']))
             else:
                 # Create new assignment
                 conn.execute("""
@@ -703,7 +713,7 @@ def update_onboarding_stage5_completion(onboarding_id, tv_date, tv_time, assigne
                     ) VALUES (?, ?, ?, datetime('now'), 'onboarding', 'active', 'medium', 
                              'Assignment created from onboarding Stage 5 completion', 
                              datetime('now'), datetime('now'))
-                """, (patient_id, provider_user_id, coordinator_user_id))
+                """, (patient_id, regional_provider_user_id, coordinator_user_id))
         
         conn.commit()
         return True
