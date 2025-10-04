@@ -984,18 +984,20 @@ def show_tv_scheduling_form(patient_details, current_user_id):
                 
                 if patient_id:
                     # Check for regional provider assignment
-                    provider_result = database.execute_query("""
+                    conn = database.get_db_connection()
+                    provider_result = conn.execute("""
                         SELECT provider_id FROM patient_assignments 
                         WHERE patient_id = ? AND provider_id IS NOT NULL AND status = 'Active'
-                    """, (patient_id,))
+                    """, (patient_id,)).fetchall()
                     regional_provider_assigned = len(provider_result) > 0
                     
                     # Check for coordinator assignment
-                    coordinator_result = database.execute_query("""
+                    coordinator_result = conn.execute("""
                         SELECT coordinator_id FROM patient_assignments 
                         WHERE patient_id = ? AND coordinator_id IS NOT NULL AND status = 'Active'
-                    """, (patient_id,))
+                    """, (patient_id,)).fetchall()
                     coordinator_assigned_in_patient_table = len(coordinator_result) > 0
+                    conn.close()
                 
                 assignments_complete = regional_provider_assigned and coordinator_assigned_in_patient_table
                 
@@ -1077,9 +1079,9 @@ def show_tv_scheduling_form(patient_details, current_user_id):
                         missing_items.append("Patient notified")
                     if not st.session_state.tv_form_data['initial_tv_completed']:
                         missing_items.append("Initial TV visit completed")
-                    if not provider_assigned:
+                    if not regional_provider_assigned:
                         missing_items.append("Regional provider selected")
-                    if not coordinator_assigned:
+                    if not coordinator_assigned_in_patient_table:
                         missing_items.append("Coordinator selected")
                     
                     error_msg = "Cannot complete onboarding. Missing: " + ", ".join(missing_items)
