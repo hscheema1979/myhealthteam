@@ -161,7 +161,7 @@ def show_patient_list_section(user_id, section_id=None):
             # Define required columns and display names in requested order
             required_columns = [
                 ('status', 'Status'),
-                ('goc', 'GOC'),
+                ('goc_value', 'GOC'),
                 ('code_status', 'Code Status'),
                 ('first_name', 'First Name'),
                 ('last_name', 'Last Name'),
@@ -314,11 +314,20 @@ def show_patient_list_section(user_id, section_id=None):
 
         col_patient, col_task = st.columns([2, 2])
         with col_patient:
-            selected_patient_name = st.selectbox("Select Patient", patient_names, key=f"{key_prefix}_patient")
+            # Add "Select one" option to patient dropdown
+            patient_options = ["Select one"] + patient_names
+            selected_patient_name = st.selectbox("Select Patient", patient_options, key=f"{key_prefix}_patient")
         with col_task:
             # Auto-select billing code for established patients per priority rules
             # Use sanitized task_location_val for billing lookup
-            location_lookup = "Telehealth" if task_location_val == "Tele" else task_location_val
+            if task_location_val == "Home Visit":
+                location_lookup = "Home"
+            elif task_location_val == "Telehealth Visit":
+                location_lookup = "Telehealth"
+            elif task_location_val == "Office Visit":
+                location_lookup = "Office"
+            else:
+                location_lookup = task_location_val
             billing_options = database.get_billing_codes(service_type="Primary Care Visit", location_type=location_lookup, patient_type="Established Patient")
             # Default selection priority: 99024, then 99214, then any with is_default, then first
             selected_billing = None
@@ -395,7 +404,7 @@ def show_patient_list_section(user_id, section_id=None):
     notes = st.text_area("Notes / Clinical Summary", key=f"{key_prefix}_notes")
 
     if st.button("Log Task", key=f"{key_prefix}_log_task"):
-            if not selected_patient_name or not selected_billing:
+            if not selected_patient_name or selected_patient_name == "Select one" or not selected_billing:
                 st.warning("Please select a patient and ensure a billing code is available before saving.")
             else:
                 selected_patient = patient_map.get(selected_patient_name)
@@ -418,6 +427,45 @@ def show_patient_list_section(user_id, section_id=None):
                         # Attempt to persist risk/clinical fields into patients table if columns exist
                         try:
                             conn = database.get_db_connection()
+                            
+                            # Validate that required columns exist in both tables
+                            cursor = conn.cursor()
+                            
+                            # Check patients table columns
+                            cursor.execute("PRAGMA table_info(patients)")
+                            patients_columns = [row[1] for row in cursor.fetchall()]
+                            
+                            # Check patient_panel table columns  
+                            cursor.execute("PRAGMA table_info(patient_panel)")
+                            panel_columns = [row[1] for row in cursor.fetchall()]
+                            
+                            # Required clinical fields
+                            required_fields = [
+                                'er_count_1yr', 'hospitalization_count_1yr', 'subjective_risk_level',
+                                'mental_health_concerns', 'provider_mh_schizophrenia', 'provider_mh_depression',
+                                'provider_mh_anxiety', 'provider_mh_stress', 'provider_mh_adhd', 
+                                'provider_mh_bipolar', 'provider_mh_suicidal', 'active_specialists',
+                                'code_status', 'cognitive_function', 'functional_status', 'goals_of_care',
+                                'chronic_conditions_provider', 'goc_value', 'last_visit_date'
+                            ]
+                            
+                            # Check for missing columns
+                            missing_patients = [field for field in required_fields if field not in patients_columns]
+                            missing_panel = [field for field in required_fields if field not in panel_columns]
+                            
+                            if missing_patients or missing_panel:
+                                error_details = []
+                                if missing_patients:
+                                    error_details.append(f"Missing in patients table: {', '.join(missing_patients)}")
+                                if missing_panel:
+                                    error_details.append(f"Missing in patient_panel table: {', '.join(missing_panel)}")
+                                
+                                st.warning("Task saved. Clinical fields were not persisted due to missing columns.")
+                                st.error("**Schema validation failed:**")
+                                for detail in error_details:
+                                    st.write(f"- {detail}")
+                                conn.close()
+                                return
 
                             # Prepare base params for clinical fields
                             # Store subjective_risk as string value only
@@ -486,6 +534,31 @@ def show_patient_list_section(user_id, section_id=None):
                                         notes = CASE WHEN notes IS NULL OR trim(notes) = '' THEN ? ELSE notes || '\n\n' || ? END
                                     WHERE patient_id = ?
                                 """, tuple(base_params + [date_str, notes_combined, notes_combined, selected_patient['patient_id']]))
+                                
+                                # Also update patient_panel table with clinical fields (notes branch)
+                                conn.execute("""
+                                    UPDATE patient_panel SET
+                                        er_count_1yr = ?,
+                                        hospitalization_count_1yr = ?,
+                                        subjective_risk_level = ?,
+                                        mental_health_concerns = ?,
+                                        provider_mh_schizophrenia = ?,
+                                        provider_mh_depression = ?,
+                                        provider_mh_anxiety = ?,
+                                        provider_mh_stress = ?,
+                                        provider_mh_adhd = ?,
+                                        provider_mh_bipolar = ?,
+                                        provider_mh_suicidal = ?,
+                                        active_specialists = ?,
+                                        code_status = ?,
+                                        cognitive_function = ?,
+                                        functional_status = ?,
+                                        goals_of_care = ?,
+                                        chronic_conditions_provider = ?,
+                                        goc_value = ?,
+                                        last_visit_date = ?
+                                    WHERE patient_id = ?
+                                """, tuple(base_params + [date_str, selected_patient['patient_id']]))
                             else:
                                 # No new notes provided; update only clinical fields
                                 conn.execute("""
@@ -532,15 +605,69 @@ def show_patient_list_section(user_id, section_id=None):
                                     functional_status = ?,
                                     goals_of_care = ?,
                                     chronic_conditions_provider = ?,
-                                    goc_value = ?
+                                    goc_value = ?,
+                                    last_visit_date = ?
                                 WHERE patient_id = ?
-                            """, tuple(base_params + [selected_patient['patient_id']]))
+                            """, tuple(base_params + [date_str, selected_patient['patient_id']]))
 
                             conn.commit()
                             conn.close()
                             st.success("Task saved and clinical fields persisted to patient record.")
+                            
+                            # Force refresh of patient data in session state
+                            if f'patient_data_{user_id}' in st.session_state:
+                                del st.session_state[f'patient_data_{user_id}']
+                            if f'onboarding_tasks_data_{user_id}' in st.session_state:
+                                del st.session_state[f'onboarding_tasks_data_{user_id}']
+                            
+                            # Reset all clinical form fields to default values
+                            clinical_field_keys = [
+                                "er_visits_6mo", "hospitalizations_6mo", "subjective_risk", 
+                                "provider_mh_concerns", "provider_mh_schizophrenia", "provider_mh_depression",
+                                "provider_mh_anxiety", "provider_mh_stress", "provider_mh_adhd", 
+                                "provider_mh_bipolar", "provider_mh_suicidal", "active_specialists",
+                                "code_status", "cognitive_function", "functional_status", 
+                                "goc_value", "goals_of_care", "active_concerns", f"{key_prefix}_notes",
+                                f"{key_prefix}_patient"  # Reset patient selection to "Select one"
+                            ]
+                            
+                            # Debug: Show which keys are being reset
+                            reset_keys = []
+                            for field_key in clinical_field_keys:
+                                if field_key in st.session_state:
+                                    reset_keys.append(field_key)
+                                    del st.session_state[field_key]
+                            
+                            if reset_keys:
+                                st.info(f"Reset session state keys: {', '.join(reset_keys)}")
+                            
+                            # Trigger a rerun to refresh the patient list with updated data
+                            st.rerun()
                         except Exception as e:
-                            st.warning("Task saved. Clinical fields were not persisted to patient record (check schema).")
+                            # Provide detailed error information to help diagnose the issue
+                            error_msg = str(e)
+                            st.warning(f"Task saved. Clinical fields were not persisted to patient record.")
+                            st.error(f"**Error details:** {error_msg}")
+                            
+                            # Log additional debugging information
+                            st.write("**Debug Info:**")
+                            st.write(f"- Patient ID: {selected_patient['patient_id']}")
+                            st.write(f"- Notes provided: {'Yes' if notes_text else 'No'}")
+                            st.write(f"- Base params count: {len(base_params)}")
+                            
+                            # Check if it's a column-related error
+                            if "no such column" in error_msg.lower():
+                                st.write("**Missing column detected** - This indicates a schema mismatch.")
+                            elif "constraint" in error_msg.lower():
+                                st.write("**Constraint violation** - Check data types and foreign key relationships.")
+                            elif "syntax error" in error_msg.lower():
+                                st.write("**SQL syntax error** - Check the UPDATE statement structure.")
+                            
+                            # Close connection if still open
+                            try:
+                                conn.close()
+                            except:
+                                pass
 
                     except Exception as e:
                         st.error(f"Error saving task: {e}")
@@ -594,7 +721,7 @@ def show_unfiltered_patient_summary(patients_list=None, height=900):
     # Required columns and display names (same as provider view)
     required_columns = [
         ('status', 'Status'),
-        ('goals_of_care', 'GOC'),
+        ('goc_value', 'GOC'),
         ('code_status', 'Code Status'),
         ('first_name', 'First Name'),
         ('last_name', 'Last Name'),
@@ -741,13 +868,13 @@ def show_unfiltered_patient_summary(patients_list=None, height=900):
 
 
 def show_provider_onboarding_queue(user_id, onboarding_queue):
-    """Display the provider's onboarding queue for initial TV visits"""
-    st.subheader("Onboarding Queue & Initial TV Visits")
+    """Display the provider's onboarding queue for initial visits"""
+    st.subheader("Onboarding Queue & Initial Visits")
     
-    st.info(f"You have {len(onboarding_queue)} patients assigned for initial TV visits")
+    st.info(f"You have {len(onboarding_queue)} patients assigned for initial visits")
     
     # Display onboarding queue table
-    st.markdown("### Patients Assigned for Initial TV Visits")
+    st.markdown("### Patients Assigned for Initial Visits")
     
     if onboarding_queue:
         # Sort onboarding_queue by last_name, then first_name
@@ -771,7 +898,10 @@ def show_provider_onboarding_queue(user_id, onboarding_queue):
                 "Patient Name": f"{patient['first_name']} {patient['last_name']}",
                 "DOB": patient.get('date_of_birth', ''),
                 "Phone": patient.get('phone_primary', ''),
-                "TV Appointment": f"{patient.get('tv_date', 'Not scheduled')} {patient.get('tv_time', '')}".strip(),
+                "Visit Type": patient.get('visit_type', 'Home Visit'),
+                "Appointment": f"{patient.get('tv_date', 'Not scheduled')} {patient.get('tv_time', '')}".strip(),
+                # "Billing Code": patient.get('billing_code', '99345'),
+                # "Duration": f"{patient.get('duration_minutes', 45)} min",
                 "Special Requirements": requirements_str,
                 "Created": patient.get('created_date', '')[:10] if patient.get('created_date') else ''
             })
@@ -789,8 +919,8 @@ def show_provider_onboarding_queue(user_id, onboarding_queue):
         st.warning("No patients assigned for initial TV visits.")
     
     # Daily task entries for onboarding queue
-    st.markdown("### 📝 Initial TV Visit Task Logging")
-    st.info("Complete 'PCP-Visit Telehealth (TE) (NEW pt)' tasks for your assigned onboarding patients")
+    st.markdown("### 📝 Initial Visit Task Logging")
+    st.info("Complete initial visit tasks for your assigned onboarding patients (Home Visit or Telehealth)")
     
     # Force refresh of session state to ensure fresh data
     if st.button("Refresh Patient Data", key="refresh_onboarding_data"):
@@ -805,11 +935,21 @@ def show_provider_onboarding_queue(user_id, onboarding_queue):
         # Always refresh if patient count changed or data is stale
         st.session_state[session_key] = []
         for patient in onboarding_queue:
+            # Determine task type based on visit type
+            visit_type = patient.get('visit_type', 'Home Visit')
+            if visit_type == 'Telehealth Visit':
+                task_type = "PCP-Visit Telehealth (TE) (NEW pt)"
+            else:
+                task_type = "PCP-Visit Home Visit (HV) (NEW pt)"
+            
             st.session_state[session_key].append({
                 'patient_name': f"{patient['first_name']} {patient['last_name']}",
                 'patient_id': patient.get('patient_id'),
                 'onboarding_id': patient['onboarding_id'],
-                'task_type': "PCP-Visit Telehealth (TE) (NEW pt)",
+                'visit_type': visit_type,
+                'billing_code': patient.get('billing_code', '99345'),
+                'duration_minutes': patient.get('duration_minutes', 45),
+                'task_type': task_type,
                 'date': pd.to_datetime('today').date(),
                 'notes': '',
                 'specialist_requirements': {
@@ -823,7 +963,8 @@ def show_provider_onboarding_queue(user_id, onboarding_queue):
     # Create task entries for each onboarding patient
     for i, task_entry in enumerate(st.session_state[session_key]):
         if i < len(onboarding_queue):  # Only show tasks for current queue
-            st.markdown(f"#### Initial TV Task {i+1}: {task_entry['patient_name']}")
+            visit_type = task_entry.get('visit_type', 'Home Visit')
+            st.markdown(f"#### Initial {visit_type} Task {i+1}: {task_entry['patient_name']}")
             
             # Show specialist requirements prominently - make them interactive for provider to confirm
             requirements = task_entry.get('specialist_requirements', {})
@@ -877,20 +1018,139 @@ def show_provider_onboarding_queue(user_id, onboarding_queue):
             st.divider()
             
             # Task entry form
-            col1, col2 = st.columns([1, 2])
+            col1, col2, col3 = st.columns([1, 1, 1])
             
             with col1:
                 task_entry['date'] = st.date_input(f"Date {i+1}", value=task_entry.get('date', pd.to_datetime('today').date()), key=f"onb_date_{i}")
             
             with col2:
+                # Visit type selection
+                current_visit_type = task_entry.get('visit_type', 'Home Visit')
+                new_visit_type = st.selectbox(
+                    f"Visit Type {i+1}",
+                    options=['Home Visit', 'Telehealth Visit'],
+                    index=0 if current_visit_type == 'Home Visit' else 1,
+                    key=f"visit_type_{i}"
+                )
+                
+                # Update task entry if visit type changed
+                if new_visit_type != current_visit_type:
+                    task_entry['visit_type'] = new_visit_type
+                    # Update billing code and duration based on visit type
+                    if new_visit_type == 'Home Visit':
+                        task_entry['billing_code'] = '99345'
+                        task_entry['duration_minutes'] = 45
+                        task_entry['task_type'] = "PCP-Visit Home Visit (HV) (NEW pt)"
+                    else:
+                        task_entry['billing_code'] = '99201'
+                        task_entry['duration_minutes'] = 30
+                        task_entry['task_type'] = "PCP-Visit Telehealth (TE) (NEW pt)"
+            
+            with col3:
                 st.write(f"**Patient:** {task_entry['patient_name']}")
                 st.write(f"**Task:** {task_entry['task_type']}")
+                # st.write(f"**Billing Code:** {task_entry.get('billing_code', '99345')} ({task_entry.get('duration_minutes', 45)} min)")
             
             task_entry['notes'] = st.text_area(f"Visit Notes {i+1}", value=task_entry.get('notes', ''), key=f"onb_notes_{i}", 
                                                placeholder="Document visit details, patient response, any concerns...")
             
+            # Clinical assessment fields for both visit types
+            visit_type_display = task_entry.get('visit_type', 'Home Visit')
+            st.markdown(f"#### Clinical Assessment ({visit_type_display})")
+            st.markdown("*Please collect comprehensive clinical data during the visit:*")
+            
+            col_left, col_right = st.columns(2)
+            
+            with col_left:
+                task_entry['er_visits_6mo'] = st.number_input(f"ER Visits (last 12 months) {i+1}", 
+                                                              min_value=0, step=1, 
+                                                              value=task_entry.get('er_visits_6mo', 0),
+                                                              key=f"onb_er_visits_{i}")
+                
+                task_entry['hospitalizations_6mo'] = st.number_input(f"Hospitalizations (last 12 months) {i+1}", 
+                                                                     min_value=0, step=1,
+                                                                     value=task_entry.get('hospitalizations_6mo', 0),
+                                                                     key=f"onb_hospitalizations_{i}")
+                
+                task_entry['subjective_risk'] = st.selectbox(
+                    f"Subjective Risk Level {i+1}",
+                    [
+                        "Select one",
+                        "Level 6 - in danger of dying or institutionalized within 1 yr",
+                        "Level 5 - complications of chronic conditions or high risk social determinants of health",
+                        "Level 4 - unstable chronic conditions but no complications",
+                        "Level 3 - stable chronic conditions",
+                        "Level 2 - healthy, some out of range biometrics",
+                        "Level 1 - healthy, in range biometrics"
+                    ],
+                    index=0,
+                    key=f"onb_subjective_risk_{i}"
+                )
+                
+                task_entry['provider_mh_concerns'] = st.checkbox(f"Mental Health Concerns {i+1}", 
+                                                                 value=task_entry.get('provider_mh_concerns', False),
+                                                                 key=f"onb_mh_concerns_{i}")
+                
+                if task_entry.get('provider_mh_concerns'):
+                    st.markdown("**Specific Mental Health Conditions:**")
+                    mh_fields = [
+                        ('provider_mh_schizophrenia', 'Schizophrenia'),
+                        ('provider_mh_depression', 'Depression'),
+                        ('provider_mh_anxiety', 'Anxiety'),
+                        ('provider_mh_stress', 'Stress/PTSD'),
+                        ('provider_mh_adhd', 'ADHD'),
+                        ('provider_mh_bipolar', 'Bipolar Disorder'),
+                        ('provider_mh_suicidal', 'Suicidal Ideation')
+                    ]
+                    for field_name, label in mh_fields:
+                        task_entry[field_name] = st.checkbox(label, 
+                                                             value=task_entry.get(field_name, False),
+                                                             key=f"onb_{field_name}_{i}")
+                
+                task_entry['active_specialists'] = st.text_input(f"Active Specialists (comma-separated) {i+1}", 
+                                                                 value=task_entry.get('active_specialists', ''),
+                                                                 key=f"onb_specialists_{i}")
+                
+            with col_right:
+                task_entry['code_status'] = st.selectbox(f"Code Status {i+1}", 
+                                                         ["Select one", "Full Code", "DNR", "Limited", "Unknown"], 
+                                                         index=0, 
+                                                         key=f"onb_code_status_{i}")
+                
+                task_entry['cognitive_function'] = st.selectbox(f"Cognitive Function {i+1}", 
+                                                                ["Select one", "Intact", "Mild Impairment", "Moderate", "Severe"], 
+                                                                index=0, 
+                                                                key=f"onb_cognitive_{i}")
+                
+                task_entry['functional_status'] = st.selectbox(
+                    f"Functional Status {i+1}",
+                    [
+                        "Select one",
+                        "Ambulatory without fall risk",
+                        "Ambulatory with fall risk requiring device",
+                        "Wheelchair",
+                        "Bedbound",
+                    ],
+                    index=0,
+                    key=f"onb_functional_{i}",
+                )
+                
+                task_entry['goc_value'] = st.selectbox(f"GOC (Goals of Care) {i+1}", 
+                                                       ["Select one", "Full", "Palliative", "Hospice", "Unknown"], 
+                                                       index=0, 
+                                                       key=f"onb_goc_{i}")
+                
+                task_entry['goals_of_care'] = st.text_area(f"Goals of Care (brief) {i+1}", 
+                                                           value=task_entry.get('goals_of_care', ''),
+                                                           key=f"onb_goals_{i}")
+                
+                task_entry['active_concerns'] = st.text_area(f"Active Concerns {i+1}", 
+                                                             value=task_entry.get('active_concerns', ''),
+                                                             key=f"onb_concerns_{i}")
+            
             # Submit button
-            if st.button(f"Complete Initial TV Visit {i+1}", key=f"complete_onb_task_{i}", type="primary"):
+            visit_type_short = "TV" if task_entry.get('visit_type') == 'Telehealth Visit' else "HV"
+            if st.button(f"Complete Initial {visit_type_short} Visit {i+1}", key=f"complete_onb_task_{i}", type="primary"):
                 if task_entry.get('patient_name') and task_entry.get('task_type'):
                     try:
                         # Get provider_id
@@ -905,7 +1165,130 @@ def show_provider_onboarding_queue(user_id, onboarding_queue):
                                 notes=task_entry['notes']
                             )
                             
-                            # Update specialist requirements based on provider's confirmation during TV visit
+                            # Save additional clinical data for both visit types
+                            if success:
+                                try:
+                                    conn = database.get_db_connection()
+                                    
+                                    # Prepare clinical data with proper null handling
+                                    subjective_risk_val = None if task_entry.get('subjective_risk') == "Select one" else task_entry.get('subjective_risk')
+                                    code_status_val = None if task_entry.get('code_status') == "Select one" else task_entry.get('code_status')
+                                    cognitive_function_val = None if task_entry.get('cognitive_function') == "Select one" else task_entry.get('cognitive_function')
+                                    functional_status_val = None if task_entry.get('functional_status') == "Select one" else task_entry.get('functional_status')
+                                    goc_value_val = None if task_entry.get('goc_value') == "Select one" else task_entry.get('goc_value')
+                                    
+                                    # Format notes with header if provided
+                                    notes_text = (task_entry.get('notes') or '').strip()
+                                    if notes_text:
+                                        try:
+                                            date_str = pd.to_datetime(task_entry['date']).date().isoformat()
+                                        except Exception:
+                                            date_str = str(task_entry['date'])
+                                        
+                                        header = f"*************************************************************************\nDate {date_str}\n*************************************************************************\n"
+                                        notes_combined = header + notes_text
+                                        
+                                        # Update patient record with clinical data and notes
+                                        conn.execute("""
+                                            UPDATE patients SET
+                                                er_count_1yr = ?,
+                                                hospitalization_count_1yr = ?,
+                                                subjective_risk_level = ?,
+                                                mental_health_concerns = ?,
+                                                provider_mh_schizophrenia = ?,
+                                                provider_mh_depression = ?,
+                                                provider_mh_anxiety = ?,
+                                                provider_mh_stress = ?,
+                                                provider_mh_adhd = ?,
+                                                provider_mh_bipolar = ?,
+                                                provider_mh_suicidal = ?,
+                                                active_specialists = ?,
+                                                code_status = ?,
+                                                cognitive_function = ?,
+                                                functional_status = ?,
+                                                goals_of_care = ?,
+                                                chronic_conditions_provider = ?,
+                                                goc_value = ?,
+                                                last_visit_date = ?,
+                                                notes = CASE WHEN notes IS NULL OR trim(notes) = '' THEN ? ELSE notes || '\n\n' || ? END
+                                            WHERE patient_id = ?
+                                        """, (
+                                            task_entry.get('er_visits_6mo', 0),
+                                            task_entry.get('hospitalizations_6mo', 0),
+                                            subjective_risk_val,
+                                            1 if task_entry.get('provider_mh_concerns') else 0,
+                                            task_entry.get('provider_mh_schizophrenia', False),
+                                            task_entry.get('provider_mh_depression', False),
+                                            task_entry.get('provider_mh_anxiety', False),
+                                            task_entry.get('provider_mh_stress', False),
+                                            task_entry.get('provider_mh_adhd', False),
+                                            task_entry.get('provider_mh_bipolar', False),
+                                            task_entry.get('provider_mh_suicidal', False),
+                                            task_entry.get('active_specialists', ''),
+                                            code_status_val,
+                                            cognitive_function_val,
+                                            functional_status_val,
+                                            task_entry.get('goals_of_care', ''),
+                                            task_entry.get('active_concerns', ''),
+                                            goc_value_val,
+                                            date_str,
+                                            notes_combined,
+                                            notes_combined,
+                                            task_entry.get('patient_id')
+                                        ))
+                                    else:
+                                        # Update only clinical fields without notes
+                                        conn.execute("""
+                                            UPDATE patients SET
+                                                er_count_1yr = ?,
+                                                hospitalization_count_1yr = ?,
+                                                subjective_risk_level = ?,
+                                                mental_health_concerns = ?,
+                                                provider_mh_schizophrenia = ?,
+                                                provider_mh_depression = ?,
+                                                provider_mh_anxiety = ?,
+                                                provider_mh_stress = ?,
+                                                provider_mh_adhd = ?,
+                                                provider_mh_bipolar = ?,
+                                                provider_mh_suicidal = ?,
+                                                active_specialists = ?,
+                                                code_status = ?,
+                                                cognitive_function = ?,
+                                                functional_status = ?,
+                                                goals_of_care = ?,
+                                                chronic_conditions_provider = ?,
+                                                goc_value = ?,
+                                                last_visit_date = ?
+                                            WHERE patient_id = ?
+                                        """, (
+                                            task_entry.get('er_visits_6mo', 0),
+                                            task_entry.get('hospitalizations_6mo', 0),
+                                            subjective_risk_val,
+                                            1 if task_entry.get('provider_mh_concerns') else 0,
+                                            task_entry.get('provider_mh_schizophrenia', False),
+                                            task_entry.get('provider_mh_depression', False),
+                                            task_entry.get('provider_mh_anxiety', False),
+                                            task_entry.get('provider_mh_stress', False),
+                                            task_entry.get('provider_mh_adhd', False),
+                                            task_entry.get('provider_mh_bipolar', False),
+                                            task_entry.get('provider_mh_suicidal', False),
+                                            task_entry.get('active_specialists', ''),
+                                            code_status_val,
+                                            cognitive_function_val,
+                                            functional_status_val,
+                                            task_entry.get('goals_of_care', ''),
+                                            task_entry.get('active_concerns', ''),
+                                            goc_value_val,
+                                            date_str,
+                                            task_entry.get('patient_id')
+                                        ))
+                                    
+                                    conn.commit()
+                                    conn.close()
+                                except Exception as e:
+                                    st.error(f"Error saving clinical data: {e}")
+                            
+                            # Update specialist requirements and visit type based on provider's confirmation during visit
                             if success and task_entry.get('onboarding_id'):
                                 conn = database.get_db_connection()
                                 try:
@@ -918,6 +1301,9 @@ def show_provider_onboarding_queue(user_id, onboarding_queue):
                                             initial_tv_completed = 1,
                                             initial_tv_completed_date = ?,
                                             provider_completed_initial_tv = 1,
+                                            visit_type = ?,
+                                            billing_code = ?,
+                                            duration_minutes = ?,
                                             updated_date = CURRENT_TIMESTAMP
                                         WHERE onboarding_id = ?
                                     """, (
@@ -926,15 +1312,37 @@ def show_provider_onboarding_queue(user_id, onboarding_queue):
                                         task_entry.get('confirm_dementia', False),
                                         task_entry.get('confirm_annual_wellness', False),
                                         task_entry['date'],
+                                        task_entry.get('visit_type', 'Home Visit'),
+                                        task_entry.get('billing_code', '99345'),
+                                        task_entry.get('duration_minutes', 45),
                                         task_entry.get('onboarding_id')
                                     ))
                                     conn.commit()
                                     conn.close()
                                 except Exception as e:
-                                    st.error(f"Error updating specialist requirements: {e}")
+                                    st.error(f"Error updating specialist requirements and visit type: {e}")
                             
                             if success:
-                                st.success(f"Initial TV visit completed for {task_entry['patient_name']}. Specialist requirements confirmed and patient removed from onboarding queue.")
+                                visit_type_display = task_entry.get('visit_type', 'Home Visit')
+                                st.success(f"Initial {visit_type_display.lower()} completed for {task_entry['patient_name']}. Specialist requirements confirmed and patient removed from onboarding queue.")
+                                
+                                # Reset all clinical form fields to default values for onboarding tasks
+                                onboarding_field_keys = [
+                                    f"onb_er_visits_6mo_{i}", f"onb_hospitalizations_6mo_{i}", f"onb_subjective_risk_{i}",
+                                    f"onb_mh_concerns_{i}", f"onb_provider_mh_schizophrenia_{i}", f"onb_provider_mh_depression_{i}",
+                                    f"onb_provider_mh_anxiety_{i}", f"onb_provider_mh_stress_{i}", f"onb_provider_mh_adhd_{i}",
+                                    f"onb_provider_mh_bipolar_{i}", f"onb_provider_mh_suicidal_{i}", f"onb_active_specialists_{i}",
+                                    f"onb_code_status_{i}", f"onb_cognitive_function_{i}", f"onb_functional_status_{i}",
+                                    f"onb_goc_value_{i}", f"onb_goals_of_care_{i}", f"onb_active_concerns_{i}",
+                                    f"onb_notes_{i}", f"onb_patient_name_{i}", f"onb_task_type_{i}", f"onb_visit_type_{i}",
+                                    f"onb_billing_code_{i}", f"onb_duration_{i}", f"onb_confirm_hypertension_{i}",
+                                    f"onb_confirm_mental_health_{i}", f"onb_confirm_dementia_{i}", f"onb_confirm_annual_wellness_{i}"
+                                ]
+                                
+                                for field_key in onboarding_field_keys:
+                                    if field_key in st.session_state:
+                                        del st.session_state[field_key]
+                                
                                 # Refresh the page to update the queue
                                 st.rerun()
                             else:

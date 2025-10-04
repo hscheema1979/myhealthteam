@@ -415,7 +415,7 @@ def get_provider_onboarding_queue(provider_user_id):
             
         provider_full_name = provider_result[0]
         
-        # Get onboarding patients assigned to this provider who need initial TV visit
+        # Get onboarding patients assigned to this provider who need initial visit
         # Look for patients where initial_tv_provider matches provider's full name and initial_tv_completed = 0
         onboarding_patients = conn.execute("""
             SELECT 
@@ -435,7 +435,10 @@ def get_provider_onboarding_queue(provider_user_id):
                 op.tv_time,
                 op.assigned_provider_user_id,
                 op.initial_tv_completed,
-                op.initial_tv_provider
+                op.initial_tv_provider,
+                op.visit_type,
+                op.billing_code,
+                op.duration_minutes
             FROM onboarding_patients op
             WHERE op.initial_tv_provider = ? 
             AND (op.initial_tv_completed = 0 OR op.initial_tv_completed IS NULL)
@@ -499,6 +502,9 @@ def save_onboarding_tv_scheduling_progress(onboarding_id, form_data):
                 assigned_provider_user_id = ?,
                 assigned_coordinator_user_id = ?,
                 initial_tv_provider = ?,
+                visit_type = ?,
+                billing_code = ?,
+                duration_minutes = ?,
                 updated_date = CURRENT_TIMESTAMP
             WHERE onboarding_id = ?
         """, (
@@ -507,6 +513,9 @@ def save_onboarding_tv_scheduling_progress(onboarding_id, form_data):
             provider_user_id,
             coordinator_user_id,
             initial_tv_provider,
+            form_data.get('visit_type', 'Home Visit'),
+            form_data.get('billing_code', '99345'),
+            form_data.get('duration_minutes', 45),
             onboarding_id
         ))
         
@@ -2388,7 +2397,18 @@ def get_provider_patient_panel_enhanced(user_id):
                 COALESCE(pp.last_visit_service_type, p.service_type) as service_type,
                 pp.last_visit_service_type,
                 pa.coordinator_id as assigned_coordinator_id,
-                pa.provider_id as assigned_provider_id
+                pa.provider_id as assigned_provider_id,
+                -- Include clinical fields from patient_panel
+                COALESCE(pp.goc_value, p.goc_value) as goc_value,
+                COALESCE(pp.code_status, p.code_status) as code_status,
+                COALESCE(pp.cognitive_function, p.cognitive_function) as cognitive_function,
+                COALESCE(pp.functional_status, p.functional_status) as functional_status,
+                COALESCE(pp.subjective_risk_level, p.subjective_risk_level) as subjective_risk_level,
+                COALESCE(pp.er_count_1yr, p.er_count_1yr) as er_count_1yr,
+                COALESCE(pp.hospitalization_count_1yr, p.hospitalization_count_1yr) as hospitalization_count_1yr,
+                COALESCE(pp.mental_health_concerns, p.mental_health_concerns) as mental_health_concerns,
+                COALESCE(pp.goals_of_care, p.goals_of_care) as goals_of_care,
+                COALESCE(pp.active_specialists, p.active_specialists) as active_specialists
             FROM patient_assignments pa
             JOIN patients p ON pa.patient_id = p.patient_id
             LEFT JOIN patient_panel pp ON p.patient_id = pp.patient_id
