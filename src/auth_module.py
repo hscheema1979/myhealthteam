@@ -574,7 +574,7 @@ class AuthenticationManager:
                 JOIN user_roles ur ON u.user_id = ur.user_id
                 JOIN roles r ON ur.role_id = r.role_id
                 WHERE u.status = 'active'
-                  AND ur.role_id NOT IN (38, 40)  -- Exclude CPM (38) and CM (40) manager roles
+                  AND ur.role_id NOT IN (38)  -- Exclude CPM (38) manager role only
                 ORDER BY u.full_name
             """).fetchall()
             
