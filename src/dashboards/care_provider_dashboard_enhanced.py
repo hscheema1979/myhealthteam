@@ -93,7 +93,7 @@ def render_provider_help_examples():
     left, right = st.columns([2, 1])
     with left:
         st.selectbox("Visit Type", ["Home Visit", "Telehealth Visit"], index=0, disabled=True)
-        st.date_input("Date", value=pd.to_datetime('today').date(), disabled=True)
+        st.date_input("Date", value=pd.to_datetime('today').date(), disabled=True, key="help_onboarding_date")
         st.text_area("Visit Notes", placeholder="Document visit details, response, concerns...", disabled=True)
         st.multiselect("Mental Health Concerns", ["Anxiety", "Depression", "PTSD", "Substance Use"], default=["Anxiety"], disabled=True)
         st.selectbox("Code Status", ["Full Code", "DNR"], index=0, disabled=True)
@@ -121,7 +121,7 @@ def render_provider_help_examples():
     left, right = st.columns([2, 1])
     with left:
         st.selectbox("Task Type", ["Phone Review", "Follow-up Call"], index=0, disabled=True)
-        st.date_input("Date", pd.to_datetime('today').date(), disabled=True)
+        st.date_input("Date", pd.to_datetime('today').date(), disabled=True, key="help_phone_review_date")
         st.text_area("Notes", placeholder="Call summary, clinical updates, next steps...", disabled=True)
         st.button("Log Task (disabled)", disabled=True)
     with right:
@@ -140,7 +140,7 @@ def render_provider_help_examples():
             {"Task": "Phone Review", "Date": "2025-11-18", "Minutes": 15, "Status": "Queued", "Notes": "Call scheduled"}
         ])
         st.dataframe(df, use_container_width=True)
-        st.date_input("Filter: Date Range (disabled)", value=pd.to_datetime('today').date(), disabled=True)
+        st.date_input("Filter: Date Range (disabled)", value=pd.to_datetime('today').date(), disabled=True, key="help_task_review_date")
         st.multiselect("Filter: Task (disabled)", ["Phone Review", "PCP-Visit Home Visit (HV)"], default=["Phone Review"], disabled=True)
         st.selectbox("Filter: Status (disabled)", ["Queued", "Completed"], index=0, disabled=True)
         st.button("Export CSV (disabled)", disabled=True)
