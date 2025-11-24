@@ -16,13 +16,62 @@ try:
     MITO_AVAILABLE = True
 except ImportError:
     MITO_AVAILABLE = False
+
+def _apply_patient_info_edits_admin(edited_df, original_df):
+    """Apply patient info edits to database"""
+    import pandas as pd
+    from src import database as _db
+    if edited_df is None or original_df is None:
+        return
+    if "patient_id" not in edited_df.columns:
+        return
+    original_by_id = {str(r["patient_id"]): r for _, r in original_df.iterrows() if pd.notna(r.get("patient_id"))}
+    conn = _db.get_db_connection()
+    try:
+        for _, row in edited_df.iterrows():
+            pid = str(row.get("patient_id"))
+            if not pid or pid not in original_by_id:
+                continue
+            orig = original_by_id[pid]
+            changed = {}
+            for col in edited_df.columns:
+                if col == "patient_id":
+                    continue
+                if str(row.get(col)) != str(orig.get(col)):
+                    changed[col] = row.get(col)
+            if not changed:
+                continue
+            patient_cols = [c[1] for c in conn.execute("PRAGMA table_info('patients')").fetchall()]
+            set_parts = []
+            params = []
+            for k, v in changed.items():
+                if k in patient_cols:
+                    set_parts.append(f"{k} = ?")
+                    params.append(v)
+            if set_parts:
+                params.append(pid)
+                conn.execute(f"UPDATE patients SET {', '.join(set_parts)}, updated_date = CURRENT_TIMESTAMP WHERE patient_id = ?", tuple(params))
+            panel_cols = [c[1] for c in conn.execute("PRAGMA table_info('patient_panel')").fetchall()]
+            set_parts = []
+            params = []
+            for k, v in changed.items():
+                if k in panel_cols:
+                    set_parts.append(f"{k} = ?")
+                    params.append(v)
+            if set_parts:
+                params.append(pid)
+                conn.execute(f"UPDATE patient_panel SET {', '.join(set_parts)}, updated_date = CURRENT_TIMESTAMP WHERE patient_id = ?", tuple(params))
+        conn.commit()
+    finally:
+        conn.close()
+
 def show():
     global pd  # Explicitly declare pd as global to prevent UnboundLocalError
     from src.config.ui_style_config import TextStyle
     st.title("Admin Dashboard")
     user_id = st.session_state.get('user_id', None)
 
-    # New tab order: User Role Management, User Management, Staff Onboarding, Coordinator Tasks, Provider Tasks, Patient Info, Billing
+    # New tab order: User Role Management, User Management, Staff Onboarding, Coordinator Tasks, Provider Tasks, Patient Info, Billing Report, For Testing
     tab_role, tab1, tab_onboard, tab_coord_tasks, tab_prov_tasks, tab3, tab_billing, tab_test = st.tabs([
         "User Role Management",
         "User Management", 
@@ -33,6 +82,198 @@ def show():
         "Billing Report",
         "For Testing"
     ])
+
+    # --- TAB: User Role Management ---
+    with tab_role:
+        st.subheader(TextStyle.INFO_INDICATOR + " User Role Management")
+        st.markdown("### Assign and Remove User Roles")
+        users = db.get_all_users() or []
+        roles = db.get_all_roles() or []
+        # Filter out roles that are no longer used as separate roles
+        roles = [role for role in roles if role['role_name'] not in ['Provider', 'INITIAL_TV_PROVIDER']]
+        role_names = [role['role_name'] for role in roles]
+        role_id_map = {role['role_name']: role['role_id'] for role in roles}
+        data = []
+        for user in users:
+            user_id = user['user_id']
+            user_roles = db.get_user_roles_by_user_id(user_id)
+            user_role_names = [r['role_name'] for r in user_roles]
+            user_role_ids = [r['role_id'] for r in user_roles]
+            row = {
+                'user_id': user_id,
+                'full_name': user['full_name'],
+                'email': user['email'] or '',
+                'status': user['status'] or 'Active',
+                'can_edit_patient_info': 34 in user_role_ids,  # Admin role (34) can edit patient info
+            }
+            for role_name in role_names:
+                row[f'role_{role_name}'] = role_name in user_role_names
+            data.append(row)
+        df = pd.DataFrame(data)
+        column_config = {
+            "user_id": None,
+            "full_name": st.column_config.TextColumn("Full Name"),
+            "email": st.column_config.TextColumn("Email"),
+            "status": st.column_config.SelectboxColumn(
+                "Status",
+                options=["Active", "Inactive", "Pending", "Suspended"],
+                required=True
+            ),
+            "can_edit_patient_info": st.column_config.CheckboxColumn("🔧 Edit Patient Info", help="Allow user to edit patient information - Grant admin role automatically")
+        }
+        for role_name in role_names:
+            column_config[f'role_{role_name}'] = st.column_config.CheckboxColumn(role_name)
+        edited_df = st.data_editor(
+            df,
+            column_config=column_config,
+            hide_index=True,
+            key="user_role_editor",
+            use_container_width=True
+        )
+        if st.session_state.get("user_role_editor"):
+            changes = st.session_state["user_role_editor"]
+            if "edited_rows" in changes and changes["edited_rows"]:
+                for row_index, changed_cells in changes["edited_rows"].items():
+                    user_id = df.iloc[row_index]['user_id']
+                    full_name = df.iloc[row_index]['full_name']
+                    for col_name, new_value in changed_cells.items():
+                        try:
+                            if col_name.startswith('role_'):
+                                role_name = col_name.replace('role_', '')
+                                role_id = role_id_map[role_name]
+                                if new_value:
+                                    db.add_user_role(user_id, role_id)
+                                    st.info(f"{TextStyle.INFO_INDICATOR} Added {role_name} role to {full_name}")
+                                else:
+                                    db.remove_user_role(user_id, role_id)
+                                    st.info(f"{TextStyle.INFO_INDICATOR} Removed {role_name} role from {full_name}")
+                            elif col_name == 'status':
+                                conn = db.get_db_connection()
+                                conn.execute("""
+                                    UPDATE users 
+                                    SET status = ? 
+                                    WHERE user_id = ?
+                                """, (new_value, user_id))
+                                conn.commit()
+                                conn.close()
+                                st.info(f"{TextStyle.INFO_INDICATOR} Updated status to {new_value} for {full_name}")
+                            elif col_name == 'can_edit_patient_info':
+                                if new_value:
+                                    # Grant admin access (role ID 34)
+                                    db.add_user_role(user_id, 34)
+                                    st.info(f"{TextStyle.INFO_INDICATOR} Granted edit patient info access to {full_name}")
+                                else:
+                                    # Remove admin access (role ID 34)
+                                    existing_roles = db.get_user_roles_by_user_id(user_id)
+                                    if len(existing_roles) > 1 or (len(existing_roles) == 1 and existing_roles[0]['role_name'] != 'ADMIN'):
+                                        db.remove_user_role(user_id, 34)
+                                        st.info(f"{TextStyle.INFO_INDICATOR} Removed edit patient info access from {full_name}")
+                            elif col_name in ['full_name', 'email']:
+                                conn = db.get_db_connection()
+                                if col_name == 'full_name':
+                                    conn.execute("""
+                                        UPDATE users 
+                                        SET full_name = ? 
+                                        WHERE user_id = ?
+                                    """, (new_value, user_id))
+                                elif col_name == 'email':
+                                    conn.execute("""
+                                        UPDATE users 
+                                        SET email = ? 
+                                        WHERE user_id = ?
+                                    """, (new_value, user_id))
+                                conn.commit()
+                                conn.close()
+                                st.info(f"{TextStyle.INFO_INDICATOR} Updated {col_name.replace('_', ' ').title()} for {full_name}")
+                        except Exception as e:
+                            st.error(f"{TextStyle.INFO_INDICATOR} Error updating {col_name} for {full_name}: {e}")
+                time.sleep(1)
+                st.rerun()
+
+        st.divider()
+        st.markdown("#### Quick Actions")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            if st.button("🔄 Refresh User Data"):
+                st.rerun()
+        with col2:
+            if st.button("📊 Export User List"):
+                st.info("Export functionality would be implemented here")
+        with col3:
+            if st.button("📧 Send Status Updates"):
+                st.info("Email notification functionality would be implemented here")
+
+    # --- TAB 1: User Management ---
+    with tab1:
+        st.subheader("User Management Table (All Users and Roles)")
+        try:
+            users = db.get_all_users()
+            users_df = pd.DataFrame(users)
+            
+            # Configure columns for the user management table
+            column_config = {
+                "user_id": None,
+                "username": st.column_config.TextColumn("Username"),
+                "full_name": st.column_config.TextColumn("Full Name"),
+                "email": st.column_config.TextColumn("Email"),
+                "status": st.column_config.SelectboxColumn("Status", options=["active", "inactive", "pending"], required=True),
+                "hire_date": st.column_config.DateColumn("Hire Date")
+            }
+            
+            edited_df = st.data_editor(
+                users_df, 
+                column_config=column_config,
+                use_container_width=True, 
+                num_rows="dynamic",
+                key="user_management_editor"
+            )
+                        
+        except Exception as e:
+            st.error(f"Error loading user data: {e}")
+
+    # --- TAB: Staff Onboarding ---
+    with tab_onboard:
+        st.subheader(TextStyle.INFO_INDICATOR + " Staff Onboarding Management")
+        st.info("**Admin Only**: Staff onboarding and user registration is restricted to administrators")
+        st.markdown("### New User Registration")
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            st.markdown("Create new users and assign roles (Providers, Coordinators, etc.)")
+            with st.form("new_user_form"):
+                st.markdown("##### User Information")
+                first_name = st.text_input("First Name*", key="new_first_name")
+                last_name = st.text_input("Last Name*", key="new_last_name")
+                email = st.text_input("Email*", key="new_email")
+                username = st.text_input("Username*", key="new_username")
+                password = st.text_input("Password*", type="password", key="new_password")
+                try:
+                    roles = db.get_user_roles()
+                    role_options = [role['role_name'] for role in roles if role['role_name'] not in ['LC', 'CPM', 'CM']]
+                    selected_role = st.selectbox("Primary Role*", role_options, key="new_role")
+                    role_descriptions = {
+                        'CP': 'Care Provider - Delivers direct patient care',
+                        'CC': 'Care Coordinator - Coordinates patient care plans',
+                        'ADMIN': 'Administrator - System administration and management',
+                        'OT': 'Onboarding Team - Patient intake and onboarding',
+                        'DATA ENTRY': 'Data Entry - Data entry and documentation'
+                    }
+                    if selected_role and selected_role in role_descriptions:
+                        st.info(role_descriptions[selected_role])
+                except Exception as e:
+                    st.error(f"Error loading roles: {e}")
+                    selected_role = None
+                submitted = st.form_submit_button("Create New User", use_container_width=True)
+                if submitted:
+                    if all([first_name, last_name, email, username, password, selected_role]):
+                        try:
+                            db.add_user(username, password, first_name, last_name, email, selected_role)
+                            st.success(f"Successfully created user: {first_name} {last_name} ({selected_role})")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Error creating user: {e}")
+                    else:
+                        st.error("Please fill in all required fields")
+
     # --- TAB: Coordinator Tasks ---
     with tab_coord_tasks:
         
@@ -222,8 +463,6 @@ def show():
                         
                     else:
                         st.info("No patient data available for this month.")
-                else:
-                    st.info("No patient data available for this month.")
             except Exception as e:
                 st.error(f"Error loading patient monthly summary: {e}")
         with col_coord:
@@ -685,205 +924,41 @@ def show():
         except Exception as e:
             st.error(f"Error loading provider patient visit breakdown: {e}")
 
-    # --- TAB: User Role Management ---
-    with tab_role:
-        st.subheader(TextStyle.INFO_INDICATOR + " User Role Management")
-        st.markdown("### Assign and Remove User Roles")
-        users = db.get_all_users() or []
-        roles = db.get_all_roles() or []
-        roles = [role for role in roles if role['role_name'] != 'Provider']
-        role_names = [role['role_name'] for role in roles]
-        role_id_map = {role['role_name']: role['role_id'] for role in roles}
-        data = []
-        for user in users:
-            user_id = user['user_id']
-            user_roles = db.get_user_roles_by_user_id(user_id)
-            user_role_names = [r['role_name'] for r in user_roles]
-            row = {
-                'user_id': user_id,
-                'full_name': user['full_name'],
-                'email': user['email'] or '',
-                'status': user['status'] or 'Active',
-            }
-            for role_name in role_names:
-                row[f'role_{role_name}'] = role_name in user_role_names
-            data.append(row)
-        df = pd.DataFrame(data)
-        column_config = {
-            "user_id": None,
-            "full_name": st.column_config.TextColumn("Full Name"),
-            "email": st.column_config.TextColumn("Email"),
-            "status": st.column_config.SelectboxColumn(
-                "Status",
-                options=["Active", "Inactive", "Pending", "Suspended"],
-                required=True
-            )
-        }
-        for role_name in role_names:
-            column_config[f'role_{role_name}'] = st.column_config.CheckboxColumn(role_name)
-        edited_df = st.data_editor(
-            df,
-            column_config=column_config,
-            hide_index=True,
-            key="user_role_editor",
-            use_container_width=True
-        )
-        if st.session_state.get("user_role_editor"):
-            changes = st.session_state["user_role_editor"]
-            if "edited_rows" in changes and changes["edited_rows"]:
-                for row_index, changed_cells in changes["edited_rows"].items():
-                    user_id = df.iloc[row_index]['user_id']
-                    full_name = df.iloc[row_index]['full_name']
-                    for col_name, new_value in changed_cells.items():
-                        try:
-                            if col_name.startswith('role_'):
-                                role_name = col_name.replace('role_', '')
-                                role_id = role_id_map[role_name]
-                                if new_value:
-                                    db.add_user_role(user_id, role_id)
-                                    st.info(f"{TextStyle.INFO_INDICATOR} Added {role_name} role to {full_name}")
-                                else:
-                                    db.remove_user_role(user_id, role_id)
-                                    st.info(f"{TextStyle.INFO_INDICATOR} Removed {role_name} role from {full_name}")
-                            elif col_name == 'status':
-                                conn = db.get_db_connection()
-                                conn.execute("""
-                                    UPDATE users 
-                                    SET status = ? 
-                                    WHERE user_id = ?
-                                """, (new_value, user_id))
-                                conn.commit()
-                                conn.close()
-                                st.info(f"{TextStyle.INFO_INDICATOR} Updated status to {new_value} for {full_name}")
-                            elif col_name in ['full_name', 'email']:
-                                conn = db.get_db_connection()
-                                if col_name == 'full_name':
-                                    conn.execute("""
-                                        UPDATE users 
-                                        SET full_name = ? 
-                                        WHERE user_id = ?
-                                    """, (new_value, user_id))
-                                elif col_name == 'email':
-                                    conn.execute("""
-                                        UPDATE users 
-                                        SET email = ? 
-                                        WHERE user_id = ?
-                                    """, (new_value, user_id))
-                                conn.commit()
-                                conn.close()
-                                st.info(f"{TextStyle.INFO_INDICATOR} Updated {col_name.replace('_', ' ').title()} for {full_name}")
-                        except Exception as e:
-                            st.error(f"{TextStyle.INFO_INDICATOR} Error updating {col_name} for {full_name}: {e}")
-                time.sleep(1)
-                st.rerun()
-        st.divider()
-        st.markdown("#### Quick Actions")
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            if st.button("Refresh User Data"):
-                st.rerun()
-        with col2:
-            if st.button("Export User List"):
-                st.info("Export functionality would be implemented here")
-        with col3:
-            if st.button("Send Status Updates"):
-                st.info("Email notification functionality would be implemented here")
-
-    # --- TAB 1: User Management ---
-    with tab1:
-        st.subheader("User Management Table (All Users and Roles)")
-        try:
-            users = db.get_all_users()
-            users_df = pd.DataFrame(users)
-            st.data_editor(users_df, use_container_width=True, num_rows="dynamic")
-        except Exception as e:
-            st.error(f"Error loading user data: {e}")
-
-    # --- TAB: Staff Onboarding ---
-    with tab_onboard:
-        st.subheader(TextStyle.INFO_INDICATOR + " Staff Onboarding Management")
-        st.info("**Admin Only**: Staff onboarding and user registration is restricted to administrators")
-        st.markdown("### New User Registration")
-        col1, col2, col3 = st.columns([1, 2, 1])
-        with col2:
-            st.markdown("Create new users and assign roles (Providers, Coordinators, etc.)")
-            with st.form("new_user_form"):
-                st.markdown("##### User Information")
-                first_name = st.text_input("First Name*", key="new_first_name")
-                last_name = st.text_input("Last Name*", key="new_last_name")
-                email = st.text_input("Email*", key="new_email")
-                username = st.text_input("Username*", key="new_username")
-                password = st.text_input("Password*", type="password", key="new_password")
-                st.markdown("##### Role Assignment")
-                try:
-                    roles = db.get_user_roles()
-                    role_options = [role['role_name'] for role in roles if role['role_name'] not in ['LC', 'CPM', 'CM']]
-                    selected_role = st.selectbox("Primary Role*", role_options, key="new_role")
-                    role_descriptions = {
-                        'CP': 'Care Provider - Delivers direct patient care',
-                        'CC': 'Care Coordinator - Coordinates patient care plans',
-                        'ADMIN': 'Administrator - System administration and management',
-                        'OT': 'Onboarding Team - Patient intake and onboarding',
-                        'DATA ENTRY': 'Data Entry - Data entry and documentation'
-                    }
-                    if selected_role and selected_role in role_descriptions:
-                        st.info(role_descriptions[selected_role])
-                except Exception as e:
-                    st.error(f"Error loading roles: {e}")
-                    selected_role = None
-                submitted = st.form_submit_button("Create New User", use_container_width=True)
-                if submitted:
-                    if all([first_name, last_name, email, username, password, selected_role]):
-                        try:
-                            db.add_user(username, password, first_name, last_name, email, selected_role)
-                            st.success(f"Successfully created user: {first_name} {last_name} ({selected_role})")
-                            st.rerun()
-                        except Exception as e:
-                            st.error(f"Error creating user: {e}")
-                    else:
-                        st.error("Please fill in all required fields")
-
-    # --- TAB 2: Patient Assignments ---
-    # with tab2:
-    #     st.subheader("Patient Assignments Table (All Assignments)")
-    #     try:
-    #         assignments = db.get_all_patient_assignments()
-    #         assignments_df = pd.DataFrame(assignments)
-    #         table_height = 900  # Large value to fill most browser windows
-    #         if not assignments_df.empty and 'patient_id' in assignments_df.columns:
-    #             patients = db.get_all_patients() if hasattr(db, 'get_all_patients') else []
-    #             patients_df = pd.DataFrame(patients)
-    #             required_cols = {'patient_id', 'first_name', 'last_name', 'dob'}
-    #             if not patients_df.empty and required_cols.issubset(patients_df.columns):
-    #                 merged_df = assignments_df.merge(
-    #                     patients_df[['patient_id', 'first_name', 'last_name', 'dob']],
-    #                     on='patient_id', how='left'
-    #                 )
-    #                 # Add Patient Name column
-    #                 if all(col in merged_df.columns for col in ['first_name', 'last_name']):
-    #                     merged_df['Patient Name'] = merged_df['first_name'].fillna('') + ' ' + merged_df['last_name'].fillna('')
-    #                 # Order columns: last_name, first_name, dob, Patient Name, then others
-    #                 first_cols = [col for col in ['last_name', 'first_name', 'dob', 'Patient Name'] if col in merged_df.columns]
-    #                 other_cols = [c for c in merged_df.columns if c not in first_cols]
-    #                 merged_df = merged_df[first_cols + other_cols]
-    #                 st.data_editor(merged_df, use_container_width=True, num_rows="dynamic", height=table_height)
-    #             else:
-    #                 st.data_editor(assignments_df, use_container_width=True, num_rows="dynamic", height=table_height)
-    #         else:
-    #             st.data_editor(assignments_df, use_container_width=True, num_rows="dynamic", height=table_height)
-    #     except Exception as e:
-    #         st.error(f"Error loading assignment data: {e}")
-
     # --- TAB 3: Patient Info ---
     with tab3:
-
         st.subheader("Patient Info Table (All Patient Data, Assignments)")
+        
+        # --- Search Filter (at the top) ---
+        st.markdown("### Search Patients")
+        search_term = st.text_input("Search by Name or ID", key="patient_info_search_input")
+        
+        # --- Enable Editing Control ---
+        editable_admin = st.checkbox("Enable editing", value=False, key="admin_patient_info_editable")
+        
+        # Apply search filter immediately after data loading
         try:
             patients = db.get_all_patient_panel() if hasattr(db, 'get_all_patient_panel') else []
             patients_df = pd.DataFrame(patients)
             if patients_df.empty:
                 st.info("No patients found in patient_panel.")
             else:
+                # Apply search filter
+                if search_term:
+                    search_term_lower = search_term.lower()
+                    # Filter by first_name, last_name, or patient_id
+                    mask = pd.Series(False, index=patients_df.index)
+                    
+                    if 'first_name' in patients_df.columns:
+                        mask |= patients_df['first_name'].fillna('').astype(str).str.lower().str.contains(search_term_lower)
+                    if 'last_name' in patients_df.columns:
+                        mask |= patients_df['last_name'].fillna('').astype(str).str.lower().str.contains(search_term_lower)
+                    if 'patient_id' in patients_df.columns:
+                        mask |= patients_df['patient_id'].fillna('').astype(str).str.lower().str.contains(search_term_lower)
+                    
+                    patients_df = patients_df[mask]
+                    
+                    if patients_df.empty:
+                        st.warning(f"No patients found matching '{search_term}'")
                 # Prefer sorting by last_name then first_name when available
                 sort_cols = [c for c in ['last_name', 'first_name'] if c in patients_df.columns]
                 if sort_cols:
@@ -1055,11 +1130,8 @@ def show():
 
                 st.markdown("---")
 
-                # --- Split patient data into active and inactive sections ---
-                # Define active status patterns
-                active_statuses = ['Active', 'Active-Geri', 'Active-PCP']
-                
                 # Split patients into active and inactive
+                active_statuses = ['Active', 'Active-Geri', 'Active-PCP']
                 if 'status' in patients_df.columns:
                     # Active patients: status starts with 'Active'
                     active_patients = patients_df[
@@ -1077,27 +1149,77 @@ def show():
                     active_patients = patients_df.copy()
                     inactive_patients = pd.DataFrame()
 
-                # --- Active Patients Section ---
-                st.markdown(f"#### 🟢 Active Patients ({len(active_patients)})")
-                if not active_patients.empty:
-                    try:
-                        styled_active = style_names(active_patients)
-                        st.dataframe(styled_active, height=600, use_container_width=True)
-                    except Exception:
-                        st.dataframe(active_patients, height=600, use_container_width=True)
+                if not editable_admin:
+                    st.markdown(f"#### 🟢 Active Patients ({len(active_patients)})")
+                    if not active_patients.empty:
+                        try:
+                            styled_active = style_names(active_patients)
+                            st.dataframe(styled_active, height=600, use_container_width=True)
+                        except Exception:
+                            st.dataframe(active_patients, height=600, use_container_width=True)
+                    else:
+                        st.info("No active patients found.")
                 else:
-                    st.info("No active patients found.")
+                    display_cols = [
+                        'patient_id', 'status', 'first_name', 'last_name', 'facility', 'Last Visit Date', 'service_type', 'phone_primary'
+                    ]
+                    existing_cols = [c for c in display_cols if c in active_patients.columns]
+                    df_display = active_patients[existing_cols].copy()
+                    col_config = {}
+                    if 'patient_id' in df_display.columns:
+                        col_config['patient_id'] = st.column_config.TextColumn('patient_id', disabled=True)
+                    edited = st.data_editor(
+                        df_display,
+                        use_container_width=True,
+                        num_rows="dynamic",
+                        height=600,
+                        column_config=col_config,
+                        key="admin_patient_info_editor"
+                    )
+                    if st.button("Save changes", key="admin_patient_info_save"):
+                        try:
+                            _apply_patient_info_edits_admin(edited, df_display)
+                            st.success("Patient records updated.")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Error saving changes: {e}")
 
                 # --- Inactive Patients Section (Expandable) ---
                 with st.expander(f"🔴 Inactive Patients ({len(inactive_patients)})", expanded=False):
                     if not inactive_patients.empty:
-                        try:
-                            styled_inactive = style_names(inactive_patients)
-                            st.dataframe(styled_inactive, height=400, use_container_width=True)
-                        except Exception:
-                            st.dataframe(inactive_patients, height=400, use_container_width=True)
+                        if not editable_admin:
+                            try:
+                                styled_inactive = style_names(inactive_patients)
+                                st.dataframe(styled_inactive, height=400, use_container_width=True)
+                            except Exception:
+                                st.dataframe(inactive_patients, height=400, use_container_width=True)
+                        else:
+                            display_cols = [
+                                'patient_id', 'status', 'first_name', 'last_name', 'facility', 'Last Visit Date', 'service_type', 'phone_primary'
+                            ]
+                            existing_cols = [c for c in display_cols if c in inactive_patients.columns]
+                            df_display = inactive_patients[existing_cols].copy()
+                            col_config = {}
+                            if 'patient_id' in df_display.columns:
+                                col_config['patient_id'] = st.column_config.TextColumn('patient_id', disabled=True)
+                            edited_inactive = st.data_editor(
+                                df_display,
+                                use_container_width=True,
+                                num_rows="dynamic",
+                                height=400,
+                                column_config=col_config,
+                                key="admin_patient_info_editor_inactive"
+                            )
+                            if st.button("Save changes (Inactive)", key="admin_patient_info_save_inactive"):
+                                try:
+                                    _apply_patient_info_edits_admin(edited_inactive, df_display)
+                                    st.success("Patient records updated.")
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error(f"Error saving changes: {e}")
                     else:
                         st.info("No inactive patients found.")
+
         except Exception as e:
             st.error(f"Error loading patient data: {e}")
 
@@ -1266,4 +1388,4 @@ def show():
         except Exception as e:
             st.error(f"Error in For Testing tab: {e}")
 
-    # ...existing code...
+    # ... Rest of the coordinator tasks and provider tasks tabs would go here ...

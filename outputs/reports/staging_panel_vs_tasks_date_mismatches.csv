@@ -1,0 +1,2 @@
+patient_id,provider_name,coordinator_name,panel_last_visit_date,tasks_last_visit_date,date_alignment
+"PRATT JANET 06/25/1950",,,2025-09-25,,DATE_MISMATCH

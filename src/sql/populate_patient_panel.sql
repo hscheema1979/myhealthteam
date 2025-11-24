@@ -78,7 +78,18 @@ CREATE TABLE patient_panel (
     last_visit_provider_id INT,
     last_visit_provider_name TEXT,
     last_visit_service_type TEXT,
-    region_id TEXT
+    region_id TEXT,
+    eligibility_status TEXT,
+    eligibility_notes TEXT,
+    eligibility_verified INTEGER,
+    emed_chart_created INTEGER,
+    chart_id TEXT,
+    facility_confirmed INTEGER,
+    chart_notes TEXT,
+    intake_call_completed INTEGER,
+    intake_notes TEXT,
+    task_date DATE,
+    goc_value TEXT
 );
 -- Ensure patient_id is explicitly copied from patients to patient_panel
 INSERT INTO patient_panel (
@@ -156,7 +167,18 @@ INSERT INTO patient_panel (
         last_visit_provider_id,
         last_visit_provider_name,
         last_visit_service_type,
-        region_id
+        region_id,
+        eligibility_status,
+        eligibility_notes,
+        eligibility_verified,
+        emed_chart_created,
+        chart_id,
+        facility_confirmed,
+        chart_notes,
+        intake_call_completed,
+        intake_notes,
+        task_date,
+        goc_value
     )
 SELECT DISTINCT p.patient_id,
     p.first_name,
@@ -249,7 +271,18 @@ SELECT DISTINCT p.patient_id,
     NULL as last_visit_provider_id,
     NULL as last_visit_provider_name,
     p.service_type as last_visit_service_type,
-    p.region_id
+    p.region_id,
+    p.eligibility_status,
+    p.eligibility_notes,
+    COALESCE(p.eligibility_verified, 0) as eligibility_verified,
+    COALESCE(p.emed_chart_created, 0) as emed_chart_created,
+    p.chart_id,
+    COALESCE(p.facility_confirmed, 0) as facility_confirmed,
+    p.chart_notes,
+    COALESCE(p.intake_call_completed, 0) as intake_call_completed,
+    p.intake_notes,
+    p.task_date,
+    p.goc_value
 FROM patients p
     LEFT JOIN (
         SELECT patient_id,

@@ -10,9 +10,17 @@ import sqlite3
 import json
 from typing import Optional, Dict, Any, List
 from datetime import datetime
+from src import database
 from src.database import get_db_connection
 from src.core_utils import get_user_role_ids
 from streamlit_js_eval import streamlit_js_eval
+
+# Optional CookieManager from extra_streamlit_components
+try:
+    import extra_streamlit_components as stx
+    CookieManager = stx.CookieManager
+except Exception:
+    CookieManager = None
 
 
 class AuthenticationManager:
@@ -20,7 +28,24 @@ class AuthenticationManager:
     
     def __init__(self):
         self.session_state = st.session_state
+        # Initialize a single CookieManager instance with a unique key if available
+        self.cookie_manager = None
+        if CookieManager is not None:
+            try:
+                self.cookie_manager = CookieManager(key="auth_cookie_manager")
+            except Exception:
+                self.cookie_manager = None
+        # Key counter for streamlit_js_eval to avoid duplicate keys
+        if '_sje_counter' not in self.session_state:
+            self.session_state['_sje_counter'] = 0
+        
         self._init_session_state()
+
+    def _next_sje_key(self, base: str) -> str:
+        c = int(self.session_state.get('_sje_counter', 0))
+        key = f"{base}_{c}"
+        self.session_state['_sje_counter'] = c + 1
+        return key
     
     def _init_session_state(self):
         """Initialize session state variables"""
@@ -41,10 +66,7 @@ class AuthenticationManager:
         if 'persistent_login_checked' not in self.session_state:
             self.session_state['persistent_login_checked'] = False
         
-        # Check for persistent login on first load
-        if not self.session_state['persistent_login_checked']:
-            self._check_persistent_login()
-            self.session_state['persistent_login_checked'] = True
+        # Defer persistent login restore to UI mount to avoid duplicate component keys
     
     def authenticate_by_email_only(self, email: str) -> Optional[Dict[str, Any]]:
         """
@@ -156,51 +178,135 @@ class AuthenticationManager:
             }
             
             # Store in browser localStorage
-            js_code = f"""
-            localStorage.setItem('persistent_login', '{json.dumps(persistent_data)}');
-            """
-            streamlit_js_eval(js_code)
+            js_code = f"localStorage.setItem('persistent_login', '{json.dumps(persistent_data)}')"
+            streamlit_js_eval(js_expressions=js_code, key=self._next_sje_key("persistent_set"))
             
             # Also keep a copy in session state for immediate access
             st.session_state['_persistent_login_data'] = persistent_data
+
+            try:
+                sid = database.create_user_session(user['user_id'], days_valid=30)
+                st.session_state['_persistent_session_id'] = sid
+                persistent_data['session_id'] = sid
+                try:
+                    st.experimental_set_query_params(session_id=sid)
+                except Exception:
+                    pass
+            except Exception as e:
+                print(f"Error creating server session: {e}")
+
+            if self.cookie_manager is not None:
+                try:
+                    self.cookie_manager.set('persistent_login', json.dumps(persistent_data), key=self._next_sje_key("cookie_set"))
+                except Exception as cookie_error:
+                    print(f"Error setting persistent login cookie: {cookie_error}")
             
         except Exception as e:
             print(f"Error saving persistent login: {e}")
 
     def _check_persistent_login(self):
-        """Check for and restore persistent login state from browser cookies"""
+        """Check for and restore persistent login state from browser storage"""
         try:
-            # First check session state for immediate access
-            persistent_data = st.session_state.get('_persistent_login_data')
-            
-            # If not in session state, check browser cookies
-            if not persistent_data:
+            # Prevent multiple component instantiations within a single render
+            if not st.session_state.get('_persistent_read_guard'):
+                st.session_state['_persistent_read_guard'] = True
+            else:
+                return False
+            # Server-side session via query param or cookie first
+            session_id = None
+            try:
+                params = st.experimental_get_query_params()
+                if isinstance(params, dict):
+                    sid_list = params.get('session_id')
+                    if sid_list:
+                        session_id = sid_list[0]
+            except Exception:
+                pass
+            if self.cookie_manager is not None:
                 try:
-                    cookie_manager = cookies.CookieManager()
-                    cookie_data = cookie_manager.get('persistent_login')
-                    if cookie_data:
-                        persistent_data = json.loads(cookie_data)
-                        # Store in session state for this session
-                        st.session_state['_persistent_login_data'] = persistent_data
+                    cookie_val = self.cookie_manager.get(cookie='session_id')
+                    if isinstance(cookie_val, dict):
+                        session_id = cookie_val.get('session_id') or next(iter(cookie_val.values()), None)
+                    else:
+                        session_id = cookie_val
                 except Exception as cookie_error:
-                    print(f"Error reading cookie: {cookie_error}")
-                    return False
-            
-            if persistent_data and not self.is_authenticated():
-                # Check if the persistent login is still valid (within 30 days)
-                login_time = datetime.fromisoformat(persistent_data['timestamp'])
-                if (datetime.now() - login_time).days <= 30:
-                    
-                    # Verify the user still exists and is active
-                    user = self.get_user_by_email_simple(persistent_data['email'])
-                    if user and user['user_id'] == persistent_data['user_id']:
-                        # Restore the session
+                    print(f"Error reading session_id cookie: {cookie_error}")
+            if session_id and not self.is_authenticated():
+                try:
+                    user = database.get_user_by_session(session_id)
+                    if user:
                         self.setup_user_session(user, 'persistent', True)
                         self.session_state['remember_me'] = True
                         return True
-                else:
-                    # Clear expired persistent login
-                    self._clear_persistent_login()
+                except Exception as e:
+                    print(f"Error restoring server session: {e}")
+
+            # Fallback: client-side persistent data in session state
+            persistent_data = st.session_state.get('_persistent_login_data')
+            
+            # If not in session state, check browser cookies (if component available)
+            if not persistent_data and self.cookie_manager is not None:
+                try:
+                    cookie_data = self.cookie_manager.get(cookie='persistent_login')
+                    if isinstance(cookie_data, dict):
+                        cookie_data = cookie_data.get('persistent_login') or next(iter(cookie_data.values()), None)
+                    if cookie_data:
+                        # If the cookie value is a JSON string, parse it
+                        try:
+                            persistent_data = json.loads(cookie_data)
+                        except Exception:
+                            persistent_data = cookie_data
+                        # Store in session state for this session
+                        st.session_state['_persistent_login_data'] = persistent_data
+                        try:
+                            session_id = persistent_data.get('session_id') if isinstance(persistent_data, dict) else None
+                        except Exception:
+                            session_id = None
+                except Exception as cookie_error:
+                    print(f"Error reading cookie: {cookie_error}")
+                    # Fall back to no persistent cookie
+                    pass
+
+            # If still not found, attempt to read from browser localStorage
+            if not persistent_data:
+                try:
+                    local_storage_value = streamlit_js_eval(js_expressions="localStorage.getItem('persistent_login')", key=self._next_sje_key("persistent_get"))
+                    if local_storage_value:
+                        try:
+                            persistent_data = json.loads(local_storage_value)
+                        except Exception:
+                            persistent_data = None
+                        if persistent_data:
+                            st.session_state['_persistent_login_data'] = persistent_data
+                            try:
+                                session_id = persistent_data.get('session_id') if isinstance(persistent_data, dict) else None
+                            except Exception:
+                                session_id = None
+                except Exception as ls_error:
+                    print(f"Error reading localStorage: {ls_error}")
+            
+            if session_id and not self.is_authenticated():
+                try:
+                    user = database.get_user_by_session(session_id)
+                    if user:
+                        self.setup_user_session(user, 'persistent', True)
+                        self.session_state['remember_me'] = True
+                        return True
+                except Exception as e:
+                    print(f"Error restoring server session: {e}")
+            elif persistent_data and not self.is_authenticated():
+                try:
+                    login_time = datetime.fromisoformat(persistent_data['timestamp'])
+                    if (datetime.now() - login_time).days <= 30:
+                        user = self.get_user_by_email_simple(persistent_data['email'])
+                        if user and user['user_id'] == persistent_data['user_id']:
+                            self.setup_user_session(user, 'persistent', True)
+                            self.session_state['remember_me'] = True
+                            return True
+                    else:
+                        self._clear_persistent_login()
+                except Exception:
+                    pass
             
         except Exception as e:
             print(f"Error checking persistent login: {e}")
@@ -215,10 +321,33 @@ class AuthenticationManager:
             if '_persistent_login_data' in st.session_state:
                 del st.session_state['_persistent_login_data']
             
-            # Clear from browser cookie
-            cookie_manager = cookies.CookieManager()
-            if 'persistent_login' in cookie_manager:
-                del cookie_manager['persistent_login']
+            # Clear from browser cookie if CookieManager is available
+            if self.cookie_manager is not None:
+                try:
+                    self.cookie_manager.delete('persistent_login', key=self._next_sje_key("cookie_del"))
+                    sid = None
+                    try:
+                        sid_val = self.cookie_manager.get(cookie='session_id')
+                        if isinstance(sid_val, dict):
+                            sid = sid_val.get('session_id') or next(iter(sid_val.values()), None)
+                        else:
+                            sid = sid_val
+                    except Exception:
+                        sid = st.session_state.get('_persistent_session_id')
+                    if sid:
+                        try:
+                            database.delete_user_session(sid)
+                        except Exception:
+                            pass
+                    self.cookie_manager.delete('session_id', key=self._next_sje_key("cookie_del"))
+                except Exception as e:
+                    print(f"Error clearing persistent login cookie: {e}")
+            
+            # Clear from browser localStorage
+            try:
+                streamlit_js_eval(js_expressions="localStorage.removeItem('persistent_login')", key=self._next_sje_key("persistent_clear"))
+            except Exception as ls_error:
+                print(f"Error clearing localStorage persistent login: {ls_error}")
                 
         except Exception as e:
             print(f"Error clearing persistent login: {e}")
@@ -435,16 +564,17 @@ class AuthenticationManager:
             conn.close()
     
     def get_all_users_for_dropdown(self) -> List[Dict[str, Any]]:
-        """Get all users formatted for dropdown selection"""
+        """Get all users formatted for dropdown selection (excluding manager roles CPM=38, CM=40)"""
         conn = get_db_connection()
         try:
             users = conn.execute("""
-                SELECT u.user_id, u.username, u.email, u.first_name, u.last_name, u.full_name, 
-                       u.status, r.role_name
+                SELECT DISTINCT u.user_id, u.username, u.email, u.first_name, u.last_name, u.full_name, 
+                       u.status, r.role_name, r.role_id
                 FROM users u
-                LEFT JOIN user_roles ur ON u.user_id = ur.user_id
-                LEFT JOIN roles r ON ur.role_id = r.role_id
+                JOIN user_roles ur ON u.user_id = ur.user_id
+                JOIN roles r ON ur.role_id = r.role_id
                 WHERE u.status = 'active'
+                  AND ur.role_id NOT IN (38, 40)  -- Exclude CPM (38) and CM (40) manager roles
                 ORDER BY u.full_name
             """).fetchall()
             
@@ -452,7 +582,7 @@ class AuthenticationManager:
             for user in users:
                 user_dict = dict(user)
                 # Create display name with role info
-                display_name = f"{user_dict['full_name']} ({user_dict['role_name'] or 'No Role'}) - {user_dict['email']}"
+                display_name = f"{user_dict['full_name']} ({user_dict['role_name']}) - {user_dict['email']}"
                 user_dict['display_name'] = display_name
                 user_list.append(user_dict)
             
@@ -465,8 +595,10 @@ class AuthenticationManager:
 
 
 def get_auth_manager() -> AuthenticationManager:
-    """Get an instance of the authentication manager"""
-    return AuthenticationManager()
+    """Get a singleton AuthenticationManager for the current session"""
+    if '_auth_manager' not in st.session_state or st.session_state['_auth_manager'] is None:
+        st.session_state['_auth_manager'] = AuthenticationManager()
+    return st.session_state['_auth_manager']
 
 
 def require_authentication(auth_manager: Optional[AuthenticationManager] = None) -> Dict[str, Any]:
@@ -502,6 +634,13 @@ def render_login_sidebar(auth_manager: Optional[AuthenticationManager] = None):
     if auth_manager is None:
         auth_manager = get_auth_manager()
     
+    # Re-check persistence after UI mount if not yet checked
+    if not auth_manager.session_state.get('persistent_login_checked', False):
+        if auth_manager._check_persistent_login():
+            auth_manager.session_state['persistent_login_checked'] = True
+            st.rerun()
+
+
     # Show impersonation warning if active
     if auth_manager.is_impersonating():
         original_user = auth_manager.get_original_user()
@@ -518,14 +657,15 @@ def render_login_sidebar(auth_manager: Optional[AuthenticationManager] = None):
     
     if not auth_manager.is_authenticated():
         with st.sidebar.form("login_form"):
-            email = st.text_input("Email", placeholder="user@example.com")
+            prefill_email = st.session_state.get('login_email_prefill', '')
+            email = st.text_input("Email", value=prefill_email, placeholder="user@example.com")
             
             # Password is required by default - no checkbox needed
             password = st.text_input("Password", type="password", placeholder="Enter your password")
             require_password = True
             
             # Remember Me checkbox for persistent login
-            remember_me = st.checkbox("Remember Me", value=False, help="Stay logged in for 30 days")
+            remember_me = st.checkbox("Remember Me", value=True, help="Stay logged in for 30 days")
             
             login_button = st.form_submit_button("Login")
             
@@ -535,7 +675,8 @@ def render_login_sidebar(auth_manager: Optional[AuthenticationManager] = None):
                     user = auth_manager.authenticate_user(email, password, "email_password")
                     
                     if user:
-                        auth_manager.setup_user_session(user, "email_password", remember_me)
+                        auth_manager.setup_user_session(user, "email_password", True)
+                        st.session_state['login_email_prefill'] = user.get('email')
                         st.sidebar.success(f"Welcome, {auth_manager.get_user_full_name()}!")
                         st.rerun()
                     else:
@@ -577,26 +718,10 @@ def render_login_sidebar(auth_manager: Optional[AuthenticationManager] = None):
                         else:
                             st.sidebar.error("Failed to start impersonation")
         
-        # Show logout options
         st.sidebar.markdown("---")
-        
-        # Show if user has persistent login enabled
-        if auth_manager.session_state.get('remember_me', False):
-            st.sidebar.info("🔒 Persistent login enabled")
-            
-            col1, col2 = st.sidebar.columns(2)
-            with col1:
-                if st.button("Logout", key="logout_temp", help="Logout but keep persistent login"):
-                    auth_manager.logout_user(clear_persistent=False)
-                    st.rerun()
-            with col2:
-                if st.button("Full Logout", key="logout_full", help="Logout and clear persistent login"):
-                    auth_manager.logout_user(clear_persistent=True)
-                    st.rerun()
-        else:
-            if st.sidebar.button("Logout"):
-                auth_manager.logout_user()
-                st.rerun()
+        if st.sidebar.button("Logout"):
+            auth_manager.logout_user()
+            st.rerun()
 
 
 def get_dashboard_for_user(auth_manager: Optional[AuthenticationManager] = None) -> Optional[int]:

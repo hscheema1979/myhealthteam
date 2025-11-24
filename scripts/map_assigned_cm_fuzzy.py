@@ -55,10 +55,10 @@ def main():
     assigned_rows = cur.fetchall()
 
     # fetch users
-    cur.execute('SELECT user_id, full_name FROM users')
+    cur.execute("SELECT user_id, COALESCE(full_name, TRIM(COALESCE(last_name,'') || ', ' || COALESCE(first_name,''))) AS full_name FROM users")
     users = cur.fetchall()
-    user_map = {row['full_name']: row['user_id'] for row in users}
-    user_full_names = [row['full_name'] for row in users]
+    user_map = { (row['full_name'] or '').strip(): row['user_id'] for row in users if (row['full_name'] or '').strip() }
+    user_full_names = [ (row['full_name'] or '').strip() for row in users if (row['full_name'] or '').strip() ]
 
     Suggest = namedtuple('Suggest', ['assigned_cm', 'total_count', 'unmapped_count', 'best_full_name', 'user_id', 'score', 'heuristic', 'confidence'])
     suggestions = []

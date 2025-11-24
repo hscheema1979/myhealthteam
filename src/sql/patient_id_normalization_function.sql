@@ -2,94 +2,76 @@
 -- This file contains the standardized patient ID normalization pattern
 -- that should be used consistently across all transformation scripts.
 
--- STANDARDIZED PATIENT ID NORMALIZATION PATTERN:
--- Use this exact pattern for all patient ID normalization:
+-- UPDATED STANDARDIZED PATIENT ID NORMALIZATION PATTERN (v1.1):
+-- Use this exact pattern for all patient ID normalization.
+-- It strips known vendor/pipeline prefixes and normalizes commas/whitespace.
 --
 -- TRIM(
 --     REPLACE(
 --         REPLACE(
 --             REPLACE(
---                 TRIM(REPLACE(source_field, 'ZEN-', '')),
---                 ', ',
---                 ' '
+--                 REPLACE(
+--                     REPLACE(
+--                         REPLACE(
+--                             REPLACE(
+--                                 REPLACE(
+--                                     REPLACE(
+--                                         REPLACE(
+--                                             TRIM([SOURCE_FIELD]),
+--                                             'ZEN-', ''
+--                                         ),
+--                                         'PM-', ''
+--                                     ),
+--                                     'ZMN-', ''
+--                                 ),
+--                                 'BLESSEDCARE-', ''
+--                             ),
+--                             'BLEESSEDCARE-', ''
+--                         ),
+--                         '3PR-', ''
+--                     ),
+--                     'BLESSEDCARE ', ''
+--                 ),
+--                 'BLEESSEDCARE ', ''
 --             ),
---             ',',
---             ' '
+--             '3PR ', ''
 --         ),
---         '  ',
---         ' '
---     )
+--         ', ', ' '
+--     ),
+--     ',', ' '
 -- )
 --
+-- Finally collapse any double spaces once:
+-- TRIM(REPLACE(<above>, '  ', ' '))
+--
 -- This pattern:
--- 1. Removes 'ZEN-' prefix if present
--- 2. Converts comma-space (', ') to single space (' ')
--- 3. Converts comma (',') to single space (' ')
--- 4. Converts double spaces ('  ') to single space (' ')
+-- 1. Removes known prefixes: ZEN-, PM-, ZMN-, BlessedCare-/BleessedCare- (and space variants), 3PR- (and space variant)
+-- 2. Converts comma-space (", ") to single space (' ')
+-- 3. Converts standalone commas (',') to single space (' ')
+-- 4. Collapses double spaces
 -- 5. Trims leading/trailing whitespace
 --
 -- USAGE EXAMPLES:
 --
 -- For coordinator tasks (from "Pt Name" field):
--- TRIM(
---     REPLACE(
---         REPLACE(
---             REPLACE(
---                 TRIM(REPLACE(t.[Pt Name], 'ZEN-', '')),
---                 ', ',
---                 ' '
---             ),
---             ',',
---             ' '
---         ),
---         '  ',
---         ' '
---     )
--- ) AS patient_id
+-- TRIM(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(TRIM(sch."Pt Name"),'ZEN-',''),'PM-',''),'ZMN-',''),'BLESSEDCARE-',''),'BLEESSEDCARE-',''),'3PR-',''),'BLESSEDCARE ',''),'BLEESSEDCARE ',''),'3PR ',''),', ',' '),',',' ')) AS patient_id
 --
 -- For provider tasks (from "Patient Last, First DOB" field):
--- TRIM(
---     REPLACE(
---         REPLACE(
---             REPLACE(
---                 TRIM(REPLACE(t.[Patient Last, First DOB], 'ZEN-', '')),
---                 ', ',
---                 ' '
---             ),
---             ',',
---             ' '
---         ),
---         '  ',
---         ' '
---     )
--- ) AS patient_id
+-- TRIM(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(TRIM(sph."Patient Last, First DOB"),'ZEN-',''),'PM-',''),'ZMN-',''),'BLESSEDCARE-',''),'BLEESSEDCARE-',''),'3PR-',''),'BLESSEDCARE ',''),'BLEESSEDCARE ',''),'3PR ',''),', ',' '),',',' ')) AS patient_id
 --
 -- For patients table (from "LAST FIRST DOB" field):
--- TRIM(
---     REPLACE(
---         REPLACE(
---             REPLACE(
---                 TRIM(spd."LAST FIRST DOB"),
---                 ', ',
---                 ' '
---             ),
---             ',',
---             ' '
---         ),
---         '  ',
---         ' '
---     )
--- ) AS patient_id
+-- TRIM(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(TRIM(spd."LAST FIRST DOB"),'ZEN-',''),'PM-',''),'ZMN-',''),'BLESSEDCARE-',''),'BLEESSEDCARE-',''),'3PR-',''),'BLESSEDCARE ',''),'BLEESSEDCARE ',''),'3PR ',''),', ',' '),',',' ')) AS patient_id
 --
 -- TRANSFORMATION EXAMPLES:
 -- Input: "SMITH, JOHN 01/15/1980"    -> Output: "SMITH JOHN 01/15/1980"
--- Input: "JONES,MARY 12/25/1975"     -> Output: "JONES MARY 12/25/1975"
 -- Input: "ZEN-DOE, JANE 03/10/1990"  -> Output: "DOE JANE 03/10/1990"
--- Input: "BROWN  MIKE 06/20/1985"    -> Output: "BROWN MIKE 06/20/1985"
+-- Input: "PM-JONES,MARY 12/25/1975" -> Output: "JONES MARY 12/25/1975"
+-- Input: "BLESSEDCARE-ALPHA, BOB 06/20/1985" -> Output: "ALPHA BOB 06/20/1985"
+-- Input: "3PR BROWN  MIKE 06/20/1985"    -> Output: "BROWN MIKE 06/20/1985"
 --
 -- RELIABILITY CONSIDERATIONS:
 -- - Handles various comma formats consistently
--- - Removes legacy ZEN- prefixes
+-- - Removes known vendor prefixes and pipeline tags
 -- - Normalizes whitespace for consistent matching
 -- - Prevents data inconsistencies between tables
 --
@@ -104,6 +86,5 @@
 -- - Reduces need for complex joins with multiple TRIM/REPLACE operations
 -- - Enables efficient indexing on normalized patient IDs
 --
--- LAST UPDATED: 2025-01-27
 -- AUTHOR: AI Assistant
--- VERSION: 1.0
+-- VERSION: 1.1

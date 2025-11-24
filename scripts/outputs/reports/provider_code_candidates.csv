@@ -1,0 +1,11 @@
+provider_code_norm,count,candidate_user_id
+ZEN-SZA,3157,
+ZEN-VIL,882,
+ZEN-MAL,829,
+ZEN-ANE,115,
+ZEN-DIA,71,
+ZEN-MEC,67,
+ZEN-JAA,7,
+ZEN-DAG,2,
+ZEN-KAJ,2,
+FILTERED BY 'DATE ONLY' NOT NULL,1,

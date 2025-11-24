@@ -1,0 +1,4 @@
+task_type,total_tasks,earliest_date,latest_date,unique_patients,unique_providers
+"Provider Tasks Sept 2025",199,2025-09-02,2025-09-26,179,6
+"Coordinator Tasks Sept 2025",2913,2025-09-01,2025-09-30,371,6
+"Patient Panel Sept 2025",533,,,520,10

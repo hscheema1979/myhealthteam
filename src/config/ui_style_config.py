@@ -181,7 +181,8 @@ def apply_custom_css():
     .main .block-container {
         padding-top: 2rem;
         padding-bottom: 2rem;
-        max-width: 1200px;
+        max-width: none;
+        width: 100% !important;
     }
     
     /* Header styling */

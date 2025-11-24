@@ -1,0 +1,5 @@
+validation_type,provider_code,total_tasks,unique_patients,service_types,total_minutes,first_task_date,last_task_date,provider_category
+"Provider Assignment Validation",ZEN-SZA,41,41,4,2240,2025-10-01,2025-10-31,"Medium volume provider"
+"Provider Assignment Validation",ZEN-ANE,33,33,8,1380,2025-10-07,2025-10-29,"Medium volume provider"
+"Provider Assignment Validation",ZEN-MEC,16,16,3,290,2025-10-01,2025-10-09,"Active provider"
+"Provider Assignment Validation",ZEN-KAJ,15,15,2,710,2025-10-02,2025-10-28,"Active provider"

@@ -9,7 +9,7 @@ ONBOARDING_STEPS = [
     {"step": 2, "title": "Eligibility Verification", "description": "Insurance and eligibility check", "stage_field": "stage2_complete"},
     {"step": 3, "title": "Chart Creation", "description": "Patient chart setup", "stage_field": "stage3_complete"},
     {"step": 4, "title": "Intake Processing", "description": "Medical records and documentation", "stage_field": "stage4_complete"},
-    {"step": 5, "title": "TV Visit Scheduling", "description": "Telemedicine appointment setup", "stage_field": "stage5_complete"}
+    {"step": 5, "title": "Visit Scheduling", "description": "Initial visit appointment setup", "stage_field": "stage5_complete"}
 ]
 
 def show_workflow_stepper(patient_data):
@@ -877,33 +877,58 @@ def show_tv_scheduling_form(patient_details, current_user_id):
             'patient_notified': patient_details.get('patient_notified', False),
             'initial_tv_completed': patient_details.get('initial_tv_completed', False),
             'assigned_provider': patient_details.get('assigned_provider', 'Select Provider...'),
-            'assigned_coordinator': patient_details.get('assigned_coordinator', 'Select Coordinator...')
+            'assigned_coordinator': patient_details.get('assigned_coordinator', 'Select Coordinator...'),
+            'visit_type': patient_details.get('visit_type', 'Home Visit'),  # Default to Home Visit
+            'billing_code': patient_details.get('billing_code', '99345'),  # Default billing code for home visit
+            'duration_minutes': patient_details.get('duration_minutes', 45)  # Default 45 minutes
         }
     
-    st.info("Schedule initial telehealth visit and assign provider and coordinator")
+    st.info("Schedule initial visit and assign provider and coordinator")
     
     col1, col2 = st.columns(2)
     
     with col1:
-        st.markdown("#### TV Scheduling")
-        tv_scheduled = st.checkbox("Initial TV Scheduled", 
+        st.markdown("#### Visit Scheduling")
+        
+        # Visit Type Selection
+        visit_type_options = ["Home Visit", "Telehealth Visit"]
+        visit_type_index = 0
+        if st.session_state.tv_form_data['visit_type'] in visit_type_options:
+            visit_type_index = visit_type_options.index(st.session_state.tv_form_data['visit_type'])
+        
+        visit_type = st.selectbox("Visit Type", 
+                                visit_type_options, 
+                                index=visit_type_index,
+                                key="visit_type")
+        
+        # Update billing code and duration based on visit type
+        if visit_type == "Home Visit":
+            billing_code = "99345"
+            duration_minutes = 45
+            st.info("Home Visit: Billing Code 99345, Duration 45 minutes")
+        else:
+            billing_code = st.session_state.tv_form_data.get('billing_code', '99201')
+            duration_minutes = st.session_state.tv_form_data.get('duration_minutes', 30)
+            st.info("Telehealth Visit: Standard telehealth billing applies")
+        
+        tv_scheduled = st.checkbox("Initial Visit Scheduled", 
                                  value=st.session_state.tv_form_data['tv_scheduled'],
                                  key="tv_scheduled")
-        tv_date = st.date_input("TV Appointment Date", 
+        tv_date = st.date_input("Visit Appointment Date", 
                               value=st.session_state.tv_form_data['tv_date'],
                               key="tv_date")
-        tv_time = st.time_input("TV Appointment Time", 
+        tv_time = st.time_input("Visit Appointment Time", 
                               value=st.session_state.tv_form_data['tv_time'],
                               key="tv_time")
-        patient_notified = st.checkbox("Patient Notified of TV Appointment", 
+        patient_notified = st.checkbox("Patient Notified of Visit Appointment", 
                                      value=st.session_state.tv_form_data['patient_notified'],
                                      key="patient_notified")
-        initial_tv_completed = st.checkbox("Initial TV Visit Completed (Verify in EMED)", 
+        initial_tv_completed = st.checkbox("Initial Visit Completed (Verify in EMED)", 
                                          value=st.session_state.tv_form_data['initial_tv_completed'],
                                          key="initial_tv_completed")
             
     with col2:
-        st.markdown("#### Provider Assignment for Initial TV")
+        st.markdown("#### Provider Assignment for Initial Visit")
         # Get Provider users from database
         try:
             provider_users = database.get_users_by_role("CP")  # Use role abbreviation CP for Care Provider
@@ -961,7 +986,10 @@ def show_tv_scheduling_form(patient_details, current_user_id):
         'patient_notified': patient_notified,
         'initial_tv_completed': initial_tv_completed,
         'assigned_provider': assigned_provider,
-        'assigned_coordinator': assigned_coordinator
+        'assigned_coordinator': assigned_coordinator,
+        'visit_type': visit_type,
+        'billing_code': billing_code,
+        'duration_minutes': duration_minutes
     })
         
     # Action buttons in separate forms to avoid conflicts
@@ -969,7 +997,7 @@ def show_tv_scheduling_form(patient_details, current_user_id):
     
     with col1:
         with st.form("complete_stage5_form"):
-            if st.form_submit_button("Complete Stage 5", typeas="primary"):
+            if st.form_submit_button("Complete Stage 5", type="primary"):
                 # Stage 5 completion requirements: TV scheduled, patient notified, initial TV completed, AND regional assignments
                 # Now that patient_id is created in Stage 4, we can check the patient_assignments table
                 
@@ -1065,7 +1093,7 @@ def show_tv_scheduling_form(patient_details, current_user_id):
                             assignments_check = conn.execute("""
                                 SELECT provider_id, coordinator_id 
                                 FROM patient_assignments 
-                                WHERE patient_id = ? AND status = 'Active'
+                                WHERE patient_id = ? AND status = 'active'
                             """, (patient_id,)).fetchone()
                             conn.close()
                             

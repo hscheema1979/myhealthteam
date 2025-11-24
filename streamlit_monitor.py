@@ -7,12 +7,14 @@ from datetime import datetime
 # CONFIGURATION
 STREAMLIT_PORT = 8501
 STREAMLIT_URL = f"http://localhost:{STREAMLIT_PORT}"
-APP_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'app.py'))
+# App resides in the same directory as this monitor script
+APP_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), 'app.py'))
 LOG_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), 'streamlit_monitor.log'))
 CHECK_INTERVAL = 60  # seconds
 
+# Launch Streamlit in a visible PowerShell window so restarts are visible
 START_CMD = [
-    'streamlit', 'run', APP_PATH
+    'powershell.exe', '-NoExit', '-Command', f'python -m streamlit run "{APP_PATH}"'
 ]
 
 def log_status(message):
@@ -39,8 +41,9 @@ def start_app():
         log_status("Streamlit process already running. Skipping start.")
         return
     try:
-        subprocess.Popen(START_CMD, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        log_status("Streamlit app started.")
+        # Start the app in a visible PowerShell window (no stdout/stderr redirection)
+        subprocess.Popen(START_CMD)
+        log_status("Streamlit app started in visible console.")
     except Exception as e:
         log_status(f"Failed to start Streamlit app: {e}")
 

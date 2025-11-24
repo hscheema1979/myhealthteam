@@ -1,0 +1,4 @@
+data_type,total_tasks,unique_patients,unique_providers,earliest_date,latest_date,data_quality
+"Provider Tasks (Raw)",199,179,6,2025-09-02,2025-09-26,"Raw patient names with potential prefixes"
+"Coordinator Tasks (Raw)",2657,359,5,2025-09-02,2025-09-24,"Raw patient IDs"
+"Patient Panel (Normalized)",533,520,10,,,"Clean normalized patient names"

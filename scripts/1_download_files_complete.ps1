@@ -1,12 +1,13 @@
 # PowerShell script to download all Google Sheets tabs listed in the index tab's ImportRange column
 param(
-    [string]$spreadsheetId = "1-heDIbBHykxfwGl7U9YYIjQo7o5PbOVZL-VahyvG8_k"
+    [string]$spreadsheetId = "1-heDIbBHykxfwGl7U9YYIjQo7o5PbOVZL-VahyvG8_k",
+    [string[]]$Months = @() # e.g. 2025_10,2025_11,2025_12 to filter specific monthly tabs
 )
 
 Write-Host "Starting dynamic CSV download process using index tab..."
 
 # Create downloads directory (relative to current working directory)
-$downloadsDir = "./downloads"
+$downloadsDir = "../downloads"
 New-Item -ItemType Directory -Force -Path $downloadsDir | Out-Null
 
 # Download the index tab as CSV
@@ -50,11 +51,29 @@ try {
         Write-Error "No GIDs found in 'GID ImportRange Tab (Local VALUE)' column."
         exit 1
     }
-    Write-Host "Found $($tabList.Count) tabs to download."
+    Write-Host "Found $($tabList.Count) tabs to download (before filtering)."
 }
 catch {
     Write-Error "Failed to parse index CSV: $_"
     exit 1
+}
+
+# Optional filter: restrict to tabs containing specified month tokens (e.g., 2025_10, 2025_11, 2025_12)
+if ($Months -and $Months.Count -gt 0) {
+    $monthsLower = $Months | ForEach-Object { $_.ToLower() }
+    $tabList = $tabList | Where-Object {
+        $nameLower = ($_.TabName.ToString().ToLower())
+        $match = $false
+        foreach ($m in $monthsLower) {
+            if ($nameLower -like "*${m}*") { $match = $true; break }
+        }
+        $match
+    }
+    Write-Host ("Filtered tabs to months [{0}] - {1} tabs remain." -f ($Months -join ', '), $tabList.Count)
+    if ($tabList.Count -eq 0) {
+        Write-Warning "No tabs matched the specified Months filter. Exiting without downloads."
+        exit 0
+    }
 }
 
 # Download each tab as CSV
@@ -70,14 +89,14 @@ foreach ($tab in $tabList) {
     $safeTabName = ($tabName -replace '[\\/:*?"<>|]', '_')
     $outFile = "$downloadsDir/${safeTabName}.csv"
     $url = "https://docs.google.com/spreadsheets/d/$spreadsheetId/export?format=csv&gid=$gid"
-    Write-Host "Downloading tab '$tabName' (GID: $gid)..."
+    Write-Host ("Downloading tab {0} (GID: {1})..." -f $tabName, $gid)
     try {
         Invoke-WebRequest -Uri $url -OutFile $outFile
         Write-Host "Downloaded: $outFile"
         $successCount++
     }
     catch {
-        Write-Warning "Failed to download tab '$tabName' (GID: $gid): $_"
+        Write-Warning ("Failed to download tab '{0}' (GID: {1}): {2}" -f $tabName, $gid, $_)
         $failCount++
     }
 }

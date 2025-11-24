@@ -63,11 +63,19 @@ Write-Host "Patient file cleaned"
 $origLocation = Get-Location
 Set-Location ..
 Write-Host "Splitting cmlog.csv into monthly partitioned files..."
-python "scripts/split_cmlog_by_month.py"
+if (Test-Path "scripts/split_cmlog_by_month.py") {
+  python "scripts/split_cmlog_by_month.py"
+} else {
+  Write-Warning "scripts/split_cmlog_by_month.py not found; skipping CM monthly split."
+}
 Write-Host "Splitting psl.csv into monthly partitioned files..."
-python "scripts/split_psl_by_month.py"
+if (Test-Path "scripts/split_psl_by_month.py") {
+  python "scripts/split_psl_by_month.py"
+} else {
+  Write-Warning "scripts/split_psl_by_month.py not found; skipping PSL monthly split."
+}
 Set-Location $origLocation
-Write-Host "Monthly partitioned CSVs created in downloads/monthly_CM and downloads/monthly_PSL."
+Write-Host "Monthly partitioned CSVs created in downloads/monthly_CM and downloads/monthly_PSL (if split scripts present)."
 
 # Append rvz.csv to psl.csv (provider data) after monthly split
 if (Test-Path "$downloadsDir/rvz.csv" -and (Get-Item "$downloadsDir/rvz.csv").Length -gt 0) {

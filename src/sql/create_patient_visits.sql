@@ -12,11 +12,11 @@ CREATE TABLE IF NOT EXISTS patient_visits (
 -- If not, you may need to reconstruct this field from separate columns.
 INSERT
     OR REPLACE INTO patient_visits (patient_id, last_visit_date, service_type)
-SELECT REPLACE(pv.patient_name, ',', '') AS patient_id,
+SELECT pv.patient_name AS patient_id,
     pv.last_visit_date,
     pt.task_description AS service_type
 FROM (
-        SELECT REPLACE(patient_name, ',', '') AS patient_name,
+        SELECT REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(TRIM(REPLACE(patient_name, ',', ' ')), 'ZEN-', ''), 'PM-', ''), 'ZMN-', ''), 'BlessedCare-', ''), 'BLESSEDCARE-', ''), 'BleessedCare-', ''), 'BLEESSEDCARE-', ''), '3PR-', ''), '3PR -', '') AS patient_name,
             MAX(task_date) AS last_visit_date
         FROM (
                 SELECT patient_name,
@@ -71,70 +71,70 @@ FROM (
                     task_date
                 FROM provider_tasks_2025_12
             )
-        GROUP BY REPLACE(patient_name, ',', '')
+        GROUP BY REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(TRIM(REPLACE(patient_name, ',', ' ')), 'ZEN-', ''), 'PM-', ''), 'ZMN-', ''), 'BlessedCare-', ''), 'BLESSEDCARE-', ''), 'BleessedCare-', ''), 'BLEESSEDCARE-', ''), '3PR-', ''), '3PR -', '')
     ) pv
     LEFT JOIN (
-        SELECT REPLACE(patient_name, ',', '') AS patient_name,
+        SELECT REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(TRIM(REPLACE(patient_name, ',', ' ')), 'ZEN-', ''), 'PM-', ''), 'ZMN-', ''), 'BlessedCare-', ''), 'BLESSEDCARE-', ''), 'BleessedCare-', ''), 'BLEESSEDCARE-', ''), '3PR-', ''), '3PR -', '') AS patient_name,
             task_date,
             task_description
         FROM provider_tasks
         UNION ALL
-        SELECT REPLACE(patient_name, ',', '') AS patient_name,
+        SELECT REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(TRIM(REPLACE(patient_name, ',', ' ')), 'ZEN-', ''), 'PM-', ''), 'ZMN-', ''), 'BlessedCare-', ''), 'BLESSEDCARE-', ''), 'BleessedCare-', ''), 'BLEESSEDCARE-', ''), '3PR-', ''), '3PR -', '') AS patient_name,
             task_date,
             task_description
         FROM provider_tasks_2025_01
         UNION ALL
-        SELECT REPLACE(patient_name, ',', '') AS patient_name,
+        SELECT REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(TRIM(REPLACE(patient_name, ',', ' ')), 'ZEN-', ''), 'PM-', ''), 'ZMN-', ''), 'BlessedCare-', ''), 'BLESSEDCARE-', ''), 'BleessedCare-', ''), 'BLEESSEDCARE-', ''), '3PR-', ''), '3PR -', '') AS patient_name,
             task_date,
             task_description
         FROM provider_tasks_2025_02
         UNION ALL
-        SELECT REPLACE(patient_name, ',', '') AS patient_name,
+        SELECT REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(TRIM(REPLACE(patient_name, ',', ' ')), 'ZEN-', ''), 'PM-', ''), 'ZMN-', ''), 'BlessedCare-', ''), 'BLESSEDCARE-', ''), 'BleessedCare-', ''), 'BLEESSEDCARE-', ''), '3PR-', ''), '3PR -', '') AS patient_name,
             task_date,
             task_description
         FROM provider_tasks_2025_03
         UNION ALL
-        SELECT REPLACE(patient_name, ',', '') AS patient_name,
+        SELECT REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(TRIM(REPLACE(patient_name, ',', ' ')), 'ZEN-', ''), 'PM-', ''), 'ZMN-', ''), 'BlessedCare-', ''), 'BLESSEDCARE-', ''), 'BleessedCare-', ''), 'BLEESSEDCARE-', ''), '3PR-', ''), '3PR -', '') AS patient_name,
             task_date,
             task_description
         FROM provider_tasks_2025_04
         UNION ALL
-        SELECT REPLACE(patient_name, ',', '') AS patient_name,
+        SELECT REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(TRIM(REPLACE(patient_name, ',', ' ')), 'ZEN-', ''), 'PM-', ''), 'ZMN-', ''), 'BlessedCare-', ''), 'BLESSEDCARE-', ''), 'BleessedCare-', ''), 'BLEESSEDCARE-', ''), '3PR-', ''), '3PR -', '') AS patient_name,
             task_date,
             task_description
         FROM provider_tasks_2025_05
         UNION ALL
-        SELECT REPLACE(patient_name, ',', '') AS patient_name,
+        SELECT REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(TRIM(REPLACE(patient_name, ',', ' ')), 'ZEN-', ''), 'PM-', ''), 'ZMN-', ''), 'BlessedCare-', ''), 'BLESSEDCARE-', ''), 'BleessedCare-', ''), 'BLEESSEDCARE-', ''), '3PR-', ''), '3PR -', '') AS patient_name,
             task_date,
             task_description
         FROM provider_tasks_2025_06
         UNION ALL
-        SELECT REPLACE(patient_name, ',', '') AS patient_name,
+        SELECT REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(TRIM(REPLACE(patient_name, ',', ' ')), 'ZEN-', ''), 'PM-', ''), 'ZMN-', ''), 'BlessedCare-', ''), 'BLESSEDCARE-', ''), 'BleessedCare-', ''), 'BLEESSEDCARE-', ''), '3PR-', ''), '3PR -', '') AS patient_name,
             task_date,
             task_description
         FROM provider_tasks_2025_07
         UNION ALL
-        SELECT REPLACE(patient_name, ',', '') AS patient_name,
+        SELECT REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(TRIM(REPLACE(patient_name, ',', ' ')), 'ZEN-', ''), 'PM-', ''), 'ZMN-', ''), 'BlessedCare-', ''), 'BLESSEDCARE-', ''), 'BleessedCare-', ''), 'BLEESSEDCARE-', ''), '3PR-', ''), '3PR -', '') AS patient_name,
             task_date,
             task_description
         FROM provider_tasks_2025_08
         UNION ALL
-        SELECT REPLACE(patient_name, ',', '') AS patient_name,
+        SELECT REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(TRIM(REPLACE(patient_name, ',', ' ')), 'ZEN-', ''), 'PM-', ''), 'ZMN-', ''), 'BlessedCare-', ''), 'BLESSEDCARE-', ''), 'BleessedCare-', ''), 'BLEESSEDCARE-', ''), '3PR-', ''), '3PR -', '') AS patient_name,
             task_date,
             task_description
         FROM provider_tasks_2025_09
         UNION ALL
-        SELECT REPLACE(patient_name, ',', '') AS patient_name,
+        SELECT REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(TRIM(REPLACE(patient_name, ',', ' ')), 'ZEN-', ''), 'PM-', ''), 'ZMN-', ''), 'BlessedCare-', ''), 'BLESSEDCARE-', ''), 'BleessedCare-', ''), 'BLEESSEDCARE-', ''), '3PR-', ''), '3PR -', '') AS patient_name,
             task_date,
             task_description
         FROM provider_tasks_2025_10
         UNION ALL
-        SELECT REPLACE(patient_name, ',', '') AS patient_name,
+        SELECT REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(TRIM(REPLACE(patient_name, ',', ' ')), 'ZEN-', ''), 'PM-', ''), 'ZMN-', ''), 'BlessedCare-', ''), 'BLESSEDCARE-', ''), 'BleessedCare-', ''), 'BLEESSEDCARE-', ''), '3PR-', ''), '3PR -', '') AS patient_name,
             task_date,
             task_description
         FROM provider_tasks_2025_11
         UNION ALL
-        SELECT REPLACE(patient_name, ',', '') AS patient_name,
+        SELECT REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(TRIM(REPLACE(patient_name, ',', ' ')), 'ZEN-', ''), 'PM-', ''), 'ZMN-', ''), 'BlessedCare-', ''), 'BLESSEDCARE-', ''), 'BleessedCare-', ''), 'BLEESSEDCARE-', ''), '3PR-', ''), '3PR -', '') AS patient_name,
             task_date,
             task_description
         FROM provider_tasks_2025_12

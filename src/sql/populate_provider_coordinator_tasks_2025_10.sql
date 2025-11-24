@@ -1,6 +1,7 @@
 -- Repeatable: Transform provider and coordinator data for any month
 -- Usage: Replace {YYYY_MM} with the desired year and month (e.g., 2025_10)
 -- Provider transformation uses SOURCE_PSL_TASKS_2025_10 as source
+ATTACH '.\sheets_data.db' AS staging;
 DROP TABLE IF EXISTS provider_tasks_2025_10;
 CREATE TABLE IF NOT EXISTS provider_tasks_2025_10 (
     provider_task_id INT,
@@ -87,7 +88,7 @@ SELECT t."1" AS provider_task_id,
         )
     ) AS patient_id,
     t.Hospice AS status,
-    t.Notes,
+    NULL AS Notes,
     CASE
         WHEN t.Minutes LIKE '%-%' THEN CAST(
             substr(t.Minutes, 1, instr(t.Minutes, '-') -1) AS INTEGER
@@ -120,7 +121,7 @@ SELECT t."1" AS provider_task_id,
     t.Service,
     'monthly_PSL',
     CURRENT_TIMESTAMP
-FROM SOURCE_PSL_TASKS_2025_10 t
+FROM staging.SOURCE_PSL_TASKS_2025_10 t
     LEFT JOIN staff_code_mapping scm ON TRIM(UPPER(t.Prov)) = TRIM(UPPER(scm.staff_code))
 WHERE t.[Patient Last, First DOB] IS NOT NULL
     AND TRIM(t.[Patient Last, First DOB]) != '' -- mapping_type constraint removed: allow any user_id match
@@ -183,7 +184,7 @@ SELECT scm.user_id AS coordinator_id,
     t.Notes,
     'monthly_CM',
     CURRENT_TIMESTAMP
-FROM SOURCE_CM_TASKS_2025_10 t
+FROM staging.SOURCE_CM_TASKS_2025_10 t
     LEFT JOIN staff_code_mapping scm ON TRIM(UPPER(t.Staff)) = TRIM(UPPER(scm.staff_code))
 WHERE t.[Pt Name] IS NOT NULL
     AND TRIM(t.[Pt Name]) != ''

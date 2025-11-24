@@ -67,6 +67,17 @@ INSERT INTO patients (
         initial_tv_completed_date,
         initial_tv_notes,
         service_type,
+        tv_time,
+        eligibility_status,
+        eligibility_notes,
+        eligibility_verified,
+        emed_chart_created,
+        chart_id,
+        facility_confirmed,
+        chart_notes,
+        intake_call_completed,
+        intake_notes,
+        goc_value,
         appointment_contact_name,
         appointment_contact_phone,
         appointment_contact_email,
@@ -96,7 +107,47 @@ SELECT DISTINCT
         REPLACE(
             REPLACE(
                 REPLACE(
-                    TRIM(spd."Last") || ' ' || TRIM(spd."First") || ' ' || TRIM(spd."DOB"),
+                    TRIM(
+                        REPLACE(
+                            REPLACE(
+                                REPLACE(
+                                    REPLACE(
+                                        REPLACE(
+                                            REPLACE(
+                                                REPLACE(
+                                                    REPLACE(
+                                                        REPLACE(
+                                                            REPLACE(
+                                                                TRIM(spd."LAST FIRST DOB"),
+                                                                'ZEN-',
+                                                                ''
+                                                            ),
+                                                            'PM-',
+                                                            ''
+                                                        ),
+                                                        'ZMN-',
+                                                        ''
+                                                    ),
+                                                    'BLESSEDCARE-',
+                                                    ''
+                                                ),
+                                                'BLEESSEDCARE-',
+                                                ''
+                                            ),
+                                            '3PR-',
+                                            ''
+                                        ),
+                                        'BLESSEDCARE ',
+                                        ''
+                                    ),
+                                    'BLEESSEDCARE ',
+                                    ''
+                                ),
+                                '3PR ',
+                                ''
+                            )
+                        )
+                    ),
                     ', ',
                     ' '
                 ),
@@ -199,21 +250,39 @@ SELECT DISTINCT
     0 as dementia,
     NULL as last_annual_wellness_visit,
     -- Standardized patient ID normalization for last_first_dob
-    TRIM(
+    TRIM(REPLACE(
         REPLACE(
             REPLACE(
                 REPLACE(
-                    TRIM(spd."LAST FIRST DOB"),
-                    ', ',
-                    ' '
+                    REPLACE(
+                        REPLACE(
+                            REPLACE(
+                                REPLACE(
+                                    REPLACE(
+                                        REPLACE(
+                                            TRIM(spd."LAST FIRST DOB"),
+                                            'ZEN-', ''
+                                        ),
+                                        'PM-', ''
+                                    ),
+                                    'ZMN-', ''
+                                ),
+                                'BLESSEDCARE-', ''
+                            ),
+                            'BLEESSEDCARE-', ''
+                        ),
+                        '3PR-', ''
+                    ),
+                    'BLESSEDCARE ', ''
                 ),
-                ',',
-                ' '
+                'BLEESSEDCARE ', ''
             ),
-            '  ',
-            ' '
-        )
-    ) as last_first_dob,
+            '3PR ', ''
+        ),
+        ', ', ' '
+    ),
+    ',', ' '
+    )) as last_first_dob,
     CASE
         WHEN spd."Pt Status" IS NOT NULL
         AND spd."Pt Status" != '' THEN TRIM(spd."Pt Status")
@@ -248,6 +317,17 @@ SELECT DISTINCT
     NULLIF(spd."Initial TV Date", '') as initial_tv_completed_date,
     NULLIF(spd."Initial TV Notes", '') as initial_tv_notes,
     NULL as service_type,
+    NULL as tv_time,
+    NULL as eligibility_status,
+    NULL as eligibility_notes,
+    0 as eligibility_verified,
+    0 as emed_chart_created,
+    NULL as chart_id,
+    0 as facility_confirmed,
+    NULL as chart_notes,
+    0 as intake_call_completed,
+    NULL as intake_notes,
+    NULL as goc_value,
     NULL as appointment_contact_name,
     NULL as appointment_contact_phone,
     NULL as appointment_contact_email,

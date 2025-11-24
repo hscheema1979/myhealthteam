@@ -31,13 +31,15 @@ SELECT TRIM([Patient Last, First DOB]) AS raw,
     'SOURCE_PROVIDER_TASKS_HISTORY' AS src
 FROM SOURCE_PROVIDER_TASKS_HISTORY
 WHERE [Patient Last, First DOB] IS NOT NULL
-    AND TRIM([Patient Last, First DOB]) <> ''
-UNION ALL
-SELECT TRIM([Patient Last, First DOB.1]) AS raw,
-    'SOURCE_PROVIDER_TASKS_HISTORY' AS src
-FROM SOURCE_PROVIDER_TASKS_HISTORY
-WHERE [Patient Last, First DOB.1] IS NOT NULL
-    AND TRIM([Patient Last, First DOB.1]) <> '';
+    AND TRIM([Patient Last, First DOB]) <> '';
+
+-- SKIP: Column [Patient Last, First DOB.1] not present in current SOURCE_PROVIDER_TASKS_HISTORY
+-- UNION ALL
+-- SELECT TRIM([Patient Last, First DOB.1]) AS raw,
+--     'SOURCE_PROVIDER_TASKS_HISTORY' AS src
+-- FROM SOURCE_PROVIDER_TASKS_HISTORY
+-- WHERE [Patient Last, First DOB.1] IS NOT NULL
+--     AND TRIM([Patient Last, First DOB.1]) <> '';
 -- Normalize: strip known prefixes and short token prefixes followed by '-' or space
 CREATE TEMP TABLE all_norm AS
 SELECT raw,

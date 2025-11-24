@@ -1,5 +1,6 @@
 import pandas as pd
-from src.database import get_db_connection, normalize_patient_id
+from src.database import get_db_connection, normalize_patient_id, ensure_monthly_coordinator_tasks_table, count_completed_steps
+import src.database as database
 
 # --- Workflow Management Functions (moved from database.py) ---
 def get_workflow_templates():
@@ -63,8 +64,9 @@ def create_workflow_instance(template_id, patient_id, coordinator_id, notes=None
         conn.commit()
 
         pid_for_task = normalize_patient_id(patient_id, conn=conn)
-        conn.execute("""
-            INSERT INTO coordinator_tasks_2025_09 (
+        table_name = ensure_monthly_coordinator_tasks_table(conn=conn)
+        conn.execute(f"""
+            INSERT INTO {table_name} (
                 coordinator_id, patient_id, task_date, task_type,
                 duration_minutes, notes, source_system, imported_at
             ) VALUES (?, ?, date('now'), ?, 0, ?, 'WORKFLOW', CURRENT_TIMESTAMP)
@@ -83,9 +85,10 @@ def create_workflow_instance(template_id, patient_id, coordinator_id, notes=None
         conn.close()
 
 def get_active_workflow_instances(coordinator_id=None, patient_id=None):
-    """Get active workflow instances with template and task information"""
+    """Get active workflow instances with template information and computed completed steps."""
     conn = get_db_connection()
     try:
+        # Base instances with total steps per template
         query = """
             SELECT 
                 wi.instance_id,
@@ -96,22 +99,34 @@ def get_active_workflow_instances(coordinator_id=None, patient_id=None):
                 p.first_name,
                 p.last_name,
                 wi.coordinator_id,
-                COUNT(ws.step_id) as total_steps,
-                SUM(CASE WHEN ct2.coordinator_task_id IS NOT NULL THEN 1 ELSE 0 END) as completed_steps
+                COUNT(ws.step_id) as total_steps
             FROM workflow_instances wi
             JOIN workflow_templates wt ON wi.template_id = wt.template_id
             LEFT JOIN patients p ON wi.patient_id = p.patient_id
             LEFT JOIN workflow_steps ws ON wt.template_id = ws.template_id
-            LEFT JOIN coordinator_tasks_2025_09 ct2 ON ct2.task_type LIKE 'WORKFLOW_STEP|' || wi.instance_id || '|%'
             WHERE wi.workflow_status = 'Active'
         """
         params = []
         if patient_id:
             query += " AND wi.patient_id = ?"
             params.append(patient_id)
+        if coordinator_id:
+            query += " AND wi.coordinator_id = ?"
+            params.append(coordinator_id)
         query += " GROUP BY wi.instance_id ORDER BY wi.created_at DESC"
-        instances = conn.execute(query, params).fetchall()
-        return [dict(row) for row in instances]
+        rows = conn.execute(query, tuple(params)).fetchall()
+
+        # Compute completed steps across all monthly coordinator_tasks tables
+        instances = []
+        for r in rows:
+            row = dict(r)
+            try:
+                completed = count_completed_steps(row['instance_id'], conn=conn)
+            except Exception:
+                completed = 0
+            row['completed_steps'] = completed
+            instances.append(row)
+        return instances
     finally:
         conn.close()
 
@@ -317,9 +332,10 @@ def complete_workflow_step(instance_id, step_id, coordinator_id, duration_minute
             JOIN workflow_instances wi ON ws.template_id = wi.template_id
             WHERE wi.instance_id = ?
         """, (instance_id,)).fetchone()['count']
-        completed_steps = conn.execute("""
+        table_for_count = table_name if table_exists else "coordinator_tasks_2025_09"
+        completed_steps = conn.execute(f"""
             SELECT COUNT(*) as count
-            FROM coordinator_tasks_2025_09 ct
+            FROM {table_for_count} ct
             WHERE ct.task_type LIKE 'WORKFLOW_STEP|' || ? || '|%'
         """, (instance_id,)).fetchone()['count']
         if completed_steps >= total_steps:
@@ -458,7 +474,8 @@ def get_display_workflows(user_id, coordinator_id, user_role_ids):
     if user_role_ids and 40 in user_role_ids:
         ongoing_workflows = get_ongoing_workflows(None, user_role_ids=user_role_ids)
     else:
-        ongoing_workflows = get_ongoing_workflows(coordinator_id, user_role_ids=user_role_ids)
+        # Pass user_id so workflow_utils maps to coordinator_id correctly
+        ongoing_workflows = get_ongoing_workflows(user_id, user_role_ids=user_role_ids)
     workflow_data = []
     for wf in ongoing_workflows or []:
         workflow_data.append({
@@ -572,7 +589,7 @@ def show_workflow_management(user_id, coordinator_id, active_patients, user_role
 
             # Workflow type selection - get from database
             try:
-                conn = database.get_db_connection()
+                conn = get_db_connection()
                 cursor = conn.execute("SELECT template_name FROM workflow_templates ORDER BY template_name")
                 workflow_templates = cursor.fetchall()
                 conn.close()
@@ -611,7 +628,7 @@ def show_workflow_management(user_id, coordinator_id, active_patients, user_role
                     try:
                         # Create workflow task in database
                         success = create_workflow_task(
-                            coordinator_id=user_id,
+                            user_id=user_id,
                             patient_name=selected_patient,
                             workflow_type=selected_workflow,
                             priority=priority,
@@ -630,6 +647,8 @@ def show_workflow_management(user_id, coordinator_id, active_patients, user_role
 
     with top_col2:
         st.markdown("**Ongoing Workflows**")
+        if st.button("Refresh Workflows", key="refresh_workflows_btn"):
+            st.rerun()
         df, display_cols = get_display_workflows(user_id, coordinator_id, user_role_ids)
         render_workflow_table(df, display_cols)
 
@@ -900,13 +919,13 @@ def complete_next_step(instance_id, user_id):
     if not next_step:
         return "All steps already completed."
     # For demo, use 30 min and generic note
-    database.complete_workflow_step(instance_id, next_step['step_id'], user_id, duration_minutes=30, notes="Auto-completed via UI.")
+    complete_workflow_step(instance_id, next_step['step_id'], user_id, duration_minutes=30, notes="Auto-completed via UI.")
     return f"Step {next_step['step_order']} marked complete."
 
 def assign_workflow_to_me(instance_id, user_id):
     """Assign the workflow to the current user (if supported)."""
     # For demo, update coordinator_id in workflow_instances
-    conn = database.get_db_connection()
+    conn = get_db_connection()
     try:
         conn.execute("UPDATE workflow_instances SET coordinator_id = ? WHERE instance_id = ?", (user_id, instance_id))
         conn.commit()
@@ -916,15 +935,17 @@ def assign_workflow_to_me(instance_id, user_id):
 
 def add_note_to_workflow(instance_id, user_id, note):
     """Add a note to the workflow (as a coordinator task)."""
-    conn = database.get_db_connection()
+    conn = get_db_connection()
     try:
         # Get patient_id for this workflow
         row = conn.execute("SELECT patient_id FROM workflow_instances WHERE instance_id = ?", (instance_id,)).fetchone()
         patient_id = row['patient_id'] if row else None
         if not patient_id:
             raise Exception("Patient not found for workflow.")
-        conn.execute("""
-            INSERT INTO coordinator_tasks_2025_09 (
+        table_name = ensure_monthly_coordinator_tasks_table(conn=conn)
+        # Insert the note entry
+        conn.execute(f"""
+            INSERT INTO {table_name} (
                 coordinator_id, patient_id, task_date, task_type,
                 duration_minutes, notes, source_system, imported_at
             ) VALUES (?, ?, date('now'), ?, 0, ?, 'WORKFLOW', CURRENT_TIMESTAMP)
@@ -941,7 +962,7 @@ def add_note_to_workflow(instance_id, user_id, note):
 
 def complete_workflow(instance_id, user_id):
     """Force-complete the workflow (set status to Completed)."""
-    conn = database.get_db_connection()
+    conn = get_db_connection()
     try:
         conn.execute("UPDATE workflow_instances SET workflow_status = 'Completed' WHERE instance_id = ?", (instance_id,))
         conn.commit()

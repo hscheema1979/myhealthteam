@@ -1,0 +1,22 @@
+task_date,task_type,task_count,unique_raw_patients,unique_normalized_patients,unique_providers
+2025-10-01,"Provider Tasks",10,10,10,2
+2025-10-02,"Provider Tasks",12,12,12,3
+2025-10-03,"Provider Tasks",9,9,9,3
+2025-10-07,"Provider Tasks",6,6,6,3
+2025-10-08,"Provider Tasks",9,9,9,3
+2025-10-09,"Provider Tasks",3,3,3,2
+2025-10-10,"Provider Tasks",1,1,1,1
+2025-10-13,"Provider Tasks",5,5,5,3
+2025-10-14,"Provider Tasks",3,3,3,2
+2025-10-15,"Provider Tasks",4,4,4,2
+2025-10-16,"Provider Tasks",2,2,2,1
+2025-10-17,"Provider Tasks",4,4,4,1
+2025-10-20,"Provider Tasks",6,6,6,2
+2025-10-21,"Provider Tasks",1,1,1,1
+2025-10-22,"Provider Tasks",6,6,6,2
+2025-10-24,"Provider Tasks",7,7,7,3
+2025-10-27,"Provider Tasks",6,6,6,1
+2025-10-28,"Provider Tasks",5,5,5,3
+2025-10-29,"Provider Tasks",4,4,4,2
+2025-10-30,"Provider Tasks",1,1,1,1
+2025-10-31,"Provider Tasks",1,1,1,1

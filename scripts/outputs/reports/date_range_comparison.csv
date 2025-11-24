@@ -1,0 +1,5 @@
+table_name,earliest_date,latest_date,total_rows
+"Production Provider Tasks",2001-01-01,2025-09-26,4737
+"Production Coordinator Tasks",2025-01-03,2025-10-01,15342
+"Staging Provider Tasks",2025-09-26,2025-11-17,42815
+"Staging Coordinator Tasks",,,39933

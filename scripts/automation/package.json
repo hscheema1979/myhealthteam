@@ -1,0 +1,14 @@
+{
+  "name": "workflow-capture",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "capture": "node ./capture_workflows.js",
+    "capture:direct": "node ./capture_workflows_direct.js"
+  },
+  "dependencies": {
+    "puppeteer": "^22.0.0",
+    "dotenv": "^16.4.5"
+  }
+}

@@ -1,0 +1,5 @@
+dataset,total_rows,unique_patients,min_date,max_date
+"Sep 17 Raw",11,11,2025-09-17,2025-09-17
+"Sep 17 Normalized",11,11,2025-09-17,2025-09-17
+"Sep 17-19 Raw",34,34,2025-09-17,2025-09-19
+"Sep 17-19 Normalized",34,34,2025-09-17,2025-09-19

@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Validation Report</title>
+<style>
+
+body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:0;padding:20px;background:#f7f8fa;color:#222}
+.container{max-width:1200px;margin:0 auto}
+h1{font-size:22px;margin:0 0 8px}
+.timestamp{color:#666;margin-bottom:20px}
+.section{margin:24px 0;padding:16px;background:#fff;border:1px solid #e5e7eb;border-radius:8px}
+.table-wrap{overflow:auto}
+table{border-collapse:collapse;width:100%}
+th,td{border:1px solid #e5e7eb;padding:8px;text-align:left;font-size:12px}
+thead{background:#f3f4f6}
+.meta{color:#444;margin-bottom:8px}
+.empty{color:#888;font-style:italic}
+.summary{white-space:pre-wrap;background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin:16px 0}
+.card{padding:12px;background:#fff;border:1px solid #e5e7eb;border-radius:8px}
+.card h3{margin:0 0 6px;font-size:14px}
+.card .num{font-weight:600}
+a{color:#0b79d0;text-decoration:none}
+a:hover{text-decoration:underline}
+
+</style>
+</head>
+<body>
+<div class="container">
+<h1>Validation Report</h1>
+<div class="timestamp">Generated 2025-11-23 01:10:16 — Window: ≥ 2025-09-26</div>
+<section class="section"><h2>Summary Counts</h2><div class="grid"><div class="card"><h3>Provider (production, recent)</h3><div class="num">73</div></div><div class="card"><h3>Provider (staging, recent)</h3><div class="num">8</div></div><div class="card"><h3>Provider unmatched prod→staging (recent)</h3><div class="num">73</div></div><div class="card"><h3>Provider unmatched staging→prod (recent)</h3><div class="num">8</div></div><div class="card"><h3>Provider code map: mapped / total</h3><div class="num">0 / 0</div></div><div class="card"><h3>Provider unmapped in staging (recent)</h3><div class="num">8</div></div><div class="card"><h3>Coordinator (production, recent)</h3><div class="num">28716</div></div><div class="card"><h3>Coordinator (staging, recent)</h3><div class="num">0</div></div><div class="card"><h3>Coordinator unmatched prod→staging (recent)</h3><div class="num">28716</div></div><div class="card"><h3>Coordinator unmatched staging→prod (recent)</h3><div class="num">0</div></div><div class="card"><h3>Coordinator code map: mapped / total</h3><div class="num">0 / 0</div></div><div class="card"><h3>Coordinator unmapped in staging (recent)</h3><div class="num">0</div></div><div class="card"><h3>Curated: panel non-numeric IDs</h3><div class="num">0</div></div><div class="card"><h3>Curated: assignments non-numeric IDs</h3><div class="num">n/a</div></div></div></section>
+<section class="section"><h2>Linkage Summary</h2><pre class="summary">Normalization linkage verification summary (read-only)
+Timestamp: 2025-11-23 00:46:41
+Staging DB: D:\Git\myhealthteam2\Streamlit\sheets_data.db
+Production DB: D:\Git\myhealthteam2\Streamlit\production.db
+
+Provider linkage: 123/42815 matched (0.29%).
+Coordinator linkage: 0/39933 matched (0.00%).
+Tasks without panel: 47; Panel without tasks: 426.
+Provider collisions: 1; Coordinator collisions: 0.
+</pre></section>
+<section class="section"><h2>CSV Files</h2><div class="grid"><div class="card"><h3>provider_rows_missing_in_staging_production_recent.csv</h3><div><a href="scripts\outputs\reports\provider_rows_missing_in_staging_production_recent.csv">scripts\outputs\reports\provider_rows_missing_in_staging_production_recent.csv</a></div></div><div class="card"><h3>provider_rows_missing_in_production_staging_recent.csv</h3><div><a href="scripts\outputs\reports\provider_rows_missing_in_production_staging_recent.csv">scripts\outputs\reports\provider_rows_missing_in_production_staging_recent.csv</a></div></div><div class="card"><h3>coordinator_rows_missing_in_staging_production_recent.csv</h3><div><a href="scripts\outputs\reports\coordinator_rows_missing_in_staging_production_recent.csv">scripts\outputs\reports\coordinator_rows_missing_in_staging_production_recent.csv</a></div></div><div class="card"><h3>coordinator_rows_missing_in_production_staging_recent.csv</h3><div><a href="scripts\outputs\reports\coordinator_rows_missing_in_production_staging_recent.csv">scripts\outputs\reports\coordinator_rows_missing_in_production_staging_recent.csv</a></div></div><div class="card"><h3>provider_tasks_unmatched_samples.csv</h3><div><a href="scripts\outputs\reports\provider_tasks_unmatched_samples.csv">scripts\outputs\reports\provider_tasks_unmatched_samples.csv</a></div></div><div class="card"><h3>coordinator_tasks_unmatched_samples.csv</h3><div><a href="scripts\outputs\reports\coordinator_tasks_unmatched_samples.csv">scripts\outputs\reports\coordinator_tasks_unmatched_samples.csv</a></div></div><div class="card"><h3>tasks_without_panel.csv</h3><div><a href="scripts\outputs\reports\tasks_without_panel.csv">scripts\outputs\reports\tasks_without_panel.csv</a></div></div><div class="card"><h3>panel_without_tasks.csv</h3><div><a href="scripts\outputs\reports\panel_without_tasks.csv">scripts\outputs\reports\panel_without_tasks.csv</a></div></div><div class="card"><h3>provider_prod_missing_in_staging_two_days.csv</h3><div><a href="scripts\outputs\reports\provider_prod_missing_in_staging_two_days.csv">scripts\outputs\reports\provider_prod_missing_in_staging_two_days.csv</a></div></div><div class="card"><h3>provider_staging_missing_in_prod_two_days.csv</h3><div><a href="scripts\outputs\reports\provider_staging_missing_in_prod_two_days.csv">scripts\outputs\reports\provider_staging_missing_in_prod_two_days.csv</a></div></div><div class="card"><h3>provider_prod_missing_in_sheets_two_days.csv</h3><div><a href="scripts\outputs\reports\provider_prod_missing_in_sheets_two_days.csv">scripts\outputs\reports\provider_prod_missing_in_sheets_two_days.csv</a></div></div><div class="card"><h3>provider_sheets_missing_in_prod_two_days.csv</h3><div><a href="scripts\outputs\reports\provider_sheets_missing_in_prod_two_days.csv">scripts\outputs\reports\provider_sheets_missing_in_prod_two_days.csv</a></div></div><div class="card"><h3>coordinator_prod_missing_in_staging_two_days.csv</h3><div><a href="scripts\outputs\reports\coordinator_prod_missing_in_staging_two_days.csv">scripts\outputs\reports\coordinator_prod_missing_in_staging_two_days.csv</a></div></div><div class="card"><h3>coordinator_staging_missing_in_prod_two_days.csv</h3><div><a href="scripts\outputs\reports\coordinator_staging_missing_in_prod_two_days.csv">scripts\outputs\reports\coordinator_staging_missing_in_prod_two_days.csv</a></div></div><div class="card"><h3>coordinator_prod_missing_in_sheets_two_days.csv</h3><div><a href="scripts\outputs\reports\coordinator_prod_missing_in_sheets_two_days.csv">scripts\outputs\reports\coordinator_prod_missing_in_sheets_two_days.csv</a></div></div><div class="card"><h3>coordinator_sheets_missing_in_prod_two_days.csv</h3><div><a href="scripts\outputs\reports\coordinator_sheets_missing_in_prod_two_days.csv">scripts\outputs\reports\coordinator_sheets_missing_in_prod_two_days.csv</a></div></div><div class="card"><h3>provider_code_candidates.csv</h3><div><a href="scripts\outputs\reports\provider_code_candidates.csv">scripts\outputs\reports\provider_code_candidates.csv</a></div></div><div class="card"><h3>coordinator_code_candidates.csv</h3><div><a href="scripts\outputs\reports\coordinator_code_candidates.csv">scripts\outputs\reports\coordinator_code_candidates.csv</a></div></div><div class="card"><h3>patient_panel_non_numeric_ids.csv</h3><div><a href="scripts\outputs\reports\patient_panel_non_numeric_ids.csv">scripts\outputs\reports\patient_panel_non_numeric_ids.csv</a></div></div><div class="card"><h3>user_patient_assignments_non_numeric_ids.csv</h3><div><a href="scripts\outputs\reports\user_patient_assignments_non_numeric_ids.csv">scripts\outputs\reports\user_patient_assignments_non_numeric_ids.csv</a></div></div><div class="card"><h3>patient_panel_missing_names_for_ids.csv</h3><div><a href="scripts\outputs\reports\patient_panel_missing_names_for_ids.csv">scripts\outputs\reports\patient_panel_missing_names_for_ids.csv</a></div></div></div></section>
+<section class="section">
+<h2>Provider rows in production missing in staging (recent)</h2>
+<div class="meta">Total rows: 73 — Source: provider_rows_missing_in_staging_production_recent.csv</div>
+<div class="table-wrap">
+<table>
+<thead><tr><th>patient_id</th><th>activity_date</th></tr></thead>
+<tbody>
+<tr><td>SAFARYAN NARINDZH 02/10/1938</td><td>2025-09-26</td></tr>
+<tr><td>MONTAGHAMI THOMAS 09/09/1965</td><td>2025-09-26</td></tr>
+<tr><td>JAVIER VIRGILIO 05/31/1932</td><td>2025-09-26</td></tr>
+<tr><td>WOLLENBERG PAT 11/19/1947</td><td>2025-09-26</td></tr>
+<tr><td>VASWANI GOPI 06/18/1933</td><td>2025-09-26</td></tr>
+<tr><td>PIN SUN 01/21/1947</td><td>2025-09-26</td></tr>
+<tr><td>STOCUM LOIS 03/27/1935</td><td>2025-09-26</td></tr>
+<tr><td>PEREZ URENA MIGUEL 10/01/1956</td><td>2025-09-26</td></tr>
+<tr><td>MONTAGHAMI THOMAS 09/09/1965</td><td>2025-09-26</td></tr>
+<tr><td>JAVIER VIRGILIO 05/31/1932</td><td>2025-09-26</td></tr>
+<tr><td>WOLLENBERG PAT 11/19/1947</td><td>2025-09-26</td></tr>
+<tr><td>VASWANI GOPI 06/18/1933</td><td>2025-09-26</td></tr>
+<tr><td>STOCUM LOIS 03/27/1935</td><td>2025-09-26</td></tr>
+<tr><td>PEREZ URENA MIGUEL 10/01/1956</td><td>2025-09-26</td></tr>
+<tr><td>RIVAS GLORYBELL 08/16/1945</td><td>2025-09-29</td></tr>
+<tr><td>CALDERWOOD NANCY 09/18/1944</td><td>2025-09-29</td></tr>
+<tr><td>ZUBIN DELARA 08/24/1930</td><td>2025-09-29</td></tr>
+<tr><td>WILLIAMS JANET 08/02/1941</td><td>2025-09-29</td></tr>
+<tr><td>LUNDY LINDA 05/24/1939</td><td>2025-09-29</td></tr>
+<tr><td>DIAZ CECILIA 01/07/1937</td><td>2025-09-29</td></tr>
+<tr><td>MARTINEZ OLGA 01/15/1948</td><td>2025-09-29</td></tr>
+<tr><td>SHARIF TAHEREH 01/01/1935</td><td>2025-09-30</td></tr>
+<tr><td>MALLOY TIMOTHY 09/14/1957</td><td>2025-09-30</td></tr>
+<tr><td>CASTLE PATRICK 11/08/1956</td><td>2025-09-30</td></tr>
+<tr><td>UGBOR NNENNA 12/04/1949</td><td>2025-09-30</td></tr>
+<tr><td>BROWN VICKIE 08/11/1956</td><td>2025-09-30</td></tr>
+<tr><td>HOLBERT DAVID 08/29/1939</td><td>2025-09-30</td></tr>
+<tr><td>ERNSBERGER ANITA 08/15/1949</td><td>2025-09-30</td></tr>
+<tr><td>BAGADA VALJI 02/28/1948</td><td>2025-09-30</td></tr>
+<tr><td>WOOD LORILEE 03/24/1959</td><td>2025-10-01</td></tr>
+<tr><td>COLLINS SUSAN 02/23/1948</td><td>2025-10-01</td></tr>
+<tr><td>CANILAO EDGARDO 03/10/1954</td><td>2025-10-01</td></tr>
+<tr><td>LOVELY JOHN 02/07/1945</td><td>2025-10-01</td></tr>
+<tr><td>TERREL PHILIP 05/03/1960</td><td>2025-10-02</td></tr>
+<tr><td>VILLARREAL EDWARD 06/26/1954</td><td>2025-10-02</td></tr>
+<tr><td>MOURAD MOHAMED 07/05/1959</td><td>2025-10-02</td></tr>
+<tr><td>PANOSIAN VAROUJAN 07/01/1956</td><td>2025-10-02</td></tr>
+<tr><td>SAMSON ETHEL 05/13/1948</td><td>2025-10-02</td></tr>
+<tr><td>MEDRANO JOSEFINA 02/20/1942</td><td>2025-10-02</td></tr>
+<tr><td>PIERCE VINCENT 07/28/1943</td><td>2025-10-03</td></tr>
+<tr><td>PIERCE MARGARET 08/22/1944</td><td>2025-10-03</td></tr>
+<tr><td>KAUR RANJIT 03/10/1947</td><td>2025-10-03</td></tr>
+<tr><td>SINGH MUKHTIAR 12/01/1946</td><td>2025-10-03</td></tr>
+<tr><td>KAUR BALJIT 08/20/1952</td><td>2025-10-03</td></tr>
+<tr><td>SEHRA NARINDERKAUR 06/20/1954</td><td>2025-10-03</td></tr>
+<tr><td>TREMAINE JOE 12/20/1938</td><td>2025-10-07</td></tr>
+<tr><td>MOAZEZ SOROUR 08/11/1940</td><td>2025-10-07</td></tr>
+<tr><td>FAROKHZAD FOROUGH 12/27/1937</td><td>2025-10-07</td></tr>
+<tr><td>SHELLEY KATHLEEN 12/14/1948</td><td>2025-10-08</td></tr>
+<tr><td>MURPHY DENNIS 10/08/1939</td><td>2025-10-09</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+<section class="section">
+<h2>Provider rows in staging missing in production (recent)</h2>
+<div class="meta">Total rows: 8 — Source: provider_rows_missing_in_production_staging_recent.csv</div>
+<div class="table-wrap">
+<table>
+<thead><tr><th>patient_id</th><th>activity_date</th></tr></thead>
+<tbody>
+<tr><td>SAFARYAN  NARINDZH 02/10/1938</td><td>2025-09-26</td></tr>
+<tr><td>MONTAGHAMI  THOMAS 09/09/1965</td><td>2025-09-26</td></tr>
+<tr><td>JAVIER  VIRGILIO 05/31/1932</td><td>2025-09-26</td></tr>
+<tr><td>WOLLENBERG  PAT 11/19/1947</td><td>2025-09-26</td></tr>
+<tr><td>VASWANI  GOPI 06/18/1933</td><td>2025-09-26</td></tr>
+<tr><td>PIN  SUN 01/21/1947</td><td>2025-09-26</td></tr>
+<tr><td>STOCUM  LOIS 03/27/1935</td><td>2025-09-26</td></tr>
+<tr><td>PEREZ URENA  MIGUEL 10/01/1956</td><td>2025-09-26</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+<section class="section">
+<h2>Coordinator rows in production missing in staging (recent)</h2>
+<div class="meta">Total rows: 28716 — Source: coordinator_rows_missing_in_staging_production_recent.csv</div>
+<div class="table-wrap">
+<table>
+<thead><tr><th>patient_id</th><th>activity_date</th></tr></thead>
+<tbody>
+<tr><td>GIRGIS FIBI 01/15/1949</td><td>2025-09-26</td></tr>
+<tr><td>GIRGIS FIBI 01/15/1949</td><td>2025-09-26</td></tr>
+<tr><td>AVILA CORAZON 12/10/1952</td><td>2025-09-26</td></tr>
+<tr><td>AVILA CORAZON 12/10/1952</td><td>2025-09-26</td></tr>
+<tr><td>SANDERSON JAMES 09/08/1953</td><td>2025-09-26</td></tr>
+<tr><td>SANDERSON JAMES 09/08/1953</td><td>2025-09-26</td></tr>
+<tr><td>AVILA NESTOR 10/08/1954</td><td>2025-09-26</td></tr>
+<tr><td>AVILA NESTOR 10/08/1954</td><td>2025-09-26</td></tr>
+<tr><td>JOHNSON GLORIA 03/30/1934</td><td>2025-09-26</td></tr>
+<tr><td>JOHNSON GLORIA 03/30/1934</td><td>2025-09-26</td></tr>
+<tr><td>VAZQUEZ ARTURO 11/08/1947</td><td>2025-09-26</td></tr>
+<tr><td>VAZQUEZ ARTURO 11/08/1947</td><td>2025-09-26</td></tr>
+<tr><td>VAZQUEZ ARTURO 11/08/1947</td><td>2025-09-26</td></tr>
+<tr><td>VAZQUEZ ARTURO 11/08/1947</td><td>2025-09-26</td></tr>
+<tr><td>GORELICK YOLANDA 07/10/1948</td><td>2025-09-26</td></tr>
+<tr><td>GORELICK YOLANDA 07/10/1948</td><td>2025-09-26</td></tr>
+<tr><td>TOKAR LEONITY 09/09/1951</td><td>2025-09-26</td></tr>
+<tr><td>TOKAR LEONITY 09/09/1951</td><td>2025-09-26</td></tr>
+<tr><td>JOHNSON GLORIA 03/30/1934</td><td>2025-09-26</td></tr>
+<tr><td>JOHNSON GLORIA 03/30/1934</td><td>2025-09-26</td></tr>
+<tr><td>FERNANDEZ ROBERTO 10/14/1932</td><td>2025-09-26</td></tr>
+<tr><td>FERNANDEZ ROBERTO 10/14/1932</td><td>2025-09-26</td></tr>
+<tr><td>PEREZ URENA MIGUEL 10/01/1956</td><td>2025-09-26</td></tr>
+<tr><td>PEREZ URENA MIGUEL 10/01/1956</td><td>2025-09-26</td></tr>
+<tr><td>HURST DAVID 05/06/1960</td><td>2025-09-26</td></tr>
+<tr><td>HURST DAVID 05/06/1960</td><td>2025-09-26</td></tr>
+<tr><td>CHHAY JOEL 11/13/1984</td><td>2025-09-26</td></tr>
+<tr><td>CHHAY JOEL 11/13/1984</td><td>2025-09-26</td></tr>
+<tr><td>CHHAY JOEL 11/13/1984</td><td>2025-09-26</td></tr>
+<tr><td>CHHAY JOEL 11/13/1984</td><td>2025-09-26</td></tr>
+<tr><td>PEREZ URENA MIGUEL 10/01/1956</td><td>2025-09-26</td></tr>
+<tr><td>PEREZ URENA MIGUEL 10/01/1956</td><td>2025-09-26</td></tr>
+<tr><td>MEDEL ANGELICA 09/17/1969</td><td>2025-09-27</td></tr>
+<tr><td>MEDEL ANGELICA 09/17/1969</td><td>2025-09-27</td></tr>
+<tr><td>MEDEL ANGELICA 09/17/1969</td><td>2025-09-27</td></tr>
+<tr><td>MEDEL ANGELICA 09/17/1969</td><td>2025-09-27</td></tr>
+<tr><td>GIRGIS FIBI 01/15/1949</td><td>2025-09-27</td></tr>
+<tr><td>GIRGIS FIBI 01/15/1949</td><td>2025-09-27</td></tr>
+<tr><td>GIBSON DAVID 07/12/1960</td><td>2025-09-27</td></tr>
+<tr><td>GIBSON DAVID 07/12/1960</td><td>2025-09-27</td></tr>
+<tr><td>NEWMAN ANDREW 02/07/1954</td><td>2025-09-27</td></tr>
+<tr><td>NEWMAN ANDREW 02/07/1954</td><td>2025-09-27</td></tr>
+<tr><td>GIRGIS FIBI 01/15/1949</td><td>2025-09-27</td></tr>
+<tr><td>GIRGIS FIBI 01/15/1949</td><td>2025-09-27</td></tr>
+<tr><td>RASMUSSEN JOHN 04/09/1963</td><td>2025-09-27</td></tr>
+<tr><td>RASMUSSEN JOHN 04/09/1963</td><td>2025-09-27</td></tr>
+<tr><td>GIRGIS FIBI 01/15/1949</td><td>2025-09-27</td></tr>
+<tr><td>GIRGIS FIBI 01/15/1949</td><td>2025-09-27</td></tr>
+<tr><td>MILAZZO JOSEPH 10/22/1934</td><td>2025-09-27</td></tr>
+<tr><td>MILAZZO JOSEPH 10/22/1934</td><td>2025-09-27</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+<section class="section">
+<h2>Coordinator rows in staging missing in production (recent)</h2>
+<div class="meta">Total rows: 0 — Source: coordinator_rows_missing_in_production_staging_recent.csv</div>
+<div class="empty">No data or file missing</div>
+</section>
+<section class="section">
+<h2>Provider unmatched samples (staging vs prod)</h2>
+<div class="meta">Total rows: 50 — Source: provider_tasks_unmatched_samples.csv</div>
+<div class="table-wrap">
+<table>
+<thead><tr><th>patient_id</th><th>patient_name_raw</th><th>service</th><th>billing_code</th></tr></thead>
+<tbody>
+<tr><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td></tr>
+<tr><td>RAMONA ROSA 01/17/1953</td><td>RAMONA, ROSA 01/17/1953</td><td>PCP-Visit Home (HO) (NEW pt) mins</td><td>99344</td></tr>
+<tr><td>BATES NEIL 10/15/1951</td><td>BATES, NEIL 10/15/1951</td><td>PCP-Visit Home (HO) (NEW pt) mins</td><td>99344</td></tr>
+<tr><td>GARDEA DE ROCHA MARIA 08/31/1953</td><td>GARDEA DE ROCHA, MARIA 08/31/1953</td><td>PCP-Visit Home (HO) (NEW pt) mins</td><td>99344</td></tr>
+<tr><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td></tr>
+</tbody>
+</table>
+</div>
+</section>
+<section class="section">
+<h2>Coordinator unmatched samples (staging vs prod)</h2>
+<div class="meta">Total rows: 50 — Source: coordinator_tasks_unmatched_samples.csv</div>
+<div class="table-wrap">
+<table>
+<thead><tr><th>patient_id</th><th>pt_name</th><th>activity_date</th><th>staff_code</th><th>year_month</th></tr></thead>
+<tbody>
+<tr><td>AAA  AAA</td><td>Aaa, Aaa</td><td></td><td>AteDi000</td><td></td></tr>
+<tr><td>AAA  AAA</td><td>Aaa, Aaa</td><td></td><td>AteDi000</td><td></td></tr>
+<tr><td></td><td></td><td></td><td>AteDi000</td><td></td></tr>
+<tr><td>OEI  SWEI TIJANG 07/28/1935</td><td>ZEN-OEI, SWEI TIJANG 07/28/1935</td><td></td><td>AteDi000</td><td></td></tr>
+<tr><td>ALMANZA ROSA  EMILIO 05/27/1936</td><td>ZEN-ALMANZA ROSA, EMILIO 05/27/1936</td><td></td><td>AteDi000</td><td></td></tr>
+<tr><td>ALMANZA  MARIA 04/04/1944</td><td>ZEN-ALMANZA, MARIA 04/04/1944</td><td></td><td>AteDi000</td><td></td></tr>
+<tr><td>GUTIERREZ GARCIA  JOSE 03/07/1946</td><td>ZEN-GUTIERREZ GARCIA, JOSE 03/07/1946</td><td></td><td>AteDi000</td><td></td></tr>
+<tr><td>YU  JIAN 08/25/1951</td><td>ZEN-YU, JIAN 08/25/1951</td><td></td><td>AteDi000</td><td></td></tr>
+<tr><td>LOPEZ  MERCEDES 09/09/1951</td><td>ZEN-LOPEZ, MERCEDES 09/09/1951</td><td></td><td>AteDi000</td><td></td></tr>
+<tr><td>HIRASHIMA  MARSHALL 05/25/1952</td><td>ZEN-HIRASHIMA, MARSHALL 05/25/1952</td><td></td><td>AteDi000</td><td></td></tr>
+<tr><td>NAVARRO  MARTHA 09/02/1952</td><td>ZEN-NAVARRO, MARTHA 09/02/1952</td><td></td><td>AteDi000</td><td></td></tr>
+<tr><td>COHEN  CYRUS 04/01/1942</td><td>ZEN-COHEN, CYRUS 04/01/1942</td><td></td><td>AteDi000</td><td></td></tr>
+<tr><td>NAZARI NEJAD  PARVIN 08/29/1954</td><td>ZEN-NAZARI NEJAD, PARVIN 08/29/1954</td><td></td><td>AteDi000</td><td></td></tr>
+<tr><td>KAUR  SURINDER 08/23/1954</td><td>ZEN-KAUR, SURINDER 08/23/1954</td><td></td><td>AteDi000</td><td></td></tr>
+<tr><td>AVILA  CORAZON 12/10/1952</td><td>ZEN-AVILA, CORAZON 12/10/1952</td><td></td><td>AteDi000</td><td></td></tr>
+<tr><td>TOBAR  ERNESTINA 09/04/1945</td><td>ZEN-TOBAR, ERNESTINA 09/04/1945</td><td></td><td>AteDi000</td><td></td></tr>
+<tr><td>VALDECANTOS  LOURDES 02/10/1951</td><td>ZEN-VALDECANTOS, LOURDES 02/10/1951</td><td></td><td>AteDi000</td><td></td></tr>
+<tr><td>VASWANI  GOPI 06/18/1933</td><td>ZEN-VASWANI, GOPI 06/18/1933</td><td></td><td>AteDi000</td><td></td></tr>
+<tr><td>GALAVIS  REBECA 04/26/1956</td><td>ZEN-GALAVIS, REBECA 04/26/1956</td><td></td><td>AteDi000</td><td></td></tr>
+<tr><td>HEFFERNAN  BISMARK 04/21/1966</td><td>ZEN-HEFFERNAN, BISMARK 04/21/1966</td><td></td><td>AteDi000</td><td></td></tr>
+<tr><td>SODHI  DATAR 09/02/1951</td><td>ZEN-SODHI, DATAR 09/02/1951</td><td></td><td>AteDi000</td><td></td></tr>
+<tr><td>BATAC  NORMA 11/26/1953</td><td>ZEN-BATAC, NORMA 11/26/1953</td><td></td><td>AteDi000</td><td></td></tr>
+<tr><td>AMJADI  FAKHRI 05/26/1929</td><td>ZEN-AMJADI, FAKHRI 05/26/1929</td><td></td><td>AteDi000</td><td></td></tr>
+<tr><td>WALIA  AMARPAUL 07/15/1946</td><td>ZEN-WALIA, AMARPAUL 07/15/1946</td><td></td><td>AteDi000</td><td></td></tr>
+<tr><td>BECERRA  MARIA 08/28/1957</td><td>ZEN-BECERRA, MARIA 08/28/1957</td><td></td><td>AteDi000</td><td></td></tr>
+<tr><td>SODHI  JATINDER 04/04/1958</td><td>ZEN-SODHI, JATINDER 04/04/1958</td><td></td><td>AteDi000</td><td></td></tr>
+<tr><td>POLLOCK  CARRI 08/24/1940</td><td>ZEN-POLLOCK, CARRI 08/24/1940</td><td></td><td>AteDi000</td><td></td></tr>
+<tr><td>BEN COHEN  FARAHNAZ 01/25/1956</td><td>ZEN-BEN COHEN, FARAHNAZ 01/25/1956</td><td></td><td>AteDi000</td><td></td></tr>
+<tr><td>CAMPBELLE  CATHERINE 01/30/1936</td><td>ZEN-CAMPBELLE, CATHERINE 01/30/1936</td><td></td><td>AteDi000</td><td></td></tr>
+<tr><td>PEREZ  MARIA 12/18/1962</td><td>ZEN-PEREZ, MARIA 12/18/1962</td><td></td><td>AteDi000</td><td></td></tr>
+<tr><td>MALHOTRA  GURDEEP 10/26/1944</td><td>ZEN-MALHOTRA, GURDEEP 10/26/1944</td><td></td><td>AteDi000</td><td></td></tr>
+<tr><td>BRAIS  STEPHEN 04/29/1953</td><td>ZEN-BRAIS, STEPHEN 04/29/1953</td><td></td><td>AteDi000</td><td></td></tr>
+<tr><td>AVALOS  ARMIDA 06/09/1944</td><td>ZEN-AVALOS, ARMIDA 06/09/1944</td><td></td><td>AteDi000</td><td></td></tr>
+<tr><td>STEINMETZ  EVA 11/02/1936</td><td>ZEN-STEINMETZ, EVA 11/02/1936</td><td></td><td>AteDi000</td><td></td></tr>
+<tr><td>CLARKE  LINDA 09/05/1953</td><td>ZEN-CLARKE, LINDA 09/05/1953</td><td></td><td>AteDi000</td><td></td></tr>
+<tr><td>YASHAR  FARIDEH 09/03/1956</td><td>ZEN-YASHAR, FARIDEH 09/03/1956</td><td></td><td>AteDi000</td><td></td></tr>
+<tr><td>AVALOS  JULIAN 08/14/1935</td><td>ZEN-AVALOS, JULIAN 08/14/1935</td><td></td><td>AteDi000</td><td></td></tr>
+<tr><td>MCARTHUR  RONA 12/21/1956</td><td>ZEN-MCARTHUR, RONA 12/21/1956</td><td></td><td>AteDi000</td><td></td></tr>
+<tr><td>ECHEGARAY  MARIA 11/28/1956</td><td>ZEN-ECHEGARAY, MARIA 11/28/1956</td><td></td><td>AteDi000</td><td></td></tr>
+<tr><td>CLARKE  LESTER 03/31/1951</td><td>ZEN-CLARKE, LESTER 03/31/1951</td><td></td><td>AteDi000</td><td></td></tr>
+<tr><td>LACHAPELLE  JOHN 04/22/1947</td><td>ZEN-LACHAPELLE, JOHN 04/22/1947</td><td></td><td>AteDi000</td><td></td></tr>
+<tr><td>MUNEVAR  FERNANDO 10/13/1947</td><td>ZEN-MUNEVAR, FERNANDO 10/13/1947</td><td></td><td>AteDi000</td><td></td></tr>
+<tr><td>SINGH  SUKHDEV 03/12/1957</td><td>ZEN-SINGH, SUKHDEV 03/12/1957</td><td></td><td>AteDi000</td><td></td></tr>
+<tr><td>AVILA  NESTOR 10/08/1954</td><td>ZEN-AVILA, NESTOR 10/08/1954</td><td></td><td>AteDi000</td><td></td></tr>
+<tr><td>EKLUND  SHERRI 12/07/1946</td><td>ZEN-EKLUND, SHERRI 12/07/1946</td><td></td><td>AteDi000</td><td></td></tr>
+<tr><td>UDRY  SUSAN 12/12/1945</td><td>ZEN-UDRY, SUSAN 12/12/1945</td><td></td><td>AteDi000</td><td></td></tr>
+<tr><td>ESTRADA  VICTORIA 02/10/1947</td><td>ZEN-ESTRADA, VICTORIA 02/10/1947</td><td></td><td>AteDi000</td><td></td></tr>
+<tr><td>BANKER  YAMINI 05/13/1949</td><td>ZEN-BANKER, YAMINI 05/13/1949</td><td></td><td>AteDi000</td><td></td></tr>
+<tr><td>PUELICHER  EILEEN 12/06/1946</td><td>ZEN-PUELICHER, EILEEN 12/06/1946</td><td></td><td>AteDi000</td><td></td></tr>
+<tr><td>TRANG  HUA 12/11/1952</td><td>ZEN-TRANG, HUA 12/11/1952</td><td></td><td>AteDi000</td><td></td></tr>
+</tbody>
+</table>
+</div>
+</section>
+<section class="section">
+<h2>Tasks without panel</h2>
+<div class="meta">Total rows: 47 — Source: tasks_without_panel.csv</div>
+<div class="table-wrap">
+<table>
+<thead><tr><th>patient_id</th></tr></thead>
+<tbody>
+<tr><td></td></tr>
+<tr><td>ANDERSON LIZABETH 09/26/1934</td></tr>
+<tr><td>BATES NEIL 10/15/1951</td></tr>
+<tr><td>BLACK CAROLE 01/07/1933</td></tr>
+<tr><td>BROWN VICKIE 08/11/1956</td></tr>
+<tr><td>CANILAO EDGARDO 03/10/1954</td></tr>
+<tr><td>CARTER EVELYN 01/09/1933</td></tr>
+<tr><td>CASEY BEVERLY 04/09/1954</td></tr>
+<tr><td>CHADHA UMA 12/01/1946</td></tr>
+<tr><td>DIAZ VILMA 06/24/1940</td></tr>
+<tr><td>FREEMAN VERONICA 11/26/1970</td></tr>
+<tr><td>GARDEA DE ROCHA MARIA 08/31/1953</td></tr>
+<tr><td>GATI JOSEPHINE 12/12/1943</td></tr>
+<tr><td>GOODLETT SR. JERRRY 09/30/1959</td></tr>
+<tr><td>JAEGER IRVIN 09/18/1931</td></tr>
+<tr><td>JAUSSEN MARTINE 07/28/1948</td></tr>
+<tr><td>KARAPETIAN ARSHALVYS 03/31/1931</td></tr>
+<tr><td>KAUR BALBIR 01/01/1957</td></tr>
+<tr><td>KAUR PIAR 06/10/1945</td></tr>
+<tr><td>MARLOWE CORALIE 08/07/1936</td></tr>
+<tr><td>MARTINEZ OLGA 01/15/1948</td></tr>
+<tr><td>MASON LEVI 03/15/1957</td></tr>
+<tr><td>MATULICH DAN 05/31/1931</td></tr>
+<tr><td>MCCANN MELINDA 07/16/1952</td></tr>
+<tr><td>MCKINSEY LORETTA 08/22/1953</td></tr>
+<tr><td>MOURAD MOHAMED 07/05/1959</td></tr>
+<tr><td>PIN SUN 01/21/1947</td></tr>
+<tr><td>RAMONA ROSA 01/17/1953</td></tr>
+<tr><td>RANGEL MARIA DEL CARMEN 07/16/1932</td></tr>
+<tr><td>RIEDENAUER SHARON 01/13/1942</td></tr>
+<tr><td>ROBINSON DOMENICA 05/04/1937</td></tr>
+<tr><td>ROSS MIMI 02/12/1935</td></tr>
+<tr><td>SAFARYAN NARINDZH 02/10/1938</td></tr>
+<tr><td>SALMON EILEEN 02/19/1942</td></tr>
+<tr><td>SANDOVAL PARRAS MIGUEL 08/19/1948</td></tr>
+<tr><td>SHELLEY KATHLEEN 12/14/1948</td></tr>
+<tr><td>SIDHU GURBHAGAT 12/02/1947</td></tr>
+<tr><td>SIDHU JANGIR 01/15/1949</td></tr>
+<tr><td>SINGH GURDARSHAN 02/08/1952</td></tr>
+<tr><td>STOCUM LOIS 03/27/1935</td></tr>
+<tr><td>TERREL PHILIP 05/03/1960</td></tr>
+<tr><td>THAN KHAN 08/21/1940</td></tr>
+<tr><td>TRAPANI CAROLE 02/28/1943</td></tr>
+<tr><td>WARD MICHAEL 09/10/1943</td></tr>
+<tr><td>WATKINS LOLA 01/08/1946</td></tr>
+<tr><td>WATSON MARCIA 03/07/1944</td></tr>
+<tr><td>WICKSMAN DAVIDA 04/07/1937</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+<section class="section">
+<h2>Panel without tasks</h2>
+<div class="meta">Total rows: 426 — Source: panel_without_tasks.csv</div>
+<div class="table-wrap">
+<table>
+<thead><tr><th>patient_id</th></tr></thead>
+<tbody>
+<tr><td>PASTION PERRY 07/13/1955</td></tr>
+<tr><td>VAZQUEZ ARTURO 11/08/1947</td></tr>
+<tr><td>ALVARADO PEREZ REYNALDA 09/15/1941</td></tr>
+<tr><td>AYALA PEREZ MARIA 07/15/1967</td></tr>
+<tr><td>CHORAK DAVID 12/05/1944</td></tr>
+<tr><td>STEVENS PAMELA 04/29/1969</td></tr>
+<tr><td>DICKENS CYNDI 08/24/1969</td></tr>
+<tr><td>GUTIERREZ GARCIA JOSE 03/07/1946</td></tr>
+<tr><td>LU SUSAN 03/10/1945</td></tr>
+<tr><td>ROSE BARBARA 03/20/1938</td></tr>
+<tr><td>TAGGART MARY 11/21/1954</td></tr>
+<tr><td>VELAZQUEZ DE MARIA 03/14/1951</td></tr>
+<tr><td>MILAZZO JOSEPH 10/22/1934</td></tr>
+<tr><td>SARRAZIN LILLIAN 11/14/1930</td></tr>
+<tr><td>KILPATRICK BEVERLY 07/21/1941</td></tr>
+<tr><td>PALMA ANNA 02/22/1943</td></tr>
+<tr><td>BYERS LINDA 01/20/1942</td></tr>
+<tr><td>BRONEMANN AARON 12/23/1952</td></tr>
+<tr><td>GARCIA PORTILLO JOSE 08/29/1944</td></tr>
+<tr><td>CONTRERAS JANET H 09/30/1958</td></tr>
+<tr><td>JOHNSON GLORIA 03/30/1934</td></tr>
+<tr><td>HURST DAVID A 05/06/1960</td></tr>
+<tr><td>BEEDE DONALD 09/21/1958</td></tr>
+<tr><td>HALLADAY JOHN 07/21/1955</td></tr>
+<tr><td>SINGH HARBHAJAN 01/29/1948</td></tr>
+<tr><td>KAUR JAGIR 06/30/1950</td></tr>
+<tr><td>GALERMO ERLINDA 06/22/1939</td></tr>
+<tr><td>HORACIO RAZ 09/23/1941</td></tr>
+<tr><td>EKLUND SHERRI 12/07/1946</td></tr>
+<tr><td>ESTRADA MARIA 06/21/1943</td></tr>
+<tr><td>HARRIS OREALIUS 03/10/1964</td></tr>
+<tr><td>RIEBENACHT GRETCHEN 09/22/1954</td></tr>
+<tr><td>ROBLES CHRISTOPHER 08/10/1956</td></tr>
+<tr><td>BECERRA MARIA 08/28/1957</td></tr>
+<tr><td>GIRGIS FIBI 01/15/1949</td></tr>
+<tr><td>BEN COHEN FARAHNAZ 01/25/1956</td></tr>
+<tr><td>COHEN CYRUS 04/01/1942</td></tr>
+<tr><td>WADHWANI NARAYAN 01/23/1941</td></tr>
+<tr><td>MCARTHUR RONA 12/21/1956</td></tr>
+<tr><td>HERRERA PONCE DAVID 12/14/1959</td></tr>
+<tr><td>WALSH PETER 07/13/1937</td></tr>
+<tr><td>MANCHANDIA MAHESH 06/01/1952</td></tr>
+<tr><td>LAGMAN RAUL 07/17/1950</td></tr>
+<tr><td>DE LOS REYES ANTONIO 02/28/1953</td></tr>
+<tr><td>PEREZ ERNESTO 02/24/1953</td></tr>
+<tr><td>TABITA ERNESTINA 11/07/1936</td></tr>
+<tr><td>BARAJAS MARIA 08/24/1956</td></tr>
+<tr><td>ESPINOZA LORENZO 08/10/1934</td></tr>
+<tr><td>ESPINOZA MARCELA 01/16/1936</td></tr>
+<tr><td>IBARRA TERESA 06/10/1939</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+<section class="section">
+<h2>Two-day audit: Provider prod→staging missing</h2>
+<div class="meta">Total rows: 0 — Source: provider_prod_missing_in_staging_two_days.csv</div>
+<div class="empty">No data or file missing</div>
+</section>
+<section class="section">
+<h2>Two-day audit: Provider staging→prod missing</h2>
+<div class="meta">Total rows: 0 — Source: provider_staging_missing_in_prod_two_days.csv</div>
+<div class="empty">No data or file missing</div>
+</section>
+<section class="section">
+<h2>Two-day audit: Provider prod→sheets missing</h2>
+<div class="meta">Total rows: 0 — Source: provider_prod_missing_in_sheets_two_days.csv</div>
+<div class="empty">No data or file missing</div>
+</section>
+<section class="section">
+<h2>Two-day audit: Provider sheets→prod missing</h2>
+<div class="meta">Total rows: 0 — Source: provider_sheets_missing_in_prod_two_days.csv</div>
+<div class="empty">No data or file missing</div>
+</section>
+<section class="section">
+<h2>Two-day audit: Coordinator prod→staging missing</h2>
+<div class="meta">Total rows: 0 — Source: coordinator_prod_missing_in_staging_two_days.csv</div>
+<div class="empty">No data or file missing</div>
+</section>
+<section class="section">
+<h2>Two-day audit: Coordinator staging→prod missing</h2>
+<div class="meta">Total rows: 0 — Source: coordinator_staging_missing_in_prod_two_days.csv</div>
+<div class="empty">No data or file missing</div>
+</section>
+<section class="section">
+<h2>Two-day audit: Coordinator prod→sheets missing</h2>
+<div class="meta">Total rows: 0 — Source: coordinator_prod_missing_in_sheets_two_days.csv</div>
+<div class="empty">No data or file missing</div>
+</section>
+<section class="section">
+<h2>Two-day audit: Coordinator sheets→prod missing</h2>
+<div class="meta">Total rows: 0 — Source: coordinator_sheets_missing_in_prod_two_days.csv</div>
+<div class="empty">No data or file missing</div>
+</section>
+<section class="section">
+<h2>Mapping candidates: Provider codes</h2>
+<div class="meta">Total rows: 10 — Source: provider_code_candidates.csv</div>
+<div class="table-wrap">
+<table>
+<thead><tr><th>provider_code_norm</th><th>count</th><th>candidate_user_id</th></tr></thead>
+<tbody>
+<tr><td>ZEN-SZA</td><td>3157</td><td></td></tr>
+<tr><td>ZEN-VIL</td><td>882</td><td></td></tr>
+<tr><td>ZEN-MAL</td><td>829</td><td></td></tr>
+<tr><td>ZEN-ANE</td><td>115</td><td></td></tr>
+<tr><td>ZEN-DIA</td><td>71</td><td></td></tr>
+<tr><td>ZEN-MEC</td><td>67</td><td></td></tr>
+<tr><td>ZEN-JAA</td><td>7</td><td></td></tr>
+<tr><td>ZEN-DAG</td><td>2</td><td></td></tr>
+<tr><td>ZEN-KAJ</td><td>2</td><td></td></tr>
+<tr><td>FILTERED BY &#x27;DATE ONLY&#x27; NOT NULL</td><td>1</td><td></td></tr>
+</tbody>
+</table>
+</div>
+</section>
+<section class="section">
+<h2>Mapping candidates: Coordinator codes</h2>
+<div class="meta">Total rows: 19 — Source: coordinator_code_candidates.csv</div>
+<div class="table-wrap">
+<table>
+<thead><tr><th>staff_code_norm</th><th>count</th><th>candidate_user_id</th></tr></thead>
+<tbody>
+<tr><td>MANSH000</td><td>37465</td><td></td></tr>
+<tr><td>HERHE000</td><td>23460</td><td></td></tr>
+<tr><td>RUBAN000</td><td>21617</td><td></td></tr>
+<tr><td>MALME000</td><td>18546</td><td></td></tr>
+<tr><td>ESTJA000</td><td>18117</td><td></td></tr>
+<tr><td>RIOMA000</td><td>11491</td><td></td></tr>
+<tr><td>SOBJO000</td><td>7686</td><td></td></tr>
+<tr><td>MARCI000</td><td>5547</td><td></td></tr>
+<tr><td>SOBMA000</td><td>3937</td><td></td></tr>
+<tr><td>CHAZU000</td><td>3752</td><td></td></tr>
+<tr><td>MALJU000</td><td>3560</td><td></td></tr>
+<tr><td>LOPJU000</td><td>2689</td><td></td></tr>
+<tr><td>ZEN-VIL</td><td>2247</td><td></td></tr>
+<tr><td>LUMJA000</td><td>2032</td><td></td></tr>
+<tr><td>SANRA000</td><td>1119</td><td></td></tr>
+<tr><td>SANMA000</td><td>1103</td><td></td></tr>
+<tr><td>PERJO000</td><td>337</td><td></td></tr>
+<tr><td>SANBI000</td><td>290</td><td></td></tr>
+<tr><td>ZEN-SZA</td><td>179</td><td></td></tr>
+</tbody>
+</table>
+</div>
+</section>
+<section class="section">
+<h2>Curated check: patient_panel non-numeric IDs</h2>
+<div class="meta">Total rows: 0 — Source: patient_panel_non_numeric_ids.csv</div>
+<div class="empty">No data or file missing</div>
+</section>
+<section class="section">
+<h2>Curated check: assignments non-numeric IDs</h2>
+<div class="meta">Total rows: 0 — Source: user_patient_assignments_non_numeric_ids.csv</div>
+<div class="empty">No data or file missing</div>
+</section>
+<section class="section">
+<h2>Curated check: panel IDs missing names</h2>
+<div class="meta">Total rows: 10 — Source: patient_panel_missing_names_for_ids.csv</div>
+<div class="table-wrap">
+<table>
+<thead><tr><th>patient_id</th><th>provider_id</th><th>coordinator_id</th></tr></thead>
+<tbody>
+<tr><td>TEST4 TEST4 09/16/1908</td><td></td><td>8</td></tr>
+<tr><td>PATIENT STAGE_TEST 06/15/1985</td><td></td><td>2</td></tr>
+<tr><td>TESTPATIENT JOHN 01/01/1980</td><td></td><td>2</td></tr>
+<tr><td>TEST5 TEST5 09/09/1919</td><td></td><td>8</td></tr>
+<tr><td>TEST9 TEST9 10/02/2025</td><td>4</td><td>13</td></tr>
+<tr><td>TEST11 TEST11 10/06/1949</td><td>9</td><td>16</td></tr>
+<tr><td>TEST_FRESH TEST_FRESH 01/01/2000</td><td>10</td><td>17</td></tr>
+<tr><td>SANCHEZ BIANCHI 03/11/1992</td><td>4</td><td></td></tr>
+<tr><td>TESTFIX TESTFIX 01/01/1990</td><td>2</td><td></td></tr>
+<tr><td>TESTFIX TESTFIX 01/01/1990</td><td>2</td><td></td></tr>
+</tbody>
+</table>
+</div>
+</section>
+</div>
+</body>
+</html>

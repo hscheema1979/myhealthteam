@@ -14,6 +14,62 @@ import streamlit.components.v1 as components
 from src.dashboards.workflow_module import show_workflow_management
 from src.dashboards.phone_review import show_phone_review_entry
 
+def _has_admin_role(user_id):
+    """Check if user has admin role (role_id 34) for edit permissions"""
+    try:
+        user_roles = database.get_user_roles_by_user_id(user_id)
+        user_role_ids = [r['role_id'] for r in user_roles]
+        return 34 in user_role_ids
+    except Exception:
+        return False
+
+def _apply_patient_info_edits(edited_df, original_df):
+    """Apply edits to patient information in database"""
+    import pandas as pd
+    if edited_df is None or original_df is None:
+        return
+    if "patient_id" not in edited_df.columns:
+        return
+    original_by_id = {str(r["patient_id"]): r for _, r in original_df.iterrows() if pd.notna(r.get("patient_id"))}
+    conn = database.get_db_connection()
+    try:
+        for _, row in edited_df.iterrows():
+            pid = str(row.get("patient_id"))
+            if not pid or pid not in original_by_id:
+                continue
+            orig = original_by_id[pid]
+            changed = {}
+            for col in edited_df.columns:
+                if col == "patient_id":
+                    continue
+                if str(row.get(col)) != str(orig.get(col)):
+                    changed[col] = row.get(col)
+            if not changed:
+                continue
+            patient_cols = [c[1] for c in conn.execute("PRAGMA table_info('patients')").fetchall()]
+            set_parts = []
+            params = []
+            for k, v in changed.items():
+                if k in patient_cols:
+                    set_parts.append(f"{k} = ?")
+                    params.append(v)
+            if set_parts:
+                params.append(pid)
+                conn.execute(f"UPDATE patients SET {', '.join(set_parts)}, updated_date = CURRENT_TIMESTAMP WHERE patient_id = ?", tuple(params))
+            panel_cols = [c[1] for c in conn.execute("PRAGMA table_info('patient_panel')").fetchall()]
+            set_parts = []
+            params = []
+            for k, v in changed.items():
+                if k in panel_cols:
+                    set_parts.append(f"{k} = ?")
+                    params.append(v)
+            if set_parts:
+                params.append(pid)
+                conn.execute(f"UPDATE patient_panel SET {', '.join(set_parts)}, updated_date = CURRENT_TIMESTAMP WHERE patient_id = ?", tuple(params))
+        conn.commit()
+    finally:
+        conn.close()
+
 def show(user_id, user_role_ids=None):
     if user_role_ids is None:
         user_role_ids = []
@@ -33,7 +89,26 @@ def show(user_id, user_role_ids=None):
         if has_cm_role:
             role_text.append("Coordinator Manager")
         st.info(f"**Management Access**: You have {' & '.join(role_text)} privileges with additional tabs available")
-        tab1, tab2, tab3 = st.tabs(["My Patients", "Phone Reviews", "Team Management"])
+        tab1, tab2, tab3, tab_patient_info, tab4 = st.tabs(["My Patients", "Phone Reviews", "Team Management", "Patient Info", "Help"])
+        with tab4:
+            st.header("Help")
+            st.markdown("This help uses real UI elements to explain coordinator views.")
+            st.subheader("Color Legend (Minutes This Month)")
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.error("Red: <40 minutes (triage now)")
+            with col2:
+                st.warning("Yellow: 40–89 minutes")
+            with col3:
+                st.success("Green: 90–199 minutes")
+            with col4:
+                st.info("Blue: ≥200 minutes")
+            st.subheader("Sections")
+            st.markdown(
+                "- My Patients: coordinator panel and actions.\n"
+                "- Phone Reviews: use 'cm' mode for coordinator reviews.\n"
+                "- Team Management: monthly/weekly summaries and task creation."
+            )
         with tab1:
             show_coordinator_patient_list(user_id, context="tab1")
         with tab2:
@@ -115,7 +190,7 @@ def show(user_id, user_role_ids=None):
                                     st.info("No patients in this category.")
                                 else:
                                     try:
-                                        styled = red_df.style.applymap(_color_minutes, subset=['Sum of Minutes'])
+                                        styled = red_df.style.map(_color_minutes, subset=['Sum of Minutes'])
                                         st.dataframe(styled, use_container_width=True)
                                     except Exception:
                                         st.dataframe(red_df, use_container_width=True)
@@ -125,7 +200,7 @@ def show(user_id, user_role_ids=None):
                                     st.info("No patients in this category.")
                                 else:
                                     try:
-                                        styled = yellow_df.style.applymap(_color_minutes, subset=['Sum of Minutes'])
+                                        styled = yellow_df.style.map(_color_minutes, subset=['Sum of Minutes'])
                                         st.dataframe(styled, use_container_width=True)
                                     except Exception:
                                         st.dataframe(yellow_df, use_container_width=True)
@@ -135,7 +210,7 @@ def show(user_id, user_role_ids=None):
                                     st.info("No patients in this category.")
                                 else:
                                     try:
-                                        styled = greenblue_df.style.applymap(_color_minutes, subset=['Sum of Minutes'])
+                                        styled = greenblue_df.style.map(_color_minutes, subset=['Sum of Minutes'])
                                         st.dataframe(styled, use_container_width=True)
                                     except Exception:
                                         st.dataframe(greenblue_df, use_container_width=True)
@@ -282,7 +357,7 @@ def show(user_id, user_role_ids=None):
                         with filter_cols[1]:
                             st.markdown("**Coordinator Name**")
                             coord_names = sorted(df['coordinator_name'].dropna().unique()) if 'coordinator_name' in df.columns else []
-                            selected_coord = st.selectbox("", ["All"] + coord_names, key="coord_name_selector")
+                            selected_coord = st.selectbox("Coordinator Name", ["All"] + coord_names, key="coord_name_selector", label_visibility="collapsed")
                         with filter_cols[2]:
                             st.markdown("**Patient**")
                             if 'Patient Name' in df.columns:
@@ -296,7 +371,7 @@ def show(user_id, user_role_ids=None):
                             else:
                                 patient_options = [str(pid) for pid in sorted(df['patient_id'].dropna().unique())] if 'patient_id' in df.columns else []
                                 patient_map = {str(pid): pid for pid in patient_options}
-                            selected_patient = st.selectbox("", ["All"] + patient_options, key="patient_selector")
+                            selected_patient = st.selectbox("Patient", ["All"] + patient_options, key="patient_selector", label_visibility="collapsed")
 
                         # Apply filters
                         filtered_df = df.copy()
@@ -327,8 +402,382 @@ def show(user_id, user_role_ids=None):
                             st.info(f"No data in table {selected_table} after filtering.")
             except Exception as e:
                 st.error(f"Error loading coordinator tasks: {e}")
+        with tab_patient_info:
+            show_patient_info_tab_coordinator(user_id)
     else:
-        show_coordinator_patient_list(user_id, context="default")
+        # Non-management coordinator view: provide My Patients + Help tabs (no Team Management)
+        tab1, tab_patient_info, tab2 = st.tabs(["My Patients", "Patient Info", "Help"])
+        with tab1:
+            show_coordinator_patient_list(user_id, context="tab1")
+        with tab_patient_info:
+            show_patient_info_tab_coordinator(user_id)
+        with tab2:
+            st.header("Help")
+            help_html = """
+            <style>
+              .legend { display: flex; gap: 12px; margin: 6px 0 18px 0; }
+              .badge { padding: 6px 10px; border-radius: 6px; color: #fff; font-weight: 600; font-size: 13px; }
+              .red { background: #d9534f; }
+              .yellow { background: #f0ad4e; }
+              .green { background: #5cb85c; }
+              .blue { background: #5bc0de; }
+              .section { margin: 10px 0 18px 0; }
+              .section h3 { margin: 12px 0 8px 0; }
+              .desc { color: #444; font-size: 14px; }
+              table.help { width: 100%; border-collapse: collapse; margin-top: 8px; }
+              table.help th, table.help td { border: 1px solid #ddd; padding: 8px; font-size: 13px; }
+              table.help th { background: #f7f7f7; text-align: left; }
+              .small { color: #777; font-size: 12px; }
+            </style>
+
+            <div class="section">
+              <div class="legend">
+                <span class="badge red">&lt;40 min</span>
+                <span class="badge yellow">40–89 min</span>
+                <span class="badge green">90–199 min</span>
+                <span class="badge blue">≥200 min</span>
+              </div>
+              <div class="small">Legend applies to the <strong>Mins</strong> column: total minutes logged this month.</div>
+            </div>
+
+            <div class="section">
+              <h3>Patient Panel — Columns and Meaning</h3>
+              <div class="desc">This table lists patients assigned to you and key details you use to coordinate care.</div>
+              <table class="help">
+                <thead>
+                  <tr>
+                    <th>Column</th>
+                    <th>What it means</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Status</td>
+                    <td>Patient’s enrollment status. Active variants include <em>Active</em>, <em>Active-Geri</em>, <em>Active-PCP</em>. Filters and metrics use “Active*”.</td>
+                  </tr>
+                  <tr>
+                    <td>First Name / Last Name</td>
+                    <td>Patient’s name. Rows are sorted by Last Name, then First Name.</td>
+                  </tr>
+                  <tr>
+                    <td>Facility</td>
+                    <td>Mapped facility name (from <code>current_facility_id</code> or fallback text). “Unknown” if not mapped.</td>
+                  </tr>
+                  <tr>
+                    <td>Provider Name</td>
+                    <td>Assigned provider mapped from provider IDs. Shows “Unassigned” if no match.</td>
+                  </tr>
+                  <tr>
+                    <td>Provider’s Last Visit Date</td>
+                    <td>Last recorded provider visit date for this patient.</td>
+                  </tr>
+                  <tr>
+                    <td>Service Type</td>
+                    <td>Service category for the patient (e.g., routine, geriatric, PCP lines as defined in data).</td>
+                  </tr>
+                  <tr>
+                    <td>Phone Number</td>
+                    <td>Primary phone on record.</td>
+                  </tr>
+                  <tr>
+                    <td>POC-A (Appt Contact)</td>
+                    <td>Point-of-contact for scheduling/appointments.</td>
+                  </tr>
+                  <tr>
+                    <td>POC-M (Medical Contact)</td>
+                    <td>Point-of-contact for medical information/coordination.</td>
+                  </tr>
+                  <tr>
+                    <td>Mins</td>
+                    <td>Total minutes logged this month for this patient by the coordinator; used for triage and coverage checks.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="section">
+              <h3>Workflow Manager — Overview and Table Columns</h3>
+              <div class="desc">Create new workflows and track ongoing work. Quick Start lets you pick <strong>Patient</strong>, <strong>Workflow Type</strong>, <strong>Priority</strong>, and <strong>Task Notes</strong>. Ongoing Workflows shows active items with progress.</div>
+              <table class="help">
+                <thead>
+                  <tr>
+                    <th>Column</th>
+                    <th>What it means</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Workflow Instance ID</td>
+                    <td>Unique ID for the workflow instance.</td>
+                  </tr>
+                  <tr>
+                    <td>Patient</td>
+                    <td>Patient name tied to the workflow.</td>
+                  </tr>
+                  <tr>
+                    <td>Workflow Type</td>
+                    <td>The template name (e.g., “IMAGING URGENT”, “MEDICATION REFILL”).</td>
+                  </tr>
+                  <tr>
+                    <td>Coordinator ID / Coordinator Name</td>
+                    <td>Assigned coordinator identifiers for the workflow.</td>
+                  </tr>
+                  <tr>
+                    <td>Current Owner User ID / Current Owner Name</td>
+                    <td>User currently responsible for the next step.</td>
+                  </tr>
+                  <tr>
+                    <td>Current Step / Total Steps</td>
+                    <td>Numeric progress (e.g., Step 2 of 5). Also shown as “Step Progress”.</td>
+                  </tr>
+                  <tr>
+                    <td>Priority</td>
+                    <td>Priority level chosen at kickoff (Low/Medium/High/Urgent).</td>
+                  </tr>
+                  <tr>
+                    <td>Created</td>
+                    <td>Date the workflow was started.</td>
+                  </tr>
+                  <tr>
+                    <td>Status</td>
+                    <td>Workflow state (e.g., Active). Changes when completed.</td>
+                  </tr>
+                </tbody>
+              </table>
+              <div class="small">Actions available: <strong>Resume Workflow</strong> (open steps), <strong>Complete Next Step</strong> (advance), <strong>Add Note</strong> (append timestamped note), and <strong>Complete Workflow</strong>.</div>
+            </div>
+
+            <div class="section">
+              <h3>Task Entry — Fields and Usage</h3>
+              <table class="help">
+                <thead>
+                  <tr>
+                    <th>Field</th>
+                    <th>What it does</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Date</td>
+                    <td>When the task occurred. Defaults to today.</td>
+                  </tr>
+                  <tr>
+                    <td>Patient Name</td>
+                    <td>Dropdown listing your currently assigned, active patients. If none, you’ll see a notice.</td>
+                  </tr>
+                  <tr>
+                    <td>Task Type</td>
+                    <td>Category for the activity (Phone Call, Care Coordination, Documentation, Patient Follow-up, Provider Communication, Other).</td>
+                  </tr>
+                  <tr>
+                    <td>Duration (min)</td>
+                    <td>Manual entry; contributes to monthly minutes.</td>
+                  </tr>
+                  <tr>
+                    <td>Notes</td>
+                    <td>Free text describing the activity.</td>
+                  </tr>
+                  <tr>
+                    <td>Log Task</td>
+                    <td>Validates required fields (patient, type, duration) and records the entry.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            """
+            # Add visual mockups for the elements described above so users can see what to look for
+            help_html += """
+            <div class="example">
+                <h3>Visual Examples</h3>
+                <p class="note">These are static examples to help you visually match the UI. They do not perform actions.</p>
+
+                <h4>Patient Panel (example snippet)</h4>
+                <table class="help">
+                    <thead>
+                        <tr>
+                            <th>Status</th>
+                            <th>First Name</th>
+                            <th>Last Name</th>
+                            <th>Facility</th>
+                            <th>Provider Name</th>
+                            <th>Provider's Last Visit Date</th>
+                            <th>Service Type</th>
+                            <th>POC-A (Appt Contact)</th>
+                            <th>POC-M (Medical Contact)</th>
+                            <th>Mins (This Month)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="badge" style="background:#e0f7fa;color:#006064">Active</span></td>
+                            <td>Alice</td>
+                            <td>Nguyen</td>
+                            <td>Sunrise Manor</td>
+                            <td>Dr. Patel</td>
+                            <td>2025-11-02</td>
+                            <td>Initial TV</td>
+                            <td>(702) 555-0142</td>
+                            <td>(702) 555-0199</td>
+                            <td><strong>57</strong></td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h4>Workflow Manager (example controls)</h4>
+                <div class="form-row">
+                    <div class="field">
+                        <label>Workflow Template</label>
+                        <div class="select disabled">Home Visit</div>
+                    </div>
+                    <div class="field">
+                        <label>Start Date</label>
+                        <div class="input disabled">2025-11-19</div>
+                    </div>
+                    <div class="field">
+                        <label>Patient</label>
+                        <div class="select disabled">Alice Nguyen</div>
+                    </div>
+                    <div class="field">
+                        <label>Coordinator</label>
+                        <div class="select disabled">Your Name</div>
+                    </div>
+                </div>
+                <div class="actions">
+                    <button class="btn" disabled>Start Workflow</button>
+                </div>
+                <p class="note">In the real UI these are Streamlit controls. Here they are static so you can see layout and labels.</p>
+
+                <h4>Ongoing Workflows (example snippet)</h4>
+                <table class="help">
+                    <thead>
+                        <tr>
+                            <th>Workflow</th>
+                            <th>Patient</th>
+                            <th>Coordinator</th>
+                            <th>Started</th>
+                            <th>Completed Steps</th>
+                            <th>Total Steps</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Home Visit</td>
+                            <td>Alice Nguyen</td>
+                            <td>Your Name</td>
+                            <td>2025-11-19</td>
+                            <td>1</td>
+                            <td>4</td>
+                            <td>
+                                <span class="btn small" disabled>Open</span>
+                                <span class="btn small" disabled>Save Progress</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h4>Task Entry (example layout)</h4>
+                <div class="form-row">
+                    <div class="field">
+                        <label>Date</label>
+                        <div class="input disabled">2025-11-19</div>
+                    </div>
+                    <div class="field">
+                        <label>Patient</label>
+                        <div class="select disabled">Alice Nguyen</div>
+                    </div>
+                    <div class="field">
+                        <label>Task Type</label>
+                        <div class="select disabled">Phone Call</div>
+                    </div>
+                    <div class="field">
+                        <label>Duration (mins)</label>
+                        <div class="input disabled">15</div>
+                    </div>
+                </div>
+                <div class="field" style="max-width: 720px;">
+                    <label>Notes</label>
+                    <div class="textarea disabled">Spoke with POC-A to confirm appointment for next week.</div>
+                </div>
+                <div class="actions">
+                    <button class="btn" disabled>Log Task</button>
+                </div>
+
+                <style>
+                    .example { margin-top: 24px; }
+                    .note { color: #555; font-size: 13px; margin: 8px 0 16px; }
+                    .form-row { display: flex; gap: 16px; flex-wrap: wrap; }
+                    .field { display: flex; flex-direction: column; gap: 6px; min-width: 180px; }
+                    .input, .select, .textarea { border: 1px solid #ddd; border-radius: 6px; padding: 8px 10px; background: #fafafa; color: #666; }
+                    .textarea { min-height: 72px; }
+                    .disabled { opacity: 0.7; }
+                    .btn { display: inline-block; padding: 8px 12px; background: #f0f0f0; color: #333; border: 1px solid #ddd; border-radius: 6px; cursor: not-allowed; }
+                    .btn.small { padding: 6px 10px; font-size: 12px; }
+                </style>
+            </div>
+            """
+
+            components.html(help_html, height=1100, scrolling=True)
+
+            # Interactive Examples (real Streamlit widgets, read-only)
+            st.markdown("### Interactive Examples (Live Streamlit widgets, read-only)")
+
+            # Patient Panel — Live Example
+            with st.expander("Patient Panel — Live Example (Read-only)", expanded=True):
+                import pandas as pd
+                sample_df = pd.DataFrame([
+                    {
+                        "Status": "Active",
+                        "First Name": "Alice",
+                        "Last Name": "Nguyen",
+                        "Facility": "Sunrise Manor",
+                        "Provider Name": "Dr. Patel",
+                        "Provider's Last Visit Date": "2025-11-02",
+                        "Service Type": "Initial TV",
+                        "POC-A (Appt Contact)": "(702) 555-0142",
+                        "POC-M (Medical Contact)": "(702) 555-0199",
+                        "Mins": 57,
+                    }
+                ])
+                st.dataframe(sample_df, use_container_width=True)
+                st.caption("What it shows: the real panel columns and a sample row. How to use: sort/filter columns as needed in the actual panel; minutes are monthly and color-coded in the real view.")
+
+            # Workflow Manager — Quick Start (fields)
+            with st.expander("Workflow Manager — Quick Start (Read-only)", expanded=True):
+                import datetime
+                st.selectbox("Workflow Template", ["Home Visit", "Initial TV", "Follow-up"], index=0, disabled=True)
+                st.date_input("Start Date", datetime.date.today(), disabled=True)
+                st.selectbox("Patient", ["Alice Nguyen"], index=0, disabled=True, key="workflow_patient_selectbox")
+                st.selectbox("Coordinator", ["Your Name"], index=0, disabled=True)
+                st.button("Start Workflow", disabled=True)
+                st.caption("What it does: creates a workflow instance tied to a patient/coordinator with tracked steps. How to use: choose a template, confirm date/patient, then Start; progress appears in Ongoing Workflows.")
+
+            # Ongoing Workflows — Status Table
+            with st.expander("Ongoing Workflows — Status Table (Read-only)", expanded=False):
+                import pandas as pd
+                wf_df = pd.DataFrame([
+                    {
+                        "Workflow": "Home Visit",
+                        "Patient": "Alice Nguyen",
+                        "Coordinator": "Your Name",
+                        "Started": "2025-11-19",
+                        "Completed Steps": 1,
+                        "Total Steps": 4,
+                    }
+                ])
+                st.dataframe(wf_df, use_container_width=True)
+                st.caption("Actions in the real UI: Open (view and complete steps), Save Progress (log notes/minutes). Use to track progress and capture time.")
+
+            # Task Entry — Logging
+            with st.expander("Task Entry — Logging (Read-only)", expanded=False):
+                import datetime
+                st.date_input("Date", datetime.date.today(), disabled=True)
+                st.selectbox("Patient", ["Alice Nguyen"], index=0, disabled=True, key="task_entry_patient_selectbox")
+                st.selectbox("Task Type", ["Phone Call", "Chart Review", "Care Coordination"], index=0, disabled=True)
+                st.number_input("Duration (mins)", min_value=0, step=5, value=15, disabled=True)
+                st.text_area("Notes", "Spoke with POC-A to confirm appointment for next week.", disabled=True)
+                st.button("Log Task", disabled=True)
+                st.caption("What it does: records the activity to monthly summaries and minutes. How to use: pick date/patient/type, enter duration and notes, then Log Task in the real view.")
         # REMOVED: Onboarding queue statistics and onboarding tasks are not shown in care coordinator dashboard
 
 def show_coordinator_patient_list(user_id, context="default"):
@@ -484,6 +933,8 @@ def show_coordinator_patient_list(user_id, context="default"):
 
         # 'Mins' is now set directly in patient_data_list above
 
+        if 'current_facility_id' in patients_df.columns:
+            patients_df['current_facility_id'] = patients_df['current_facility_id'].astype(str)
         patients_df = patients_df.rename(columns=rename_map)
 
         # Make sure all required columns exist and in the right order
@@ -579,13 +1030,117 @@ def show_coordinator_patient_list(user_id, context="default"):
                 st.warning("Please fill in all fields for the task entry.")
         st.markdown("---")
     # (Workflow management UI removed; now handled in workflow_module.py)
-
+    
 def create_workflow_task(coordinator_id, patient_name, workflow_type, priority, notes, estimated_duration):
-    # Moved to workflow_utils.py
+    # Moved to workflow_utils.py - wrapper maintains old signature for compatibility
+    # Note: coordinator_id here is actually user_id in the old calling convention
     from src.utils.workflow_utils import create_workflow_task as _create_workflow_task
-    return _create_workflow_task(coordinator_id, patient_name, workflow_type, priority, notes, estimated_duration)
+    return _create_workflow_task(
+        user_id=coordinator_id,  # coordinator_id parameter is actually user_id
+        patient_name=patient_name,
+        workflow_type=workflow_type,
+        priority=priority,
+        notes=notes,
+        estimated_duration=estimated_duration
+    )
 
 def get_ongoing_workflows(user_id, user_role_ids=None):
     # Moved to workflow_utils.py
     from src.utils.workflow_utils import get_ongoing_workflows as _get_ongoing_workflows
     return _get_ongoing_workflows(user_id, user_role_ids)
+
+def show_patient_info_tab_coordinator(user_id):
+    try:
+        search_query = st.text_input("Search by name or ID", key="cc_patient_info_search")
+
+        # Check if user has admin role for edit access
+        has_admin_access = _has_admin_role(user_id)
+        
+        if has_admin_access:
+            edit_mode = st.checkbox("Enable editing", key="cc_patient_edit_mode")
+        else:
+            edit_mode = False
+            st.info("🔒 **View-Only Mode**: Patient info editing is restricted to administrators")
+
+        # Always use the full patient panel (admin-equivalent view)
+        patient_data_list = database.get_all_patient_panel() if hasattr(database, "get_all_patient_panel") else []
+
+        import pandas as pd
+        df = pd.DataFrame(patient_data_list)
+
+        if df.empty:
+            st.info("No patient data available.")
+            return
+
+        if "patient_id" not in df.columns:
+            df["patient_id"] = None
+
+        df["full_name"] = (df.get("first_name", "").fillna("") + " " + df.get("last_name", "").fillna("")).str.strip()
+
+        if search_query:
+            q = str(search_query).lower().strip()
+            df = df[df.apply(lambda r: q in str(r.get("patient_id", "")).lower() or q in str(r.get("full_name", "")).lower(), axis=1)]
+
+        from datetime import datetime
+        def _days_since(date_val):
+            try:
+                if pd.isna(date_val) or not str(date_val).strip():
+                    return None
+                return (datetime.now() - pd.to_datetime(date_val)).days
+            except Exception:
+                return None
+
+        possible_last_visit_cols = ['last_visit_date', 'last_visit', 'last_visit_dt', 'last_visit_at', 'last_visit_timestamp', 'most_recent_visit', 'last_visit_date_iso']
+        found_last = None
+        for c in possible_last_visit_cols:
+            if c in df.columns:
+                found_last = c
+                break
+        df["Last Visit Date"] = df[found_last] if found_last else None
+        df["days_since_last_visit"] = df.get("Last Visit Date").apply(_days_since)
+
+        display_cols = [
+            "patient_id",
+            "status",
+            "first_name",
+            "last_name",
+            "facility",
+            "Last Visit Date",
+            "service_type",
+            "phone_primary",
+        ]
+        existing_cols = [c for c in display_cols if c in df.columns]
+        df_display = df[existing_cols].copy()
+
+        
+        def _color_last_visit(val):
+            try:
+                d = _days_since(val)
+                if d is None:
+                    return ""
+                if d <= 30:
+                    return "background-color: #90be6d; color: black"
+                if d <= 60:
+                    return "background-color: #f9c74f; color: black"
+                return "background-color: #f94144; color: white"
+            except Exception:
+                return ""
+
+        # Display based on edit permissions
+        if edit_mode and has_admin_access:
+            # Show editable dataframe for admin users
+            edited_df = st.data_editor(df_display, use_container_width=True, hide_index=True, num_rows="dynamic", key="cc_patient_info_editor")
+            if edited_df is not None and not edited_df.equals(df_display):
+                _apply_patient_info_edits(edited_df, df_display)
+                st.success("Patient information updated successfully!")
+                st.rerun()
+        else:
+            # Show read-only dataframe for non-admin users
+            try:
+                styled = df_display.style.map(_color_last_visit, subset=["Last Visit Date"]) if "Last Visit Date" in df_display.columns else df_display.style
+                st.dataframe(styled, use_container_width=True)
+            except Exception:
+                st.dataframe(df_display, use_container_width=True)
+
+    except Exception as e:
+        st.error(f"Error in Patient Info tab: {e}")

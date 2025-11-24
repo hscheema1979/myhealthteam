@@ -4,27 +4,29 @@
 
 | Full Name             | Email                      | Coordinator Code | Provider Code | Alt Provider Code |
 | --------------------- | -------------------------- | ---------------- | ------------- | ----------------- |
-| Ethel Antonio         | ethel@myhealthteam.org     | ANTET000         | ZEN-ANT       | ZEN-ANE           |
-| Harpreet Cheema       | harpreet@myhealthteam.org  | CHEHA000         | ZEN-CHE       | ZEN-CHH           |
-| Eden Dabalus          | eden@myhealthteam.org      | DABED000         | ZEN-DAB       | ZEN-DAE           |
-| Genevieve Davis       | genevieve@myhealthteam.org | DAVGE000         | ZEN-DAV       | ZEN-DAG           |
-| Albert Diaz           | albert@myhealthteam.org    | DIAAL000         | ZEN-DIA       | ZEN-DIA           |
-| Jan Estomo            | jan@myhealthteam.org       | ESTJA000         | ZEN-EST       | ZEN-ESJ           |
-| Hector Hernandez      | hector@myhealthteam.org    | HERHE000         | ZEN-HER       | ZEN-HEH           |
-| Anisha Jackson        | anisha@myhealthteam.org    | JACAN000         | ZEN-JAA       | ZEN-JAA           |
-| Jaspreet Kaur         | jaspreet@myhealthteam.org  | KAUJA000         | ZEN-KAJ       | ZEN-KAJ           |
-| Justin Malhotra MD    | admin@myhealthteam.org     | MALJU000         | ZEN-MAL       | ZEN-MAJ           |
-| Sherwin Maningas      | sherwin@myhealthteam.org   | MANSH000         | ZEN-MAN       | ZEN-MAS           |
-| Cindy Mariano         | cindy@myhealthteam.org     | MARCI000         | ZEN-MAR       | ZEN-MAC           |
-| Dianela Medez         | dianela@myhealthteam.org   | MEDDI000         | ZEN-MED       | ZEN-MED           |
-| Claudia Melara        | claudia@myhealthteam.org   | MELCL000         | ZEN-MEL       | ZEN-MEC           |
-| Angela Otegbulu       | angela@myhealthteam.org    | OTEAN000         | ZEN-OTE       | ZEN-OTA           |
-| Jorge Perez           | jorge@myhealthteam.org     | PERJO000         | ZEN-PER       | ZEN-PEJ           |
-| Manuel Rios           | manuel@myhealthteam.org    | RIOMA000         | ZEN-RIO       | ZEN-RIM           |
-| Bianchi Sanchez       | bianchi@myhealthteam.org   | SANBI000         | ZEN-SAN       | ZEN-SAB           |
-| Jose Soberanis        | jose@myhealthteam.org      | SOBJO000         | ZEN-SOB       | ZEN-SOJ           |
-| Andrew Szalas NP      | andrews@myhealthteam.org   | SZAAN000         | ZEN-SZA       | ZEN-SZA           |
-| Lourdes Villasenor NP | lourdesv@myhealthteam.org  | VILLO000         | ZEN-VIL       | ZEN-VIL           |
+| Ethel Antonio         | ethel@myhealthteam.org     | ANTET000         | Antonio, Ethel    | Antonio, Ethel    |
+| Harpreet Cheema       | harpreet@myhealthteam.org  | CHEHA000         | Cheema, Harpreet | Cheema, Harpreet  |
+| Eden Dabalus          | eden@myhealthteam.org      | DABED000         | Dabalus, Eden    | Dabalus, Eden     |
+| Genevieve Davis       | genevieve@myhealthteam.org | DAVGE000         | Davis, Genevieve | Davis, Genevieve  |
+| Albert Diaz           | albert@myhealthteam.org    | DIAAL000         | Diaz, Albert     | Diaz, Albert      |
+| Jan Estomo            | jan@myhealthteam.org       | ESTJA000         | Estomo, Jan      | Estomo, Jan       |
+| Hector Hernandez      | hector@myhealthteam.org    | HERHE000         | Hernandez, Hector| Hernandez, Hector |
+| Anisha Jackson        | anisha@myhealthteam.org    | JACAN000         | Jackson, Anisha  | Jackson, Anisha   |
+| Jaspreet Kaur         | jaspreet@myhealthteam.org  | KAUJA000         | Kaur, Jaspreet   | Kaur, Jaspreet    |
+| Justin Malhotra MD    | admin@myhealthteam.org     | MALJU000         | Malhotra, Justin | Malhotra, Justin  |
+| Sherwin Maningas      | sherwin@myhealthteam.org   | MANSH000         | Maningas, Sherwin| Maningas, Sherwin |
+| Cindy Mariano         | cindy@myhealthteam.org     | MARCI000         | Mariano, Cindy   | Mariano, Cindy    |
+| Dianela Medez         | dianela@myhealthteam.org   | MEDDI000         | Medez, Dianela   | Medez, Dianela    |
+| Claudia Melara        | claudia@myhealthteam.org   | MELCL000         | Melara, Claudia  | Melara, Claudia   |
+| Angela Otegbulu       | angela@myhealthteam.org    | OTEAN000         | Otegbulu, Angela | Otegbulu, Angela  |
+| Jorge Perez           | jorge@myhealthteam.org     | PERJO000         | Perez, Jorge     | Perez, Jorge      |
+| Manuel Rios           | manuel@myhealthteam.org    | RIOMA000         | Rios, Manuel     | Rios, Manuel      |
+| Bianchi Sanchez       | bianchi@myhealthteam.org   | SANBI000         | Sanchez, Bianchi | Sanchez, Bianchi  |
+| Laura Sumpay CC       | laura@myhealthteam.org     | SUMLA000         | Sumpay, Laura    | Sumpay, Laura     |
+| Shirley Alter CC      | shirley@myhealthteam.org   | ALTSH000         | Alter, Shirley   | Alter, Shirley    |
+| Jose Soberanis        | jose@myhealthteam.org      | SOBJO000         | Soberanis, Jose  | Soberanis, Jose   |
+| Andrew Szalas NP      | andrews@myhealthteam.org   | SZAAN000         | Szalas, Andrew   | Szalas, Andrew    |
+| Lourdes Villasenor NP | lourdesv@myhealthteam.org  | VILLO000         | Villasenor, Lourdes | Villasenor, Lourdes |
 
 ## Table 2: Actual Staff Codes from Source Data
 

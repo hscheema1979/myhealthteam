@@ -62,6 +62,234 @@ def get_db_connection(db_path: str = None):
     conn.row_factory = sqlite3.Row
     return conn
 
+def ensure_user_sessions_table(conn: sqlite3.Connection = None):
+    close_conn = False
+    try:
+        if conn is None:
+            conn = get_db_connection()
+            close_conn = True
+        exists = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", ("user_sessions",)).fetchone()
+        if not exists:
+            conn.execute(
+                """
+                CREATE TABLE user_sessions (
+                    session_id TEXT PRIMARY KEY,
+                    user_id INTEGER NOT NULL,
+                    created_at TEXT,
+                    expires_at TEXT,
+                    last_activity TEXT
+                )
+                """
+            )
+            conn.commit()
+    finally:
+        if close_conn and conn:
+            conn.close()
+
+def create_user_session(user_id: int, days_valid: int = 30) -> str:
+    import uuid
+    from datetime import datetime, timedelta
+    conn = get_db_connection()
+    try:
+        ensure_user_sessions_table(conn)
+        sid = str(uuid.uuid4())
+        now = datetime.now()
+        expires = now + timedelta(days=days_valid)
+        conn.execute(
+            "INSERT INTO user_sessions(session_id, user_id, created_at, expires_at, last_activity) VALUES(?,?,?,?,?)",
+            (sid, user_id, now.isoformat(), expires.isoformat(), now.isoformat()),
+        )
+        conn.commit()
+        return sid
+    finally:
+        conn.close()
+
+def get_user_by_session(session_id: str):
+    from datetime import datetime
+    conn = get_db_connection()
+    try:
+        ensure_user_sessions_table(conn)
+        row = conn.execute(
+            "SELECT u.user_id, u.username, u.email, u.first_name, u.last_name, u.full_name, u.status, s.expires_at FROM user_sessions s JOIN users u ON s.user_id = u.user_id WHERE s.session_id = ?",
+            (session_id,),
+        ).fetchone()
+        if not row:
+            return None
+        expires_at = row['expires_at'] if 'expires_at' in row.keys() else row[7]
+        try:
+            if datetime.fromisoformat(expires_at) < datetime.now():
+                return None
+        except Exception:
+            pass
+        conn.execute("UPDATE user_sessions SET last_activity = ? WHERE session_id = ?", (datetime.now().isoformat(), session_id))
+        conn.commit()
+        return dict(row)
+    finally:
+        conn.close()
+
+def delete_user_session(session_id: str):
+    conn = get_db_connection()
+    try:
+        ensure_user_sessions_table(conn)
+        conn.execute("DELETE FROM user_sessions WHERE session_id = ?", (session_id,))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def ensure_monthly_coordinator_tasks_table(year: int = None, month: int = None, conn: sqlite3.Connection = None) -> str:
+    """Ensure the monthly coordinator_tasks table for given year/month exists with required columns.
+    - Creates the table if missing with full schema
+    - Adds missing columns (source_system, imported_at) if absent
+    Returns the table_name.
+    """
+    close_conn = False
+    try:
+        if conn is None:
+            conn = get_db_connection()
+            close_conn = True
+        if year is None or month is None:
+            now = pd.Timestamp.now()
+            year = int(year or now.year)
+            month = int(month or now.month)
+        table_name = f"coordinator_tasks_{year}_{str(month).zfill(2)}"
+        # Check existence
+        exists = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table_name,)).fetchone()
+        if not exists:
+            conn.execute(f"""
+                CREATE TABLE {table_name} (
+                    coordinator_task_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    task_id INT,
+                    patient_id TEXT,
+                    coordinator_id TEXT,
+                    task_date TEXT,
+                    duration_minutes INT,
+                    task_type TEXT,
+                    notes TEXT,
+                    source_system TEXT,
+                    imported_at TEXT
+                )
+            """)
+            conn.commit()
+        else:
+            # Verify required columns exist; add if missing
+            cols = conn.execute(f"PRAGMA table_info({table_name});").fetchall()
+            # Using Row factory, access by name if available, else by index
+            try:
+                col_names = {row['name'] for row in cols}
+            except Exception:
+                col_names = {row[1] for row in cols}
+            if 'source_system' not in col_names:
+                conn.execute(f"ALTER TABLE {table_name} ADD COLUMN source_system TEXT;")
+            if 'imported_at' not in col_names:
+                conn.execute(f"ALTER TABLE {table_name} ADD COLUMN imported_at TEXT;")
+            conn.commit()
+        return table_name
+    finally:
+        if close_conn and conn:
+            conn.close()
+
+
+def ensure_monthly_provider_tasks_table(year: int = None, month: int = None, conn: sqlite3.Connection = None) -> str:
+    """Ensure the monthly provider_tasks table for given year/month exists with required columns.
+    - Creates the table if missing with full schema
+    - Adds missing columns (source_system, imported_at) if absent
+    Returns the table_name.
+    """
+    close_conn = False
+    try:
+        if conn is None:
+            conn = get_db_connection()
+            close_conn = True
+        if year is None or month is None:
+            now = pd.Timestamp.now()
+            year = int(year or now.year)
+            month = int(month or now.month)
+        table_name = f"provider_tasks_{year}_{str(month).zfill(2)}"
+        # Check existence
+        exists = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table_name,)).fetchone()
+        if not exists:
+            conn.execute(f"""
+                CREATE TABLE {table_name} (
+                    provider_task_id INT,
+                    task_id INT,
+                    provider_id INT,
+                    provider_name TEXT,
+                    patient_name TEXT,
+                    user_id INT,
+                    patient_id TEXT,
+                    status TEXT,
+                    notes TEXT,
+                    minutes_of_service INT,
+                    billing_code_id INT,
+                    created_date NUM,
+                    updated_date NUM,
+                    task_date NUM,
+                    month INT,
+                    year INT,
+                    billing_code TEXT,
+                    billing_code_description TEXT,
+                    task_description TEXT,
+                    source_system TEXT,
+                    imported_at TEXT
+                )
+            """)
+            conn.commit()
+        else:
+            # Verify required columns exist; add if missing
+            cols = conn.execute(f"PRAGMA table_info({table_name});").fetchall()
+            try:
+                col_names = {row['name'] for row in cols}
+            except Exception:
+                col_names = {row[1] for row in cols}
+            if 'source_system' not in col_names:
+                conn.execute(f"ALTER TABLE {table_name} ADD COLUMN source_system TEXT;")
+            if 'imported_at' not in col_names:
+                conn.execute(f"ALTER TABLE {table_name} ADD COLUMN imported_at TEXT;")
+            conn.commit()
+        return table_name
+    finally:
+        if close_conn and conn:
+            conn.close()
+
+
+def get_monthly_task_tables(prefix: str, conn: sqlite3.Connection = None) -> list:
+    """Return a list of table names that start with the given prefix."""
+    close_conn = False
+    try:
+        if conn is None:
+            conn = get_db_connection()
+            close_conn = True
+        rows = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE ? ORDER BY name", (f"{prefix}%",)).fetchall()
+        return [row['name'] if 'name' in row.keys() else row[0] for row in rows]
+    finally:
+        if close_conn and conn:
+            conn.close()
+
+
+def count_completed_steps(instance_id: int, conn: sqlite3.Connection = None) -> int:
+    """Count completed workflow steps for an instance across all monthly coordinator_tasks tables."""
+    close_conn = False
+    try:
+        if conn is None:
+            conn = get_db_connection()
+            close_conn = True
+        tables = get_monthly_task_tables(prefix="coordinator_tasks_", conn=conn)
+        total = 0
+        for tn in tables:
+            try:
+                row = conn.execute(f"SELECT COUNT(1) as c FROM {tn} WHERE task_type LIKE ?", (f"WORKFLOW_STEP|{instance_id}|%",)).fetchone()
+                if row:
+                    c = row['c'] if 'c' in row.keys() else row[0]
+                    total += int(c or 0)
+            except Exception:
+                # If table missing or malformed, skip
+                pass
+        return total
+    finally:
+        if close_conn and conn:
+            conn.close()
+
 
 def normalize_patient_id(patient_id, conn=None):
     """Normalize patient_id into the new canonical string format: "Last First YYYY-MM-DD".
@@ -1130,12 +1358,13 @@ def save_daily_task(provider_id, patient_id, task_date, task_description, notes,
         # Normalize patient_id for storage and related lookups
         pid = normalize_patient_id(patient_id, conn=conn)
 
-        # Insert into provider_tasks_2025_09 table (monthly partitioned table)
-        conn.execute("""
-            INSERT INTO provider_tasks_2025_09
-            (provider_task_id, provider_id, patient_id, task_date, notes, minutes_of_service, task_description, billing_code_description, source_system, imported_at)
-            VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, 'DATA_ENTRY', CURRENT_TIMESTAMP)
-        """, (provider_id, pid, task_date, notes, duration_minutes, task_description, billing_code_description))
+        # Insert into monthly provider_tasks table dynamically
+        table_name = ensure_monthly_provider_tasks_table(conn=conn)
+        conn.execute(f"""
+            INSERT INTO {table_name}
+            (provider_id, patient_id, task_date, notes, minutes_of_service, task_description, billing_code, billing_code_description, source_system, imported_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'DATA_ENTRY', CURRENT_TIMESTAMP)
+        """, (provider_id, pid, task_date, notes, duration_minutes, task_description, billing_code_val, billing_code_description))
 
         # Also insert into tasks table for compatibility
         conn.execute("""
@@ -1704,6 +1933,10 @@ def transfer_onboarding_to_patient_table(onboarding_id):
         # First check if onboarding already has a valid patient_id
         if onboarding_dict.get('patient_id'):
             existing_patient = conn.execute("SELECT patient_id FROM patients WHERE patient_id = ?", (onboarding_dict['patient_id'],)).fetchone()
+            if existing_patient:
+                # Use the existing patient_id immediately and sync onboarding record
+                patient_id = existing_patient[0]
+                conn.execute("UPDATE onboarding_patients SET patient_id = ? WHERE onboarding_id = ?", (patient_id, onboarding_id))
         
         # If no existing patient found by patient_id, check for duplicates by name and DOB
         if not existing_patient:
@@ -2674,6 +2907,26 @@ def sync_onboarding_to_patient_panel(onboarding_id):
         cur.execute("PRAGMA table_info(patient_panel);")
         panel_cols = [r[1] for r in cur.fetchall()]
 
+        # Derive provider_name and coordinator_name from users table if IDs exist
+        provider_user_id = onboarding_dict.get('assigned_provider_user_id')
+        coordinator_user_id = onboarding_dict.get('assigned_coordinator_user_id')
+        provider_name = None
+        coordinator_name = None
+        if provider_user_id:
+            row = conn.execute("SELECT full_name FROM users WHERE user_id = ?", (provider_user_id,)).fetchone()
+            if row:
+                try:
+                    provider_name = row['full_name'] if isinstance(row, dict) else row[0]
+                except Exception:
+                    provider_name = row[0]
+        if coordinator_user_id:
+            row2 = conn.execute("SELECT full_name FROM users WHERE user_id = ?", (coordinator_user_id,)).fetchone()
+            if row2:
+                try:
+                    coordinator_name = row2['full_name'] if isinstance(row2, dict) else row2[0]
+                except Exception:
+                    coordinator_name = row2[0]
+
         # Mapping of onboarding data to patient_panel columns
         panel_data = {
             'patient_id': patient_id,
@@ -2694,8 +2947,10 @@ def sync_onboarding_to_patient_panel(onboarding_id):
             # CRITICAL MISSING FIELDS - Adding these now
             'facility': onboarding_dict.get('facility_assignment'),  # Map facility_assignment to facility
             'current_facility_id': onboarding_dict.get('facility_assignment'),  # Also map to current_facility_id
-            'provider_id': onboarding_dict.get('assigned_provider_user_id'),  # Map provider
-            'coordinator_id': onboarding_dict.get('assigned_coordinator_user_id'),  # Map coordinator
+            'provider_id': provider_user_id,  # Map provider
+            'coordinator_id': coordinator_user_id,  # Map coordinator
+            'provider_name': provider_name,
+            'coordinator_name': coordinator_name,
             'initial_tv_completed_date': onboarding_dict.get('tv_date'),  # Map TV date
             'initial_tv_provider': onboarding_dict.get('initial_tv_provider'),
             'assigned_coordinator_id': onboarding_dict.get('assigned_coordinator_user_id'),  # Legacy field

@@ -14,13 +14,140 @@ import numpy as np
 import calendar
 from datetime import datetime, timedelta
 from src.config.ui_style_config import TextStyle, SectionTitles, get_section_title, get_metric_label
-import streamlit as st
-from src.dashboards.phone_review import show_phone_review_entry
-import pandas as pd
-from src import database
-import numpy as np
-from datetime import datetime, timedelta
-from src.config.ui_style_config import TextStyle, SectionTitles, get_section_title, get_metric_label
+
+
+def _has_admin_role(user_id):
+    """Check if user has admin role (role_id 34) for edit permissions"""
+    try:
+        user_roles = database.get_user_roles_by_user_id(user_id)
+        user_role_ids = [r['role_id'] for r in user_roles]
+        return 34 in user_role_ids
+    except Exception:
+        return False
+
+
+def render_provider_help_examples():
+    st.markdown("### Interactive Examples (Live Streamlit widgets, read-only)")
+
+    # My Patients panel example (Annotated, side-by-side)
+    st.subheader("My Patients — Panel Example (Annotated)")
+    left, right = st.columns([2, 1])
+    with left:
+        sample_df = pd.DataFrame([
+            {
+                "Status": "Active",
+                "GOC": "Rev/Confirm",
+                "Code Status": "Full Code",
+                "First Name": "Ada",
+                "Last Name": "Lopez",
+                "Facility": "Autumn Ridge",
+                "Assigned Coordinator": "Sarah Johnson",
+                "Last Visit Date": "2025-10-28",
+                "Service Type": "PCP",
+                "Phone Number": "(555) 222-0102",
+            },
+            {
+                "Status": "Gap >60d",
+                "GOC": "Discuss",
+                "Code Status": "DNR",
+                "First Name": "Ben",
+                "Last Name": "Kim",
+                "Facility": "Summit Care",
+                "Assigned Coordinator": "Alex Rivera",
+                "Last Visit Date": "2025-09-01",
+                "Service Type": "PCP",
+                "Phone Number": "(555) 333-0145",
+            }
+        ])
+        # Style rows by Last Visit Date recency to match color legend
+        def _row_bg_color(date_str: str) -> str:
+            try:
+                d = pd.to_datetime(date_str).date()
+                days = (datetime.today().date() - d).days
+                if days <= 30:
+                    return "#d4edda"  # green-ish
+                elif days <= 60:
+                    return "#fff3cd"  # yellow-ish
+                else:
+                    return "#f8d7da"  # red-ish
+            except Exception:
+                return "#ffffff"
+        def _style_row(row):
+            color = _row_bg_color(row.get("Last Visit Date", ""))
+            return [f"background-color: {color}"] * len(row)
+        styled = sample_df.style.apply(_style_row, axis=1)
+        st.dataframe(styled, use_container_width=True)
+    with right:
+        st.markdown("- Status: current engagement or gaps.")
+        st.markdown("- GOC: Goals of Care status (Rev/Confirm/Discuss).")
+        st.markdown("- Code Status: resuscitation preference (e.g., Full, DNR).")
+        st.markdown("- Facility: where the patient resides.")
+        st.markdown("- Assigned Coordinator: point of contact.")
+        st.markdown("- Last Visit Date: recency drives color (green/yellow/red).")
+        st.markdown("- Service Type: e.g., PCP.")
+        st.markdown("- Phone Number: primary contact.")
+        st.caption("Row background colors: Green ≤30d, Yellow 31–60d, Red ≥61d since last visit. Blue badges appear in monthly minutes summaries (≥200 min).")
+
+    # Onboarding Queue example (Initial TV) — annotated
+    st.subheader("Onboarding Queue — Initial TV Visit (Annotated)")
+    left, right = st.columns([2, 1])
+    with left:
+        st.selectbox("Visit Type", ["Home Visit", "Telehealth Visit"], index=0, disabled=True)
+        st.date_input("Date", value=pd.to_datetime('today').date(), disabled=True)
+        st.text_area("Visit Notes", placeholder="Document visit details, response, concerns...", disabled=True)
+        st.multiselect("Mental Health Concerns", ["Anxiety", "Depression", "PTSD", "Substance Use"], default=["Anxiety"], disabled=True)
+        st.selectbox("Code Status", ["Full Code", "DNR"], index=0, disabled=True)
+        st.selectbox("Cognitive Function", ["Intact", "Mild Impairment", "Moderate", "Severe"], index=0, disabled=True)
+        st.selectbox("Functional Status", ["Independent", "Needs Assistance", "Dependent"], index=0, disabled=True)
+        st.selectbox("GOC", ["Rev/Confirm", "Discuss"], index=0, disabled=True)
+        st.text_area("Goals of Care", placeholder="Patient-centered goals...", disabled=True)
+        st.text_area("Active Concerns", placeholder="Primary issues to address...", disabled=True)
+        st.text_area("Active Specialists", placeholder="Cardiology, Endocrinology, etc.", disabled=True)
+        st.button("Complete Initial Visit (disabled)", disabled=True)
+    with right:
+        st.markdown("- Visit Type: Home vs Telehealth visit.")
+        st.markdown("- Date: when the initial visit occurred.")
+        st.markdown("- Visit Notes: summary of assessment and plan.")
+        st.markdown("- ER Visits/Hospitalizations (12 mo): captured in clinical section during intake.")
+        st.markdown("- Subjective Risk Level: provider's risk impression.")
+        st.markdown("- Mental Health Concerns: multi-select conditions.")
+        st.markdown("- Code Status/Cognitive/Functional: baseline profile.")
+        st.markdown("- GOC & Goals of Care: current status and narrative.")
+        st.markdown("- Active Concerns/Specialists: context for care coordination.")
+        st.caption("Completing the initial TV updates onboarding and patient records and removes patient from the queue.")
+
+    # Phone Reviews — annotated entry
+    st.subheader("Phone Reviews — Entry Form (Annotated)")
+    left, right = st.columns([2, 1])
+    with left:
+        st.selectbox("Task Type", ["Phone Review", "Follow-up Call"], index=0, disabled=True)
+        st.date_input("Date", pd.to_datetime('today').date(), disabled=True)
+        st.text_area("Notes", placeholder="Call summary, clinical updates, next steps...", disabled=True)
+        st.button("Log Task (disabled)", disabled=True)
+    with right:
+        st.markdown("- Task Type: choose appropriate call/review type.")
+        st.markdown("- Date: when the call took place.")
+        st.markdown("- Notes: key updates and future actions.")
+        st.markdown("- Validation: required fields enforced in live form.")
+        st.markdown("- Persistence: saved to provider_tasks for reporting.")
+
+    # Task Review — annotated summary
+    st.subheader("Task Review — Summary (Annotated)")
+    left, right = st.columns([2, 1])
+    with left:
+        df = pd.DataFrame([
+            {"Task": "PCP-Visit Home Visit (HV)", "Date": "2025-11-10", "Minutes": 45, "Status": "Completed", "Notes": "Initial HV completed"},
+            {"Task": "Phone Review", "Date": "2025-11-18", "Minutes": 15, "Status": "Queued", "Notes": "Call scheduled"}
+        ])
+        st.dataframe(df, use_container_width=True)
+        st.date_input("Filter: Date Range (disabled)", value=pd.to_datetime('today').date(), disabled=True)
+        st.multiselect("Filter: Task (disabled)", ["Phone Review", "PCP-Visit Home Visit (HV)"], default=["Phone Review"], disabled=True)
+        st.selectbox("Filter: Status (disabled)", ["Queued", "Completed"], index=0, disabled=True)
+        st.button("Export CSV (disabled)", disabled=True)
+    with right:
+        st.markdown("- Columns: Task, Date, Minutes, Status, Notes.")
+        st.markdown("- Filters: date/task/status to focus on subsets.")
+        st.markdown("- Export: download CSV for further analysis.")
 
 
 def show(user_id, user_role_ids=None):
@@ -40,7 +167,7 @@ def show(user_id, user_role_ids=None):
         
         # Create tabs with management functionality for CPM
         if onboarding_queue and len(onboarding_queue) > 0:
-            tab1, tab2, tab3, tab4, tab5 = st.tabs(["My Patients", "Team Management", "Onboarding Queue & Initial TV Visits", "Phone Reviews", "Task Review"])
+            tab1, tab2, tab3, tab4, tab5, tab_patient_info, tab_help = st.tabs(["My Patients", "Team Management", "Onboarding Queue & Initial TV Visits", "Phone Reviews", "Task Review", "Patient Info", "Help"])
             
             with tab1:
                 show_patient_list_section(user_id, section_id="cpm_patients_with_queue")
@@ -56,8 +183,40 @@ def show(user_id, user_role_ids=None):
                 
             with tab5:
                 show_task_review_section(user_id)
+            with tab_patient_info:
+                show_patient_info_tab_provider(user_id)
+            with tab_help:
+                st.header("Help")
+                st.markdown("This help uses real UI elements to explain what you see and how to act.")
+                st.subheader("Color Legend (Patient Activity)")
+                col1, col2, col3, col4 = st.columns(4)
+                with col1:
+                    st.success("Green: Seen in the last 30 days")
+                with col2:
+                    st.warning("Yellow: Seen 1–2 months ago")
+                with col3:
+                    st.error("Red: NOT seen in 2+ months")
+                with col4:
+                    st.info("Blue: ≥200 minutes this month")
+                st.caption("These colors appear in summaries and expanders to help triage quickly.")
+
+                st.subheader("My Patients")
+                st.markdown("- Filter and act on your assigned patients.\n- Common actions: Open Chart, Call Patient, Add Task.")
+                st.markdown("- Columns: Status, GOC, Code Status, First Name, Last Name, Facility, Assigned Coordinator, Last Visit Date, Service Type, Phone Number")
+
+                st.subheader("Onboarding Queue & Initial TV")
+                st.markdown("- Fields: Visit Type, Date, Visit Notes")
+                st.markdown("- Clinical fields: ER Visits (12 mo), Hospitalizations (12 mo), Subjective Risk Level, Mental Health Concerns (checkboxes), Code Status, Cognitive Function, Functional Status, GOC, Goals of Care, Active Concerns, Active Specialists")
+                st.markdown("- Action: Complete Initial Visit — updates onboarding and patient records")
+
+                st.subheader("Phone Reviews")
+                st.markdown("- Fields: Task Type, Date, Notes; validates required fields; saves to provider_tasks")
+
+                st.subheader("Task Review")
+                st.markdown("- Columns: Task, Date, Minutes, Status, Notes; Filters by date/task/status; CSV export")
+                render_provider_help_examples()
         else:
-            tab1, tab2, tab3, tab4 = st.tabs(["My Patients", "Team Management", "Phone Reviews", "Task Review"])
+            tab1, tab2, tab3, tab4, tab_patient_info, tab_help = st.tabs(["My Patients", "Team Management", "Phone Reviews", "Task Review", "Patient Info", "Help"])
             
             with tab1:
                 show_patient_list_section(user_id, section_id="cpm_patients_no_queue")
@@ -70,10 +229,54 @@ def show(user_id, user_role_ids=None):
                 
             with tab4:
                 show_task_review_section(user_id)
+            with tab_patient_info:
+                show_patient_info_tab_provider(user_id)
+            with tab_help:
+                st.header("Help")
+                st.subheader("Color Legend (Patient Activity)")
+                col1, col2, col3, col4 = st.columns(4)
+                with col1:
+                    st.success("Green: Seen in the last 30 days")
+                with col2:
+                    st.warning("Yellow: Seen 1–2 months ago")
+                with col3:
+                    st.error("Red: NOT seen in 2+ months")
+                with col4:
+                    st.info("Blue: ≥200 minutes this month")
+                st.subheader("Sections")
+                st.markdown("- My Patients: act on your panel.")
+                st.markdown("  • Columns: Status, GOC, Code Status, First Name, Last Name, Facility, Assigned Coordinator, Last Visit Date, Service Type, Phone Number")
+                st.markdown("- Onboarding Queue: initial TV visit tasks.")
+                st.markdown("  • Fields: Visit Type, Date, Visit Notes; Clinical: ER Visits, Hospitalizations, Subjective Risk, MH Concerns, Code Status, Cognitive, Functional, GOC, Goals of Care, Active Concerns, Specialists")
+                st.markdown("- Phone Reviews: structured entry forms.")
+                st.markdown("  • Fields: Task Type, Date, Notes; validation and save to provider_tasks")
+                st.markdown("- Task Review: filter and download tasks.")
+                st.markdown("  • Columns: Task, Date, Minutes, Status, Notes; CSV export")
+                render_provider_help_examples()
+            with tab_help:
+                st.header("Help")
+                st.subheader("Color Legend (Patient Activity)")
+                col1, col2, col3, col4 = st.columns(4)
+                with col1:
+                    st.success("Green: Seen in the last 30 days")
+                with col2:
+                    st.warning("Yellow: Seen 1–2 months ago")
+                with col3:
+                    st.error("Red: NOT seen in 2+ months")
+                with col4:
+                    st.info("Blue: ≥200 minutes this month")
+                st.subheader("Sections")
+                st.markdown("- My Patients: act on your panel.")
+                st.markdown("  • Columns: Status, GOC, Code Status, First Name, Last Name, Facility, Assigned Coordinator, Last Visit Date, Service Type, Phone Number")
+                st.markdown("- Phone Reviews: structured entry forms.")
+                st.markdown("  • Fields: Task Type, Date, Notes; validation and save to provider_tasks")
+                st.markdown("- Task Review: filter and download tasks.")
+                st.markdown("  • Columns: Task, Date, Minutes, Status, Notes; CSV export")
+                render_provider_help_examples()
     else:
         # Regular care provider tabs - include onboarding queue if they have assigned patients
         if onboarding_queue and len(onboarding_queue) > 0:
-            tab1, tab2, tab3, tab4 = st.tabs(["My Patients", "Onboarding Queue & Initial TV Visits", "Phone Reviews", "Task Review"])
+            tab1, tab2, tab3, tab4, tab_patient_info, tab_help = st.tabs(["My Patients", "Onboarding Queue & Initial TV Visits", "Phone Reviews", "Task Review", "Patient Info", "Help"])
             
             with tab1:
                 show_patient_list_section(user_id, section_id="cp_patients_with_queue")
@@ -86,8 +289,41 @@ def show(user_id, user_role_ids=None):
                 
             with tab4:
                 show_task_review_section(user_id)
+            with tab_patient_info:
+                show_patient_info_tab_provider(user_id)
+            with tab_help:
+                st.header("Help")
+                st.markdown("This help uses real UI elements to explain what you see and how to act.")
+                st.subheader("Color Legend (Patient Activity)")
+                col1, col2, col3, col4 = st.columns(4)
+                with col1:
+                    st.success("Green: Seen in the last 30 days")
+                with col2:
+                    st.warning("Yellow: Seen 1–2 months ago")
+                with col3:
+                    st.error("Red: NOT seen in 2+ months")
+                with col4:
+                    st.info("Blue: ≥200 minutes this month")
+                st.caption("These colors appear in summaries and expanders to help triage quickly.")
+
+                st.subheader("My Patients")
+                st.markdown("- Filter and act on your assigned patients.\n- Common actions: Open Chart, Call Patient, Add Task.")
+                st.markdown("- Columns: Status, GOC, Code Status, First Name, Last Name, Facility, Assigned Coordinator, Last Visit Date, Service Type, Phone Number")
+
+                st.subheader("Onboarding Queue & Initial TV")
+                st.markdown("- Patients assigned for initial visits. Completing the visit updates onboarding and patient records.")
+                st.markdown("- Fields: Visit Type, Date, Visit Notes")
+                st.markdown("- Clinical fields: ER Visits (12 mo), Hospitalizations (12 mo), Subjective Risk Level, Mental Health Concerns (checkboxes), Code Status, Cognitive Function, Functional Status, GOC, Goals of Care, Active Concerns, Active Specialists")
+                st.markdown("- Action: Complete Initial Visit — updates onboarding and patient records")
+
+                st.subheader("Phone Reviews")
+                st.markdown("- Fields: Task Type, Date, Notes; validates required fields; saves to provider_tasks")
+
+                st.subheader("Task Review")
+                st.markdown("- Columns: Task, Date, Minutes, Status, Notes; Filters by date/task/status; CSV export")
+                render_provider_help_examples()
         else:
-            tab1, tab2, tab3 = st.tabs(["My Patients", "Phone Reviews", "Task Review"])
+            tab1, tab2, tab3, tab_patient_info, tab_help = st.tabs(["My Patients", "Phone Reviews", "Task Review", "Patient Info", "Help"])
             
             with tab1:
                 show_patient_list_section(user_id, section_id="cp_patients")
@@ -97,6 +333,22 @@ def show(user_id, user_role_ids=None):
                 
             with tab3:
                 show_task_review_section(user_id)
+            with tab_patient_info:
+                show_patient_info_tab_provider(user_id)
+            with tab_help:
+                st.header("Help")
+                st.subheader("Color Legend (Patient Activity)")
+                col1, col2, col3, col4 = st.columns(4)
+                with col1:
+                    st.success("Green: Seen in the last 30 days")
+                with col2:
+                    st.warning("Yellow: Seen 1–2 months ago")
+                with col3:
+                    st.error("Red: NOT seen in 2+ months")
+                with col4:
+                    st.info("Blue: ≥200 minutes this month")
+                st.subheader("Sections")
+                st.markdown("- My Patients: act on your panel.\n- Phone Reviews: structured entry forms.\n- Task Review: filter and download tasks.")
 
 def show_patient_list_section(user_id, section_id=None):
 
@@ -867,6 +1119,148 @@ def show_unfiltered_patient_summary(patients_list=None, height=900):
             st.write("Unable to render patient table.")
 
 
+def show_patient_info_tab_provider(user_id):
+    try:
+        search_query = st.text_input("Search by name or ID", key="cp_patient_info_search")
+
+        # Check if user has admin role for edit access
+        has_admin_access = _has_admin_role(user_id)
+        
+        if has_admin_access:
+            edit_mode = st.checkbox("Enable editing", key="cp_patient_edit_mode")
+        else:
+            edit_mode = False
+            st.info("🔒 **View-Only Mode**: Patient info editing is restricted to administrators")
+
+        # Always use the full patient panel (admin-equivalent view)
+        patient_data_list = database.get_all_patient_panel() if hasattr(database, "get_all_patient_panel") else []
+
+        import pandas as pd
+        df = pd.DataFrame(patient_data_list)
+
+        if df.empty:
+            st.info("No patient data available.")
+            return
+
+        if "patient_id" not in df.columns:
+            df["patient_id"] = None
+
+        df["full_name"] = (df.get("first_name", "").fillna("") + " " + df.get("last_name", "").fillna("")).str.strip()
+
+        if search_query:
+            q = str(search_query).lower().strip()
+            df = df[df.apply(lambda r: q in str(r.get("patient_id", "")).lower() or q in str(r.get("full_name", "")).lower(), axis=1)]
+
+        from datetime import datetime
+        def _days_since(date_val):
+            try:
+                if pd.isna(date_val) or not str(date_val).strip():
+                    return None
+                return (datetime.now() - pd.to_datetime(date_val)).days
+            except Exception:
+                return None
+
+        # Normalize last visit date to consistent column
+        possible_last_visit_cols = ['last_visit_date', 'last_visit', 'last_visit_dt', 'last_visit_at', 'last_visit_timestamp', 'most_recent_visit', 'last_visit_date_iso']
+        found_last = None
+        for c in possible_last_visit_cols:
+            if c in df.columns:
+                found_last = c
+                break
+        df["Last Visit Date"] = df[found_last] if found_last else None
+        df["days_since_last_visit"] = df.get("Last Visit Date").apply(_days_since)
+
+        display_cols = [
+            "patient_id",
+            "status",
+            "first_name",
+            "last_name",
+            "facility",
+            "Last Visit Date",
+            "service_type",
+            "phone_primary",
+        ]
+        existing_cols = [c for c in display_cols if c in df.columns]
+        df_display = df[existing_cols].copy()
+
+        
+        def _color_last_visit(val):
+            try:
+                d = _days_since(val)
+                if d is None:
+                    return ""
+                if d <= 30:
+                    return "background-color: #90be6d; color: black"
+                if d <= 60:
+                    return "background-color: #f9c74f; color: black"
+                return "background-color: #f94144; color: white"
+            except Exception:
+                return ""
+
+        # Display based on edit permissions
+        if edit_mode and has_admin_access:
+            # Show editable dataframe for admin users
+            edited_df = st.data_editor(df_display, use_container_width=True, hide_index=True, num_rows="dynamic", key="cp_patient_info_editor")
+            if edited_df is not None and not edited_df.equals(df_display):
+                _apply_patient_info_edits(edited_df, df_display)
+                st.success("Patient information updated successfully!")
+                st.rerun()
+        else:
+            # Show read-only dataframe for non-admin users
+            try:
+                styled = df_display.style.map(_color_last_visit, subset=["Last Visit Date"]) if "Last Visit Date" in df_display.columns else df_display.style
+                st.dataframe(styled, use_container_width=True)
+            except Exception:
+                st.dataframe(df_display, use_container_width=True)
+
+    except Exception as e:
+        st.error(f"Error in Patient Info tab: {e}")
+
+def _apply_patient_info_edits(edited_df, original_df):
+    import pandas as pd
+    if edited_df is None or original_df is None:
+        return
+    if "patient_id" not in edited_df.columns:
+        return
+    original_by_id = {str(r["patient_id"]): r for _, r in original_df.iterrows() if pd.notna(r.get("patient_id"))}
+    conn = database.get_db_connection()
+    try:
+        for _, row in edited_df.iterrows():
+            pid = str(row.get("patient_id"))
+            if not pid or pid not in original_by_id:
+                continue
+            orig = original_by_id[pid]
+            changed = {}
+            for col in edited_df.columns:
+                if col == "patient_id":
+                    continue
+                if str(row.get(col)) != str(orig.get(col)):
+                    changed[col] = row.get(col)
+            if not changed:
+                continue
+            patient_cols = [c[1] for c in conn.execute("PRAGMA table_info('patients')").fetchall()]
+            set_parts = []
+            params = []
+            for k, v in changed.items():
+                if k in patient_cols:
+                    set_parts.append(f"{k} = ?")
+                    params.append(v)
+            if set_parts:
+                params.append(pid)
+                conn.execute(f"UPDATE patients SET {', '.join(set_parts)}, updated_date = CURRENT_TIMESTAMP WHERE patient_id = ?", tuple(params))
+            panel_cols = [c[1] for c in conn.execute("PRAGMA table_info('patient_panel')").fetchall()]
+            set_parts = []
+            params = []
+            for k, v in changed.items():
+                if k in panel_cols:
+                    set_parts.append(f"{k} = ?")
+                    params.append(v)
+            if set_parts:
+                params.append(pid)
+                conn.execute(f"UPDATE patient_panel SET {', '.join(set_parts)}, updated_date = CURRENT_TIMESTAMP WHERE patient_id = ?", tuple(params))
+        conn.commit()
+    finally:
+        conn.close()
 def show_provider_onboarding_queue(user_id, onboarding_queue):
     """Display the provider's onboarding queue for initial visits"""
     st.subheader("Onboarding Queue & Initial Visits")

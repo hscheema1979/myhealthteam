@@ -1,0 +1,2 @@
+.read scripts/outputs/generated_production_task_views.sql
+.read scripts/compare_production_vs_staging.sql

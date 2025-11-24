@@ -1,0 +1,562 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Provider Dashboard Help (Standalone HTML)</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <style>
+    /* Color legend styles */
+    .legend-card { border-left-width: 6px; }
+    .legend-green { border-left-color: #28a745; }
+    .legend-yellow { border-left-color: #ffc107; }
+    .legend-red { border-left-color: #dc3545; }
+    .legend-blue { border-left-color: #0d6efd; }
+
+    /* Table row backgrounds to mirror recency */
+    .row-green { background-color: #d4edda; }
+    .row-yellow { background-color: #fff3cd; }
+    .row-red { background-color: #f8d7da; }
+
+    /* Name-specific highlight to match dashboard behavior */
+    .name-highlight { font-weight: 600; padding: 0.1rem 0.3rem; border-radius: 0.25rem; }
+    .name-green { background-color: #d4edda; color: #155724; }
+    .name-yellow { background-color: #fff3cd; color: #856404; }
+    .name-red { background-color: #f8d7da; color: #721c24; }
+
+    .help-note { font-size: 0.9rem; color: #6c757d; }
+    .section-divider { margin: 2rem 0 1rem; padding-top: 1rem; border-top: 1px solid #dee2e6; }
+    .disabled-btn { pointer-events: none; opacity: 0.65; }
+    .table thead th { white-space: nowrap; }
+
+    /* Responsive view scale (default 90%) */
+    :root { --help-scale: 1; }
+    body { font-size: calc(1rem * var(--help-scale)); }
+    .table { font-size: calc(0.95rem * var(--help-scale)); }
+    .table td, .table th { padding: calc(0.5rem * var(--help-scale)); }
+    .list-group-item, .help-note, .form-control, .form-select, .label-inline, .badge { font-size: calc(0.95rem * var(--help-scale)); }
+
+    /* Print styles: enforce US Letter and preserve colors */
+    @media print {
+      @page { size: Letter; margin: 0.5in; }
+      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .name-highlight { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .card, .section-divider { break-inside: avoid; page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body class="container-fluid py-4">
+  <header class="mb-4">
+    <h1 class="h3">Provider Dashboard Help — Standalone HTML</h1>
+    <p class="text-muted mb-0">This page shows the actual elements side-by-side with plain-English explanations. No Streamlit here — pure HTML/CSS for review. We will integrate this into the app once you confirm it’s correct.</p>
+  </header>
+  <div class="d-flex align-items-center gap-2 mb-3">
+    <strong>View scale:</strong>
+    <div class="btn-group btn-group-sm" role="group">
+      <!-- removed view scale controls per user request -->
+    </div>
+  </div>
+
+  <!-- Color Legend -->
+  <section>
+    <h2 class="h5">Color Legend (Patient Activity)</h2>
+    <div class="row g-3">
+      <div class="col-md-3">
+        <div class="card legend-card legend-green">
+          <div class="card-body py-2">
+            <strong>Green</strong>: Seen in the last 30 days
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card legend-card legend-yellow">
+          <div class="card-body py-2">
+            <strong>Yellow</strong>: Seen 1–2 months ago
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card legend-card legend-red">
+          <div class="card-body py-2">
+            <strong>Red</strong>: NOT seen in 2+ months
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card legend-card legend-blue">
+          <div class="card-body py-2">
+            <strong>Blue</strong>: ≥200 minutes this month
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- My Patients -->
+  <section class="section-divider">
+    <h2 class="h5 mb-3">My Patients — Panel</h2>
+    <div class="row">
+      <div class="col-lg-8">
+        <div class="table-responsive">
+          <table class="table table-sm table-bordered align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Status</th>
+                <th>GOC</th>
+                <th>Code Status</th>
+                <th>First Name</th>
+                <th>Last Name</th>
+                <th>Facility</th>
+                <th>Assigned Coordinator</th>
+                <th>Last Visit Date</th>
+                <th>Service Type</th>
+                <th>Phone Number</th>
+                <th>Minutes (This Month)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="row-green">
+                <td>Active</td>
+                <td>Rev/Confirm</td>
+                <td>Full Code</td>
+                <td><span class="name-highlight name-green">Ada</span></td>
+              <td><span class="name-highlight name-green">Lopez</span></td>
+                <td>Autumn Ridge</td>
+                <td>Sarah Johnson</td>
+                <td>2025-10-28</td>
+                <td>PCP</td>
+                <td>(555) 222-0102</td>
+                <td><span class="badge bg-primary">220</span></td>
+              </tr>
+              <tr class="row-yellow">
+                <td>Active</td>
+                <td>Discuss</td>
+                <td>DNR</td>
+                <td><span class="name-highlight name-yellow">Ben</span></td>
+              <td><span class="name-highlight name-yellow">Kim</span></td>
+                <td>Summit Care</td>
+                <td>Alex Rivera</td>
+                <td>2025-09-28</td>
+                <td>PCP</td>
+                <td>(555) 333-0145</td>
+                <td><span class="badge bg-secondary">140</span></td>
+              </tr>
+              <tr class="row-red">
+                <td>Gap &gt;60d</td>
+                <td>Discuss</td>
+                <td>DNR</td>
+                <td><span class="name-highlight name-red">Carla</span></td>
+              <td><span class="name-highlight name-red">Nguyen</span></td>
+                <td>Sunset Home</td>
+                <td>Jamie Lee</td>
+                <td>2025-08-20</td>
+                <td>PCP</td>
+                <td>(555) 444-0199</td>
+                <td><span class="badge bg-secondary">95</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="col-lg-4">
+        <div class="list-group mb-2">
+          <div class="list-group-item">
+            <strong>Status:</strong> Current engagement or gaps.
+          </div>
+          <div class="list-group-item">
+            <strong>GOC:</strong> Goals of Care status (Rev/Confirm/Discuss).
+          </div>
+          <div class="list-group-item">
+            <strong>Code Status:</strong> Resuscitation preference (e.g., Full, DNR).
+          </div>
+          <div class="list-group-item">
+            <strong>Facility:</strong> Where the patient resides.
+          </div>
+          <div class="list-group-item">
+            <strong>Assigned Coordinator:</strong> Primary point of contact.
+          </div>
+          <div class="list-group-item">
+            <strong>Last Visit Date:</strong> Drives color: Green ≤30d, Yellow 31–60d, Red ≥61d.
+          </div>
+          <div class="list-group-item">
+            <strong>Service Type:</strong> e.g., PCP.
+          </div>
+          <div class="list-group-item">
+            <strong>Phone Number:</strong> Primary contact.
+          </div>
+          <div class="list-group-item">
+            <strong>Minutes (Blue badge):</strong> Monthly minutes; blue indicates ≥200.
+          </div>
+        </div>
+        <p class="help-note">Sorting and filtering in the real panel help triage gaps; coordinate with the assigned coordinator for actions.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Onboarding Queue & Initial TV Visit -->
+  <section class="section-divider">
+    <h2 class="h5 mb-3">Onboarding Queue & Initial TV Visit</h2>
+    <div class="row g-3">
+      <div class="col-lg-8">
+        <div class="section-card">
+          <div class="row">
+            <div class="col-md-7">
+              <h4>Onboarding Queue & Initial TV Visit</h4>
+              <form>
+                <div class="mb-3">
+                  <label class="label-inline">Visit Type
+                    <span class="label-help" data-bs-toggle="tooltip" title="Clinical purpose of the visit (e.g., Initial TV, Intake Follow-up, Care Plan Review).">?</span>
+                  </label>
+                  <select class="form-select">
+                    <option>Initial TV</option>
+                    <option>Intake Follow-up</option>
+                    <option>Care Plan Review</option>
+                  </select>
+                  <div class="form-help">Select the visit classification used for onboarding and documentation.</div>
+                </div>
+
+                <div class="mb-3">
+                  <label class="label-inline">Modality
+                    <span class="label-help" data-bs-toggle="tooltip" title="Whether the visit was in-person (Home Visit) or remote (Telehealth).">?</span>
+                  </label>
+                  <select class="form-select">
+                    <option>Home Visit</option>
+                    <option>Telehealth</option>
+                  </select>
+                  <div class="form-help">Use Modality to distinguish in-person vs remote visits; Visit Type captures purpose.</div>
+                </div>
+
+                <div class="mb-3">
+                  <label class="label-inline">Date
+                    <span class="label-help" data-bs-toggle="tooltip" title="The actual date the visit occurred (mm/dd/yyyy).">?</span>
+                  </label>
+                  <input type="date" class="form-control" value="2025-11-21">
+                  <div class="form-help">Enter the completion date of the visit, not the documentation date.</div>
+                </div>
+
+                <div class="mb-3">
+                  <label class="label-inline">Visit Notes
+                    <span class="label-help" data-bs-toggle="tooltip" title="Clinical narrative: assessment, response, concerns, and plan.">?</span>
+                  </label>
+                  <textarea class="form-control" rows="3" placeholder="Summary of assessment and plan; key findings; next steps..."></textarea>
+                  <div class="form-help">Include assessment findings, interventions, patient response, and plan.</div>
+                </div>
+                <div class="alert alert-info p-2 mt-2">
+                  <strong>Notes — What to write:</strong>
+                  <ul class="mb-0">
+                    <li>Reason for visit and context (e.g., intake, care plan review).</li>
+                    <li>Key findings: code/cognitive/functional, mental health concerns, major issues.</li>
+                    <li>Interventions/orders and education/counseling provided.</li>
+                    <li>Risk rationale for chosen Subjective Risk Level.</li>
+                    <li>Follow-ups, referrals, and next steps.</li>
+                  </ul>
+                  <div class="small text-muted mt-1">Example: "Initial TV (Telehealth). Confirmed DNR; cognitive intact; independent ADLs. Reviewed meds; counseled on fall risks. Risk: Moderate due to 1 ER visit in 12 mo. Plan: home visit in 2 weeks; refer to PT; coordinator to schedule."</div>
+                </div>
+
+                <div class="row">
+                  <div class="col-md-6">
+                    <div class="mb-2">
+                      <div class="label-inline">Mental Health Concerns
+                        <span class="label-help" data-bs-toggle="tooltip" title="Mark relevant conditions impacting care planning.">?</span>
+                      </div>
+                      <div class="form-check"><input class="form-check-input" type="checkbox" id="mh-anx"><label class="form-check-label" for="mh-anx">Anxiety</label></div>
+                      <div class="form-check"><input class="form-check-input" type="checkbox" id="mh-dep"><label class="form-check-label" for="mh-dep">Depression</label></div>
+                      <div class="form-check"><input class="form-check-input" type="checkbox" id="mh-ptsd"><label class="form-check-label" for="mh-ptsd">PTSD</label></div>
+                      <div class="form-check"><input class="form-check-input" type="checkbox" id="mh-sub"><label class="form-check-label" for="mh-sub">Substance Use</label></div>
+                      <div class="form-help">Multi-select all applicable; use clinical judgment for suspected vs confirmed.</div>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="mb-2">
+                      <label class="label-inline">Code Status
+                        <span class="label-help" data-bs-toggle="tooltip" title="Resuscitation preference documented in chart.">?</span>
+                      </label>
+                      <select class="form-select">
+                        <option>Full Code</option>
+                        <option>DNR</option>
+                        <option>DNI</option>
+                        <option>POLST — see chart</option>
+                      </select>
+                      <div class="form-help">If uncertain, use "Unknown/Review needed" and follow up.</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="row">
+                  <div class="col-md-6">
+                    <div class="mb-2">
+                      <label class="label-inline">Cognitive Function
+                        <span class="label-help" data-bs-toggle="tooltip" title="Baseline cognition (e.g., intact, mild impairment).">?</span>
+                      </label>
+                      <input type="text" class="form-control" placeholder="e.g., Intact; oriented x3">
+                      <div class="form-help">Brief descriptor; add screening scores if available.</div>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="mb-2">
+                      <label class="label-inline">Functional Status
+                        <span class="label-help" data-bs-toggle="tooltip" title="Baseline ADLs/IADLs independence.">?</span>
+                      </label>
+                      <input type="text" class="form-control" placeholder="e.g., Independent with ADLs; needs help with IADLs">
+                      <div class="form-help">Summarize ADLs vs IADLs as appropriate.</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="row">
+                  <div class="col-md-6">
+                    <div class="mb-2">
+                      <label class="label-inline">GOC Status (Goals of Care)
+                        <span class="label-help" data-bs-toggle="tooltip" title="Status of goals of care discussion and documentation.">?</span>
+                      </label>
+                      <select class="form-select">
+                        <option>New</option>
+                        <option>Revise</option>
+                        <option>Confirm</option>
+                        <option>Established</option>
+                        <option>Needs Review</option>
+                      </select>
+                      <div class="form-help">Use Confirm when existing goals are reviewed and affirmed; Revise when changes are needed.</div>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="mb-2">
+                      <label class="label-inline">Subjective Risk Level
+                        <span class="label-help" data-bs-toggle="tooltip" title="Provider risk impression (Low/Moderate/High/Critical).">?</span>
+                      </label>
+                      <select class="form-select">
+                        <option>Low</option>
+                        <option>Moderate</option>
+                        <option>High</option>
+                        <option>Critical</option>
+                      </select>
+                      <div class="form-help">Consider ER/hospital use, MH, social determinants, adherence.</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="mb-2">
+                  <label class="label-inline">Goals of Care (Narrative)
+                    <span class="label-help" data-bs-toggle="tooltip" title="Patient-centered goals guiding the care plan.">?</span>
+                  </label>
+                  <textarea class="form-control" rows="2" placeholder="Patient goals, priorities, preferences..."></textarea>
+                  <div class="form-help">Concise, specific, actionable statements.</div>
+                </div>
+
+                <div class="mb-2">
+                  <label class="label-inline">Active Concerns
+                    <span class="label-help" data-bs-toggle="tooltip" title="Primary issues to address (medical, functional, psychosocial).">?</span>
+                  </label>
+                  <textarea class="form-control" rows="2" placeholder="Prioritized concerns to address..."></textarea>
+                  <div class="form-help">List current issues and prioritize as needed.</div>
+                </div>
+
+                <div class="mb-2">
+                  <label class="label-inline">Active Specialists
+                    <span class="label-help" data-bs-toggle="tooltip" title="Specialists currently involved (e.g., Cardiology, Endocrinology).">?</span>
+                  </label>
+                  <textarea class="form-control" rows="2" placeholder="Specialty, provider name, contact, last visit..."></textarea>
+                  <div class="form-help">Record specialty, provider contact, and relevance.</div>
+                </div>
+
+                <div class="row">
+                  <div class="col-md-6">
+                    <div class="mb-2">
+                      <label class="label-inline">ER Visits/Hospitalizations (12 mo)
+                        <span class="label-help" data-bs-toggle="tooltip" title="Utilization history in the last 12 months.">?</span>
+                      </label>
+                      <input type="number" class="form-control" min="0" step="1" value="0">
+                      <div class="form-help">Enter the count; optional details below.</div>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="mb-2">
+                      <label class="label-inline">Utilization Details
+                        <span class="label-help" data-bs-toggle="tooltip" title="Optional dates, reasons, and facilities for ER/hospitalizations.">?</span>
+                      </label>
+                      <textarea class="form-control" rows="2" placeholder="Dates, reasons, facilities..."></textarea>
+                      <div class="form-help">Provide context to inform risk and planning.</div>
+                    </div>
+                  </div>
+                </div>
+
+                <button type="button" class="btn btn-primary" disabled>Schedule Visit</button>
+                <div class="disabled-note">Completing the initial TV updates onboarding/patient records and removes the patient from the queue. This button is disabled on the help page.</div>
+              </form>
+            </div>
+            <div class="col-md-5 help-col">
+              <div class="sticky-help">
+                <div class="help-title">Field Explanations</div>
+                <ul class="help-list">
+                  <li>Visit Type: Clinical purpose (Initial TV, Intake Follow-up, Care Plan Review).</li>
+                  <li>Modality: In-person Home Visit vs Telehealth; separate from Visit Type.</li>
+                  <li>Date: When the visit occurred; drives recency/overdue logic.</li>
+                  <li>Visit Notes: Clinical narrative: assessment, response, and plan.</li>
+                  <li>Mental Health: Multi-select relevant conditions impacting care.</li>
+                  <li>Code Status: Resuscitation preference documented in chart.</li>
+                  <li>Cognitive/Functional: Baseline profiles guiding communication and services.</li>
+                  <li>GOC Status: New/Revise/Confirm/Established/Needs Review vocabulary.</li>
+                  <li>Subjective Risk Level: Low/Moderate/High/Critical based on provider impression.</li>
+                  <li>Goals of Care: Patient-centered goals for the care plan.</li>
+                  <li>Active Concerns: Prioritized issues to address.</li>
+                  <li>Active Specialists: Current specialist involvement and contacts.</li>
+                  <li>ER/Hospitalizations (12 mo): Count and optional details; informs risk.</li>
+                  <li>Schedule Visit: In live app, saves and removes from onboarding queue when Initial TV complete.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-4">
+        <div class="list-group">
+          <div class="list-group-item"><strong>ER Visits/Hospitalizations (12 mo):</strong> Captured during intake.</div>
+          <div class="list-group-item"><strong>Subjective Risk Level:</strong> Provider's risk impression.</div>
+          <div class="list-group-item"><strong>Code/Cognitive/Functional:</strong> Baseline profile.</div>
+          <div class="list-group-item"><strong>GOC & Goals of Care:</strong> Status and narrative.</div>
+          <div class="list-group-item"><strong>Active Concerns/Specialists:</strong> Context for care coordination.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Phone Reviews -->
+  <section class="section-divider">
+    <h2 class="h5 mb-3">Phone Reviews — Entry Form</h2>
+    <div class="row g-3">
+      <div class="col-lg-8">
+        <form>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Task Type</label>
+              <select class="form-select">
+                <option selected>Phone Review</option>
+                <option>Follow-up Call</option>
+              </select>
+              <div class="help-note">Choose appropriate call/review type.</div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Date</label>
+              <input type="date" class="form-control" />
+              <div class="help-note">When the call took place.</div>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Notes</label>
+              <textarea class="form-control" rows="3" placeholder="Call summary, clinical updates, next steps..."></textarea>
+              <div class="help-note">Key updates and future actions.</div>
+              <div class="alert alert-info p-2 mt-2">
+                <strong>Phone Review Notes — What to write:</strong>
+                <ul class="mb-0">
+                  <li>Call purpose and context.</li>
+                  <li>Symptoms/updates, medication adherence/issues.</li>
+                  <li>Actions taken (advice, orders, coordination initiated).</li>
+                  <li>Next steps (appointments, referrals, monitoring plan).</li>
+                </ul>
+                <div class="small text-muted mt-1">Example: "Follow-up call re: BP and dizziness. Adherent to meds; reports intermittent dizziness when standing. Advised orthostatic precautions; coordinator to schedule PCP tele-visit. Plan: monitor BP daily; call if worsening."</div>
+              </div>
+            </div>
+            <div class="col-12">
+              <button type="button" class="btn btn-success disabled-btn">Log Task (disabled)</button>
+              <div class="help-note">Required fields are validated in the live form. Saved to provider_tasks for reporting.</div>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="col-lg-4">
+        <ul class="list-group">
+          <li class="list-group-item"><strong>Validation:</strong> Required fields enforced.</li>
+          <li class="list-group-item"><strong>Persistence:</strong> Saved to provider_tasks for reporting.</li>
+          <li class="list-group-item"><strong>Use Case:</strong> Document tele-visit phone reviews and follow-ups.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- Task Review -->
+  <section class="section-divider">
+    <h2 class="h5 mb-3">Task Review — Summary</h2>
+    <div class="row g-3">
+      <div class="col-lg-8">
+        <div class="card mb-3">
+          <div class="card-body">
+            <div class="row g-2 align-items-end">
+              <div class="col-md-4">
+                <label class="form-label">Start Date</label>
+                <input type="date" class="form-control" />
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">End Date</label>
+                <input type="date" class="form-control" />
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Task</label>
+                <select class="form-select" multiple>
+                  <option selected>Phone Review</option>
+                  <option>PCP-Visit Home Visit (HV)</option>
+                </select>
+                <div class="help-note">Hold Ctrl/Cmd to select multiple.</div>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Status</label>
+                <select class="form-select">
+                  <option selected>Queued</option>
+                  <option>Completed</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <button type="button" class="btn btn-outline-primary disabled-btn">Export CSV (disabled)</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table table-sm table-bordered align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Task</th>
+                <th>Date</th>
+                <th>Minutes</th>
+                <th>Status</th>
+                <th>Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>PCP-Visit Home Visit (HV)</td>
+                <td>2025-11-10</td>
+                <td>45</td>
+                <td>Completed</td>
+                <td>Initial HV completed</td>
+              </tr>
+              <tr>
+                <td>Phone Review</td>
+                <td>2025-11-18</td>
+                <td>15</td>
+                <td>Queued</td>
+                <td>Call scheduled</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="col-lg-4">
+        <ul class="list-group">
+          <li class="list-group-item"><strong>Columns:</strong> Task, Date, Minutes, Status, Notes.</li>
+          <li class="list-group-item"><strong>Filters:</strong> Date range, Task, Status.</li>
+          <li class="list-group-item"><strong>Export:</strong> Download CSV for analysis.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <footer class="mt-4 pt-3 border-top">
+    <p class="text-muted mb-0">If this layout and wording matches your expectations, we’ll embed it in the Streamlit Help tabs and wire the examples to live data (read-only) with optional Sandbox mode.</p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    /* removed view scale JS per user request */
+  </script>
+</body>
+</html>

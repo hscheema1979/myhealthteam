@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Coordinator Dashboard Help (Standalone HTML)</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <style>
+    .section-divider { margin: 2rem 0 1rem; padding-top: 1rem; border-top: 1px solid #dee2e6; }
+    .help-note { font-size: 0.9rem; color: #6c757d; }
+    .table thead th { white-space: nowrap; }
+    .legend-card { border-left-width: 6px; }
+    .legend-green { border-left-color: #28a745; }
+    .legend-yellow { border-left-color: #ffc107; }
+    .legend-red { border-left-color: #dc3545; }
+    .legend-blue { border-left-color: #0d6efd; }
+    .row-green { background-color: #d4edda; }
+    .row-yellow { background-color: #fff3cd; }
+    .row-red { background-color: #f8d7da; }
+
+    /* Name-specific highlight to match dashboard behavior */
+    .name-highlight { font-weight: 600; padding: 0.1rem 0.3rem; border-radius: 0.25rem; }
+    .name-green { background-color: #d4edda; color: #155724; }
+    .name-yellow { background-color: #fff3cd; color: #856404; }
+    .name-red { background-color: #f8d7da; color: #721c24; }
+
+    .disabled-btn { pointer-events: none; opacity: 0.65; }
+    .label-inline { font-weight: 600; display: inline-block; margin-bottom: 0.25rem; }
+    .label-help { display: inline-block; margin-left: 0.4rem; font-weight: 700; color: #6c757d; cursor: help; }
+    .badge { font-size: 90%; }
+
+    /* Responsive view scale (default 90%) */
+    :root { --help-scale: 1; }
+    body { font-size: calc(1rem * var(--help-scale)); }
+    .table { font-size: calc(0.95rem * var(--help-scale)); }
+    .table td, .table th { padding: calc(0.5rem * var(--help-scale)); }
+    .list-group-item, .help-note, .form-control, .form-select, .label-inline, .badge { font-size: calc(0.95rem * var(--help-scale)); }
+
+    /* Print styles: enforce US Letter and preserve colors */
+    @media print {
+      @page { size: Letter; margin: 0.5in; }
+      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .name-highlight { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .card, .section-divider { break-inside: avoid; page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body class="container-fluid py-4">
+  <header class="mb-4">
+    <h1 class="h3">Coordinator Dashboard Help — Standalone HTML</h1>
+    <p class="text-muted mb-0">Actual elements side-by-side with plain-English explanations. Pure HTML/CSS for review — we’ll integrate into the app once you confirm it’s correct.</p>
+  </header>
+  <div class="d-flex align-items-center gap-2 mb-3">
+    <strong>View scale:</strong>
+    <div class="btn-group btn-group-sm" role="group">
+      <!-- removed view scale controls per user request -->
+    </div>
+  </div>
+
+  <section>
+    <h2 class="h5">Color Legend (Patient Activity)</h2>
+    <div class="row g-3">
+      <div class="col-md-3"><div class="card legend-card legend-green"><div class="card-body py-2"><strong>Green</strong>: Seen in the last 30 days</div></div></div>
+      <div class="col-md-3"><div class="card legend-card legend-yellow"><div class="card-body py-2"><strong>Yellow</strong>: Seen 1–2 months ago</div></div></div>
+      <div class="col-md-3"><div class="card legend-card legend-red"><div class="card-body py-2"><strong>Red</strong>: NOT seen in 2+ months</div></div></div>
+      <div class="col-md-3"><div class="card legend-card legend-blue"><div class="card-body py-2"><strong>Blue</strong>: ≥200 minutes this month</div></div></div>
+    </div>
+  </section>
+
+  <section class="section-divider">
+    <h2 class="h5 mb-3">My Patients — Coordinator Panel</h2>
+    <div class="row">
+      <div class="col-lg-8">
+        <div class="table-responsive">
+          <table class="table table-sm table-bordered align-middle">
+            <thead class="table-light"><tr>
+              <th>Status</th>
+              <th>First Name</th>
+              <th>Last Name</th>
+              <th>Facility</th>
+              <th>Provider</th>
+              <th>Last Visit Date</th>
+              <th>Service Type</th>
+              <th>POC-A</th>
+              <th>POC-M</th>
+              <th>Mins (This Month)</th>
+            </tr></thead>
+            <tbody>
+              <tr class="row-green"><td>Active</td><td><span class="name-highlight name-green">Ada</span></td><td><span class="name-highlight name-green">Lopez</span></td><td>Autumn Ridge</td><td>Dr. Park</td><td>2025-10-28</td><td>PCP</td><td>On File</td><td>Established</td><td><span class="badge bg-primary">220</span></td></tr>
+              <tr class="row-yellow"><td>Active</td><td><span class="name-highlight name-yellow">Ben</span></td><td><span class="name-highlight name-yellow">Kim</span></td><td>Summit Care</td><td>Dr. Singh</td><td>2025-09-28</td><td>PCP</td><td>Pending</td><td>Confirm</td><td><span class="badge bg-secondary">140</span></td></tr>
+              <tr class="row-red"><td>Gap &gt;60d</td><td><span class="name-highlight name-red">Carla</span></td><td><span class="name-highlight name-red">Nguyen</span></td><td>Sunset Home</td><td>Dr. Lee</td><td>2025-08-20</td><td>PCP</td><td>Missing</td><td>Discuss</td><td><span class="badge bg-secondary">95</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="col-lg-4">
+        <div class="list-group mb-2">
+          <div class="list-group-item"><strong>Status:</strong> Current engagement or gaps; color reflects last-visit recency.</div>
+          <div class="list-group-item"><strong>Facility:</strong> Patient location/residence.</div>
+          <div class="list-group-item"><strong>Provider:</strong> Assigned primary provider for care coordination.</div>
+          <div class="list-group-item"><strong>Last Visit Date:</strong> Drives color coding (Green ≤30d, Yellow 31–60d, Red ≥61d).</div>
+          <div class="list-group-item"><strong>Service Type:</strong> e.g., PCP, Specialty; informs who to coordinate with.</div>
+          <div class="list-group-item"><strong>POC-A:</strong> Administrative Plan of Care status (consents/docs/tasks).</div>
+          <div class="list-group-item"><strong>POC-M:</strong> Medical Plan of Care status (clinical goals/plan alignment).</div>
+          <div class="list-group-item"><strong>Mins:</strong> Monthly engagement minutes; blue badge indicates ≥200.</div>
+        </div>
+        <p class="help-note">Use sorting/filters to triage gaps; coordinate with provider and facility to close loops.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section-divider">
+    <h2 class="h5 mb-3">Workflow Manager — Quick Start</h2>
+    <div class="row g-3">
+      <div class="col-lg-8">
+        <form>
+          <div class="mb-3"><label class="label-inline">Template <span class="label-help" data-bs-toggle="tooltip" title="Standardized workflow (e.g., Onboarding Pack, Records Request, Team Huddle)">?</span></label>
+            <select class="form-select"><option>Onboarding Pack</option><option>Records Request</option><option>Team Huddle</option></select>
+            <div class="help-note">Select the workflow to launch; steps auto-populate.</div></div>
+          <div class="mb-3"><label class="label-inline">Start Date <span class="label-help" data-bs-toggle="tooltip" title="Anchor date for scheduling tasks and reminders">?</span></label>
+            <input type="date" class="form-control" value="2025-11-21" /><div class="help-note">Sets due dates relative to this anchor.</div></div>
+          <div class="mb-3"><label class="label-inline">Patient <span class="label-help" data-bs-toggle="tooltip" title="Target patient for this workflow">?</span></label>
+            <select class="form-select"><option>Ada Lopez</option><option>Ben Kim</option><option>Carla Nguyen</option></select></div>
+          <div class="mb-3"><label class="label-inline">Coordinator <span class="label-help" data-bs-toggle="tooltip" title="Owner of workflow tasks and notifications">?</span></label>
+            <select class="form-select"><option selected>Current User</option><option>Sarah Johnson</option><option>Alex Rivera</option></select></div>
+          <button type="button" class="btn btn-primary disabled-btn">Start Workflow (disabled)</button>
+          <div class="help-note">Starts the selected workflow with scheduled steps. Disabled here for demonstration.</div>
+        </form>
+      </div>
+      <div class="col-lg-4">
+        <ul class="list-group">
+          <li class="list-group-item"><strong>Template:</strong> Defines steps, owners, and default due dates.</li>
+          <li class="list-group-item"><strong>Start Date:</strong> Schedules downstream tasks.</li>
+          <li class="list-group-item"><strong>Coordinator:</strong> Receives reminders and owns completion.</li>
+          <li class="list-group-item"><strong>Patient:</strong> Ensures context for records and communications.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="section-divider">
+    <h2 class="h5 mb-3">Ongoing Workflows — Monitor & Actions</h2>
+    <div class="row g-3">
+      <div class="col-lg-8">
+        <div class="table-responsive">
+          <table class="table table-sm table-bordered align-middle">
+            <thead class="table-light"><tr><th>Workflow</th><th>Patient</th><th>Coordinator</th><th>Started</th><th>Completed/Total Steps</th><th>Actions</th></tr></thead>
+            <tbody>
+              <tr><td>Onboarding Pack</td><td>Ada Lopez</td><td>Sarah Johnson</td><td>2025-11-05</td><td>3/6</td><td>
+                <button class="btn btn-sm btn-outline-secondary disabled-btn">Pause</button>
+                <button class="btn btn-sm btn-outline-secondary disabled-btn">Resume</button>
+                <button class="btn btn-sm btn-outline-danger disabled-btn">Cancel</button>
+              </td></tr>
+              <tr><td>Records Request</td><td>Ben Kim</td><td>Alex Rivera</td><td>2025-11-12</td><td>1/4</td><td>
+                <button class="btn btn-sm btn-outline-secondary disabled-btn">Pause</button>
+                <button class="btn btn-sm btn-outline-secondary disabled-btn">Resume</button>
+                <button class="btn btn-sm btn-outline-danger disabled-btn">Cancel</button>
+              </td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="col-lg-4">
+        <ul class="list-group">
+          <li class="list-group-item"><strong>Completed/Total:</strong> Progress indicator for workflow steps.</li>
+          <li class="list-group-item"><strong>Actions:</strong> Manage workflow state (read-only here).</li>
+          <li class="list-group-item"><strong>Monitoring:</strong> Use filters/sorting to prioritize attention.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="section-divider">
+    <h2 class="h5 mb-3">Task Entry — Coordinator</h2>
+    <div class="row g-3">
+      <div class="col-lg-8">
+        <form>
+          <div class="mb-3"><label class="label-inline">Date <span class="label-help" data-bs-toggle="tooltip" title="When the work occurred">?</span></label><input type="date" class="form-control" /></div>
+          <div class="mb-3"><label class="label-inline">Patient <span class="label-help" data-bs-toggle="tooltip" title="Patient associated with this task">?</span></label>
+            <select class="form-select"><option>Ada Lopez</option><option>Ben Kim</option><option>Carla Nguyen</option></select></div>
+          <div class="mb-3"><label class="label-inline">Task Type <span class="label-help" data-bs-toggle="tooltip" title="Type of coordination performed">?</span></label>
+            <select class="form-select"><option>Intake Call</option><option>Documentation</option><option>Records Request</option><option>Scheduling</option><option>Care Coordination</option></select></div>
+          <div class="mb-3"><label class="label-inline">Duration (minutes) <span class="label-help" data-bs-toggle="tooltip" title="Time spent on the task">?</span></label><input type="number" class="form-control" min="0" step="5" value="15" /></div>
+          <div class="mb-3"><label class="label-inline">Notes <span class="label-help" data-bs-toggle="tooltip" title="Summary, context, outcomes, next steps">?</span></label><textarea class="form-control" rows="3" placeholder="Call summary, records requested, coordination details..."></textarea>
+            <div class="alert alert-info p-2 mt-2">
+              <strong>Coordinator Task Notes — What to write:</strong>
+              <ul class="mb-0">
+                <li>Contact method and participants (phone, in-person, facility staff).</li>
+                <li>Purpose and brief summary of actions.</li>
+                <li>Outcome and any escalations or provider notifications.</li>
+                <li>Next steps and due dates; who owns them.</li>
+              </ul>
+              <div class="small text-muted mt-1">Example: "Intake call with daughter and facility RN. Confirmed contact info; requested records (med list, discharge summary). Escalated med discrepancy to provider via portal message. Next: schedule PCP tele-visit; due in 3 days."</div>
+            </div>
+          </div>
+          <button type="button" class="btn btn-success disabled-btn">Log Task (disabled)</button>
+          <div class="help-note">Saved to coordinator tasks in the live app; required fields enforced. Disabled here for demonstration.</div>
+        </form>
+      </div>
+      <div class="col-lg-4">
+        <ul class="list-group">
+          <li class="list-group-item"><strong>Validation:</strong> Required fields must be completed.</li>
+          <li class="list-group-item"><strong>Persistence:</strong> Writes to coordinator task records for reporting.</li>
+          <li class="list-group-item"><strong>Use Cases:</strong> Intake calls, scheduling, record requests, general care coordination.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <footer class="mt-4 pt-3 border-top">
+    <p class="text-muted mb-0">If this layout and wording match your expectations, we’ll embed it into Coordinator Help tabs and wire examples to live data (read-only), with optional Sandbox mode.</p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    /* removed view scale JS per user request */
+  </script>
+</body>
+</html>

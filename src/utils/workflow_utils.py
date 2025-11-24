@@ -7,23 +7,35 @@ from src import database
 # Temporarily commented out to fix circular import for testing
 # from src.dashboards.workflow_module import create_workflow_instance
 
-def create_workflow_task(coordinator_id, patient_name, workflow_type, priority, notes, estimated_duration):
+def create_workflow_task(user_id, patient_name, workflow_type, priority, notes, estimated_duration):
     """Create a workflow task using the proper workflow database integration"""
     try:
-        # Get the template_id for the selected workflow type
         conn = database.get_db_connection()
+        
+        # First, map user_id to coordinator_id
+        coordinator = conn.execute("""
+            SELECT coordinator_id FROM coordinators 
+            WHERE user_id = ?
+        """, (user_id,)).fetchone()
+        
+        if not coordinator:
+            conn.close()
+            raise ValueError(f"No coordinator found for user_id {user_id}")
+        
+        coordinator_id = coordinator['coordinator_id']
+        
+        # Get the template_id for the selected workflow type
         template = conn.execute("""
             SELECT template_id FROM workflow_templates 
             WHERE template_name = ?
         """, (workflow_type,)).fetchone()
-        conn.close()
         
         if not template:
+            conn.close()
             raise ValueError(f"Workflow template '{workflow_type}' not found")
         
         # Find patient_id from patient name
         patient_id = None
-        conn = database.get_db_connection()
         # Try to match patient by name format "FirstName LastName"
         name_parts = patient_name.split(' ', 1)
         if len(name_parts) == 2:
@@ -34,23 +46,25 @@ def create_workflow_task(coordinator_id, patient_name, workflow_type, priority, 
             """, (first_name, last_name)).fetchone()
             if patient:
                 patient_id = patient['patient_id']
-        conn.close()
         
         if not patient_id:
             # Fallback: use patient name as identifier if exact match not found
             patient_id = patient_name
         
-        # Create workflow instance using workflow module function
-        # Temporarily commented out due to circular import
-        # instance_id = create_workflow_instance(
-        #     template_id=template['template_id'],
-        #     patient_id=patient_id,
-        #     coordinator_id=coordinator_id,
-        #     notes=f"Priority: {priority} | {notes}"
-        # )
+        conn.close()
         
-        # return instance_id is not None
-        return True  # Temporary return for testing
+        # Import here to avoid circular import
+        from src.dashboards.workflow_module import create_workflow_instance
+        
+        # Create workflow instance using workflow module function
+        instance_id = create_workflow_instance(
+            template_id=template['template_id'],
+            patient_id=patient_id,
+            coordinator_id=coordinator_id,
+            notes=f"Priority: {priority} | {notes}"
+        )
+        
+        return instance_id is not None
         
     except Exception as e:
         print(f"Error creating workflow task: {e}")
@@ -60,6 +74,22 @@ def get_ongoing_workflows(user_id, user_role_ids=None):
     """Get ongoing workflows for a user: all active workflows where the user is the coordinator or the current owner."""
     try:
         conn = database.get_db_connection()
+        
+        # Map user_id to coordinator_id when possible; fall back to user_id if no mapping
+        coordinator_id = None
+        if user_id is not None:
+            try:
+                row = conn.execute(
+                    "SELECT coordinator_id FROM coordinators WHERE user_id = ?",
+                    (user_id,)
+                ).fetchone()
+                if row and 'coordinator_id' in row.keys():
+                    coordinator_id = row['coordinator_id']
+                else:
+                    coordinator_id = user_id
+            except Exception:
+                coordinator_id = user_id
+        
         # If user_role_ids contains 40 (CM), show all active workflows
         if user_role_ids and 40 in user_role_ids:
             query = """
@@ -77,10 +107,13 @@ def get_ongoing_workflows(user_id, user_role_ids=None):
                     SELECT COUNT(*) FROM workflow_steps ws WHERE ws.template_id = wi.template_id
                 ) as total_steps
                 FROM workflow_instances wi
-                WHERE workflow_status = 'Active' AND (coordinator_id = ? OR current_owner_user_id = ?)
+                WHERE workflow_status = 'Active' AND (
+                    CAST(coordinator_id AS TEXT) = CAST(? AS TEXT) OR
+                    CAST(current_owner_user_id AS TEXT) = CAST(? AS TEXT)
+                )
                 ORDER BY created_at DESC
             """
-            workflows = conn.execute(query, (user_id, user_id)).fetchall()
+            workflows = conn.execute(query, (str(coordinator_id), str(user_id))).fetchall()
         conn.close()
         formatted_workflows = []
         for wf in workflows:
