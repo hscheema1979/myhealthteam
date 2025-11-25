@@ -43,17 +43,14 @@ $Action = New-ScheduledTaskAction -Execute "PowerShell.exe" `
     -WorkingDirectory $WorkingDirectory
 
 # Create the trigger - every hour
-$Trigger = New-ScheduledTaskTrigger -Once -At 12:00AM -RepetitionInterval (New-TimeSpan -Hours 1) -RepeatIndefinitely
+$Trigger = New-ScheduledTaskTrigger -Once -At 12:00AM -RepetitionInterval (New-TimeSpan -Hours 1)
 
 # Create task settings for reliability
 $Settings = New-ScheduledTaskSettingsSet `
     -AllowStartIfOnBatteries `
     -DontStopIfGoingOnBatteries `
     -StartWhenAvailable `
-    -DontStopOnIdleEnd `
-    -RestartOnFailure `
-    -RestartCount 3 `
-    -RestartInterval (New-TimeSpan -Minutes 5)
+    -DontStopOnIdleEnd
 
 # Create the principal (run as current user with highest privileges)
 $Principal = New-ScheduledTaskPrincipal `
