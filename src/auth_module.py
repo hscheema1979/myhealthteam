@@ -437,7 +437,7 @@ class AuthenticationManager:
         user_roles = self.get_user_roles()
         
         # Define role precedence (higher priority first)
-        role_precedence = [33, 36, 34, 35, 39]  # Provider, Coordinator, Admin, Onboarding, Data Entry
+        role_precedence = [33, 36, 40, 34, 35, 39]  # Provider, Coordinator, Case Manager, Admin, Onboarding, Data Entry
         
         for role_id in role_precedence:
             if role_id in user_roles:
