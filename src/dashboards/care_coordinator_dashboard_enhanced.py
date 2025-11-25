@@ -785,25 +785,132 @@ def show_coordinator_patient_list(user_id, context="default"):
     if "daily_tasks_data" not in st.session_state:
         st.session_state.daily_tasks_data = [{}]
 
-    # No mapping needed: user_id is coordinator_id
-
-    # Use user_id directly as coordinator_id for all downstream logic
-    coordinator_id = user_id
-    st.caption(f"[DEBUG] user_id: {user_id} (used as coordinator_id)")
-
     # Also get user role ids so management roles can see all workflows
     try:
         user_role_ids = get_user_role_ids(user_id) or []
     except Exception:
         user_role_ids = []
 
-    # Use patient_panel via database.get_coordinator_patient_panel_enhanced
+    # Get all patient data with coordinator assignments
     try:
-        # Pass user_id directly
-        patient_data_list = database.get_coordinator_patient_panel_enhanced(user_id)
+        # First, get all coordinator IDs to fetch their patients
+        all_coordinators = database.get_users_by_role(36)  # 36 = Care Coordinator role
+        coordinator_ids = [str(coord.get('user_id')) for coord in all_coordinators if coord.get('user_id')]
+        
+        # Fetch patients for all coordinators
+        all_patient_data = []
+        for coord_id in coordinator_ids:
+            coordinator_patients = database.get_coordinator_patient_panel_enhanced(int(coord_id))
+            all_patient_data.extend(coordinator_patients)
+        
+        # Remove duplicates based on patient_id
+        seen_patient_ids = set()
+        patient_data_list = []
+        for patient in all_patient_data:
+            patient_id = patient.get('patient_id')
+            if patient_id and patient_id not in seen_patient_ids:
+                seen_patient_ids.add(patient_id)
+                patient_data_list.append(patient)
+                
     except Exception as e:
         st.error(f"Error fetching patient panel data: {e}")
         patient_data_list = []
+
+    # Initialize coordinator map for filtering
+    coordinator_map = {}
+    try:
+        all_coordinators = database.get_users_by_role(36)
+        for coord in all_coordinators:
+            coord_name = f"{coord.get('full_name', coord.get('username', 'Unknown'))}"
+            coord_id = coord.get('user_id')
+            coordinator_map[coord_name] = coord_id
+    except:
+        pass
+
+    # --- Add Search and Filter UI at the top ---
+    st.markdown("#### Search and Filter Patients")
+    
+    # Create filter columns
+    col_search, col_filter = st.columns([2, 1])
+    
+    with col_search:
+        search_query = st.text_input(
+            "Search by patient name or ID",
+            key="coordinator_patient_search",
+            placeholder="Enter patient name or ID..."
+        )
+    
+    with col_filter:
+        # Get all coordinators for the filter dropdown
+        try:
+            all_coordinators = database.get_users_by_role(36)  # 36 = Care Coordinator role
+            coordinator_options = ["All Coordinators"]
+            
+            for coord in all_coordinators:
+                coord_name = f"{coord.get('full_name', coord.get('username', 'Unknown'))}"
+                coordinator_options.append(coord_name)
+            
+            # Default to showing only the logged-in user's patients
+            current_user_name = None
+            try:
+                current_user = database.get_user_by_id(user_id)
+                if current_user:
+                    # Handle sqlite3.Row object by accessing directly like a dictionary
+                    try:
+                        full_name = current_user['full_name']
+                        username = current_user['username']
+                    except (KeyError, TypeError):
+                        # Fallback if direct access fails
+                        full_name = None
+                        username = None
+                    
+                    current_user_name = full_name if full_name else username if username else "Unknown User"
+            except Exception:
+                pass
+            
+            # Set default selection - only current user if found, otherwise "All Coordinators"
+            default_selection = [current_user_name] if current_user_name and current_user_name in coordinator_options else ["All Coordinators"]
+            
+            selected_coordinators = st.multiselect(
+                "Filter by Coordinator(s)",
+                coordinator_options,
+                key="coordinator_filter",
+                default=default_selection,
+                help="Select one or more coordinators to view their patients. Default shows your patients."
+            )
+        except Exception as e:
+            st.warning(f"Could not load coordinator list: {e}")
+            selected_coordinators = ["All Coordinators"]
+
+    # Apply filtering
+    filtered_patients = patient_data_list
+    
+    # Filter by search query
+    if search_query.strip():
+        q = search_query.lower().strip()
+        filtered_patients = [
+            p for p in filtered_patients
+            if (q in str(p.get('patient_id', '')).lower() or 
+                q in f"{p.get('first_name', '')} {p.get('last_name', '')}".lower())
+        ]
+    
+    # Filter by coordinator(s)
+    if selected_coordinators and "All Coordinators" not in selected_coordinators:
+        # Get selected coordinator IDs
+        selected_coord_ids = []
+        for coord_name in selected_coordinators:
+            coord_id = coordinator_map.get(coord_name)
+            if coord_id:
+                selected_coord_ids.append(str(coord_id))
+        
+        if selected_coord_ids:
+            filtered_patients = [
+                p for p in filtered_patients
+                if str(p.get('assigned_coordinator_id', '')) in selected_coord_ids
+            ]
+
+    # Use filtered results
+    patient_data_list = filtered_patients
 
     # --- Get patient-wise minutes for this coordinator for the current month from the summary table ---
     import pandas as pd
@@ -894,6 +1001,7 @@ def show_coordinator_patient_list(user_id, context="default"):
     col3.metric("Active-PCP Patients", count_pcp)
 
     # Ensure active_patients is defined for downstream workflow and task UI
+    # Use the patient_data_list which now contains the filtered results
     active_patients = [p for p in patient_data_list if p.get('status') and str(p.get('status')).strip().startswith('Active')]
     # Prepare patient name list for workflow UI
     active_patient_names = [
@@ -971,8 +1079,9 @@ def show_coordinator_patient_list(user_id, context="default"):
     from src.dashboards.workflow_module import show_workflow_management
     show_workflow_management(
         user_id=user_id,
-        coordinator_id=coordinator_id,
+        coordinator_id=user_id,  # Pass user_id as coordinator_id for workflow compatibility
         active_patients=active_patient_names,
+        filtered_patients=patient_data_list,  # Pass filtered patient data for workflow filtering
         user_role_ids=user_role_ids
     )
 
@@ -996,7 +1105,6 @@ def show_coordinator_patient_list(user_id, context="default"):
             active_patients = [
                 p for p in patient_data_list
                 if p.get('status') and str(p.get('status')).strip().startswith('Active')
-                and str(p.get('coordinator_id', '')) == str(coordinator_id)
             ]
             active_patients = sorted(
                 active_patients,

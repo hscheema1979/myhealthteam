@@ -9,6 +9,11 @@
   - Rationale: Justin doesn't know exact payment amounts, so we only track payment status without doing any math
   - File Modified: `src/dashboards/justin_simple_payment_tracker.py`
 
+- **Caddy/DNS Debugging**:
+  - Identified `SERVFAIL` on CAA lookup for `care.myhealthteam.org` (CNAME issue).
+  - **Resolution**: Switched `care.myhealthteam.org` from CNAME to A Record pointing directly to `73.59.115.103`.
+  - Status: DNS propagated, ready for Caddy restart.
+
 ### Recently Completed
 - **October & November 2025 Data Import**: Successfully imported and validated Oct/Nov data to staging.
     - Fixed SQL index creation syntax in staging_coordinator_tasks.sql and staging_provider_tasks.sql

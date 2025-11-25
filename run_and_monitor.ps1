@@ -104,17 +104,70 @@ if ($existing) {
   $TrackedPid = Start-StreamlitVisible -AppPath $AppPath
 }
 
+
+function Find-CaddyProcess {
+  # Find caddy.exe process
+  try {
+    $processes = Get-CimInstance Win32_Process |
+      Where-Object { $_.Name -eq 'caddy.exe' }
+    if ($processes) {
+      # Return the most recent by CreationDate
+      $p = $processes | Sort-Object CreationDate -Descending | Select-Object -First 1
+      return $p
+    }
+  } catch {}
+  return $null
+}
+
+function Start-CaddyVisible {
+  param([string]$CaddyPath, [string]$ConfigPath)
+  Write-Log "Starting Caddy in visible PowerShell window..."
+  try {
+    # Launch a new visible PowerShell window that runs Caddy and stays open
+    Start-Process -FilePath 'powershell.exe' -ArgumentList '-NoExit', '-Command', "& `"$CaddyPath`" run --config `"$ConfigPath`"" -WindowStyle Normal | Out-Null
+    Start-Sleep -Seconds 3
+    $p = Find-CaddyProcess
+    if ($p) {
+      Write-Log "Located Caddy process: PID=$($p.ProcessId) CommandLine=$($p.CommandLine)"
+      return $p.ProcessId
+    } else {
+      Write-Log "Failed to locate Caddy process after start."
+      return $null
+    }
+  } catch {
+    Write-Log "Exception while starting Caddy: $($_.Exception.Message)"
+    return $null
+  }
+}
+
+$CaddyPath = Join-Path $scriptDir 'scripts\tools\caddy.exe'
+$CaddyConfigPath = Join-Path $scriptDir 'scripts\tools\Caddyfile'
+$TrackedCaddyPid = $null
+
+# Initial start for Caddy (if not already running)
+$existingCaddy = Find-CaddyProcess
+if ($existingCaddy) {
+  $TrackedCaddyPid = $existingCaddy.ProcessId
+  Write-Log "Detected existing Caddy process. Tracking PID=$TrackedCaddyPid"
+} else {
+  if (Test-Path $CaddyPath) {
+    $TrackedCaddyPid = Start-CaddyVisible -CaddyPath $CaddyPath -ConfigPath $CaddyConfigPath
+  } else {
+    Write-Log "Caddy executable not found at $CaddyPath. Skipping Caddy start."
+  }
+}
+
 while ($true) {
+  # Monitor Streamlit
   if (-not $TrackedPid -or -not (Is-ProcessAlive -ProcessId $TrackedPid)) {
-    Write-Log "Tracked process missing. Restarting..."
+    Write-Log "Tracked Streamlit process missing. Restarting..."
     $TrackedPid = Start-StreamlitVisible -AppPath $AppPath
     if ($TrackedPid) {
       $ConsecutiveFailures = 0
     } else {
       $ConsecutiveFailures += 1
-      Write-Log "Restart attempt failed (count=$ConsecutiveFailures)."
+      Write-Log "Streamlit restart attempt failed (count=$ConsecutiveFailures)."
       if ($MaxConsecutiveFailures -le 0) {
-        # Unlimited retries: no pause
         Write-Log "Unlimited retries enabled. Continuing without pause."
       } elseif ($ConsecutiveFailures -ge $MaxConsecutiveFailures) {
         Write-Log "Max consecutive failures reached ($MaxConsecutiveFailures). Pausing for 2 minutes before retrying."
@@ -124,8 +177,21 @@ while ($true) {
     }
   }
   else {
-    # Optional: write a heartbeat every N cycles instead of every cycle to reduce noise
-    Write-Log "Process PID=$TrackedPid is alive."
+    Write-Log "Streamlit PID=$TrackedPid is alive."
   }
+
+  # Monitor Caddy
+  if ($TrackedCaddyPid -and -not (Is-ProcessAlive -ProcessId $TrackedCaddyPid)) {
+    Write-Log "Tracked Caddy process missing. Restarting..."
+    $TrackedCaddyPid = Start-CaddyVisible -CaddyPath $CaddyPath -ConfigPath $CaddyConfigPath
+  } elseif (-not $TrackedCaddyPid -and (Test-Path $CaddyPath)) {
+      # Try to start if it wasn't running initially or failed previously
+      $TrackedCaddyPid = Start-CaddyVisible -CaddyPath $CaddyPath -ConfigPath $CaddyConfigPath
+  } else {
+      if ($TrackedCaddyPid) {
+          Write-Log "Caddy PID=$TrackedCaddyPid is alive."
+      }
+  }
+
   Start-Sleep -Seconds $CheckInterval
 }

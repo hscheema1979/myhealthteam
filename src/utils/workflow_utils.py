@@ -127,6 +127,7 @@ def get_ongoing_workflows(user_id, user_role_ids=None):
             formatted_workflows.append({
                 'instance_id': wf['instance_id'],
                 'patient_name': wf.get('patient_name', 'Unknown'),
+                'patient_id': wf.get('patient_id'),  # Added for filtering by patient
                 'workflow_type': wf.get('template_name'),
                 'coordinator_id': wf.get('coordinator_id'),
                 'coordinator_name': wf.get('coordinator_name'),

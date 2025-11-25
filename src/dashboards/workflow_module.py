@@ -558,9 +558,27 @@ import streamlit.components.v1 as components
 from src import database
 
 
-def show_workflow_management(user_id, coordinator_id, active_patients, user_role_ids=None):
+def show_workflow_management(user_id, coordinator_id, active_patients, filtered_patients=None, user_role_ids=None):
     from src.utils.workflow_utils import get_ongoing_workflows
     workflow_data = get_ongoing_workflows(user_id, user_role_ids)
+    
+    # Filter workflows to only show those for patients currently visible in the patient filter
+    if filtered_patients and len(filtered_patients) > 0:
+        # Get patient IDs from filtered patients
+        filtered_patient_ids = set()
+        for patient in filtered_patients:
+            patient_id = patient.get('patient_id')
+            if patient_id:
+                filtered_patient_ids.add(str(patient_id))
+        
+        # Filter workflow data to only include workflows for filtered patients
+        filtered_workflow_data = []
+        for wf in workflow_data or []:
+            wf_patient_id = str(wf.get('patient_id', ''))
+            if wf_patient_id in filtered_patient_ids:
+                filtered_workflow_data.append(wf)
+        
+        workflow_data = filtered_workflow_data
 
     # --- Add custom CSS for workflow action buttons ---
     st.markdown("""
@@ -679,6 +697,21 @@ def show_workflow_management(user_id, coordinator_id, active_patients, user_role
                 resume_state_key = f"resume_state_{selected_instance_id}"
                 if resume_state_key not in st.session_state:
                     st.session_state[resume_state_key] = False
+                
+                # Check if user has permission to assign workflows (only Jan and Jose)
+                can_assign_workflows = False
+                try:
+                    # Get current user info to check permissions
+                    from src.database import get_user_by_id
+                    current_user = get_user_by_id(user_id)
+                    if current_user:
+                        # Access full_name (works for both sqlite3.Row and dict)
+                        user_name = current_user['full_name'] if 'full_name' in current_user.keys() else current_user.get('full_name', 'Unknown User')
+                        # Check if user is Jan or Jose (supervisors/managers)
+                        can_assign_workflows = user_name in ['Estomo, Jan', 'Soberanis, Jose']
+                except Exception:
+                    can_assign_workflows = False
+                
                 btn_col1, btn_col2 = st.columns([1, 1])
                 with btn_col1:
                     if st.button("Resume Workflow", key=resume_btn_key):
@@ -691,6 +724,50 @@ def show_workflow_management(user_id, coordinator_id, active_patients, user_role
                             st.rerun()
                         except Exception as e:
                             st.error(f"Error: {e}")
+                
+                # Show assignment controls only for supervisors
+                if can_assign_workflows:
+                    st.markdown("---")
+                    st.markdown("### Workflow Assignment")
+                    
+                    # Get list of all coordinators for assignment
+                    try:
+                        from src.database import get_users_by_role
+                        all_coordinators = get_users_by_role(36)  # 36 = Care Coordinator role
+                        coordinator_options = {}
+                        for coord in all_coordinators:
+                            coord_name = f"{coord.get('full_name', coord.get('username', 'Unknown'))}"
+                            coord_id = coord.get('user_id')
+                            if coord_id:
+                                coordinator_options[coord_name] = coord_id
+                        
+                        # Remove current user from options for assignment (can't assign to self)
+                        current_user = get_user_by_id(user_id)
+                        if current_user:
+                            current_user_name = current_user['full_name'] if 'full_name' in current_user.keys() else current_user.get('full_name', '')
+                            coordinator_options.pop(current_user_name, None)
+                        
+                        if coordinator_options:
+                            assignment_col1, assignment_col2 = st.columns([2, 1])
+                            with assignment_col1:
+                                selected_coord_name = st.selectbox(
+                                    "Assign workflow to:",
+                                    list(coordinator_options.keys()),
+                                    key=f"assign_to_select_{selected_instance_id}"
+                                )
+                            with assignment_col2:
+                                if st.button("Assign", key=f"assign_workflow_{selected_instance_id}"):
+                                    try:
+                                        target_coordinator_id = coordinator_options[selected_coord_name]
+                                        msg = assign_workflow_to_user(selected_instance_id, target_coordinator_id)
+                                        st.success(msg)
+                                        st.rerun()
+                                    except Exception as e:
+                                        st.error(f"Error: {e}")
+                        else:
+                            st.info("No other coordinators available for assignment.")
+                    except Exception as e:
+                        st.error(f"Error loading coordinator list: {e}")
                 st.markdown("<div style='height: 0.5em'></div>", unsafe_allow_html=True)
                 # Add Note form below the button row
                 with st.form(f"add_note_form_{selected_instance_id}", clear_on_submit=True):
@@ -930,6 +1007,20 @@ def assign_workflow_to_me(instance_id, user_id):
         conn.execute("UPDATE workflow_instances SET coordinator_id = ? WHERE instance_id = ?", (user_id, instance_id))
         conn.commit()
         return "Workflow assigned to you."
+    finally:
+        conn.close()
+
+def assign_workflow_to_user(instance_id, target_coordinator_id):
+    """Assign the workflow to a specific coordinator."""
+    conn = get_db_connection()
+    try:
+        # Get coordinator name for the success message
+        coord_row = conn.execute("SELECT full_name FROM users WHERE user_id = ?", (target_coordinator_id,)).fetchone()
+        coord_name = coord_row['full_name'] if coord_row and 'full_name' in coord_row.keys() else coord_row.get('full_name', 'Unknown') if coord_row else 'Unknown User'
+        
+        conn.execute("UPDATE workflow_instances SET coordinator_id = ? WHERE instance_id = ?", (target_coordinator_id, instance_id))
+        conn.commit()
+        return f"Workflow assigned to {coord_name}."
     finally:
         conn.close()
 
