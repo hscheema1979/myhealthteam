@@ -1,3 +1,20 @@
+import sqlite3
+import pandas as pd
+from datetime import datetime, timedelta
+import os
+
+def get_db_connection(db_path: str = None):
+    """Return a SQLite connection. If db_path provided, use that path."""
+    if db_path is None:
+        # Define the path directly here instead of referencing non-existent DB_PATH
+        db_path = os.getenv("DATABASE_PATH", "D:\\Git\\myhealthteam2\\Dev\\production.db")
+    
+    print(f"Attempting to connect to DB: {db_path}")
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
 def get_coordinator_patient_minutes_for_month(coordinator_id, year, month):
     """Return a dict mapping patient_id to total minutes for this coordinator and month."""
     conn = get_db_connection()
@@ -21,12 +38,7 @@ def get_coordinator_patient_minutes_for_month(coordinator_id, year, month):
         return {}
     finally:
         conn.close()
-import sqlite3
-import pandas as pd
-from datetime import datetime, timedelta
-import os
 
-DB_PATH = 'D:\\Git\\myhealthteam2\\Dev\\production.db'
 
 def get_coordinator_monthly_minutes_live():
     """
@@ -52,17 +64,6 @@ def get_coordinator_monthly_minutes_live():
     finally:
         conn.close()
 
-
-
-
-def get_db_connection(db_path: str = None):
-    """Return a SQLite connection. If db_path provided, use that path (useful for update_data.db)."""
-    if db_path is None:
-        db_path = DB_PATH
-    print(f"Attempting to connect to DB: {db_path}")
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
-    return conn
 
 def ensure_user_sessions_table(conn: sqlite3.Connection = None):
     close_conn = False
