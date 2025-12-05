@@ -1,0 +1,35 @@
+# DATA MAPPING CONFIGURATION
+
+sources:
+  cmlog.csv:
+    target_table: coordinator_tasks
+    partitions: true
+    columns:
+      - csv: "Date Only"
+        db: "task_date"
+        type: DATE
+        transform: "iso8601"
+      - csv: "Patient Code"
+        db: "patient_id"
+        type: STRING
+        lookup: "patient_mappings.external_id"
+      - csv: "Staff Code"
+        db: "staff_id"
+        type: STRING
+        lookup: "staff_codes.code"
+      - csv: "Duration Minutes"
+        db: "duration"
+        type: INTEGER
+
+  psl.csv:
+    target_table: provider_tasks
+    columns:
+      - csv: "Service Date"
+        db: "task_date"
+        type: DATE
+      - csv: "Billing Code"
+        db: "billing_code"
+        type: STRING
+      - csv: "Payment Status"
+        db: "is_paid"
+        type: BOOLEAN

@@ -23,9 +23,10 @@ def get_coordinator_patient_minutes_for_month(coordinator_id, year, month):
         conn.close()
 import sqlite3
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
+import os
 
-DB_PATH = 'production.db'
+DB_PATH = 'D:\\Git\\myhealthteam2\\Dev\\production.db'
 
 def get_coordinator_monthly_minutes_live():
     """
@@ -52,12 +53,13 @@ def get_coordinator_monthly_minutes_live():
         conn.close()
 
 
-DB_PATH = 'production.db'
+
 
 def get_db_connection(db_path: str = None):
     """Return a SQLite connection. If db_path provided, use that path (useful for update_data.db)."""
     if db_path is None:
         db_path = DB_PATH
+    print(f"Attempting to connect to DB: {db_path}")
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     return conn
@@ -371,7 +373,7 @@ def generate_patient_id(first_name, last_name, date_of_birth):
 
 def get_all_users():
     conn = get_db_connection()
-    users = conn.execute('SELECT user_id, username, full_name, first_name, last_name, email, status, hire_date FROM users ORDER BY hire_date DESC').fetchall()
+    users = conn.execute('SELECT user_id, username, full_name, email, status, hire_date FROM users ORDER BY hire_date DESC').fetchall()
     conn.close()
     return users
 
@@ -386,6 +388,76 @@ def get_user_roles_by_user_id(user_id):
     user_roles = conn.execute('SELECT r.role_name, r.role_id, ur.is_primary FROM roles r JOIN user_roles ur ON r.role_id = ur.role_id WHERE ur.user_id = ?', (user_id,)).fetchall()
     conn.close()
     return user_roles
+
+def deactivate_user(user_id):
+    """
+    Deactivate a user by setting their status to 'inactive'
+    
+    Args:
+        user_id: The user ID to deactivate
+        
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    conn = get_db_connection()
+    try:
+        cursor = conn.execute("UPDATE users SET status = 'inactive', updated_date = CURRENT_TIMESTAMP WHERE user_id = ?", (user_id,))
+        conn.commit()
+        return cursor.rowcount > 0
+    except sqlite3.Error as e:
+        print(f"Database error: {e}")
+        return False
+    finally:
+        conn.close()
+
+def reactivate_user(user_id):
+    """
+    Reactivate a user by setting their status to 'active'
+    
+    Args:
+        user_id: The user ID to reactivate
+        
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    conn = get_db_connection()
+    try:
+        cursor = conn.execute("UPDATE users SET status = 'active', updated_date = CURRENT_TIMESTAMP WHERE user_id = ?", (user_id,))
+        conn.commit()
+        return cursor.rowcount > 0
+    except sqlite3.Error as e:
+        print(f"Database error: {e}")
+        return False
+    finally:
+        conn.close()
+
+def delete_user(user_id):
+    """
+    Permanently delete a user from the database
+    
+    WARNING: This is a permanent action that cannot be undone!
+    
+    Args:
+        user_id: The user ID to delete
+        
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    conn = get_db_connection()
+    try:
+        # First remove user from user_roles table
+        conn.execute("DELETE FROM user_roles WHERE user_id = ?", (user_id,))
+        
+        # Then remove the user from the users table
+        cursor = conn.execute("DELETE FROM users WHERE user_id = ?", (user_id,))
+        
+        conn.commit()
+        return cursor.rowcount > 0
+    except sqlite3.Error as e:
+        print(f"Database error: {e}")
+        return False
+    finally:
+        conn.close()
 
 
 def get_onboarding_queue_stats():
@@ -424,6 +496,64 @@ def get_onboarding_queue_stats():
             'unassigned_active_patients': patient_stats['unassigned_active_patients'] or 0,
             'new_patients_30_days': patient_stats['new_patients_30_days'] or 0
         }
+    finally:
+        conn.close()
+
+def ensure_audit_log_table(conn: sqlite3.Connection = None):
+    close_conn = False
+    try:
+        if conn is None:
+            conn = get_db_connection()
+            close_conn = True
+        exists = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", ("audit_log",)).fetchone()
+        if not exists:
+            conn.execute(
+                """
+                CREATE TABLE audit_log (
+                    log_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    timestamp TEXT NOT NULL,
+                    user_id INTEGER,
+                    action TEXT NOT NULL,
+                    details TEXT
+                )
+                """
+            )
+            conn.commit()
+    finally:
+        if close_conn and conn:
+            conn.close()
+
+def log_audit_action(user_id: int, action: str, details: str = None):
+    conn = get_db_connection()
+    try:
+        ensure_audit_log_table(conn)
+        timestamp = datetime.now().isoformat()
+        conn.execute(
+            "INSERT INTO audit_log(timestamp, user_id, action, details) VALUES(?,?,?,?)",
+            (timestamp, user_id, action, details)
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+def reassign_patient(patient_id: int, new_provider_id: int, admin_user_id: int) -> bool:
+    conn = get_db_connection()
+    try:
+        # Get current provider for logging
+        current_patient_info = conn.execute("SELECT provider_id FROM patients WHERE patient_id = ?", (patient_id,)).fetchone()
+        old_provider_id = current_patient_info['provider_id'] if current_patient_info else None
+
+        cursor = conn.execute("UPDATE patients SET provider_id = ?, updated_date = CURRENT_TIMESTAMP WHERE patient_id = ?", (new_provider_id, patient_id))
+        conn.commit()
+
+        if cursor.rowcount > 0:
+            log_details = f"Patient {patient_id} reassigned from provider {old_provider_id} to {new_provider_id}"
+            log_audit_action(admin_user_id, "Patient Reassignment", log_details)
+            return True
+        return False
+    except sqlite3.Error as e:
+        print(f"Database error during patient reassignment: {e}")
+        return False
     finally:
         conn.close()
 
@@ -989,8 +1119,8 @@ def add_user(username, password, first_name, last_name, email, role_name):
         role = conn.execute('SELECT role_id FROM roles WHERE role_name = ?', (role_name,)).fetchone()
         if role:
             role_id = role['role_id']
-            cursor = conn.execute("INSERT INTO users (username, password, first_name, last_name, email, status, hire_date) VALUES (?, ?, ?, ?, ?, 'active', CURRENT_DATE)",
-                                  (username, hashed_password, first_name, last_name, email))
+            cursor = conn.execute("INSERT INTO users (username, password, first_name, last_name, email, full_name, status, hire_date) VALUES (?, ?, ?, ?, ?, ?, 'active', CURRENT_DATE)",
+                                  (username, hashed_password, first_name, last_name, email, f"{first_name} {last_name}"))
             user_id = cursor.lastrowid
             conn.execute("INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)",
                          (user_id, role_id))
@@ -1099,25 +1229,101 @@ def update_care_plan(patient_name, plan_details, updated_by):
     conn.close()
 
 
-def get_provider_performance_metrics():
+def get_provider_performance_metrics(start_date: datetime, end_date: datetime):
     conn = get_db_connection()
     try:
-        # Updated to work with monthly partitioned tables - using provider_tasks_2025_09
-        query = """
+        all_task_tables = get_monthly_task_tables(prefix="provider_tasks_", conn=conn)
+        
+        # Filter tables that fall within the date range
+        tables_to_query = []
+        for table_name in all_task_tables:
+            try:
+                parts = table_name.split('_')
+                year = int(parts[2])
+                month = int(parts[3])
+                
+                table_date = datetime(year, month, 1).date()
+                
+                # Check if the table's month/year range overlaps with the query date range
+                # A table is relevant if its month starts before or on end_date, and ends after or on start_date
+                table_month_end = datetime(year, month, calendar.monthrange(year, month)[1]).date()
+                
+                if table_date <= end_date.date() and table_month_end >= start_date.date():
+                    tables_to_query.append(table_name)
+            except Exception as e:
+                print(f"Skipping malformed table name {table_name}: {e}")
+                continue
+
+        if not tables_to_query:
+            return [] # No relevant tables found
+
+        # Build UNION ALL query for all relevant tables
+        union_queries = []
+        for table_name in tables_to_query:
+            union_queries.append(f"""
+                SELECT
+                    provider_id,
+                    patient_id,
+                    task_date,
+                    task_type
+                FROM {table_name}
+                WHERE task_date BETWEEN ? AND ?
+            """)
+        
+        full_query = " UNION ALL ".join(union_queries)
+
+        query = f"""
             SELECT
                 u.full_name,
-                COALESCE(COUNT(DISTINCT CASE WHEN STRFTIME('%Y-%m', pt.task_date) = STRFTIME('%Y-%m', 'now') THEN pt.patient_id END), 0) AS patients_visited_this_month,
-                COALESCE(COUNT(DISTINCT upa.patient_id), 0) - COALESCE(COUNT(DISTINCT CASE WHEN STRFTIME('%Y-%m', pt.task_date) = STRFTIME('%Y-%m', 'now') THEN pt.patient_id END), 0) AS remaining_visits
+                COUNT(DISTINCT combined_tasks.patient_id) AS total_patients_seen,
+                GROUP_CONCAT(combined_tasks.task_type || ':' || combined_tasks.patient_id) AS visit_type_breakdown_raw
             FROM users u
-            LEFT JOIN provider_tasks_2025_09 pt ON u.user_id = pt.provider_id
-            LEFT JOIN user_patient_assignments upa ON u.user_id = upa.user_id
+            JOIN (
+                {full_query}
+            ) AS combined_tasks ON u.user_id = combined_tasks.provider_id
             JOIN user_roles ur ON u.user_id = ur.user_id
             JOIN roles r ON ur.role_id = r.role_id
             WHERE r.role_id IN (33, 38)  -- CP and CPM roles
             GROUP BY u.full_name;
         """
-        metrics = conn.execute(query).fetchall()
-        return [dict(row) for row in metrics]
+        
+        # Prepare parameters for the BETWEEN clause (start_date and end_date for each unioned query)
+        params = []
+        for _ in tables_to_query:
+            params.extend([start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d')])
+
+        metrics = conn.execute(query, params).fetchall()
+        
+        # Process visit_type_breakdown_raw to get counts per type
+        processed_metrics = []
+        for row in metrics:
+            row_dict = dict(row)
+            visit_type_counts = {}
+            if row_dict['visit_type_breakdown_raw']:
+                # Split the raw string into individual "task_type:patient_id" entries
+                entries = row_dict['visit_type_breakdown_raw'].split(',')
+                
+                # Use a set to count unique patients per task type
+                unique_patients_per_type = {}
+                for entry in entries:
+                    try:
+                        task_type, patient_id = entry.split(':', 1)
+                        if task_type not in unique_patients_per_type:
+                            unique_patients_per_type[task_type] = set()
+                        unique_patients_per_type[task_type].add(patient_id)
+                    except ValueError:
+                        # Handle cases where entry might not split correctly
+                        continue
+                
+                # Count unique patients for each task type
+                for task_type, patient_ids in unique_patients_per_type.items():
+                    visit_type_counts[task_type] = len(patient_ids)
+
+            row_dict['visit_type_breakdown'] = visit_type_counts
+            del row_dict['visit_type_breakdown_raw'] # Remove raw data
+            processed_metrics.append(row_dict)
+
+        return processed_metrics
     finally:
         conn.close()
 
@@ -3169,3 +3375,268 @@ def update_onboarding_patient_status(onboarding_id, status):
         return False
     finally:
         conn.close()
+
+
+def calculate_billing_week(task_date_str):
+    """Calculate billing week in YYYY-WW format from task date string"""
+    try:
+        task_date = datetime.strptime(task_date_str, '%Y-%m-%d')
+        year = task_date.year
+        # Get the Monday of the week containing the task date
+        monday = task_date - timedelta(days=task_date.weekday())
+        # Calculate ISO week number
+        iso_week = task_date.isocalendar()[1]
+        return f"{year}-{iso_week:02d}"
+    except:
+        return None
+
+
+def get_raw_provider_tasks(start_date, end_date):
+    """Get raw provider task data from provider_tasks tables for date range"""
+    conn = get_db_connection()
+    
+    # Get data from all provider_tasks tables that overlap with date range
+    tables_to_query = []
+    
+    # Determine which monthly tables to query
+    start_dt = datetime.strptime(start_date, '%Y-%m-%d')
+    end_dt = datetime.strptime(end_date, '%Y-%m-%d')
+    
+    current_dt = start_dt.replace(day=1)  # Start of month
+    while current_dt <= end_dt:
+        table_name = f"provider_tasks_{current_dt.year}_{current_dt.month:02d}"
+        # Check if table exists
+        table_exists = conn.execute("""
+            SELECT name FROM sqlite_master WHERE type='table' AND name=?
+        """, (table_name,)).fetchone()
+        if table_exists:
+            tables_to_query.append(table_name)
+        
+        # Move to next month
+        if current_dt.month == 12:
+            current_dt = current_dt.replace(year=current_dt.year + 1, month=1)
+        else:
+            current_dt = current_dt.replace(month=current_dt.month + 1)
+    
+    all_data = []
+    for table_name in tables_to_query:
+        try:
+            query = f"""
+                SELECT 
+                    provider_task_id,
+                    provider_id,
+                    provider_name,
+                    patient_id,
+                    patient_name,
+                    task_date,
+                    task_description,
+                    minutes_of_service,
+                    billing_code,
+                    billing_code_description,
+                    '{table_name}' as source_table
+                FROM {table_name}
+                WHERE task_date BETWEEN ? AND ?
+                  AND task_date IS NOT NULL
+                  AND provider_id IS NOT NULL
+            """
+            df = pd.read_sql_query(query, conn, params=(start_date, end_date))
+            if not df.empty:
+                all_data.append(df)
+        except Exception as e:
+            print(f"Error querying {table_name}: {e}")
+            continue
+    
+    conn.close()
+    
+    if all_data:
+        combined_df = pd.concat(all_data, ignore_index=True)
+        return combined_df
+    else:
+        return pd.DataFrame()
+
+
+def transform_raw_tasks_to_billing_format(raw_tasks_df):
+    """Transform raw provider task data into billing-ready format with default status"""
+    if raw_tasks_df.empty:
+        return raw_tasks_df
+    
+    # Create billing-ready dataframe
+    billing_df = raw_tasks_df.copy()
+    
+    # Calculate billing week for each task
+    billing_df['billing_week'] = billing_df['task_date'].apply(calculate_billing_week)
+    
+    # Add billing week start and end dates
+    def get_week_dates(billing_week):
+        if not billing_week:
+            return None, None
+        try:
+            year, week = billing_week.split('-')
+            # Get Monday of the week
+            jan_1 = datetime(int(year), 1, 1)
+            # Calculate Monday of the given week
+            week_start = jan_1 + timedelta(days=(int(week) - 1) * 7)
+            week_start = week_start - timedelta(days=week_start.weekday())
+            week_end = week_start + timedelta(days=6)
+            return week_start.strftime('%Y-%m-%d'), week_end.strftime('%Y-%m-%d')
+        except:
+            return None, None
+    
+    billing_df[['week_start_date', 'week_end_date']] = billing_df['billing_week'].apply(
+        lambda x: pd.Series(get_week_dates(x))
+    )
+    
+    # Add billing status columns with default values
+    billing_df['billing_status'] = 'Not Billed'
+    billing_df['is_billed'] = 0
+    billing_df['is_invoiced'] = 0
+    billing_df['is_claim_submitted'] = 0
+    billing_df['is_insurance_processed'] = 0
+    billing_df['is_approved_to_pay'] = 0
+    billing_df['is_paid'] = 0
+    billing_df['is_carried_over'] = 0
+    billing_df['provider_paid'] = 0
+    billing_df['original_billing_week'] = None
+    billing_df['carryover_reason'] = None
+    billing_df['billing_notes'] = None
+    billing_df['billed_date'] = None
+    billing_df['invoiced_date'] = None
+    billing_df['claim_submitted_date'] = None
+    billing_df['insurance_processed_date'] = None
+    billing_df['approved_to_pay_date'] = None
+    billing_df['paid_date'] = None
+    
+    # Add billing_status_id as a unique identifier
+    billing_df['billing_status_id'] = range(1, len(billing_df) + 1)
+    
+    # Add timestamps
+    billing_df['created_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    billing_df['updated_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    
+    return billing_df
+
+
+def generate_provider_billing_data_on_demand(start_date, end_date):
+    """Generate billing-ready data on-demand from raw provider tasks"""
+    print(f"Generating billing data for {start_date} to {end_date}")
+    
+    # Get raw task data
+    raw_tasks = get_raw_provider_tasks(start_date, end_date)
+    
+    if raw_tasks.empty:
+        print("No raw task data found for the specified date range")
+        return pd.DataFrame()
+    
+    print(f"Found {len(raw_tasks)} raw task records")
+    
+    # Transform to billing format
+    billing_data = transform_raw_tasks_to_billing_format(raw_tasks)
+    
+    print(f"Transformed {len(billing_data)} records to billing format")
+    return billing_data
+
+
+def get_provider_billing_status_realtime(start_date=None, end_date=None):
+    """Get provider billing status with real-time data generation"""
+    if not start_date:
+        start_date = (datetime.now() - timedelta(days=90)).strftime('%Y-%m-%d')
+    if not end_date:
+        end_date = datetime.now().strftime('%Y-%m-%d')
+    
+    # Generate fresh billing data on-demand
+    billing_data = generate_provider_billing_data_on_demand(start_date, end_date)
+    
+    # Try to get existing processed data and merge
+    try:
+        conn = get_db_connection()
+        query = """
+            SELECT 
+                billing_status_id,
+                provider_task_id,
+                provider_id,
+                provider_name,
+                patient_name,
+                task_date,
+                billing_week,
+                week_start_date,
+                week_end_date,
+                task_description,
+                minutes_of_service,
+                billing_code,
+                billing_code_description,
+                billing_status,
+                is_billed,
+                is_invoiced,
+                is_claim_submitted,
+                is_insurance_processed,
+                is_approved_to_pay,
+                is_paid,
+                is_carried_over,
+                original_billing_week,
+                carryover_reason,
+                billing_notes,
+                created_date,
+                updated_date
+            FROM provider_task_billing_status
+            WHERE task_date BETWEEN ? AND ?
+            ORDER BY billing_week DESC, task_date DESC
+        """
+        existing_data = pd.read_sql_query(query, conn, params=(start_date, end_date))
+        conn.close()
+        
+        # If we have existing processed data, use it
+        if not existing_data.empty:
+            print(f"Using {len(existing_data)} existing processed billing records")
+            return existing_data
+    except Exception as e:
+        print(f"Error getting existing billing data: {e}")
+    
+    # Otherwise, use generated data
+    print("Using generated real-time billing data")
+    return billing_data
+
+
+def get_weekly_billing_summary_realtime():
+    """Get weekly billing summary with real-time data generation"""
+    # Get last 12 weeks of data
+    end_date = datetime.now()
+    start_date = end_date - timedelta(days=90)
+    
+    billing_data = get_provider_billing_status_realtime(
+        start_date.strftime('%Y-%m-%d'),
+        end_date.strftime('%Y-%m-%d')
+    )
+    
+    if billing_data.empty:
+        return pd.DataFrame()
+    
+    # Aggregate by billing week
+    weekly_summary = billing_data.groupby('billing_week').agg({
+        'billing_status_id': 'count',
+        'week_start_date': 'first',
+        'week_end_date': 'first',
+        'is_billed': 'sum',
+        'billing_status': lambda x: len(x),
+        'created_date': 'first'
+    }).reset_index()
+    
+    weekly_summary.columns = [
+        'billing_week',
+        'total_tasks',
+        'week_start_date',
+        'week_end_date',
+        'total_billed_tasks',
+        'report_status',
+        'created_date'
+    ]
+    
+    # Calculate unbilled tasks and percentage
+    weekly_summary['total_unbilled_tasks'] = weekly_summary['total_tasks'] - weekly_summary['total_billed_tasks']
+    weekly_summary['billing_percentage'] = (
+        weekly_summary['total_billed_tasks'] * 100.0 / weekly_summary['total_tasks']
+    ).round(2)
+    
+    # Sort by billing week descending
+    weekly_summary = weekly_summary.sort_values('billing_week', ascending=False)
+    
+    return weekly_summary.head(12)

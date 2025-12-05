@@ -12,7 +12,7 @@ from src.database import (
 )
 from src import database
 from src.core_utils import get_user_role_ids
-from src.dashboards import admin_dashboard, onboarding_dashboard, data_entry_dashboard, care_provider_dashboard_enhanced, care_coordinator_dashboard_enhanced, provider_payment_dashboard, justin_simple_payment_tracker
+from src.dashboards import admin_dashboard, onboarding_dashboard, data_entry_dashboard, care_provider_dashboard_enhanced, care_coordinator_dashboard_enhanced, provider_payment_dashboard, weekly_billing_dashboard, justin_simple_payment_tracker
 from src.auth_module import get_auth_manager, render_login_sidebar
 import base64
 import re
@@ -372,34 +372,88 @@ def main():
                     st.session_state['user_full_name'] = current_user['full_name']
                     # Get all role IDs for the user
                     user_role_ids = get_user_role_ids(current_user['user_id'])
-                    st.session_state['user_role_ids'] = user_role_ids 
+                    st.session_state['user_role_ids'] = user_role_ids
+
+                # Role Switching Feature for users with multiple dashboard roles
+                user_role_ids = st.session_state['user_role_ids']
+                dashboard_roles = [33, 34, 36, 35, 39, 37, 38, 40]  # All dashboard-capable roles
+                available_dashboard_roles = [role_id for role_id in user_role_ids if role_id in dashboard_roles]
+                
+                if len(available_dashboard_roles) > 1:
+                    st.sidebar.markdown("---")
+                    st.sidebar.markdown("### 🔄 Role Switcher")
+                    
+                    # Role mapping for display
+                    role_names = {
+                        33: "Provider View",
+                        34: "Admin View", 
+                        36: "Coordinator View",
+                        35: "Onboarding View",
+                        39: "Data Entry View",
+                        37: "Lead Coordinator View",
+                        38: "Care Provider Manager View",
+                        40: "Coordinator Manager View"
+                    }
+                    
+                    # Get current view preference from session state
+                    if 'preferred_dashboard_role' not in st.session_state:
+                        st.session_state['preferred_dashboard_role'] = auth_manager.get_primary_dashboard_role()
+                    
+                    current_view = st.session_state['preferred_dashboard_role']
+                    
+                    # Show current view
+                    st.sidebar.caption(f"Current View: **{role_names.get(current_view, f'Role {current_view}')}**")
+                    
+                    # Create options for role switcher
+                    role_options = [(role_id, role_names.get(role_id, f'Role {role_id}')) 
+                                  for role_id in available_dashboard_roles]
+                    role_options.sort(key=lambda x: x[0])  # Sort by role ID
+                    
+                    # Role switcher dropdown
+                    selected_role_id = st.sidebar.selectbox(
+                        "Switch to View:",
+                        options=[role_id for role_id, name in role_options],
+                        format_func=lambda x: role_names.get(x, f'Role {x}'),
+                        key="role_switcher",
+                        index=next((i for i, (rid, _) in enumerate(role_options) if rid == current_view), 0)
+                    )
+                    
+                    # Update preference if changed
+                    if selected_role_id != st.session_state['preferred_dashboard_role']:
+                        st.session_state['preferred_dashboard_role'] = selected_role_id
+                        st.rerun() 
 
     # Display dashboard based on user and their roles
     if auth_manager.is_authenticated():
         user_id = auth_manager.get_user_id()
         user_role_ids = auth_manager.get_user_roles()
         
-        # Get primary dashboard role based on role precedence
-        primary_role = auth_manager.get_primary_dashboard_role()
+        # Check for preferred role (for users with multiple roles)
+        preferred_role = st.session_state.get('preferred_dashboard_role')
         
-        if primary_role:
-            # Route to appropriate dashboard based on primary role
-            if primary_role == 33:  # Provider
+        # Get dashboard role to use (preferred role if set, otherwise primary role)
+        dashboard_role = preferred_role if preferred_role else auth_manager.get_primary_dashboard_role()
+        
+        if dashboard_role:
+            # Route to appropriate dashboard based on dashboard role
+            if dashboard_role == 33:  # Provider
                 care_provider_dashboard_enhanced.show(user_id, user_role_ids)
-            elif primary_role == 36:  # Coordinator
+            elif dashboard_role == 36:  # Coordinator
                 care_coordinator_dashboard_enhanced.show(user_id, user_role_ids)
-            elif primary_role == 34:  # Admin
+            elif dashboard_role == 34:  # Admin
                 admin_dashboard.show()
-            elif primary_role == 35:  # Onboarding
+            elif dashboard_role == 35:  # Onboarding
                 onboarding_dashboard.show()
-            elif primary_role == 39:  # Data Entry
+            elif dashboard_role == 39:  # Data Entry
                 data_entry_dashboard.show()
-            elif primary_role == 38:  # Care Provider Manager (CPM) - same as provider but with manager access
+            elif dashboard_role == 37:  # Lead Coordinator (LC) - same as coordinator but with lead privileges
+                care_coordinator_dashboard_enhanced.show(user_id, user_role_ids)
+            elif dashboard_role == 38:  # Care Provider Manager (CPM) - same as provider but with manager access
                 care_provider_dashboard_enhanced.show(user_id, user_role_ids)
-            elif primary_role == 40:  # Coordinator Manager (CM) - same as coordinator but with manager access
+            elif dashboard_role == 40:  # Coordinator Manager (CM) - same as coordinator but with manager access
                 care_coordinator_dashboard_enhanced.show(user_id, user_role_ids)
             else:
-                st.error(f"Unrecognized primary role: {primary_role}")
+                st.error(f"Unrecognized dashboard role: {dashboard_role}")
                 st.info("Please contact your administrator.")
         else:
             st.error(f"User has no recognized dashboard role. Roles: {user_role_ids}")
@@ -734,6 +788,12 @@ def main():
                 onboarding_dashboard.show()
             elif primary_role == 39:  # Data Entry
                 data_entry_dashboard.show()
+            elif primary_role == 37:  # Lead Coordinator (LC) - same as coordinator but with lead privileges
+                care_coordinator_dashboard_enhanced.show(user_id, user_role_ids)
+            elif primary_role == 38:  # Care Provider Manager (CPM) - same as provider but with manager access
+                care_provider_dashboard_enhanced.show(user_id, user_role_ids)
+            elif primary_role == 40:  # Coordinator Manager (CM) - same as coordinator but with manager access
+                care_coordinator_dashboard_enhanced.show(user_id, user_role_ids)
             else:
                 st.error(f"Unrecognized primary role: {primary_role}")
                 st.info("Please contact your administrator.")

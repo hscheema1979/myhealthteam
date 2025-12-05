@@ -352,13 +352,121 @@ def show(user_id, user_role_ids=None):
 
 def show_patient_list_section(user_id, section_id=None):
 
-    # Get all assigned patients for this provider (no filtering)
-    # Note: get_provider_patient_panel_enhanced expects user_id, not provider_id
+    # Get all providers and coordinators for filtering capabilities
     try:
-        patient_data_list = database.get_provider_patient_panel_enhanced(user_id)
+        all_providers = database.get_users_by_role(33)  # 33 = Care Provider
+        all_coordinators = database.get_users_by_role(36)  # 36 = Care Coordinator
+    except Exception as e:
+        st.error(f"Error fetching user data: {e}")
+        all_providers = []
+        all_coordinators = []
+
+    # Get all patient data with provider assignments (to allow viewing other providers' patients)
+    try:
+        patient_data_list = []
+        for provider in all_providers:
+            provider_patients = database.get_provider_patient_panel_enhanced(provider['user_id'])
+            patient_data_list.extend(provider_patients)
+        
+        # Remove duplicates based on patient_id
+        seen_patient_ids = set()
+        unique_patients = []
+        for patient in patient_data_list:
+            patient_id = patient.get('patient_id')
+            if patient_id and patient_id not in seen_patient_ids:
+                seen_patient_ids.add(patient_id)
+                unique_patients.append(patient)
+        patient_data_list = unique_patients
     except Exception as e:
         st.error(f"Error fetching patient data: {e}")
         patient_data_list = []
+
+    # --- Add Search and Filter UI at the top ---
+    st.markdown("#### Search and Filter Patients")
+    
+    # Create filter columns
+    col_search, col_filter = st.columns([2, 1])
+    
+    with col_search:
+        search_query = st.text_input(
+            "Search by patient name or ID",
+            key="provider_patient_search",
+            placeholder="Enter patient name or ID..."
+        )
+    
+    with col_filter:
+        # Get all providers for the filter dropdown
+        provider_options = ["All Providers"]
+        
+        for provider in all_providers:
+            provider_name = f"{provider.get('full_name', provider.get('username', 'Unknown'))}"
+            provider_options.append(provider_name)
+        
+        # Default to showing only the logged-in user's patients
+        current_user_name = None
+        try:
+            current_user = database.get_user_by_id(user_id)
+            if current_user:
+                # Handle sqlite3.Row object by accessing directly like a dictionary
+                try:
+                    full_name = current_user['full_name']
+                    username = current_user['username']
+                except (KeyError, TypeError):
+                    # Fallback if direct access fails
+                    full_name = None
+                    username = None
+                
+                current_user_name = full_name if full_name else username if username else "Unknown User"
+        except Exception:
+            pass
+        
+        # Set default selection - only current user if found, otherwise "All Providers"
+        default_selection = [current_user_name] if current_user_name and current_user_name in provider_options else ["All Providers"]
+        
+        selected_providers = st.multiselect(
+            "Filter by Provider(s)",
+            provider_options,
+            key="provider_filter",
+            default=default_selection,
+            help="Select one or more providers to view their patients. Default shows your patients."
+        )
+
+    # Initialize provider map for filtering
+    provider_map = {}
+    for provider in all_providers:
+        provider_name = f"{provider.get('full_name', provider.get('username', 'Unknown'))}"
+        provider_id = provider.get('user_id')
+        provider_map[provider_name] = provider_id
+
+    # Apply filtering
+    filtered_patients = patient_data_list
+    
+    # Filter by search query
+    if search_query.strip():
+        q = search_query.lower().strip()
+        filtered_patients = [
+            p for p in filtered_patients
+            if (q in str(p.get('patient_id', '')).lower() or 
+                q in f"{p.get('first_name', '')} {p.get('last_name', '')}".lower())
+        ]
+    
+    # Filter by provider(s)
+    if selected_providers and "All Providers" not in selected_providers:
+        # Get selected provider IDs
+        selected_provider_ids = []
+        for provider_name in selected_providers:
+            provider_id = provider_map.get(provider_name)
+            if provider_id:
+                selected_provider_ids.append(str(provider_id))
+        
+        if selected_provider_ids:
+            filtered_patients = [
+                p for p in filtered_patients
+                if str(p.get('assigned_provider_id', '')) in selected_provider_ids
+            ]
+
+    # Use filtered results
+    patient_data_list = filtered_patients
 
     # --- Map facility_id to facility_name using modular utility ---
     from src.core_utils import get_facility_id_to_name_map, map_facility_id_to_name
@@ -2156,7 +2264,7 @@ def show_billing_status_section(user_id):
 
 
 def show_task_review_section(user_id):
-    """Display monthly task review for providers with month selection"""
+    """Display monthly task review for providers with month selection and summary"""
     try:
         st.subheader("Task Review")
         
@@ -2196,15 +2304,20 @@ def show_task_review_section(user_id):
                 st.info("No valid monthly task tables found.")
                 return
                 
-            # Month selection
-            selected_option = st.selectbox(
-                "Select Month:",
-                available_months,
-                format_func=lambda x: x[0]
-            )
+            # View selection
+            view_tab1, view_tab2 = st.tabs(["Task List", "Monthly Summary"])
             
-            if selected_option:
-                selected_display, selected_table = selected_option
+            with view_tab1:
+                # Original task list functionality
+                selected_option = st.selectbox(
+                    "Select Month:",
+                    available_months,
+                    format_func=lambda x: x[0],
+                    key="task_list_month"
+                )
+                
+                if selected_option:
+                    selected_display, selected_table = selected_option
                 
                 # Get provider tasks for selected month using SQLite syntax
                 provider_query = f"""
@@ -2254,6 +2367,91 @@ def show_task_review_section(user_id):
                     )
                 else:
                     st.info(f"No tasks found for {selected_display}")
+            
+            with view_tab2:
+                # Monthly Summary functionality
+                st.markdown("### Monthly Summary")
+                
+                # Month selection for summary
+                selected_summary_option = st.selectbox(
+                    "Select Month for Summary:",
+                    available_months,
+                    format_func=lambda x: x[0],
+                    key="summary_month"
+                )
+                
+                if selected_summary_option:
+                    summary_display, summary_table = selected_summary_option
+                    
+                    # Get summary data for the selected month
+                    summary_query = f"""
+                    SELECT 
+                        task_description,
+                        COUNT(*) as task_count,
+                        SUM(minutes_of_service) as total_minutes,
+                        billing_code,
+                        billing_code_description
+                    FROM {summary_table}
+                    WHERE user_id = ?
+                    GROUP BY task_description, billing_code, billing_code_description
+                    ORDER BY total_minutes DESC, task_count DESC
+                    """
+                    
+                    summary_data = conn.execute(summary_query, (user_id,)).fetchall()
+                    
+                    if summary_data:
+                        # Convert to DataFrame
+                        summary_df = pd.DataFrame(summary_data, columns=[
+                            'Service Type', 'Task Count', 'Total Minutes', 'Billing Code', 'Billing Code Description'
+                        ])
+                        
+                        # Calculate totals
+                        total_summary_tasks = summary_df['Task Count'].sum()
+                        total_summary_minutes = summary_df['Total Minutes'].sum()
+                        
+                        # Display key metrics
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.metric("Total Tasks", total_summary_tasks)
+                        with col2:
+                            st.metric("Total Minutes", total_summary_minutes)
+                        with col3:
+                            # Calculate average duration per task
+                            avg_minutes = total_summary_minutes / total_summary_tasks if total_summary_tasks > 0 else 0
+                            st.metric("Avg Minutes/Task", f"{avg_minutes:.1f}")
+                        
+                        # Display the summary table
+                        st.markdown("#### Service Type Summary")
+                        st.dataframe(
+                            summary_df,
+                            use_container_width=True,
+                            hide_index=True
+                        )
+                        
+                        # Download summary option
+                        summary_csv = summary_df.to_csv(index=False)
+                        st.download_button(
+                            label="Download Summary as CSV",
+                            data=summary_csv,
+                            file_name=f"provider_summary_{summary_display.replace(' ', '_')}.csv",
+                            mime="text/csv"
+                        )
+                        
+                        # Show billing code breakdown
+                        st.markdown("#### Billing Code Breakdown")
+                        billing_breakdown = summary_df.groupby('Billing Code').agg({
+                            'Task Count': 'sum',
+                            'Total Minutes': 'sum'
+                        }).reset_index()
+                        
+                        st.dataframe(
+                            billing_breakdown,
+                            use_container_width=True,
+                            hide_index=True
+                        )
+                    else:
+                        st.info(f"No summary data found for {summary_display}")
+                        
         finally:
             conn.close()
                 

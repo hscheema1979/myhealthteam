@@ -14,23 +14,42 @@ import sys
 import os
 
 # Add the src directory to the path
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from src.database import get_db_connection
-from src.config.ui_style_config import apply_custom_css
-from src.billing.weekly_billing_processor import WeeklyBillingProcessor
-from src.auth_module import AuthenticationManager
+from database import get_db_connection, get_weekly_billing_summary_realtime, get_provider_billing_status_realtime
+from config.ui_style_config import apply_custom_css
 
 def get_available_months():
-    """Get list of available months from provider_tasks data."""
+    """Get list of available months from provider_tasks data including partitioned tables."""
     conn = get_db_connection()
     
+    # Query both main table and partitioned tables
     query = """
-    SELECT DISTINCT 
+    SELECT 
         strftime('%Y', task_date) as year,
-        strftime('%m', task_date) as month
+        strftime('%m', task_date) as month,
+        'main' as source_table
     FROM provider_tasks
     WHERE task_date IS NOT NULL
+    
+    UNION
+    
+    SELECT 
+        strftime('%Y', task_date) as year,
+        strftime('%m', task_date) as month,
+        'partitioned' as source_table
+    FROM provider_tasks_2025_10
+    WHERE task_date IS NOT NULL
+    
+    UNION
+    
+    SELECT 
+        strftime('%Y', task_date) as year,
+        strftime('%m', task_date) as month,
+        'partitioned' as source_table
+    FROM provider_tasks_2025_11
+    WHERE task_date IS NOT NULL
+    
     ORDER BY year DESC, month DESC
     """
     
@@ -40,8 +59,8 @@ def get_available_months():
     if df.empty:
         return []
     
-    # Convert to list of dictionaries with display names
-    months = []
+    # Remove duplicates and convert to list of dictionaries with display names
+    months_dict = {}
     for _, row in df.iterrows():
         # Skip rows with None values
         if row['year'] is None or row['month'] is None:
@@ -49,33 +68,58 @@ def get_available_months():
             
         year = int(row['year'])
         month = int(row['month'])
-        display = f"{calendar.month_name[month]} {year}"
-        months.append({
-            'year': year,
-            'month': month,
-            'display': display
-        })
+        key = f"{year}-{month:02d}"
+        
+        # Only add if not already exists
+        if key not in months_dict:
+            display = f"{calendar.month_name[month]} {year}"
+            months_dict[key] = {
+                'year': year,
+                'month': month,
+                'display': display
+            }
     
-    return months
+    return list(months_dict.values())
 
 def get_billing_weeks_list(selected_year=None, selected_month=None):
-    """Get list of available billing weeks from provider_tasks, optionally filtered by month/year."""
+    """Get list of available billing weeks from provider_tasks including partitioned tables, optionally filtered by month/year."""
     conn = get_db_connection()
     
     if selected_year and selected_month:
-        query = """
-        SELECT 
-            strftime('%Y-%W', task_date) as billing_week,
-            strftime('%Y-%m-%d', MIN(task_date)) as week_start_date,
-            strftime('%Y-%m-%d', MAX(task_date)) as week_end_date
-        FROM provider_tasks
-        WHERE strftime('%Y', task_date) = ? 
-        AND strftime('%m', task_date) = ?
-        AND task_date IS NOT NULL
-        GROUP BY strftime('%Y-%W', task_date)
-        ORDER BY billing_week DESC
-        """
-        df = pd.read_sql_query(query, conn, params=[str(selected_year), f"{selected_month:02d}"])
+        # Check if we need to query partitioned table for 2025 months
+        if selected_year == 2025 and selected_month in [10, 11]:
+            if selected_month == 10:
+                table_name = 'provider_tasks_2025_10'
+            elif selected_month == 11:
+                table_name = 'provider_tasks_2025_11'
+            
+            query = f"""
+            SELECT 
+                strftime('%Y-%W', task_date) as billing_week,
+                strftime('%Y-%m-%d', MIN(task_date)) as week_start_date,
+                strftime('%Y-%m-%d', MAX(task_date)) as week_end_date
+            FROM {table_name}
+            WHERE strftime('%Y', task_date) = ? 
+            AND strftime('%m', task_date) = ?
+            AND task_date IS NOT NULL
+            GROUP BY strftime('%Y-%W', task_date)
+            ORDER BY billing_week DESC
+            """
+            df = pd.read_sql_query(query, conn, params=[str(selected_year), f"{selected_month:02d}"])
+        else:
+            query = """
+            SELECT 
+                strftime('%Y-%W', task_date) as billing_week,
+                strftime('%Y-%m-%d', MIN(task_date)) as week_start_date,
+                strftime('%Y-%m-%d', MAX(task_date)) as week_end_date
+            FROM provider_tasks
+            WHERE strftime('%Y', task_date) = ? 
+            AND strftime('%m', task_date) = ?
+            AND task_date IS NOT NULL
+            GROUP BY strftime('%Y-%W', task_date)
+            ORDER BY billing_week DESC
+            """
+            df = pd.read_sql_query(query, conn, params=[str(selected_year), f"{selected_month:02d}"])
     else:
         query = """
         SELECT 
@@ -117,103 +161,169 @@ def get_billing_weeks_by_date_range(start_date, end_date):
         return pd.DataFrame()
 
 def get_weekly_billing_summary():
-    """Get summary of all weekly billing from provider_tasks."""
-    conn = get_db_connection()
-    
-    query = """
-    SELECT 
-        strftime('%Y-%W', task_date) as billing_week,
-        strftime('%Y-%m-%d', MIN(task_date)) as week_start_date,
-        strftime('%Y-%m-%d', MAX(task_date)) as week_end_date,
-        COUNT(*) as total_tasks,
-        COUNT(DISTINCT provider_name) as provider_count,
-        COUNT(DISTINCT patient_id) as patient_count,
-        0 as billed_tasks,
-        0 as paid_tasks,
-        0 as carried_over_tasks
-    FROM provider_tasks
-    WHERE task_date IS NOT NULL
-    GROUP BY strftime('%Y-%W', task_date)
-    ORDER BY billing_week DESC
-    """
-    
-    df = pd.read_sql_query(query, conn)
-    conn.close()
-    
-    return df
+    """Get summary of all weekly billing using real-time data generation."""
+    # Use real-time data generation to get billing summary
+    return get_weekly_billing_summary_realtime()
 
 def get_weekly_billing_summary_filtered(selected_year, selected_month):
-    """Get summary of weekly billing from provider_tasks filtered by month/year."""
+    """Get summary of weekly billing using real-time data generation."""
+    # Calculate date range for the selected month
+    import calendar
+    end_date = datetime(selected_year, selected_month, calendar.monthrange(selected_year, selected_month)[1])
+    start_date = datetime(selected_year, selected_month, 1)
+    
+    # Get real-time billing data for this month
+    start_str = start_date.strftime('%Y-%m-%d')
+    end_str = end_date.strftime('%Y-%m-%d')
+    
+    billing_data = get_provider_billing_status_realtime(start_str, end_str)
+    
+    if billing_data.empty:
+        return pd.DataFrame()
+    
+    # Group by billing week and summarize
+    weekly_summary = billing_data.groupby('billing_week').agg({
+        'provider_task_id': 'count',
+        'minutes_of_service': 'sum',
+        'is_billed': 'sum',
+        'is_paid': 'sum',
+        'is_carried_over': 'sum'
+    }).reset_index()
+    
+    weekly_summary.columns = ['billing_week', 'total_tasks', 'total_minutes', 'billed_tasks', 'paid_tasks', 'carried_over_tasks']
+    return weekly_summary.sort_values('billing_week', ascending=False)
+
+def get_weekly_billing_summary_by_week(billing_week):
+    """Get summary of weekly billing for a specific week from provider_tasks including partitioned tables."""
     conn = get_db_connection()
     
-    query = """
-    SELECT 
-        strftime('%Y-%W', task_date) as billing_week,
-        strftime('%Y-%m-%d', MIN(task_date)) as week_start_date,
-        strftime('%Y-%m-%d', MAX(task_date)) as week_end_date,
-        COUNT(*) as total_tasks,
-        COUNT(DISTINCT provider_name) as provider_count,
-        COUNT(DISTINCT patient_id) as patient_count,
-        0 as billed_tasks,
-        0 as paid_tasks,
-        0 as carried_over_tasks
-    FROM provider_tasks
-    WHERE strftime('%Y', task_date) = ? 
-    AND strftime('%m', task_date) = ?
-    AND task_date IS NOT NULL
-    GROUP BY strftime('%Y-%W', task_date)
-    ORDER BY billing_week DESC
-    """
+    # Parse billing week to determine which table to query
+    if '-' in billing_week:
+        year, week = billing_week.split('-')
+        year = int(year)
+        
+        if year == 2025:
+            # Try October first
+            query_oct = """
+            SELECT 
+                strftime('%Y-%W', task_date) as billing_week,
+                strftime('%Y-%m-%d', MIN(task_date)) as week_start_date,
+                strftime('%Y-%m-%d', MAX(task_date)) as week_end_date,
+                COUNT(*) as total_tasks,
+                COUNT(DISTINCT provider_name) as provider_count,
+                COUNT(DISTINCT patient_id) as patient_count,
+                0 as billed_tasks,
+                0 as paid_tasks,
+                0 as carried_over_tasks
+            FROM provider_tasks_2025_10
+            WHERE strftime('%Y-%W', task_date) = ?
+            AND task_date IS NOT NULL
+            GROUP BY strftime('%Y-%W', task_date)
+            """
+            df = pd.read_sql_query(query_oct, conn, params=[billing_week])
+            
+            # If no data found in October, try November
+            if df.empty:
+                query_nov = """
+                SELECT 
+                    strftime('%Y-%W', task_date) as billing_week,
+                    strftime('%Y-%m-%d', MIN(task_date)) as week_start_date,
+                    strftime('%Y-%m-%d', MAX(task_date)) as week_end_date,
+                    COUNT(*) as total_tasks,
+                    COUNT(DISTINCT provider_name) as provider_count,
+                    COUNT(DISTINCT patient_id) as patient_count,
+                    0 as billed_tasks,
+                    0 as paid_tasks,
+                    0 as carried_over_tasks
+                FROM provider_tasks_2025_11
+                WHERE strftime('%Y-%W', task_date) = ?
+                AND task_date IS NOT NULL
+                GROUP BY strftime('%Y-%W', task_date)
+                """
+                df = pd.read_sql_query(query_nov, conn, params=[billing_week])
+        else:
+            # For other years, use main table
+            query = """
+            SELECT 
+                strftime('%Y-%W', task_date) as billing_week,
+                strftime('%Y-%m-%d', MIN(task_date)) as week_start_date,
+                strftime('%Y-%m-%d', MAX(task_date)) as week_end_date,
+                COUNT(*) as total_tasks,
+                COUNT(DISTINCT provider_name) as provider_count,
+                COUNT(DISTINCT patient_id) as patient_count,
+                0 as billed_tasks,
+                0 as paid_tasks,
+                0 as carried_over_tasks
+            FROM provider_tasks
+            WHERE strftime('%Y-%W', task_date) = ?
+            AND task_date IS NOT NULL
+            GROUP BY strftime('%Y-%W', task_date)
+            """
+            df = pd.read_sql_query(query, conn, params=[billing_week])
+    else:
+        # Fallback to main table if billing_week format is unexpected
+        query = """
+        SELECT 
+            strftime('%Y-%W', task_date) as billing_week,
+            strftime('%Y-%m-%d', MIN(task_date)) as week_start_date,
+            strftime('%Y-%m-%d', MAX(task_date)) as week_end_date,
+            COUNT(*) as total_tasks,
+            COUNT(DISTINCT provider_name) as provider_count,
+            COUNT(DISTINCT patient_id) as patient_count,
+            0 as billed_tasks,
+            0 as paid_tasks,
+            0 as carried_over_tasks
+        FROM provider_tasks
+        WHERE strftime('%Y-%W', task_date) = ?
+        AND task_date IS NOT NULL
+        GROUP BY strftime('%Y-%W', task_date)
+        """
+        df = pd.read_sql_query(query, conn, params=[billing_week])
     
-    df = pd.read_sql_query(query, conn, params=[str(selected_year), f"{selected_month:02d}"])
     conn.close()
     
     return df
 
 def get_provider_billing_details(billing_week):
-    """Get detailed billing information for a specific week from provider_tasks."""
-    conn = get_db_connection()
+    """Get detailed billing information for a specific week using real-time data generation."""
+    # Use real-time provider billing status function
+    # The billing_week is in format 'YYYY-WW', so we need to convert to date range
     
-    query = """
-    SELECT 
-        provider_task_id,
-        provider_id,
-        provider_name,
-        patient_name,
-        task_date,
-        task_description,
-        minutes_of_service,
-        billing_code,
-        billing_code_description,
-        billing_status,
-        is_billed,
-        is_invoiced,
-        is_claim_submitted,
-        is_insurance_processed,
-        is_approved_to_pay,
-        is_paid,
-        is_carried_over,
-        provider_paid,
-        billing_week,
-        original_billing_week,
-        carryover_reason,
-        billing_notes,
-        billed_date,
-        invoiced_date,
-        claim_submitted_date,
-        insurance_processed_date,
-        approved_to_pay_date,
-        paid_date
-    FROM provider_tasks
-    WHERE billing_week = ?
-    AND task_date IS NOT NULL
-    ORDER BY provider_name, task_date
-    """
-    
-    df = pd.read_sql_query(query, conn, params=[billing_week])
-    conn.close()
-    
-    return df
+    try:
+        # Parse billing week to get date range
+        if '-' in billing_week:
+            year, week = billing_week.split('-')
+            year = int(year)
+            week_num = int(week)
+            
+            # Calculate approximate date range for this billing week
+            # Get the Monday of the specified week
+            import calendar
+            jan_1 = datetime(year, 1, 1)
+            # Calculate the Monday of the given week
+            week_start = jan_1 + timedelta(days=(week_num - 1) * 7)
+            week_start = week_start - timedelta(days=week_start.weekday())
+            week_end = week_start + timedelta(days=6)
+            
+            start_date = week_start.strftime('%Y-%m-%d')
+            end_date = week_end.strftime('%Y-%m-%d')
+            
+            # Get real-time billing data for this date range
+            billing_data = get_provider_billing_status_realtime(start_date, end_date)
+            
+            # Filter to the specific billing week
+            if not billing_data.empty and 'billing_week' in billing_data.columns:
+                filtered_data = billing_data[billing_data['billing_week'] == billing_week]
+                return filtered_data
+            else:
+                return pd.DataFrame()
+        else:
+            # Fallback: return empty dataframe if billing_week format is unexpected
+            return pd.DataFrame()
+            
+    except Exception as e:
+        print(f"Error in get_provider_billing_details: {str(e)}")
+        return pd.DataFrame()
 
 
 def update_task_billing_status(provider_task_id, status_field, value, notes=None):
@@ -340,30 +450,31 @@ def update_provider_paid_status(filtered_df):
 
 
 def get_tasks_requiring_attention():
-    """Get tasks that require billing attention."""
-    conn = get_db_connection()
+    """Get tasks that require billing attention using real-time data."""
+    # Get recent billing data to check for tasks needing attention
+    end_date = datetime.now().strftime('%Y-%m-%d')
+    start_date = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
     
-    query = """
-    SELECT 
-        provider_task_id,
-        provider_name,
-        patient_name,
-        task_date,
-        billing_code,
-        minutes_of_service,
-        billing_status,
-        billing_notes
-    FROM provider_tasks
-    WHERE billing_status = 'Not Billed' 
-    AND is_billed = 0
-    AND (billing_code IS NULL OR billing_code = '' OR billing_code = 'Not_Billable')
-    ORDER BY task_date DESC
-    """
+    billing_data = get_provider_billing_status_realtime(start_date, end_date)
     
-    df = pd.read_sql_query(query, conn)
-    conn.close()
+    if billing_data.empty:
+        return pd.DataFrame()
     
-    return df
+    # Filter tasks that need attention: Not Billed and missing billing codes
+    attention_tasks = billing_data[
+        (billing_data['billing_status'] == 'Not Billed') &
+        ((billing_data['billing_code'].isna()) | 
+         (billing_data['billing_code'] == '') | 
+         (billing_data['billing_code'] == 'Not_Billable'))
+    ]
+    
+    # Select relevant columns for display
+    display_columns = [
+        'provider_task_id', 'provider_name', 'patient_name', 'task_date',
+        'billing_code', 'minutes_of_service', 'billing_status', 'billing_notes'
+    ]
+    
+    return attention_tasks[display_columns] if not attention_tasks.empty else pd.DataFrame()
 
 
 def create_billing_status_overview_chart(df):
@@ -512,37 +623,116 @@ def create_billing_pipeline_chart(df):
     
     return fig
 
+def create_facility_chart(df):
+    """Create facility billing chart showing billing per facility."""
+    if df.empty:
+        return None
+    
+    # Use patient_name as proxy for facility since we don't have explicit facility column
+    # This limitation should be noted for future improvement
+    if 'patient_name' not in df.columns:
+        st.warning("Patient name column not found - cannot create facility chart")
+        return None
+    
+    # Group by patient name (facility proxy) and aggregate billing data
+    facility_summary = df.groupby('patient_name').agg({
+        'provider_task_id': 'count',
+        'is_billed': 'sum',
+        'is_paid': 'sum',
+        'minutes_of_service': 'sum',
+        'billing_status': lambda x: len(x[x == 'Not Billed'])  # Count of unbilled tasks
+    }).reset_index()
+    
+    facility_summary.columns = ['Facility', 'Total Tasks', 'Billed Tasks', 'Paid Tasks', 'Total Minutes', 'Unbilled Tasks']
+    
+    # Create subplots for multiple facility metrics
+    fig = make_subplots(
+        rows=2, cols=1,
+        subplot_titles=('Facility Billing Performance (Tasks)', 'Facility Revenue Impact (Minutes)'),
+        vertical_spacing=0.1
+    )
+    
+    # First subplot: Task counts
+    fig.add_trace(go.Bar(
+        name='Total Tasks',
+        x=facility_summary['Facility'],
+        y=facility_summary['Total Tasks'],
+        marker_color='lightblue',
+        text=facility_summary['Total Tasks'],
+        textposition='outside'
+    ), row=1, col=1)
+    
+    fig.add_trace(go.Bar(
+        name='Billed Tasks',
+        x=facility_summary['Facility'],
+        y=facility_summary['Billed Tasks'],
+        marker_color='green',
+        text=facility_summary['Billed Tasks'],
+        textposition='outside'
+    ), row=1, col=1)
+    
+    fig.add_trace(go.Bar(
+        name='Paid Tasks',
+        x=facility_summary['Facility'],
+        y=facility_summary['Paid Tasks'],
+        marker_color='darkgreen',
+        text=facility_summary['Paid Tasks'],
+        textposition='outside'
+    ), row=1, col=1)
+    
+    # Second subplot: Minutes of service
+    fig.add_trace(go.Bar(
+        name='Total Minutes',
+        x=facility_summary['Facility'],
+        y=facility_summary['Total Minutes'],
+        marker_color='orange',
+        text=facility_summary['Total Minutes'],
+        textposition='outside',
+        showlegend=False
+    ), row=2, col=1)
+    
+    fig.update_layout(
+        title="Facility Billing Analysis",
+        height=600,
+        barmode='group',
+        title_x=0.5
+    )
+    
+    # Update x-axis labels to be readable
+    fig.update_xaxes(tickangle=45, row=1, col=1)
+    fig.update_xaxes(tickangle=45, row=2, col=1)
+    
+    # Update y-axis titles
+    fig.update_yaxes(title_text="Number of Tasks", row=1, col=1)
+    fig.update_yaxes(title_text="Total Minutes", row=2, col=1)
+    
+    return fig
+
 def display_weekly_billing_dashboard():
     """Main dashboard display function."""
-    # Note: set_page_config is handled by the main app when used as a module
     apply_custom_css()
     
-    # Access control - restrict to Justin and Harpreet only
-    auth_manager = AuthenticationManager()
-    if not auth_manager.is_authenticated():
-        st.error("Please log in to access the billing dashboard.")
-        return
+    st.title("Weekly Billing Dashboard")
+    st.markdown("### Healthcare Provider Billing Management")
     
-    # Get current user ID
-    current_user_id = st.session_state.get('user_id')
+    # Initialize variables
+    selected_year = None
+    selected_month = None
+    selected_week = None
+    selected_weeks = []
+    start_date = None
+    end_date = None
+    date_filter_type = None
     
-    # Check if user is Justin (18) or Harpreet (12)
-    if current_user_id not in [12, 18]:
-        st.error("Access denied. This billing report is restricted to authorized personnel only.")
-        st.info("Please contact your administrator if you need access to billing reports.")
-        return
+    # Enhanced selection controls
+    st.subheader("Selection Options")
     
-    # Initialize processor
-    processor = WeeklyBillingProcessor()
-    
-    # Date selection controls
-    st.subheader("Date Selection")
-    
-    # Selection mode
+    # Selection mode with enhanced options
     selection_mode = st.radio(
-        "Selection Mode:",
-        ["Month Selection", "Custom Date Range"],
-        horizontal=True
+        "Primary Selection Mode:",
+        ["Month Selection", "Week Selection", "Custom Date Range"],
+        horizontal=True,
+        key="primary_selection_mode"
     )
     
     if selection_mode == "Month Selection":
@@ -551,7 +741,7 @@ def display_weekly_billing_dashboard():
         current_year = datetime.now().year
         current_month = datetime.now().month
         
-        col1, col2 = st.columns(2)
+        col1, col2, col3 = st.columns(3)
         
         with col1:
             if available_months:
@@ -568,7 +758,8 @@ def display_weekly_billing_dashboard():
                 selected_month_display = st.selectbox(
                     "Select Month:",
                     options=month_options,
-                    index=default_index
+                    index=default_index,
+                    key="month_selection"
                 )
                 
                 # Find selected month data
@@ -587,9 +778,81 @@ def display_weekly_billing_dashboard():
         
         # Week selection within selected month
         weeks_df = get_billing_weeks_list(selected_year, selected_month)
+        
+        with col3:
+            if not weeks_df.empty:
+                week_options = ['All Weeks'] + [f"{row['billing_week']} ({row['week_start_date']} to {row['week_end_date']})" 
+                               for _, row in weeks_df.iterrows()]
+                selected_week_display = st.selectbox("Select Billing Week", week_options, key="month_week_selection")
+                
+                if selected_week_display == 'All Weeks':
+                    selected_week = None
+                    selected_weeks = weeks_df['billing_week'].tolist()
+                else:
+                    selected_week = selected_week_display.split(' ')[0]
+                    selected_weeks = [selected_week]
+            else:
+                st.warning(f"No billing weeks found for {calendar.month_name[selected_month]} {selected_year}")
+                selected_week = None
+                selected_weeks = []
+        
         date_filter_type = "month"
         start_date = None
         end_date = None
+        
+    elif selection_mode == "Week Selection":
+        # Direct week selection - get all available weeks
+        all_weeks_df = get_billing_weeks_list()
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            if not all_weeks_df.empty:
+                # Create week options for selectbox
+                week_options = [f"{row['billing_week']} ({row['week_start_date']} to {row['week_end_date']})" 
+                               for _, row in all_weeks_df.iterrows()]
+                
+                selected_week_display = st.selectbox(
+                    "Select Week:",
+                    options=week_options,
+                    key="week_selection_mode_select"
+                )
+                
+                # Extract billing week from selection
+                selected_week = selected_week_display.split(' ')[0]
+                selected_weeks = [selected_week]
+                
+                # Set for compatibility with existing code
+                selected_year = int(selected_week.split('-')[0])
+                # Calculate month from week (approximate for display)
+                week_num = int(selected_week.split('-')[1])
+                # This is an approximation, as week 1 might span two months
+                # For display purposes, we can take the month of the middle day of the week
+                first_day_of_year = datetime(selected_year, 1, 1)
+                # Get the date of the first day of the selected week
+                # Assuming ISO week date (week 1 starts with the first Thursday of the year)
+                # This calculation is simplified and might not be perfectly accurate for all edge cases
+                selected_week_start_date = first_day_of_year + timedelta(weeks=week_num - 1)
+                selected_month = selected_week_start_date.month
+
+                date_filter_type = "week"
+                start_date = None
+                end_date = None
+            else:
+                st.warning("No billing weeks available")
+                selected_week = None
+                selected_weeks = []
+                selected_year = None
+                selected_month = None
+                date_filter_type = "week"
+                start_date = None
+                end_date = None
+        
+        with col2:
+            if selected_week:
+                st.metric("Selected Week", selected_week)
+            else:
+                st.metric("Selected Week", "None")
         
     else:  # Custom Date Range
         col1, col2 = st.columns(2)
@@ -618,30 +881,7 @@ def display_weekly_billing_dashboard():
             weeks_df = pd.DataFrame()
             date_filter_type = "range"
     
-    # Sidebar controls
-    st.sidebar.header("Dashboard Controls")
     
-    # Week selection
-    if not weeks_df.empty:
-        week_options = ['All Weeks'] + [f"{row['billing_week']} ({row['week_start_date']} to {row['week_end_date']})" 
-                       for _, row in weeks_df.iterrows()]
-        selected_week_display = st.sidebar.selectbox("Select Billing Week", week_options)
-        
-        if selected_week_display == 'All Weeks':
-            selected_week = None
-            selected_weeks = weeks_df['billing_week'].tolist()
-        else:
-            selected_week = selected_week_display.split(' ')[0]
-            selected_weeks = [selected_week]
-    else:
-        if date_filter_type == "month" and selected_year and selected_month:
-            st.sidebar.warning(f"No billing weeks found for {calendar.month_name[selected_month]} {selected_year}")
-        elif date_filter_type == "range":
-            st.sidebar.warning(f"No billing weeks found for the selected date range")
-        else:
-            st.sidebar.warning("No billing weeks available")
-        selected_week = None
-        selected_weeks = []
     
     # Removed unnecessary action buttons for cleaner interface
     
@@ -651,7 +891,7 @@ def display_weekly_billing_dashboard():
         if selected_week:
             # Single week selected
             details_df = get_provider_billing_details(selected_week)
-            st.subheader(f"Week {selected_week} Details")
+            report_title = f"Week {selected_week} Report"
         else:
             # Multiple weeks selected (All Weeks)
             details_df = pd.DataFrame()
@@ -659,15 +899,26 @@ def display_weekly_billing_dashboard():
                 week_data = get_provider_billing_details(week)
                 if not week_data.empty:
                     details_df = pd.concat([details_df, week_data], ignore_index=True)
-            st.subheader(f"All Weeks in {calendar.month_name[selected_month]} {selected_year}")
+            if selected_year and selected_month:
+                report_title = f"All Weeks in {calendar.month_name[selected_month]} {selected_year}"
+            else:
+                report_title = f"Multiple Weeks Report"
         
         # Get summary data
-        if date_filter_type == "month" and selected_year and selected_month:
+        if selected_week:
+            summary_df = get_weekly_billing_summary_by_week(selected_week)
+        elif date_filter_type == "month" and selected_year and selected_month:
             summary_df = get_weekly_billing_summary_filtered(selected_year, selected_month)
         else:
             summary_df = get_weekly_billing_summary()
         
-        # Key metrics row
+        # ========================================
+        # SECTION 1: WEEKLY REPORT (READ-ONLY SUMMARY)
+        # ========================================
+        st.subheader(report_title)
+        st.markdown("---")
+        
+        # Key metrics row for Weekly Report
         col1, col2, col3, col4 = st.columns(4)
         
         if not details_df.empty:
@@ -686,8 +937,51 @@ def display_weekly_billing_dashboard():
                 carryover_count = len(details_df[details_df['is_carried_over'] == 1])
                 st.metric("Carried Over", carryover_count)
         
-        # Charts row
-        col1, col2 = st.columns(2)
+        # Summary charts for Weekly Report
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            provider_chart = create_provider_performance_chart(details_df)
+            if provider_chart:
+                st.plotly_chart(provider_chart, use_container_width=True)
+        
+        with col2:
+            trend_chart = create_weekly_trend_chart(summary_df)
+            if trend_chart:
+                st.plotly_chart(trend_chart, use_container_width=True)
+        
+        with col3:
+            facility_chart = create_facility_chart(details_df)
+            if facility_chart:
+                st.plotly_chart(facility_chart, use_container_width=True)
+        
+        # Weekly Summary Table (Read-only)
+        if not details_df.empty:
+            st.subheader("Weekly Summary Table")
+            
+            # Create summary by provider
+            provider_summary = details_df.groupby('provider_name').agg({
+                'provider_task_id': 'count',
+                'minutes_of_service': 'sum',
+                'is_billed': 'sum',
+                'is_paid': 'sum',
+                'is_carried_over': 'sum'
+            }).reset_index()
+            
+            provider_summary.columns = ['Provider', 'Total Tasks', 'Total Minutes', 'Billed Tasks', 'Paid Tasks', 'Carried Over']
+            provider_summary['Billed Rate'] = (provider_summary['Billed Tasks'] / provider_summary['Total Tasks'] * 100).round(1)
+            provider_summary['Paid Rate'] = (provider_summary['Paid Tasks'] / provider_summary['Total Tasks'] * 100).round(1)
+            
+            st.dataframe(provider_summary, use_container_width=True)
+        
+        # ========================================
+        # SECTION 2: BILLING STATUS (DETAILED MANAGEMENT)
+        # ========================================
+        st.markdown("---")
+        st.subheader("Billing Status Management")
+        
+        # Status overview chart
+        col1, col2, col3 = st.columns(3)
         
         with col1:
             status_chart = create_billing_status_overview_chart(details_df)
@@ -695,26 +989,16 @@ def display_weekly_billing_dashboard():
                 st.plotly_chart(status_chart, use_container_width=True)
         
         with col2:
-            provider_chart = create_provider_performance_chart(details_df)
-            if provider_chart:
-                st.plotly_chart(provider_chart, use_container_width=True)
-        
-        # Pipeline and trends
-        col1, col2 = st.columns(2)
-        
-        with col1:
             pipeline_chart = create_billing_pipeline_chart(details_df)
             if pipeline_chart:
                 st.plotly_chart(pipeline_chart, use_container_width=True)
         
-        with col2:
-            trend_chart = create_weekly_trend_chart(summary_df)
-            if trend_chart:
-                st.plotly_chart(trend_chart, use_container_width=True)
+        with col3:
+            facility_chart = create_facility_chart(details_df)
+            if facility_chart:
+                st.plotly_chart(facility_chart, use_container_width=True)
         
         # Detailed data tables
-        st.subheader("Detailed Task Information")
-        
         # Filter options
         col1, col2, col3 = st.columns(3)
         
@@ -795,14 +1079,15 @@ def display_weekly_billing_dashboard():
                         if selected_status == "Provider Paid":
                             update_provider_paid_status(filtered_df)
                         else:
-                            update_selected_tasks_status(filtered_df, selected_status)
+                            update_selected_tasks_status(filtered_df, selected_df)
+
+        
+        # Detailed data tables
         
         else:
             st.info("No tasks found for the selected filters")
         
         # Tasks requiring attention
-        st.subheader("Tasks Requiring Attention")
-        
         attention_df = filtered_df[
             (filtered_df['billing_status'] == 'Not Billed') & 
             (filtered_df['is_billed'] == 0)
@@ -815,7 +1100,6 @@ def display_weekly_billing_dashboard():
                 'provider_name', 'patient_name', 'task_date', 'billing_code', 
                 'minutes_of_service', 'billing_notes'
             ]].copy()
-            
             attention_display.columns = [
                 'Provider', 'Patient', 'Task Date', 'Billing Code', 
                 'Minutes', 'Notes'

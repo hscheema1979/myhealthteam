@@ -1,8 +1,0 @@
-assigned_cm,total_count,unmapped_count,best_full_name,user_id,score,heuristic,confidence
-"Atencio, Dianela",173,173,"Medez, Dianela",8,0.667,fuzzy,low
-"Hernandez, Hector",170,170,"Hernandez, Hector",13,1.0,exact_full_name,high
-"Perez, Jorge",109,109,"Perez, Jorge",16,1.0,exact_full_name,high
-,58,58,,,0.0,,none
-DUPLICATE,10,10,"Diaz, Albert",1,0.286,fuzzy,none
-INACTIVE,2,2,"Davis, Genevieve",11,0.417,fuzzy,none
-t,1,1,"Estomo, Jan",14,0.167,fuzzy,none

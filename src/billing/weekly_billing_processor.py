@@ -8,8 +8,8 @@ import pandas as pd
 from datetime import datetime, timedelta
 import logging
 import sys
-import os
 from typing import Dict, List, Tuple, Optional
+import os
 
 # Add the src directory to the path
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
@@ -17,11 +17,15 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from src.database import get_db_connection
 
 # Configure logging
+log_dir = os.path.join(os.path.dirname(__file__), '..', '..', 'logs')
+os.makedirs(log_dir, exist_ok=True)
+log_file_path = os.path.join(log_dir, 'weekly_billing_processor.log')
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('weekly_billing_processor.log'),
+        logging.FileHandler(log_file_path),
         logging.StreamHandler()
     ]
 )

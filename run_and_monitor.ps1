@@ -30,7 +30,8 @@ param(
   [int]$CheckInterval = 30,
   [int]$MaxConsecutiveFailures = 5,
   [string]$AppPath,
-  [string]$LogPath
+  [string]$LogPath,
+  [int]$Port = 8502  # Dev environment default
 )
 
 # Resolve default paths relative to this script
@@ -65,11 +66,11 @@ function Find-StreamlitProcess {
 }
 
 function Start-StreamlitVisible {
-  param([string]$AppPath)
-  Write-Log "Starting Streamlit app in visible PowerShell window..."
+  param([string]$AppPath, [int]$Port = 8502)
+  Write-Log "Starting Streamlit app in visible PowerShell window on port $Port..."
   try {
     # Launch a new visible PowerShell window that runs the app and stays open
-    Start-Process -FilePath 'powershell.exe' -ArgumentList '-NoExit', '-Command', "python -m streamlit run `"$AppPath`"" -WindowStyle Normal | Out-Null
+    Start-Process -FilePath 'powershell.exe' -ArgumentList '-NoExit', '-Command', "python -m streamlit run `"$AppPath`" --server.port $Port" -WindowStyle Normal | Out-Null
     Start-Sleep -Seconds 3
     $p = Find-StreamlitProcess -AppPath $AppPath
     if ($p) {
@@ -101,7 +102,7 @@ if ($existing) {
   $TrackedPid = $existing.ProcessId
   Write-Log "Detected existing app process. Tracking PID=$TrackedPid"
 } else {
-  $TrackedPid = Start-StreamlitVisible -AppPath $AppPath
+  $TrackedPid = Start-StreamlitVisible -AppPath $AppPath -Port $Port
 }
 
 
@@ -161,7 +162,7 @@ while ($true) {
   # Monitor Streamlit
   if (-not $TrackedPid -or -not (Is-ProcessAlive -ProcessId $TrackedPid)) {
     Write-Log "Tracked Streamlit process missing. Restarting..."
-    $TrackedPid = Start-StreamlitVisible -AppPath $AppPath
+    $TrackedPid = Start-StreamlitVisible -AppPath $AppPath -Port $Port
     if ($TrackedPid) {
       $ConsecutiveFailures = 0
     } else {

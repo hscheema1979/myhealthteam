@@ -1,21 +1,32 @@
 import streamlit as st
+st.write("Admin Dashboard Loaded")
 from src.dashboards.dashboard_display_config import ST_DF_AUTOSIZE_COLUMNS
 import pandas as pd
 import numpy as np
 import time
 from src import database as db
-try:
-    # reuse the unfiltered patient summary helper from provider dashboard for consistency
-    from src.dashboards.care_provider_dashboard_enhanced import show_unfiltered_patient_summary
-except Exception:
-    show_unfiltered_patient_summary = None
+# try:
+#     # reuse the unfiltered patient summary helper from provider dashboard for consistency
+#     from src.dashboards.care_provider_dashboard_enhanced import show_unfiltered_patient_summary
+# except Exception:
+#     show_unfiltered_patient_summary = None
 from datetime import datetime, timedelta
-# Mito Sheet import
-try:
-    from mitosheet.streamlit.v1 import spreadsheet
-    MITO_AVAILABLE = True
-except ImportError:
-    MITO_AVAILABLE = False
+
+def _fix_dataframe_for_streamlit(df):
+    """
+    Fix common Streamlit/PyArrow serialization issues in dataframes.
+    Specifically handles current_facility_id column conversion to prevent PyArrow errors.
+    """
+    if df is None or df.empty:
+        return df
+    
+    df_fixed = df.copy()
+    
+    # Fix current_facility_id column to prevent PyArrow conversion errors
+    if 'current_facility_id' in df_fixed.columns:
+        df_fixed['current_facility_id'] = df_fixed['current_facility_id'].astype(str)
+    
+    return df_fixed
 
 def _apply_patient_info_edits_admin(edited_df, original_df):
     """Apply patient info edits to database"""
@@ -65,23 +76,157 @@ def _apply_patient_info_edits_admin(edited_df, original_df):
     finally:
         conn.close()
 
+def _execute_patient_reassignment(patient_id, role_type, new_assignee_id, admin_user_id):
+    """Execute patient reassignment with audit logging"""
+    import pandas as pd
+    from src import database as _db
+    import datetime
+    
+    if not patient_id or not role_type or not new_assignee_id:
+        raise ValueError("Missing required parameters for patient reassignment")
+    
+    conn = _db.get_db_connection()
+    try:
+        # Log the original assignment for audit
+        audit_timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        
+        # Determine assignment table and column based on role type
+        if role_type == "Provider":
+            assignment_table = "patient_assignments"
+            assignment_column = "provider_id"
+            role_id = 33
+        elif role_type == "Coordinator":
+            assignment_table = "patient_assignments" 
+            assignment_column = "coordinator_id"
+            role_id = 36
+        else:
+            raise ValueError(f"Invalid role type: {role_type}")
+        
+        # Get current assignment info for audit
+        current_assignment = conn.execute(
+            f"SELECT {assignment_column} FROM {assignment_table} WHERE patient_id = ?",
+            (patient_id,)
+        ).fetchone()
+        
+        current_assignee = current_assignment[0] if current_assignment else None
+        
+        # Check if assignment exists, if not create new record
+        existing_assignment = conn.execute(
+            f"SELECT id FROM {assignment_table} WHERE patient_id = ?",
+            (patient_id,)
+        ).fetchone()
+        
+        if existing_assignment:
+            # Update existing assignment
+            conn.execute(
+                f"UPDATE {assignment_table} SET {assignment_column} = ?, updated_date = CURRENT_TIMESTAMP WHERE patient_id = ?",
+                (new_assignee_id, patient_id)
+            )
+        else:
+            # Create new assignment record
+            conn.execute(
+                f"INSERT INTO {assignment_table} (patient_id, {assignment_column}, created_date, updated_date) VALUES (?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+                (patient_id, new_assignee_id)
+            )
+        
+        # Log audit trail
+        conn.execute(
+            """INSERT INTO audit_log (action_type, table_name, record_id, old_value, new_value, user_id, timestamp, description)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                "REASSIGNMENT",
+                assignment_table,
+                patient_id,
+                f"{role_type}_ID: {current_assignee}",
+                f"{role_type}_ID: {new_assignee_id}",
+                admin_user_id,
+                audit_timestamp,
+                f"Patient {patient_id} reassigned from {role_type} {current_assignee} to {role_type} {new_assignee_id}"
+            )
+        )
+        
+        conn.commit()
+        
+    except Exception as e:
+        conn.rollback()
+        raise Exception(f"Failed to reassign patient: {str(e)}")
+    finally:
+        conn.close()
+
 def show():
     global pd  # Explicitly declare pd as global to prevent UnboundLocalError
     from src.config.ui_style_config import TextStyle
     st.title("Admin Dashboard")
     user_id = st.session_state.get('user_id', None)
 
-    # New tab order: User Role Management, User Management, Staff Onboarding, Coordinator Tasks, Provider Tasks, Patient Info, Billing Report, For Testing
-    tab_role, tab1, tab_onboard, tab_coord_tasks, tab_prov_tasks, tab3, tab_billing, tab_test = st.tabs([
-        "User Role Management",
-        "User Management", 
-        "Staff Onboarding",
-        "Coordinator Tasks",
-        "Provider Tasks",
-        "Patient Info",
-        "Billing Report",
-        "For Testing"
-    ])
+    current_user = st.session_state.get('authenticated_user', {})
+    active_role_id = None
+    if current_user and 'user_id' in current_user:
+        try:
+            user_roles = db.get_user_roles_by_user_id(current_user['user_id'])
+            role_options = {role['role_name']: role['role_id'] for role in user_roles}
+            
+            if len(role_options) > 1:
+                st.sidebar.subheader("Role Switcher")
+                selected_role_name = st.sidebar.selectbox(
+                    "Select Active Role",
+                    list(role_options.keys()),
+                    index=list(role_options.keys()).index(st.session_state.get('active_role_name', list(role_options.keys())[0])),
+                    key="role_switcher"
+                )
+                active_role_id = role_options[selected_role_name]
+                st.session_state['active_role_id'] = active_role_id
+                st.session_state['active_role_name'] = selected_role_name
+                st.sidebar.caption(f"Active as: {selected_role_name}")
+            else:
+                active_role_id = next(iter(role_options.values()), None)
+                st.session_state['active_role_id'] = active_role_id
+                st.session_state['active_role_name'] = next(iter(role_options.keys()), None)
+        except Exception as e:
+            st.sidebar.error(f"Role error: {str(e)[:50]}...")
+    
+    # New tab order: User Role Management, Staff Onboarding, Coordinator Tasks, Provider Tasks, Patient Info, Billing Report, For Testing
+    # Note: User Management tab removed (functionality preserved in commented code below)
+    
+    # Dynamic tab configuration based on active role
+    tab_names = []
+    if active_role_id == 34:  # Admin
+        tab_names = [
+            "User Role Management",
+            "Staff Onboarding",
+            "Coordinator Tasks",
+            "Provider Tasks",
+            "Patient Info",
+            "Billing Report",
+            "For Testing"
+        ]
+    elif active_role_id == 33:  # Care Provider
+        tab_names = [
+            "My Patients",
+            "Onboarding Queue",
+            "Phone Reviews",
+            "Task Review",
+            "Patient Info"
+        ]
+    elif active_role_id == 36:  # Care Coordinator
+        tab_names = [
+            "Patient Info",
+            "Coordinator Tasks"
+        ]
+    else:
+        tab_names = ["Patient Info"]
+
+    # Create tabs based on active role
+    tabs = st.tabs(tab_names)
+
+    # Assign to variables while handling different tab counts
+    tab_role = tabs[0] if len(tab_names) > 0 else st.empty()
+    tab_onboard = tabs[1] if len(tab_names) > 1 else st.empty()
+    tab_coord_tasks = tabs[2] if len(tab_names) > 2 else st.empty()
+    tab_prov_tasks = tabs[3] if len(tab_names) > 3 else st.empty()
+    tab3 = tabs[4] if len(tab_names) > 4 else st.empty()
+    tab_billing = tabs[5] if len(tab_names) > 5 else st.empty()
+    tab_test = tabs[6] if len(tab_names) > 6 else st.empty()
 
     # --- TAB: User Role Management ---
     with tab_role:
@@ -203,33 +348,101 @@ def show():
             if st.button("📧 Send Status Updates"):
                 st.info("Email notification functionality would be implemented here")
 
-    # --- TAB 1: User Management ---
-    with tab1:
-        st.subheader("User Management Table (All Users and Roles)")
-        try:
-            users = db.get_all_users()
-            users_df = pd.DataFrame(users)
+        st.divider()
+        st.markdown("#### 🔧 User Management Actions")
+        st.warning("**⚠️ User Management**: Changes below are permanent and cannot be undone!")
+        
+        # Create a table with action buttons for each user
+        for user_row in users:
+            user_id = user_row[0]      # user_id
+            username = user_row[1]     # username  
+            full_name = user_row[2]    # full_name
+            email = user_row[3]        # email
+            current_status = user_row[4]  # status
+            hire_date = user_row[5]    # hire_date
             
-            # Configure columns for the user management table
-            column_config = {
-                "user_id": None,
-                "username": st.column_config.TextColumn("Username"),
-                "full_name": st.column_config.TextColumn("Full Name"),
-                "email": st.column_config.TextColumn("Email"),
-                "status": st.column_config.SelectboxColumn("Status", options=["active", "inactive", "pending"], required=True),
-                "hire_date": st.column_config.DateColumn("Hire Date")
-            }
-            
-            edited_df = st.data_editor(
-                users_df, 
-                column_config=column_config,
-                use_container_width=True, 
-                num_rows="dynamic",
-                key="user_management_editor"
-            )
+            # Create a card-like display for each user
+            with st.container():
+                col1, col2, col3, col4 = st.columns([2, 2, 1, 1])
+                
+                with col1:
+                    st.markdown(f"**{full_name}**")
+                    st.caption(f"Username: `{username}` | Status: {current_status}")
+                
+                with col2:
+                    if current_status == 'inactive':
+                        if st.button(f"✅ Activate", key=f"activate_{user_id}"):
+                            if db.reactivate_user(user_id):
+                                st.success(f"Reactivated {full_name}")
+                                time.sleep(1)
+                                st.rerun()
+                            else:
+                                st.error(f"Failed to reactivate {full_name}")
+                    else:
+                        if st.button(f"⏸️ Deactivate", key=f"deactivate_{user_id}"):
+                            if db.deactivate_user(user_id):
+                                st.info(f"Deactivated {full_name}")
+                                time.sleep(1)
+                                st.rerun()
+                            else:
+                                st.error(f"Failed to deactivate {full_name}")
+                
+                with col3:
+                    st.markdown("")  # Spacer
+                
+                with col4:
+                    # Delete button with confirmation
+                    if st.button(f"🗑️ Delete", key=f"delete_{user_id}", type="primary"):
+                        # Create confirmation dialog
+                        st.error(f"⚠️ **PERMANENT DELETE CONFIRMATION**")
+                        st.markdown(f"**This will permanently delete user:** `{full_name}`")
+                        st.markdown("**This action CANNOT be undone!**")
                         
-        except Exception as e:
-            st.error(f"Error loading user data: {e}")
+                        col_yes, col_no = st.columns(2)
+                        with col_yes:
+                            if st.button(f"✅ YES - Delete {full_name}", key=f"confirm_delete_{user_id}"):
+                                if db.delete_user(user_id):
+                                    st.success(f"**DELETED**: {full_name} has been permanently removed")
+                                    time.sleep(2)
+                                    st.rerun()
+                                else:
+                                    st.error(f"Failed to delete {full_name}")
+                        with col_no:
+                            st.info("Operation cancelled")
+                            st.rerun()  # Reset the state
+
+    # --- TAB: Staff Onboarding (Hidden User Management Table) ---
+    # HIDING: User management table display issues - functionality moved to User Role Management tab
+    # with tab_onboard:
+    #     st.subheader(TextStyle.INFO_INDICATOR + " Staff Onboarding Management")
+    #     try:
+    #         users = db.get_all_users()
+    #         users_df = pd.DataFrame(users)
+    #         
+    #         # Configure columns for the user management table
+    #         # Note: Column order matches get_all_users() query
+    #         column_config = {
+    #             "user_id": st.column_config.TextColumn("User ID"),
+    #             "username": st.column_config.TextColumn("Username/Login"),
+    #             "full_name": st.column_config.TextColumn("Full Name"),
+    #             "email": st.column_config.TextColumn("Email Address"),
+    #             "status": st.column_config.SelectboxColumn("Status", options=["active", "inactive", "pending"], required=True),
+    #             "hire_date": st.column_config.DateColumn("Hire Date")
+    #         }
+    #         
+    #         edited_df = st.data_editor(
+    #             users_df, 
+    #             column_config=column_config,
+    #             use_container_width=True, 
+    #             num_rows="dynamic",
+    #             key="user_management_editor"
+    #         )
+    #         
+    #         st.markdown("---")
+    #         
+    #                     
+    #     except Exception as e:
+    #         st.error(f"Error loading user data: {e}")
 
     # --- TAB: Staff Onboarding ---
     with tab_onboard:
@@ -592,7 +805,7 @@ def show():
                 with filter_cols[1]:
                     st.markdown("**Coordinator Name**")
                     coord_names = sorted(df['coordinator_name'].dropna().unique()) if 'coordinator_name' in df.columns else []
-                    selected_coord = st.selectbox("", ["All"] + coord_names, key="coord_name_selector")
+                    selected_coord = st.selectbox("Filter by Coordinator", ["All"] + coord_names, key="coord_name_selector")
                 with filter_cols[2]:
                     st.markdown("**Patient**")
                     if 'Patient Name' in df.columns:
@@ -606,7 +819,7 @@ def show():
                     else:
                         patient_options = [str(pid) for pid in sorted(df['patient_id'].dropna().unique())] if 'patient_id' in df.columns else []
                         patient_map = {str(pid): pid for pid in patient_options}
-                    selected_patient = st.selectbox("", ["All"] + patient_options, key="patient_selector")
+                    selected_patient = st.selectbox("Filter by Patient", ["All"] + patient_options, key="patient_selector")
 
                 # Apply filters
                 filtered_df = df.copy()
@@ -640,6 +853,135 @@ def show():
 
     # --- TAB: Provider Tasks ---
     with tab_prov_tasks:
+        # --- Metrics Section at Top ---
+        st.subheader("Provider Tasks Overview")
+        
+        # Time Period Selectors
+        col_period1, col_period2 = st.columns([2, 1])
+        with col_period1:
+            time_period = st.selectbox(
+                "Time Period",
+                ["Today", "This Week", "This Month", "Custom Range"],
+                key="provider_tasks_time_period",
+                help="Select time period for metrics calculation"
+            )
+        
+        custom_start_date = None
+        custom_end_date = None
+        if time_period == "Custom Range":
+            with col_period2:
+                col_start, col_end = st.columns(2)
+                with col_start:
+                    custom_start_date = st.date_input("Start Date", key="provider_tasks_start_date")
+                with col_end:
+                    custom_end_date = st.date_input("End Date", key="provider_tasks_end_date")
+        
+        # Calculate date range based on selection
+        from datetime import datetime, timedelta
+        today = datetime.now().date()
+        if time_period == "Today":
+            start_date = end_date = today
+        elif time_period == "This Week":
+            start_date = today - timedelta(days=today.weekday())
+            end_date = today
+        elif time_period == "This Month":
+            start_date = today.replace(day=1)
+            end_date = today
+        elif time_period == "Custom Range":
+            start_date = custom_start_date or today
+            end_date = custom_end_date or today
+        
+        # Metrics Display
+        try:
+            # Get provider task data for the selected period
+            conn = db.get_db_connection()
+            
+            # Query all provider task tables for the date range
+            all_tasks = []
+            table_names = []
+            
+            # Get all provider_tasks tables (assuming monthly format: provider_tasks_YYYY_MM)
+            cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'provider_tasks_%'")
+            table_names = [row[0] for row in cursor.fetchall()]
+            
+            for table_name in table_names:
+                try:
+                    # Try different date column names
+                    date_columns = ['task_date', 'date', 'created_date']
+                    for date_col in date_columns:
+                        try:
+                            query = f"SELECT * FROM {table_name} WHERE date({date_col}) BETWEEN date(?) AND date(?)"
+                            tasks = conn.execute(query, (start_date, end_date)).fetchall()
+                            if tasks:
+                                tasks_df = pd.DataFrame([dict(row) for row in tasks])
+                                all_tasks.append(tasks_df)
+                                break
+                        except Exception:
+                            continue
+                except Exception:
+                    continue
+            
+            conn.close()
+            
+            # Combine all task data
+            if all_tasks:
+                combined_df = pd.concat(all_tasks, ignore_index=True)
+                
+                # Calculate metrics
+                total_patients_seen = len(combined_df['patient_id'].unique()) if 'patient_id' in combined_df.columns else len(combined_df)
+                
+                # Visit type breakdown
+                home_visits = 0
+                telemedicine_visits = 0
+                phone_reviews = 0
+                
+                if 'task_type' in combined_df.columns:
+                    home_visits = len(combined_df[combined_df['task_type'].str.contains('Home|home', case=False, na=False)])
+                    telemedicine_visits = len(combined_df[combined_df['task_type'].str.contains('Telemed|Telehealth|video', case=False, na=False)])
+                    phone_reviews = len(combined_df[combined_df['task_type'].str.contains('Phone|phone', case=False, na=False)])
+                elif 'visit_type' in combined_df.columns:
+                    home_visits = len(combined_df[combined_df['visit_type'].str.contains('Home|home', case=False, na=False)])
+                    telemedicine_visits = len(combined_df[combined_df['visit_type'].str.contains('Telemed|Telehealth|video', case=False, na=False)])
+                    phone_reviews = len(combined_df[combined_df['visit_type'].str.contains('Phone|phone', case=False, na=False)])
+                
+                # Display metrics
+                col1, col2, col3, col4 = st.columns(4)
+                with col1:
+                    st.metric("Total Patients Seen", total_patients_seen)
+                with col2:
+                    st.metric("Home Visits", home_visits)
+                with col3:
+                    st.metric("Telemedicine Visits", telemedicine_visits)
+                with col4:
+                    st.metric("Phone Reviews", phone_reviews)
+                    
+            else:
+                # No data found
+                col1, col2, col3, col4 = st.columns(4)
+                with col1:
+                    st.metric("Total Patients Seen", 0)
+                with col2:
+                    st.metric("Home Visits", 0)
+                with col3:
+                    st.metric("Telemedicine Visits", 0)
+                with col4:
+                    st.metric("Phone Reviews", 0)
+                st.info(f"No provider tasks found for the period: {start_date} to {end_date}")
+                
+        except Exception as e:
+            st.error(f"Error calculating provider task metrics: {e}")
+            # Show zeros if calculation fails
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.metric("Total Patients Seen", 0)
+            with col2:
+                st.metric("Home Visits", 0)
+            with col3:
+                st.metric("Telemedicine Visits", 0)
+            with col4:
+                st.metric("Phone Reviews", 0)
+        
+        st.divider()
         st.subheader("Provider Tasks Table (Editable, Filterable, Sortable)")
         try:
             # Attempt to get provider tasks from db
@@ -666,14 +1008,23 @@ def show():
         st.divider()
         st.subheader("Provider Monthly Summary (Current Month)")
         try:
+            from datetime import datetime, timedelta
+            # Get current month date range for metrics
+            today = datetime.now()
+            start_date = today.replace(day=1)
+            if today.month == 12:
+                end_date = today.replace(year=today.year + 1, month=1, day=1) - timedelta(days=1)
+            else:
+                end_date = today.replace(month=today.month + 1, day=1) - timedelta(days=1)
+            
             providers = db.get_users_by_role(33)
+            # Get performance metrics for current month
+            monthly_data = db.get_provider_performance_metrics(start_date, end_date)
+            
             summary_rows = []
             for provider in providers:
                 provider_id = provider.get('user_id')
                 provider_name = provider.get('full_name', provider.get('username', 'Unknown'))
-                # Use get_provider_performance_metrics for monthly data
-                monthly_data = db.get_provider_performance_metrics()
-                # Find the row for this provider
                 provider_row = next((row for row in monthly_data if row.get('full_name') == provider_name), None)
                 patients_visited = provider_row.get('patients_visited_this_month', 0) if provider_row else 0
                 remaining_visits = provider_row.get('remaining_visits', 0) if provider_row else 0
@@ -698,7 +1049,7 @@ def show():
         try:
             # Get patient data for visit breakdown analysis
             patients = db.get_all_patient_panel() if hasattr(db, 'get_all_patient_panel') else []
-            patients_df = pd.DataFrame(patients)
+            patients_df = _fix_dataframe_for_streamlit(pd.DataFrame(patients))
             
             if not patients_df.empty:
                 # Use the same robust date processing logic as Patient Info tab
@@ -935,10 +1286,234 @@ def show():
         # --- Enable Editing Control ---
         editable_admin = st.checkbox("Enable editing", value=False, key="admin_patient_info_editable")
         
+        # --- Patient Reassignment Controls ---
+        with st.expander("🔄 Patient Reassignment Controls", expanded=False):
+            st.markdown("#### Role-based Patient Assignment Management")
+            
+            # Role Selection
+            col_assign_role1, col_assign_role2 = st.columns([1, 1])
+            with col_assign_role1:
+                assignment_role = st.selectbox(
+                    "Assignment Role",
+                    ["Provider", "Coordinator"],
+                    key="admin_assignment_role",
+                    help="Select role for patient reassignment"
+                )
+            
+            # Get available providers/coordinators based on role
+            try:
+                if assignment_role == "Provider":
+                    # Get care providers using proper database function (role_id 33)
+                    providers = db.get_users_by_role(33)
+                    available_assignees = [(p['user_id'], f"{p.get('first_name', '')} {p.get('last_name', '')}") for p in providers]
+                else:
+                    # Get care coordinators using proper database function (role_id 36)  
+                    coordinators = db.get_users_by_role(36)
+                    available_assignees = [(c['user_id'], f"{c.get('first_name', '')} {c.get('last_name', '')}") for c in coordinators]
+            except Exception as e:
+                st.error(f"Error loading assignees: {e}")
+                available_assignees = []
+            
+            # Reassignment Method Selection
+            reassignment_method = st.radio(
+                "Reassignment Method",
+                ["Individual Patient Assignment", "Bulk Assignment"],
+                key="admin_reassignment_method",
+                help="Choose individual or bulk reassignment approach"
+            )
+            
+            if reassignment_method == "Individual Patient Assignment":
+                st.markdown("##### Individual Patient Assignment")
+                
+                # Patient Selection (by name/ID search)
+                col_patient_search, col_assignee_search = st.columns([2, 1])
+                with col_patient_search:
+                    patient_search = st.text_input(
+                        "Search Patient for Reassignment", 
+                        key="admin_individual_patient_search",
+                        help="Type patient name or ID to find specific patient"
+                    )
+                
+                # Selected patient display
+                if patient_search:
+                    # Filter available patients based on search
+                    try:
+                        all_patients = db.get_all_patient_panel() if hasattr(db, 'get_all_patient_panel') else []
+                        patients_for_search = _fix_dataframe_for_streamlit(pd.DataFrame(all_patients))
+                        
+                        if not patients_for_search.empty:
+                            search_term_lower = patient_search.lower()
+                            # Filter by name or ID
+                            search_mask = pd.Series(False, index=patients_for_search.index)
+                            
+                            if 'first_name' in patients_for_search.columns:
+                                search_mask |= patients_for_search['first_name'].fillna('').astype(str).str.lower().str.contains(search_term_lower)
+                            if 'last_name' in patients_for_search.columns:
+                                search_mask |= patients_for_search['last_name'].fillna('').astype(str).str.lower().str.contains(search_term_lower)
+                            if 'patient_id' in patients_for_search.columns:
+                                search_mask |= patients_for_search['patient_id'].fillna('').astype(str).str.lower().str.contains(search_term_lower)
+                            
+                            filtered_patients = patients_for_search[search_mask]
+                            
+                            if not filtered_patients.empty:
+                                # Display searchable patients for selection
+                                display_patients = []
+                                for _, row in filtered_patients.head(10).iterrows():  # Limit to 10 results
+                                    p_id = row.get('patient_id', 'N/A')
+                                    first_name = row.get('first_name', 'N/A')
+                                    last_name = row.get('last_name', 'N/A')
+                                    display_patients.append(f"{p_id} - {first_name} {last_name}")
+                                
+                                selected_patient_display = st.selectbox(
+                                    "Select Patient",
+                                    display_patients,
+                                    key="admin_selected_patient_display",
+                                    help="Select patient for reassignment"
+                                )
+                                
+                                # Extract patient_id from selected display
+                                if selected_patient_display:
+                                    selected_patient_id = selected_patient_display.split(' - ')[0]
+                                    
+                                    # Assignee Selection
+                                    col_assignee_sel = st.columns([2, 1])
+                                    with col_assignee_sel[0]:
+                                        if available_assignees:
+                                            assignee_options = {f"{name} (ID: {uid})": uid for uid, name in available_assignees}
+                                            selected_assignee = st.selectbox(
+                                                f"New {assignment_role}",
+                                                list(assignee_options.keys()),
+                                                key="admin_individual_assignee",
+                                                help=f"Select new {assignment_role.lower()}"
+                                            )
+                                            new_assignee_id = assignee_options.get(selected_assignee)
+                                        else:
+                                            st.warning(f"No available {assignment_role.lower()}s found")
+                                            new_assignee_id = None
+                                    
+                                    # Confirmation and Execute
+                                    with col_assignee_sel[1]:
+                                        st.markdown("")  # Spacer
+                                        if st.button(f"Assign to {assignment_role}", key="admin_execute_individual_assign"):
+                                            if new_assignee_id and selected_patient_id != 'N/A':
+                                                try:
+                                                    _execute_patient_reassignment(selected_patient_id, assignment_role, new_assignee_id, user_id)
+                                                    st.success(f"Patient {selected_patient_id} successfully reassigned to {assignment_role.lower()}")
+                                                    st.rerun()
+                                                except Exception as e:
+                                                    st.error(f"Error reassigning patient: {e}")
+                                            else:
+                                                st.error("Please select both patient and assignee")
+                            else:
+                                st.warning(f"No patients found matching '{patient_search}'")
+                    except Exception as e:
+                        st.error(f"Error searching patients: {e}")
+            
+            else:  # Bulk Assignment
+                st.markdown("##### Bulk Patient Assignment")
+                
+                # Bulk Patient Selection
+                bulk_patient_filter = st.selectbox(
+                    "Filter Patients for Bulk Assignment",
+                    ["All Active Patients", "Search by Name/ID", "Select from Current Results"],
+                    key="admin_bulk_patient_filter",
+                    help="Choose how to select patients for bulk assignment"
+                )
+                
+                bulk_patients_to_assign = []
+                
+                if bulk_patient_filter == "Search by Name/ID":
+                    bulk_search_term = st.text_input(
+                        "Search patients for bulk assignment", 
+                        key="admin_bulk_search",
+                        help="Enter search term to filter patients"
+                    )
+                    # Apply search logic similar to individual
+                    try:
+                        all_patients = db.get_all_patient_panel() if hasattr(db, 'get_all_patient_panel') else []
+                        patients_for_bulk = _fix_dataframe_for_streamlit(pd.DataFrame(all_patients))
+                        
+                        if bulk_search_term and not patients_for_bulk.empty:
+                            search_term_lower = bulk_search_term.lower()
+                            bulk_search_mask = pd.Series(False, index=patients_for_bulk.index)
+                            
+                            if 'first_name' in patients_for_bulk.columns:
+                                bulk_search_mask |= patients_for_bulk['first_name'].fillna('').astype(str).str.lower().str.contains(search_term_lower)
+                            if 'last_name' in patients_for_bulk.columns:
+                                bulk_search_mask |= patients_for_bulk['last_name'].fillna('').astype(str).str.lower().str.contains(search_term_lower)
+                            if 'patient_id' in patients_for_bulk.columns:
+                                bulk_search_mask |= patients_for_bulk['patient_id'].fillna('').astype(str).str.lower().str.contains(search_term_lower)
+                            
+                            filtered_bulk_patients = patients_for_bulk[bulk_search_mask]
+                            bulk_patients_to_assign = filtered_bulk_patients['patient_id'].dropna().tolist() if not filtered_bulk_patients.empty else []
+                    except Exception as e:
+                        st.error(f"Error filtering patients: {e}")
+                
+                elif bulk_patient_filter == "All Active Patients":
+                    try:
+                        all_patients = db.get_all_patient_panel() if hasattr(db, 'get_all_patient_panel') else []
+                        all_patients_df = _fix_dataframe_for_streamlit(pd.DataFrame(all_patients))
+                        if not all_patients_df.empty:
+                            active_statuses = ['Active', 'Active-Geri', 'Active-PCP']
+                            if 'status' in all_patients_df.columns:
+                                active_patients = all_patients_df[
+                                    all_patients_df['status'].fillna('').astype(str).str.strip().isin(active_statuses) |
+                                    all_patients_df['status'].fillna('').astype(str).str.strip().str.startswith('Active')
+                                ]
+                                bulk_patients_to_assign = active_patients['patient_id'].dropna().tolist()
+                    except Exception as e:
+                        st.error(f"Error loading active patients: {e}")
+                
+                # Display selected patients count
+                if bulk_patients_to_assign:
+                    st.info(f"Selected {len(bulk_patients_to_assign)} patients for reassignment")
+                    
+                    # Bulk Assignee Selection
+                    if available_assignees:
+                        bulk_assignee_options = {f"{name} (ID: {uid})": uid for uid, name in available_assignees}
+                        bulk_selected_assignee = st.selectbox(
+                            f"Bulk Assign to {assignment_role}",
+                            list(bulk_assignee_options.keys()),
+                            key="admin_bulk_assignee",
+                            help=f"Select {assignment_role.lower()} for bulk assignment"
+                        )
+                        bulk_new_assignee_id = bulk_assignee_options.get(bulk_selected_assignee)
+                        
+                        # Confirmation dialog for bulk operation
+                        col_confirm1, col_confirm2 = st.columns([2, 1])
+                        with col_confirm1:
+                            st.warning(f"This will reassign {len(bulk_patients_to_assign)} patients to {assignment_role.lower()}: {bulk_selected_assignee.split(' (')[0]}")
+                        with col_confirm2:
+                            if st.button(f"Execute Bulk Assignment", key="admin_execute_bulk_assign"):
+                                if bulk_new_assignee_id:
+                                    try:
+                                        success_count = 0
+                                        for patient_id in bulk_patients_to_assign:
+                                            try:
+                                                _execute_patient_reassignment(patient_id, assignment_role, bulk_new_assignee_id, user_id)
+                                                success_count += 1
+                                            except Exception:
+                                                continue  # Continue with next patient if one fails
+                                        
+                                        st.success(f"Successfully reassigned {success_count} of {len(bulk_patients_to_assign)} patients")
+                                        if success_count < len(bulk_patients_to_assign):
+                                            st.warning(f"{len(bulk_patients_to_assign) - success_count} patients could not be reassigned")
+                                        st.rerun()
+                                    except Exception as e:
+                                        st.error(f"Error in bulk reassignment: {e}")
+                                else:
+                                    st.error("Please select assignee for bulk assignment")
+                    else:
+                        st.warning(f"No available {assignment_role.lower()}s found")
+                else:
+                    st.info("No patients selected for bulk assignment")
+        
+        st.markdown("---")
+        
         # Apply search filter immediately after data loading
         try:
             patients = db.get_all_patient_panel() if hasattr(db, 'get_all_patient_panel') else []
-            patients_df = pd.DataFrame(patients)
+            patients_df = _fix_dataframe_for_streamlit(pd.DataFrame(patients))
             if patients_df.empty:
                 st.info("No patients found in patient_panel.")
             else:
@@ -1225,12 +1800,21 @@ def show():
 
     # --- TAB: Billing Report ---
     with tab_billing:
-        # Check if user has access to billing dashboard (only admin@ and harpreet@ users)
+        # Check if user has admin role (role_id 34)
         current_user = st.session_state.get('authenticated_user')
         user_email = current_user.get('email', '') if current_user else ''
+        has_admin_access = False
         
-        # Allow access only to admin@ and harpreet@ email addresses
-        if user_email.startswith('admin@') or user_email.startswith('harpreet@'):
+        if current_user and 'user_id' in current_user:
+            user_id = current_user['user_id']
+            try:
+                user_roles = db.get_user_roles_by_user_id(user_id)
+                has_admin_access = any(role['role_id'] == 34 for role in user_roles)
+            except Exception as e:
+                st.error(f"Error checking user roles: {e}")
+                has_admin_access = False
+        
+        if has_admin_access:
             # Create sub-tabs for different billing views
             billing_tab1, billing_tab2 = st.tabs(["Monthly Billing (Coordinators)", "Weekly Billing (Providers)"])
             
@@ -1269,8 +1853,8 @@ def show():
             # Always use patient_panel as base
             panel_rows = db.get_all_patient_panel() if hasattr(db, 'get_all_patient_panel') else []
             patients_rows = db.get_all_patients() if hasattr(db, 'get_all_patients') else []
-            panel_df = pd.DataFrame(panel_rows)
-            patients_df = pd.DataFrame(patients_rows)
+            panel_df = _fix_dataframe_for_streamlit(pd.DataFrame(panel_rows))
+            patients_df = _fix_dataframe_for_streamlit(pd.DataFrame(patients_rows))
 
             if panel_df.empty or patients_df.empty:
                 st.info("No rows found for patient_panel or patients table.")

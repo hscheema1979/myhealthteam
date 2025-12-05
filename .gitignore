@@ -203,3 +203,20 @@ console_logs.txt
 cm_log_links.txt
 ps_log_links.txt
 rendered_html.txt
+
+# Development Artifacts (moved to development_docs/)
+development_docs/
+# ADMIN_DASHBOARD_ENHANCEMENT_PLAN.md
+# CI_CD_DEV_RECOMMENDATIONS.md
+# DEV_ENVIRONMENT_SETUP.md
+# PROJECT_LIVING_DOCUMENT.md
+# PROJECT_LIVING_DOCUMENT_ARCHIVE_20251121.md
+# TESTING_FRAMEWORK_README.md
+# SAFE_TESTING_GUIDE.md
+# start_test_environment.bat
+# test_admin_enhancements.bat
+# implementation_plan.md
+# monthly_summary_and_panel_plan.md
+# "This is a much cleaner and more structur.md"
+# outputs/ (entire directory)
+# src/test_environment_setup.py
