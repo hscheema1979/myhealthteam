@@ -209,28 +209,8 @@ def save_progress_step(instance_id, step_id, coordinator_id, duration_minutes=0,
         if duration_minutes > 0:
             workflow_info = conn.execute("SELECT patient_id FROM workflow_instances WHERE instance_id = ?", (instance_id,)).fetchone()
             if workflow_info:
-                table_name = f"coordinator_tasks_{now.year}_{str(now.month).zfill(2)}"
-                
-                # Check if table exists
-                table_exists = conn.execute(
-                    "SELECT name FROM sqlite_master WHERE type='table' AND name=?", 
-                    (table_name,)
-                ).fetchone() is not None
-                
-                if not table_exists:
-                    # Create table if it doesn't exist with existing schema
-                    conn.execute(f"""
-                        CREATE TABLE {table_name} (
-                            coordinator_id TEXT,
-                            patient_id TEXT,
-                            task_date TEXT,
-                            duration_minutes INT,
-                            task_type TEXT,
-                            notes TEXT,
-                            source_system TEXT,
-                            imported_at TEXT
-                        )
-                    """)
+                now = pd.Timestamp.now()
+                table_name = ensure_monthly_coordinator_tasks_table(year=now.year, month=now.month, conn=conn)
                 
                 # Insert duration record
                 conn.execute(f"""
@@ -285,36 +265,20 @@ def complete_workflow_step(instance_id, step_id, coordinator_id, duration_minute
         patient_id = workflow_info['patient_id']
         pid_for_task = normalize_patient_id(patient_id, conn=conn)
         now = pd.Timestamp.now()
-        table_name = f"coordinator_tasks_{now.year}_{str(now.month).zfill(2)}"
-        table_exists = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table_name,)).fetchone()
-        if table_exists:
-            conn.execute(f"""
-                INSERT INTO {table_name} (
-                    coordinator_id, patient_id, task_date, task_type,
-                    duration_minutes, notes, source_system, imported_at
-                ) VALUES (?, ?, date('now'), ?, ?, ?, 'WORKFLOW', CURRENT_TIMESTAMP)
-            """, (
-                coordinator_id,
-                pid_for_task,
-                f"WORKFLOW_STEP|{instance_id}|{step_id}",
-                duration_minutes,
-                f"Completed: {step_info['task_name']} (Step {step_info['step_order']}). {notes}"
-            ))
-            conn.commit()
-        else:
-            conn.execute("""
-                INSERT INTO coordinator_tasks_2025_09 (
-                    coordinator_id, patient_id, task_date, task_type,
-                    duration_minutes, notes, source_system, imported_at
-                ) VALUES (?, ?, date('now'), ?, ?, ?, 'WORKFLOW', CURRENT_TIMESTAMP)
-            """, (
-                coordinator_id,
-                pid_for_task,
-                f"WORKFLOW_STEP|{instance_id}|{step_id}",
-                duration_minutes,
-                f"Completed: {step_info['task_name']} (Step {step_info['step_order']}). {notes}"
-            ))
-            conn.commit()
+        table_name = ensure_monthly_coordinator_tasks_table(year=now.year, month=now.month, conn=conn)
+        conn.execute(f"""
+            INSERT INTO {table_name} (
+                coordinator_id, patient_id, task_date, task_type,
+                duration_minutes, notes, source_system, imported_at
+            ) VALUES (?, ?, date('now'), ?, ?, ?, 'WORKFLOW', CURRENT_TIMESTAMP)
+        """, (
+            coordinator_id,
+            pid_for_task,
+            f"WORKFLOW_STEP|{instance_id}|{step_id}",
+            duration_minutes,
+            f"Completed: {step_info['task_name']} (Step {step_info['step_order']}). {notes}"
+        ))
+        conn.commit()
         try:
             step_order = step_info['step_order']
             step_col = f"step{step_order}_complete"
@@ -332,10 +296,9 @@ def complete_workflow_step(instance_id, step_id, coordinator_id, duration_minute
             JOIN workflow_instances wi ON ws.template_id = wi.template_id
             WHERE wi.instance_id = ?
         """, (instance_id,)).fetchone()['count']
-        table_for_count = table_name if table_exists else "coordinator_tasks_2025_09"
         completed_steps = conn.execute(f"""
             SELECT COUNT(*) as count
-            FROM {table_for_count} ct
+            FROM {table_name} ct
             WHERE ct.task_type LIKE 'WORKFLOW_STEP|' || ? || '|%'
         """, (instance_id,)).fetchone()['count']
         if completed_steps >= total_steps:

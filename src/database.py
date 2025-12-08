@@ -2,12 +2,15 @@ import sqlite3
 import pandas as pd
 from datetime import datetime, timedelta
 import os
+import calendar
 
 def get_db_connection(db_path: str = None):
     """Return a SQLite connection. If db_path provided, use that path."""
     if db_path is None:
-        # Define the path directly here instead of referencing non-existent DB_PATH
-        db_path = os.getenv("DATABASE_PATH", "D:\\Git\\myhealthteam2\\Dev\\production.db")
+        # Use relative path for cross-platform compatibility (Windows + Linux)
+        # Assumes production.db is in the project root directory
+        default_db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "production.db")
+        db_path = os.getenv("DATABASE_PATH", default_db_path)
     
     print(f"Attempting to connect to DB: {db_path}")
     conn = sqlite3.connect(db_path)
@@ -186,6 +189,9 @@ def ensure_monthly_coordinator_tasks_table(year: int = None, month: int = None, 
                 conn.execute(f"ALTER TABLE {table_name} ADD COLUMN source_system TEXT;")
             if 'imported_at' not in col_names:
                 conn.execute(f"ALTER TABLE {table_name} ADD COLUMN imported_at TEXT;")
+            # Add submission_status column for Daily Task Log feature
+            if 'submission_status' not in col_names:
+                conn.execute(f"ALTER TABLE {table_name} ADD COLUMN submission_status TEXT DEFAULT 'pending';")
             conn.commit()
         return table_name
     finally:
@@ -1565,8 +1571,19 @@ def save_daily_task(provider_id, patient_id, task_date, task_description, notes,
         # Normalize patient_id for storage and related lookups
         pid = normalize_patient_id(patient_id, conn=conn)
 
+        # Extract year and month from task_date to ensure we insert into the correct monthly table
+        try:
+            task_dt = pd.to_datetime(task_date)
+            task_year = task_dt.year
+            task_month = task_dt.month
+        except Exception:
+            # Fallback to current date if task_date is invalid
+            now = pd.Timestamp.now()
+            task_year = now.year
+            task_month = now.month
+
         # Insert into monthly provider_tasks table dynamically
-        table_name = ensure_monthly_provider_tasks_table(conn=conn)
+        table_name = ensure_monthly_provider_tasks_table(year=task_year, month=task_month, conn=conn)
         conn.execute(f"""
             INSERT INTO {table_name}
             (provider_id, patient_id, task_date, notes, minutes_of_service, task_description, billing_code, billing_code_description, source_system, imported_at)
@@ -1659,12 +1676,24 @@ def save_coordinator_task(coordinator_id, patient_id, task_date, task_descriptio
     """Save a daily task for a coordinator to the coordinator_tasks table"""
     conn = get_db_connection()
     try:
-        # Insert into coordinator_tasks_2025_09 table (monthly partitioned table)
-        # The table does have a notes column, so we'll include it
         # Normalize patient_id to the canonical string format before inserting
         pid = normalize_patient_id(patient_id, conn=conn)
-        conn.execute("""
-            INSERT INTO coordinator_tasks_2025_09
+        
+        # Extract year and month from task_date to ensure we insert into the correct monthly table
+        try:
+            task_dt = pd.to_datetime(task_date)
+            task_year = task_dt.year
+            task_month = task_dt.month
+        except Exception:
+            # Fallback to current date if task_date is invalid
+            now = pd.Timestamp.now()
+            task_year = now.year
+            task_month = now.month
+        
+        # Insert into monthly coordinator_tasks table dynamically
+        table_name = ensure_monthly_coordinator_tasks_table(year=task_year, month=task_month, conn=conn)
+        conn.execute(f"""
+            INSERT INTO {table_name}
             (patient_id, coordinator_id, task_date, duration_minutes, task_type, notes, source_system, imported_at)
             VALUES (?, ?, ?, ?, ?, ?, 'DATA_ENTRY', CURRENT_TIMESTAMP)
         """, (pid, coordinator_id, task_date, duration_minutes, task_description, notes))
@@ -3602,15 +3631,15 @@ def get_weekly_billing_summary_realtime():
     # Get last 12 weeks of data
     end_date = datetime.now()
     start_date = end_date - timedelta(days=90)
-    
+
     billing_data = get_provider_billing_status_realtime(
         start_date.strftime('%Y-%m-%d'),
         end_date.strftime('%Y-%m-%d')
     )
-    
+
     if billing_data.empty:
         return pd.DataFrame()
-    
+
     # Aggregate by billing week
     weekly_summary = billing_data.groupby('billing_week').agg({
         'billing_status_id': 'count',
@@ -3620,7 +3649,7 @@ def get_weekly_billing_summary_realtime():
         'billing_status': lambda x: len(x),
         'created_date': 'first'
     }).reset_index()
-    
+
     weekly_summary.columns = [
         'billing_week',
         'total_tasks',
@@ -3630,14 +3659,214 @@ def get_weekly_billing_summary_realtime():
         'report_status',
         'created_date'
     ]
-    
+
     # Calculate unbilled tasks and percentage
     weekly_summary['total_unbilled_tasks'] = weekly_summary['total_tasks'] - weekly_summary['total_billed_tasks']
     weekly_summary['billing_percentage'] = (
         weekly_summary['total_billed_tasks'] * 100.0 / weekly_summary['total_tasks']
     ).round(2)
-    
+
     # Sort by billing week descending
     weekly_summary = weekly_summary.sort_values('billing_week', ascending=False)
-    
+
     return weekly_summary.head(12)
+
+
+# ========================================
+# DAILY TASK LOG FUNCTIONS
+# ========================================
+
+def get_todays_tasks(user_id: int, role: str) -> list[dict]:
+    """
+    Returns today's tasks for given user filtered by role
+    Uses local timezone (America/Los_Angeles) for "today"
+    Only returns tasks with submission_status = 'pending'
+    """
+    from zoneinfo import ZoneInfo
+    import pytz
+
+    # Get today's date in local timezone
+    try:
+        # Try Python 3.9+ zoneinfo
+        local_tz = ZoneInfo('America/Los_Angeles')
+    except ImportError:
+        # Fallback to pytz
+        local_tz = pytz.timezone('America/Los_Angeles')
+
+    today = datetime.now(local_tz).date()
+    today_str = today.isoformat()
+
+    conn = get_db_connection()
+    try:
+        # Determine which table to query based on role
+        if role.lower() == 'provider':
+            table_name = ensure_monthly_provider_tasks_table(conn=conn)
+            user_field = 'provider_id'
+        elif role.lower() == 'coordinator':
+            table_name = ensure_monthly_coordinator_tasks_table(conn=conn)
+            user_field = 'coordinator_id'
+        else:
+            return []
+
+        # Query today's tasks that are still pending
+        query = f"""
+            SELECT
+                task_date,
+                patient_id,
+                task_type,
+                duration_minutes,
+                notes,
+                task_description,
+                billing_code,
+                submission_status
+            FROM {table_name}
+            WHERE {user_field} = ?
+            AND date(task_date) = date(?)
+            AND (submission_status IS NULL OR submission_status = 'pending')
+            ORDER BY task_date DESC
+        """
+
+        result = conn.execute(query, (user_id, today_str)).fetchall()
+
+        tasks = []
+        for row in result:
+            task_dict = dict(row)
+
+            # Resolve patient name from patient_id
+            if task_dict.get('patient_id'):
+                try:
+                    patient = conn.execute("""
+                        SELECT first_name, last_name
+                        FROM patients
+                        WHERE patient_id = ?
+                        LIMIT 1
+                    """, (task_dict['patient_id'],)).fetchone()
+
+                    if patient:
+                        task_dict['patient_name'] = f"{patient['first_name'] or ''} {patient['last_name'] or ''}".strip()
+                    else:
+                        task_dict['patient_name'] = str(task_dict['patient_id'])
+                except Exception:
+                    task_dict['patient_name'] = str(task_dict['patient_id'])
+            else:
+                task_dict['patient_name'] = 'Unknown Patient'
+
+            tasks.append(task_dict)
+
+        return tasks
+
+    finally:
+        conn.close()
+
+
+def submit_daily_tasks(user_id: int, role: str) -> bool:
+    """
+    Updates all today's tasks for user to 'submitted' status
+    Returns True if successful
+    """
+    from zoneinfo import ZoneInfo
+    import pytz
+
+    # Get today's date in local timezone
+    try:
+        # Try Python 3.9+ zoneinfo
+        local_tz = ZoneInfo('America/Los_Angeles')
+    except ImportError:
+        # Fallback to pytz
+        local_tz = pytz.timezone('America/Los_Angeles')
+
+    today = datetime.now(local_tz).date()
+    today_str = today.isoformat()
+
+    conn = get_db_connection()
+    try:
+        # Determine which table to update based on role
+        if role.lower() == 'provider':
+            table_name = ensure_monthly_provider_tasks_table(conn=conn)
+            user_field = 'provider_id'
+        elif role.lower() == 'coordinator':
+            table_name = ensure_monthly_coordinator_tasks_table(conn=conn)
+            user_field = 'coordinator_id'
+        else:
+            return False
+
+        # Update all pending tasks for today to 'submitted'
+        query = f"""
+            UPDATE {table_name}
+            SET submission_status = 'submitted',
+                imported_at = CURRENT_TIMESTAMP
+            WHERE {user_field} = ?
+            AND date(task_date) = date(?)
+            AND (submission_status IS NULL OR submission_status = 'pending')
+        """
+
+        cursor = conn.execute(query, (user_id, today_str))
+        conn.commit()
+
+        return cursor.rowcount > 0
+
+    except Exception as e:
+        print(f"Error submitting daily tasks: {e}")
+        conn.rollback()
+        return False
+    finally:
+        conn.close()
+
+
+def update_task_details(task_id: int, role: str, updates: dict) -> bool:
+    """
+    Updates task details (minutes, task_type, notes)
+    Only allowed for 'pending' status tasks
+    """
+    conn = get_db_connection()
+    try:
+        # Determine which table to update based on role
+        if role.lower() == 'provider':
+            table_name = ensure_monthly_provider_tasks_table(conn=conn)
+            id_field = 'provider_task_id'
+        elif role.lower() == 'coordinator':
+            table_name = ensure_monthly_coordinator_tasks_table(conn=conn)
+            id_field = 'coordinator_task_id'
+        else:
+            return False
+
+        # Build update query dynamically
+        update_fields = []
+        params = []
+
+        allowed_fields = ['duration_minutes', 'task_type', 'notes', 'minutes_of_service']
+        for field, value in updates.items():
+            if field in allowed_fields:
+                if field == 'duration_minutes':
+                    update_fields.append("duration_minutes = ?")
+                    update_fields.append("minutes_of_service = ?")  # Update both fields
+                    params.extend([value, value])
+                else:
+                    update_fields.append(f"{field} = ?")
+                    params.append(value)
+
+        if not update_fields:
+            return False
+
+        # Add timestamp update
+        update_fields.append("imported_at = CURRENT_TIMESTAMP")
+        params.append(task_id)
+
+        query = f"""
+            UPDATE {table_name}
+            SET {', '.join(update_fields)}
+            WHERE {id_field} = ?
+            AND (submission_status IS NULL OR submission_status = 'pending')
+        """
+
+        cursor = conn.execute(query, params)
+        conn.commit()
+
+        return cursor.rowcount > 0
+
+    except Exception as e:
+        print(f"Error updating task details: {e}")
+        conn.rollback()
+        return False
+    finally:
+        conn.close()

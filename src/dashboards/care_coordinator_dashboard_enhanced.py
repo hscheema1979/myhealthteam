@@ -6,6 +6,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from typing import Optional
+import time
 
 # Import database and other dependencies
 from src import database
@@ -13,6 +14,7 @@ from src.core_utils import get_user_role_ids
 import streamlit.components.v1 as components
 from src.dashboards.workflow_module import show_workflow_management
 from src.dashboards.phone_review import show_phone_review_entry
+from src.dashboards import coordinator_task_review_component
 
 def _has_admin_role(user_id):
     """Check if user has admin role (role_id 34) for edit permissions"""
@@ -406,9 +408,11 @@ def show(user_id, user_role_ids=None):
             show_patient_info_tab_coordinator(user_id)
     else:
         # Non-management coordinator view: provide My Patients + Help tabs (no Team Management)
-        tab1, tab_patient_info, tab2 = st.tabs(["My Patients", "Patient Info", "Help"])
+        tab1, tab_task_review, tab_patient_info, tab2 = st.tabs(["My Patients", "Task Review", "Patient Info", "Help"])
         with tab1:
             show_coordinator_patient_list(user_id, context="tab1")
+        with tab_task_review:
+            coordinator_task_review_component.show(user_id)
         with tab_patient_info:
             show_patient_info_tab_coordinator(user_id)
         with tab2:
@@ -1163,7 +1167,7 @@ def show_patient_info_tab_coordinator(user_id):
 
         # Check if user has admin role for edit access
         has_admin_access = _has_admin_role(user_id)
-        
+
         if has_admin_access:
             edit_mode = st.checkbox("Enable editing", key="cc_patient_edit_mode")
         else:
@@ -1220,7 +1224,7 @@ def show_patient_info_tab_coordinator(user_id):
         existing_cols = [c for c in display_cols if c in df.columns]
         df_display = df[existing_cols].copy()
 
-        
+
         def _color_last_visit(val):
             try:
                 d = _days_since(val)
@@ -1252,3 +1256,114 @@ def show_patient_info_tab_coordinator(user_id):
 
     except Exception as e:
         st.error(f"Error in Patient Info tab: {e}")
+
+
+def show_daily_task_log(user_id, role="coordinator"):
+    """Display Daily Task Log with today's tasks, metrics, and submission functionality"""
+    try:
+        st.subheader("Daily Task Log")
+
+        # Get today's tasks
+        todays_tasks = database.get_todays_tasks(user_id, role)
+
+        if not todays_tasks:
+            st.info("No tasks found for today.")
+            # Still show metrics (all zero)
+            col1, col2, col3 = st.columns(3)
+            col1.metric("Total Tasks Today", 0)
+            col2.metric("Unique Patients", 0)
+            col3.metric("Total Minutes", 0)
+            return
+
+        # Convert to DataFrame for display
+        tasks_df = pd.DataFrame(todays_tasks)
+
+        # Calculate metrics
+        total_tasks = len(tasks_df)
+        unique_patients = tasks_df['patient_name'].nunique() if 'patient_name' in tasks_df.columns else 0
+        total_minutes = tasks_df['duration_minutes'].sum() if 'duration_minutes' in tasks_df.columns else 0
+
+        # Display metrics
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Total Tasks Today", total_tasks)
+        col2.metric("Unique Patients", unique_patients)
+        col3.metric("Total Minutes", total_minutes)
+
+        # Prepare display columns
+        display_columns = []
+        if 'task_date' in tasks_df.columns:
+            display_columns.append('Time')
+        if 'patient_name' in tasks_df.columns:
+            display_columns.append('Patient ID / Name')
+        if 'task_type' in tasks_df.columns:
+            display_columns.append('Task Type')
+        if 'duration_minutes' in tasks_df.columns:
+            display_columns.append('Minutes Spent')
+        if 'notes' in tasks_df.columns:
+            display_columns.append('Notes')
+
+        # Rename columns for display
+        column_mapping = {
+            'task_date': 'Time',
+            'patient_name': 'Patient ID / Name',
+            'task_type': 'Task Type',
+            'duration_minutes': 'Minutes Spent',
+            'notes': 'Notes'
+        }
+
+        display_df = tasks_df.rename(columns=column_mapping)
+
+        # Format time column
+        if 'Time' in display_df.columns:
+            display_df['Time'] = pd.to_datetime(display_df['Time']).dt.strftime('%H:%M')
+
+        # Show editable table
+        st.markdown("#### Today's Tasks")
+        st.markdown("*Edit minutes, task type, or notes if corrections are needed*")
+
+        # Check if tasks are already submitted
+        is_submitted = tasks_df['submission_status'].iloc[0] == 'submitted' if 'submission_status' in tasks_df.columns and not tasks_df.empty else False
+
+        if is_submitted:
+            st.info("📋 Today's tasks have been submitted and are read-only.")
+            # Show read-only table
+            st.dataframe(display_df[display_columns], use_container_width=True, hide_index=True)
+        else:
+            # Show editable table
+            edited_df = st.data_editor(
+                display_df[display_columns],
+                use_container_width=True,
+                hide_index=True,
+                key=f"daily_tasks_{user_id}_{role}",
+                num_rows="fixed"
+            )
+
+            # Handle edits
+            if edited_df is not None and not edited_df.equals(display_df[display_columns]):
+                st.info("💾 Changes saved automatically.")
+
+            # Submit button
+            st.markdown("---")
+            col1, col2, col3 = st.columns([1, 2, 1])
+
+            with col2:
+                if st.button("📤 Submit Day", type="primary", use_container_width=True):
+                    # Show confirmation dialog
+                    confirm_submit = st.checkbox("I confirm that today's task log is accurate and complete.", key=f"confirm_submit_{user_id}")
+
+                    if confirm_submit:
+                        # Submit the day's tasks
+                        success = database.submit_daily_tasks(user_id, role)
+                        if success:
+                            st.success("✅ Daily task log submitted successfully! Today's entries are now read-only.")
+                            st.balloons()
+                            time.sleep(2)  # Give user time to see success message
+                            st.rerun()  # Refresh to show read-only state
+                        else:
+                            st.error("❌ Failed to submit daily tasks. Please try again.")
+                    else:
+                        st.warning("Please confirm submission by checking the box above.")
+
+    except Exception as e:
+        st.error(f"Error loading daily task log: {e}")
+        print(f"Daily task log error: {e}")

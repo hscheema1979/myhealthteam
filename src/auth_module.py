@@ -447,8 +447,8 @@ class AuthenticationManager:
         # Check for specific user overrides first
         current_user = self.get_current_user()
         if current_user:
-            full_name = current_user.get('full_name', '').lower()
-            username = current_user.get('username', '').lower()
+            full_name = (current_user.get('full_name') or '').lower()
+            username = (current_user.get('username') or '').lower()
             
             # Justin should default to Admin dashboard
             if 'justin' in full_name or 'justin' in username:

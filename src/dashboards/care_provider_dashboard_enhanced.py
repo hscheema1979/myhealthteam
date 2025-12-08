@@ -8,6 +8,7 @@ if project_root not in sys.path:
 
 import streamlit as st
 from src.dashboards.phone_review import show_phone_review_entry
+from src.dashboards import task_review_component
 import pandas as pd
 from src import database
 import numpy as np
@@ -167,22 +168,26 @@ def show(user_id, user_role_ids=None):
         
         # Create tabs with management functionality for CPM
         if onboarding_queue and len(onboarding_queue) > 0:
-            tab1, tab2, tab3, tab4, tab5, tab_patient_info, tab_help = st.tabs(["My Patients", "Team Management", "Onboarding Queue & Initial TV Visits", "Phone Reviews", "Task Review", "Patient Info", "Help"])
-            
+            tab1, tab2, tab3, tab4, tab5, tab6, tab_patient_info, tab_help = st.tabs(["My Patients", "Team Management", "Onboarding Queue & Initial TV Visits", "Phone Reviews", "Task Review", "Daily Task Log", "Patient Info", "Help"])
+
             with tab1:
                 show_patient_list_section(user_id, section_id="cpm_patients_with_queue")
-                
+
             with tab2:
                 show_team_management_section()
-                
+
             with tab3:
                 show_provider_onboarding_queue(user_id, onboarding_queue)
-                
+
             with tab4:
                 show_phone_review_entry(mode="cp", user_id=user_id)
-                
+
             with tab5:
-                show_task_review_section(user_id)
+                task_review_component.show(user_id)
+
+            with tab6:
+                show_daily_task_log(user_id, "provider")
+
             with tab_patient_info:
                 show_patient_info_tab_provider(user_id)
             with tab_help:
@@ -228,7 +233,7 @@ def show(user_id, user_role_ids=None):
                 show_phone_review_entry(mode="cp", user_id=user_id)
                 
             with tab4:
-                show_task_review_section(user_id)
+                task_review_component.show(user_id)
             with tab_patient_info:
                 show_patient_info_tab_provider(user_id)
             with tab_help:
@@ -288,7 +293,7 @@ def show(user_id, user_role_ids=None):
                 show_phone_review_entry(mode="cp", user_id=user_id)
                 
             with tab4:
-                show_task_review_section(user_id)
+                task_review_component.show(user_id)
             with tab_patient_info:
                 show_patient_info_tab_provider(user_id)
             with tab_help:
@@ -332,7 +337,7 @@ def show(user_id, user_role_ids=None):
                 show_phone_review_entry(mode="cp", user_id=user_id)
                 
             with tab3:
-                show_task_review_section(user_id)
+                task_review_component.show(user_id)
             with tab_patient_info:
                 show_patient_info_tab_provider(user_id)
             with tab_help:
@@ -859,17 +864,18 @@ def show_patient_list_section(user_id, section_id=None):
 
                             # If provider entered notes, append them with a dated header; otherwise leave notes unchanged
                             notes_text = (notes or '').strip()
-                            if notes_text:
-                                # Build header with Date of Service
-                                try:
-                                    date_str = pd.to_datetime(task_date).date().isoformat()
-                                except Exception:
-                                    date_str = str(task_date)
 
+                            # Build header with Date of Service - define date_str outside conditional blocks
+                            try:
+                                date_str = pd.to_datetime(task_date).date().isoformat()
+                            except Exception:
+                                date_str = str(task_date)
+
+                            if notes_text:
                                 header = """*************************************************************************\n""" + f"Date {date_str}\n" + "*************************************************************************\n"
                                 notes_combined = header + notes_text
 
-                                # Append to patient notes (if empty set, else append with spacing)
+                                # Update patient record with clinical data and notes
                                 conn.execute("""
                                     UPDATE patients SET
                                         er_count_1yr = ?,
@@ -894,7 +900,7 @@ def show_patient_list_section(user_id, section_id=None):
                                         notes = CASE WHEN notes IS NULL OR trim(notes) = '' THEN ? ELSE notes || '\n\n' || ? END
                                     WHERE patient_id = ?
                                 """, tuple(base_params + [date_str, notes_combined, notes_combined, selected_patient['patient_id']]))
-                                
+
                                 # Also update patient_panel table with clinical fields (notes branch)
                                 conn.execute("""
                                     UPDATE patient_panel SET
@@ -920,7 +926,7 @@ def show_patient_list_section(user_id, section_id=None):
                                     WHERE patient_id = ?
                                 """, tuple(base_params + [date_str, selected_patient['patient_id']]))
                             else:
-                                # No new notes provided; update only clinical fields
+                                # Update only clinical fields without notes
                                 conn.execute("""
                                     UPDATE patients SET
                                         er_count_1yr = ?,
@@ -999,7 +1005,8 @@ def show_patient_list_section(user_id, section_id=None):
                                     del st.session_state[field_key]
                             
                             if reset_keys:
-                                st.info(f"Reset session state keys: {', '.join(reset_keys)}")
+                                # st.info(f"Reset session state keys: {', '.join(reset_keys)}")
+                                pass
                             
                             # Trigger a rerun to refresh the patient list with updated data
                             st.rerun()
@@ -2267,23 +2274,23 @@ def show_task_review_section(user_id):
     """Display monthly task review for providers with month selection and summary"""
     try:
         st.subheader("Task Review")
-        
+
         # Get available provider task tables using SQLite syntax
         conn = database.get_db_connection()
         try:
             query = """
-            SELECT name 
-            FROM sqlite_master 
-            WHERE type='table' 
+            SELECT name
+            FROM sqlite_master
+            WHERE type='table'
             AND name LIKE 'provider_tasks_%'
             ORDER BY name DESC
             """
-            
+
             result = conn.execute(query).fetchall()
             if not result:
                 st.info("No monthly task tables found.")
                 return
-                
+
             # Extract available months from table names
             available_months = []
             for row in result:
@@ -2299,14 +2306,14 @@ def show_task_review_section(user_id):
                         available_months.append((display_name, table_name))
                     except (ValueError, IndexError):
                         continue
-            
+
             if not available_months:
                 st.info("No valid monthly task tables found.")
                 return
-                
+
             # View selection
             view_tab1, view_tab2 = st.tabs(["Task List", "Monthly Summary"])
-            
+
             with view_tab1:
                 # Original task list functionality
                 selected_option = st.selectbox(
@@ -2315,13 +2322,13 @@ def show_task_review_section(user_id):
                     format_func=lambda x: x[0],
                     key="task_list_month"
                 )
-                
+
                 if selected_option:
                     selected_display, selected_table = selected_option
-                
+
                 # Get provider tasks for selected month using SQLite syntax
                 provider_query = f"""
-                SELECT 
+                SELECT
                     patient_name,
                     task_date,
                     minutes_of_service,
@@ -2330,33 +2337,33 @@ def show_task_review_section(user_id):
                 WHERE user_id = ?
                 ORDER BY task_date DESC
                 """
-                
+
                 provider_tasks = conn.execute(provider_query, (user_id,)).fetchall()
-                
+
                 if provider_tasks:
                     # Convert to DataFrame
                     df = pd.DataFrame(provider_tasks, columns=['Patient Name', 'DOS', 'Duration', 'Service Type'])
-                    
+
                     # Format the DOS column
                     df['DOS'] = pd.to_datetime(df['DOS']).dt.strftime('%Y-%m-%d')
-                    
+
                     # Display summary
                     total_tasks = len(df)
                     total_duration = df['Duration'].sum() if 'Duration' in df.columns else 0
-                    
+
                     col1, col2 = st.columns(2)
                     with col1:
                         st.metric("Total Tasks", total_tasks)
                     with col2:
                         st.metric("Total Duration (minutes)", total_duration)
-                    
+
                     # Display the tasks table
                     st.dataframe(
                         df,
                         use_container_width=True,
                         hide_index=True
                     )
-                    
+
                     # Download option
                     csv = df.to_csv(index=False)
                     st.download_button(
@@ -2367,11 +2374,11 @@ def show_task_review_section(user_id):
                     )
                 else:
                     st.info(f"No tasks found for {selected_display}")
-            
+
             with view_tab2:
                 # Monthly Summary functionality
                 st.markdown("### Monthly Summary")
-                
+
                 # Month selection for summary
                 selected_summary_option = st.selectbox(
                     "Select Month for Summary:",
@@ -2379,13 +2386,13 @@ def show_task_review_section(user_id):
                     format_func=lambda x: x[0],
                     key="summary_month"
                 )
-                
+
                 if selected_summary_option:
                     summary_display, summary_table = selected_summary_option
-                    
+
                     # Get summary data for the selected month
                     summary_query = f"""
-                    SELECT 
+                    SELECT
                         task_description,
                         COUNT(*) as task_count,
                         SUM(minutes_of_service) as total_minutes,
@@ -2396,19 +2403,19 @@ def show_task_review_section(user_id):
                     GROUP BY task_description, billing_code, billing_code_description
                     ORDER BY total_minutes DESC, task_count DESC
                     """
-                    
+
                     summary_data = conn.execute(summary_query, (user_id,)).fetchall()
-                    
+
                     if summary_data:
                         # Convert to DataFrame
                         summary_df = pd.DataFrame(summary_data, columns=[
                             'Service Type', 'Task Count', 'Total Minutes', 'Billing Code', 'Billing Code Description'
                         ])
-                        
+
                         # Calculate totals
                         total_summary_tasks = summary_df['Task Count'].sum()
                         total_summary_minutes = summary_df['Total Minutes'].sum()
-                        
+
                         # Display key metrics
                         col1, col2, col3 = st.columns(3)
                         with col1:
@@ -2419,7 +2426,7 @@ def show_task_review_section(user_id):
                             # Calculate average duration per task
                             avg_minutes = total_summary_minutes / total_summary_tasks if total_summary_tasks > 0 else 0
                             st.metric("Avg Minutes/Task", f"{avg_minutes:.1f}")
-                        
+
                         # Display the summary table
                         st.markdown("#### Service Type Summary")
                         st.dataframe(
@@ -2427,7 +2434,7 @@ def show_task_review_section(user_id):
                             use_container_width=True,
                             hide_index=True
                         )
-                        
+
                         # Download summary option
                         summary_csv = summary_df.to_csv(index=False)
                         st.download_button(
@@ -2436,14 +2443,14 @@ def show_task_review_section(user_id):
                             file_name=f"provider_summary_{summary_display.replace(' ', '_')}.csv",
                             mime="text/csv"
                         )
-                        
+
                         # Show billing code breakdown
                         st.markdown("#### Billing Code Breakdown")
                         billing_breakdown = summary_df.groupby('Billing Code').agg({
                             'Task Count': 'sum',
                             'Total Minutes': 'sum'
                         }).reset_index()
-                        
+
                         st.dataframe(
                             billing_breakdown,
                             use_container_width=True,
@@ -2451,10 +2458,121 @@ def show_task_review_section(user_id):
                         )
                     else:
                         st.info(f"No summary data found for {summary_display}")
-                        
+
         finally:
             conn.close()
-                
+
     except Exception as e:
         st.error(f"Error loading task review data: {e}")
         print(f"Task review error: {e}")
+
+
+def show_daily_task_log(user_id, role="provider"):
+    """Display Daily Task Log with today's tasks, metrics, and submission functionality"""
+    try:
+        st.subheader("Daily Task Log")
+
+        # Get today's tasks
+        todays_tasks = database.get_todays_tasks(user_id, role)
+
+        if not todays_tasks:
+            st.info("No tasks found for today.")
+            # Still show metrics (all zero)
+            col1, col2, col3 = st.columns(3)
+            col1.metric("Total Tasks Today", 0)
+            col2.metric("Unique Patients", 0)
+            col3.metric("Total Minutes", 0)
+            return
+
+        # Convert to DataFrame for display
+        tasks_df = pd.DataFrame(todays_tasks)
+
+        # Calculate metrics
+        total_tasks = len(tasks_df)
+        unique_patients = tasks_df['patient_name'].nunique() if 'patient_name' in tasks_df.columns else 0
+        total_minutes = tasks_df['duration_minutes'].sum() if 'duration_minutes' in tasks_df.columns else 0
+
+        # Display metrics
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Total Tasks Today", total_tasks)
+        col2.metric("Unique Patients", unique_patients)
+        col3.metric("Total Minutes", total_minutes)
+
+        # Prepare display columns
+        display_columns = []
+        if 'task_date' in tasks_df.columns:
+            display_columns.append('Time')
+        if 'patient_name' in tasks_df.columns:
+            display_columns.append('Patient ID / Name')
+        if 'task_type' in tasks_df.columns:
+            display_columns.append('Task Type')
+        if 'duration_minutes' in tasks_df.columns:
+            display_columns.append('Minutes Spent')
+        if 'notes' in tasks_df.columns:
+            display_columns.append('Notes')
+
+        # Rename columns for display
+        column_mapping = {
+            'task_date': 'Time',
+            'patient_name': 'Patient ID / Name',
+            'task_type': 'Task Type',
+            'duration_minutes': 'Minutes Spent',
+            'notes': 'Notes'
+        }
+
+        display_df = tasks_df.rename(columns=column_mapping)
+
+        # Format time column
+        if 'Time' in display_df.columns:
+            display_df['Time'] = pd.to_datetime(display_df['Time']).dt.strftime('%H:%M')
+
+        # Show editable table
+        st.markdown("#### Today's Tasks")
+        st.markdown("*Edit minutes, task type, or notes if corrections are needed*")
+
+        # Check if tasks are already submitted
+        is_submitted = tasks_df['submission_status'].iloc[0] == 'submitted' if 'submission_status' in tasks_df.columns and not tasks_df.empty else False
+
+        if is_submitted:
+            st.info("📋 Today's tasks have been submitted and are read-only.")
+            # Show read-only table
+            st.dataframe(display_df[display_columns], use_container_width=True, hide_index=True)
+        else:
+            # Show editable table
+            edited_df = st.data_editor(
+                display_df[display_columns],
+                use_container_width=True,
+                hide_index=True,
+                key=f"daily_tasks_{user_id}_{role}",
+                num_rows="fixed"
+            )
+
+            # Handle edits
+            if edited_df is not None and not edited_df.equals(display_df[display_columns]):
+                st.info("💾 Changes saved automatically.")
+
+            # Submit button
+            st.markdown("---")
+            col1, col2, col3 = st.columns([1, 2, 1])
+
+            with col2:
+                if st.button("📤 Submit Day", type="primary", use_container_width=True):
+                    # Show confirmation dialog
+                    confirm_submit = st.checkbox("I confirm that today's task log is accurate and complete.", key=f"confirm_submit_{user_id}")
+
+                    if confirm_submit:
+                        # Submit the day's tasks
+                        success = database.submit_daily_tasks(user_id, role)
+                        if success:
+                            st.success("✅ Daily task log submitted successfully! Today's entries are now read-only.")
+                            st.balloons()
+                            time.sleep(2)  # Give user time to see success message
+                            st.rerun()  # Refresh to show read-only state
+                        else:
+                            st.error("❌ Failed to submit daily tasks. Please try again.")
+                    else:
+                        st.warning("Please confirm submission by checking the box above.")
+
+    except Exception as e:
+        st.error(f"Error loading daily task log: {e}")
+        print(f"Daily task log error: {e}")

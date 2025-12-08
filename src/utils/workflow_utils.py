@@ -12,17 +12,8 @@ def create_workflow_task(user_id, patient_name, workflow_type, priority, notes, 
     try:
         conn = database.get_db_connection()
         
-        # First, map user_id to coordinator_id
-        coordinator = conn.execute("""
-            SELECT coordinator_id FROM coordinators 
-            WHERE user_id = ?
-        """, (user_id,)).fetchone()
-        
-        if not coordinator:
-            conn.close()
-            raise ValueError(f"No coordinator found for user_id {user_id}")
-        
-        coordinator_id = coordinator['coordinator_id']
+        # Use user_id directly as coordinator_id (no separate coordinator table lookup needed)
+        coordinator_id = user_id
         
         # Get the template_id for the selected workflow type
         template = conn.execute("""
