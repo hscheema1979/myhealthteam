@@ -3269,7 +3269,7 @@ def show():
     # --- TAB: ZMO ---
     with tab_test:
         st.subheader(
-            "ZMO: Patient Data Management (patient_panel and patients combined)"
+            "ZMO: Patient Data Management"
         )
         import json
         import os
@@ -3286,10 +3286,7 @@ def show():
             else:
                 # Use cached merge function
                 merged = _cached_merge_patient_data(panel_df, patients_df)
-                st.markdown(
-                    "### Combined patient_panel + patients (no duplicate columns, editable)"
-                )
-
+               
                 # --- Patient search feature ---
                 st.markdown("### Search & Filter")
                 search_col1, search_col2 = st.columns([3, 1])
@@ -3316,7 +3313,11 @@ def show():
                         axis=1,
                     )
                     merged = merged[search_mask]
-                    st.caption(f"Found {len(merged)} patients matching search")
+                    st.success(
+                        f"✓ Found {len(merged)} patients matching '{patient_search}'"
+                    )
+                else:
+                    st.caption(f"Showing all {len(merged)} patients")
 
                 # --- Persistent column selection and ordering via external JSON ---
                 CONFIG_PATH = os.path.join(
@@ -3355,9 +3356,11 @@ def show():
 
                 # --- Column search and filter with expander ---
                 st.markdown("### Column Management")
-                col_filter1, col_filter2, col_filter3 = st.columns([2, 1, 1])
 
-                with col_filter1:
+                # Create properly aligned control row
+                col_controls = st.columns([3, 1.2, 1.2, 1.2])
+
+                with col_controls[0]:
                     col_search_term = st.text_input(
                         "Search columns",
                         placeholder="Type to filter column names...",
@@ -3365,15 +3368,28 @@ def show():
                         key="zmo_col_search",
                     )
 
-                with col_filter2:
+                with col_controls[1]:
+                    st.write("")  # Vertical spacer
                     show_only = st.checkbox(
                         "Show Only",
                         help="Show ONLY columns matching search (hide all others)",
                         key="zmo_show_only",
                     )
 
-                with col_filter3:
-                    if st.button("Reset columns to default", key="zmo_reset_cols"):
+                with col_controls[2]:
+                    st.write("")  # Vertical spacer
+                    if st.button(
+                        "Clear Results",
+                        key="zmo_clear_results",
+                        use_container_width=True,
+                    ):
+                        st.session_state["zmo_search_input"] = ""
+
+                with col_controls[3]:
+                    st.write("")  # Vertical spacer
+                    if st.button(
+                        "Reset Columns", key="zmo_reset_cols", use_container_width=True
+                    ):
                         save_col_config(all_cols, all_cols)
                         st.session_state["zmo_col_search"] = ""
                         st.session_state["zmo_show_only"] = False
@@ -3387,8 +3403,23 @@ def show():
                         col for col in all_cols if search_lower in col.lower()
                     ]
 
-                # Show/hide with checkboxes for filtered columns
-                with st.expander("Show/Hide Columns", expanded=True):
+                # Define persistent columns that must always be visible
+                persistent_cols = [
+                    col
+                    for col in all_cols
+                    if any(
+                        name in col.lower()
+                        for name in [
+                            "patient_id",
+                            "first_name",
+                            "last_name",
+                            "status",
+                        ]
+                    )
+                ]
+
+                # Show/hide with checkboxes for filtered columns (HIDDEN BY DEFAULT)
+                with st.expander("Show/Hide Columns", expanded=False):
                     col_checks = {col: (col in visible_cols) for col in all_cols}
                     checked_cols = []
 
@@ -3429,15 +3460,23 @@ def show():
                                 f"Showing {len(checked_cols)} columns (hiding {hidden_count} others)"
                             )
 
+                # Always ensure persistent columns are included
+                checked_cols_with_persistent = list(set(checked_cols + persistent_cols))
+
                 # Preserve order from config, add any new checked columns at the end
-                col_order = [col for col in col_order if col in checked_cols] + [
-                    col for col in checked_cols if col not in col_order
+                col_order = [
+                    col for col in col_order if col in checked_cols_with_persistent
+                ] + [
+                    col for col in checked_cols_with_persistent if col not in col_order
                 ]
 
                 # Save config if changed
-                if set(checked_cols) != set(visible_cols) or col_order != visible_cols:
-                    save_col_config(checked_cols, col_order)
-                    visible_cols, col_order = checked_cols, col_order
+                if (
+                    set(checked_cols_with_persistent) != set(visible_cols)
+                    or col_order != visible_cols
+                ):
+                    save_col_config(checked_cols_with_persistent, col_order)
+                    visible_cols, col_order = checked_cols_with_persistent, col_order
 
                 # Filter and reorder DataFrame
                 filtered = merged[col_order] if col_order else merged
