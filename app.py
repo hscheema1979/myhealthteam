@@ -12,7 +12,7 @@ from src.database import (
 )
 from src import database
 from src.core_utils import get_user_role_ids
-from src.dashboards import admin_dashboard, onboarding_dashboard, data_entry_dashboard, care_provider_dashboard_enhanced, care_coordinator_dashboard_enhanced, provider_payment_dashboard, weekly_billing_dashboard, justin_simple_payment_tracker
+from src.dashboards import admin_dashboard, onboarding_dashboard, data_entry_dashboard, care_provider_dashboard_enhanced, care_coordinator_dashboard_enhanced, coordinator_manager_dashboard, provider_payment_dashboard, weekly_billing_dashboard, justin_simple_payment_tracker
 from src.auth_module import get_auth_manager, render_login_sidebar
 import base64
 import re
@@ -392,7 +392,7 @@ def main():
                         39: "Data Entry View",
                         37: "Lead Coordinator View",
                         38: "Care Provider Manager View",
-                        40: "Coordinator Manager View"
+                        40: "Coordinator Manager (Enhanced) View"
                     }
                     
                     # Get current view preference from session state
@@ -450,7 +450,7 @@ def main():
                 care_coordinator_dashboard_enhanced.show(user_id, user_role_ids)
             elif dashboard_role == 38:  # Care Provider Manager (CPM) - same as provider but with manager access
                 care_provider_dashboard_enhanced.show(user_id, user_role_ids)
-            elif dashboard_role == 40:  # Coordinator Manager (CM) - same as coordinator but with manager access
+            elif dashboard_role == 40:  # Coordinator Manager (CM) - gets coordinator dashboard with workflow reassignment tab
                 care_coordinator_dashboard_enhanced.show(user_id, user_role_ids)
             else:
                 st.error(f"Unrecognized dashboard role: {dashboard_role}")
@@ -792,8 +792,8 @@ def main():
                 care_coordinator_dashboard_enhanced.show(user_id, user_role_ids)
             elif primary_role == 38:  # Care Provider Manager (CPM) - same as provider but with manager access
                 care_provider_dashboard_enhanced.show(user_id, user_role_ids)
-            elif primary_role == 40:  # Coordinator Manager (CM) - same as coordinator but with manager access
-                care_coordinator_dashboard_enhanced.show(user_id, user_role_ids)
+            elif primary_role == 40:  # Coordinator Manager (CM) - dedicated manager dashboard
+                coordinator_manager_dashboard.show(user_id, user_role_ids)
             else:
                 st.error(f"Unrecognized primary role: {primary_role}")
                 st.info("Please contact your administrator.")

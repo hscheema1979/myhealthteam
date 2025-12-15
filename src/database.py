@@ -4,13 +4,27 @@ from datetime import datetime, timedelta
 import os
 import calendar
 
+
+# Database path toggle: Checks for 'USE_PROTOTYPE_MODE' file existence
+# This is more reliable than environment variables in nested PowerShell contexts
+PROTOTYPE_FLAG_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'USE_PROTOTYPE_MODE')
+
+if os.path.exists(PROTOTYPE_FLAG_FILE) or os.getenv('USE_PROTOTYPE') == '1':
+    # Use relative path for cross-platform compatibility (Windows + Linux)
+    # Assumes prototype.db is in the project root directory
+    _base_db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "prototype.db")
+    print(f"⚠️  USING PROTOTYPE DATABASE (Flag file found: {os.path.exists(PROTOTYPE_FLAG_FILE)}) ⚠️")
+else:
+    # Use relative path for cross-platform compatibility (Windows + Linux)
+    # Assumes production.db is in the project root directory
+    _base_db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "production.db")
+
+DB_PATH = os.getenv("DATABASE_PATH", _base_db_path)
+
 def get_db_connection(db_path: str = None):
     """Return a SQLite connection. If db_path provided, use that path."""
     if db_path is None:
-        # Use relative path for cross-platform compatibility (Windows + Linux)
-        # Assumes production.db is in the project root directory
-        default_db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "production.db")
-        db_path = os.getenv("DATABASE_PATH", default_db_path)
+        db_path = DB_PATH
     
     print(f"Attempting to connect to DB: {db_path}")
     conn = sqlite3.connect(db_path)
@@ -1157,8 +1171,8 @@ def add_user_with_hashed_password(username, hashed_password, first_name, last_na
         role = conn.execute('SELECT role_id FROM roles WHERE role_name = ?', (role_name,)).fetchone()
         if role:
             role_id = role['role_id']
-            cursor = conn.execute("INSERT INTO users (username, password, first_name, last_name, email, status, hire_date) VALUES (?, ?, ?, ?, ?, 'active', CURRENT_DATE)",
-                                  (username, hashed_password, first_name, last_name, email))
+            cursor = conn.execute("INSERT INTO users (username, password, first_name, last_name, email, full_name, status, hire_date) VALUES (?, ?, ?, ?, ?, ?, 'active', CURRENT_DATE)",
+                                  (username, hashed_password, first_name, last_name, email, f"{first_name} {last_name}"))
             user_id = cursor.lastrowid
             conn.execute("INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)",
                          (user_id, role_id))
@@ -1582,13 +1596,60 @@ def save_daily_task(provider_id, patient_id, task_date, task_description, notes,
             task_year = now.year
             task_month = now.month
 
+
+        # Get patient name for denormalization
+        patient_name = ""
+        try:
+            p_cursor = conn.execute("SELECT first_name, last_name FROM patients WHERE patient_id = ?", (pid,))
+            p_row = p_cursor.fetchone()
+            if p_row:
+                fn = p_row[0] if p_row[0] else ""
+                ln = p_row[1] if p_row[1] else ""
+                patient_name = f"{fn} {ln}".strip()
+        except Exception as e:
+            print(f"Error fetching patient name: {e}")
+
         # Insert into monthly provider_tasks table dynamically
         table_name = ensure_monthly_provider_tasks_table(year=task_year, month=task_month, conn=conn)
-        conn.execute(f"""
+        cursor = conn.execute(f"""
             INSERT INTO {table_name}
-            (provider_id, patient_id, task_date, notes, minutes_of_service, task_description, billing_code, billing_code_description, source_system, imported_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'DATA_ENTRY', CURRENT_TIMESTAMP)
-        """, (provider_id, pid, task_date, notes, duration_minutes, task_description, billing_code_val, billing_code_description))
+            (provider_id, patient_id, patient_name, task_date, notes, minutes_of_service, task_description, billing_code, billing_code_description, source_system, imported_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'DATA_ENTRY', CURRENT_TIMESTAMP)
+        """, (provider_id, pid, patient_name, task_date, notes, duration_minutes, task_description, billing_code_val, billing_code_description))
+        
+        # Get the newly created provider_task_id
+        new_provider_task_id = cursor.lastrowid
+        
+        # Also create billing status record for Medicare/insurance workflow tracking (if billable)
+        if billing_code_val and billing_code_val != 'Not_Billable':
+            try:
+                # Calculate billing week
+                task_dt_obj = pd.to_datetime(task_date)
+                billing_week = task_dt_obj.isocalendar()[1]
+                week_start = task_dt_obj - pd.Timedelta(days=task_dt_obj.weekday())
+                week_end = week_start + pd.Timedelta(days=6)
+                
+                # Get provider name
+                provider_name_result = conn.execute("SELECT full_name FROM users WHERE user_id = ?", (provider_id,)).fetchone()
+                provider_name = provider_name_result[0] if provider_name_result else ""
+                
+                conn.execute("""
+                    INSERT INTO provider_task_billing_status (
+                        provider_task_id, provider_id, provider_name, patient_name, task_date,
+                        billing_week, week_start_date, week_end_date, task_description,
+                        minutes_of_service, billing_code, billing_code_description,
+                        billing_status, is_billed, is_invoiced, is_claim_submitted,
+                        is_insurance_processed, is_approved_to_pay, is_paid, is_carried_over
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    new_provider_task_id, provider_id, provider_name, patient_name, task_date,
+                    billing_week, week_start.strftime('%Y-%m-%d'), week_end.strftime('%Y-%m-%d'),
+                    task_description, duration_minutes, billing_code_val, billing_code_description,
+                    'Pending', False, False, False, False, False, False, False
+                ))
+            except Exception as e:
+                print(f"Warning: Could not create billing status record: {e}")
+                # Don't fail the whole task if billing status creation fails
 
         # Also insert into tasks table for compatibility
         conn.execute("""
