@@ -20,6 +20,60 @@ logger = logging.getLogger(__name__)
 from src import database as db
 from src.dashboards.dashboard_display_config import ST_DF_AUTOSIZE_COLUMNS
 
+
+# ===== PERFORMANCE OPTIMIZATION: Add caching for expensive database queries =====
+@st.cache_data(ttl=300, show_spinner="Loading patient data...")
+def _cached_get_all_patient_panel():
+    """Cached version of get_all_patient_panel - refreshes every 5 minutes"""
+    try:
+        return (
+            db.get_all_patient_panel() if hasattr(db, "get_all_patient_panel") else []
+        )
+    except Exception as e:
+        logger.error(f"Error loading patient_panel: {e}")
+        return []
+
+
+@st.cache_data(ttl=300, show_spinner="Loading patient data...")
+def _cached_get_all_patients():
+    """Cached version of get_all_patients - refreshes every 5 minutes"""
+    try:
+        return db.get_all_patients() if hasattr(db, "get_all_patients") else []
+    except Exception as e:
+        logger.error(f"Error loading patients: {e}")
+        return []
+
+
+@st.cache_data(ttl=300, show_spinner="Processing patient data...")
+def _cached_merge_patient_data(panel_df, patients_df):
+    """Cached version of patient data merge"""
+    if panel_df.empty or patients_df.empty:
+        return panel_df if not panel_df.empty else patients_df
+
+    panel_cols = set(panel_df.columns)
+    patients_extra_cols = [
+        col
+        for col in patients_df.columns
+        if col not in panel_cols and col != "patient_id"
+    ]
+
+    if patients_extra_cols:
+        merged = panel_df.merge(
+            patients_df[["patient_id"] + patients_extra_cols],
+            how="left",
+            on="patient_id",
+            suffixes=("", "_patients"),
+        )
+    else:
+        merged = panel_df.copy()
+
+    for col in patients_extra_cols:
+        if col not in merged.columns:
+            merged[col] = pd.NA
+
+    return merged
+
+
 # Role constants for better maintainability
 ROLE_ADMIN = 34
 ROLE_CARE_PROVIDER = 33
@@ -2882,7 +2936,6 @@ def show():
                         try:
                             _apply_patient_info_edits_admin(edited, df_display)
                             st.success("Patient records updated.")
-                            st.rerun()
                         except Exception as e:
                             st.error(f"Error saving changes: {e}")
 
@@ -2944,7 +2997,6 @@ def show():
                                         edited_inactive, df_display
                                     )
                                     st.success("Patient records updated.")
-                                    st.rerun()
                                 except Exception as e:
                                     st.error(f"Error saving changes: {e}")
                     else:
@@ -2991,7 +3043,6 @@ def show():
             with col2:
                 if st.button("Reset to All"):
                     st.session_state.status_filter = all_statuses
-                    st.rerun()
 
             if not selected_statuses:
                 st.warning("Please select at least one patient status to display")
@@ -3130,6 +3181,7 @@ def show():
                     )
                 with col3:
                     if st.button("🔄 Refresh Data"):
+                        st.cache_data.clear()
                         st.rerun()
             else:
                 st.info("No active patients found in the database.")
@@ -3223,42 +3275,17 @@ def show():
         import os
 
         try:
-            # Always use patient_panel as base
-            panel_rows = (
-                db.get_all_patient_panel()
-                if hasattr(db, "get_all_patient_panel")
-                else []
-            )
-            patients_rows = (
-                db.get_all_patients() if hasattr(db, "get_all_patients") else []
-            )
+            # Use cached functions to avoid redundant database queries
+            panel_rows = _cached_get_all_patient_panel()
+            patients_rows = _cached_get_all_patients()
             panel_df = _fix_dataframe_for_streamlit(pd.DataFrame(panel_rows))
             patients_df = _fix_dataframe_for_streamlit(pd.DataFrame(patients_rows))
 
             if panel_df.empty or patients_df.empty:
                 st.info("No rows found for patient_panel or patients table.")
             else:
-                # Only join columns from patients that are not already in patient_panel
-                panel_cols = set(panel_df.columns)
-                patients_extra_cols = [
-                    col
-                    for col in patients_df.columns
-                    if col not in panel_cols and col != "patient_id"
-                ]
-                # If there are extra columns, join them in
-                if patients_extra_cols:
-                    merged = panel_df.merge(
-                        patients_df[["patient_id"] + patients_extra_cols],
-                        how="left",
-                        on="patient_id",
-                        suffixes=("", "_patients"),
-                    )
-                else:
-                    merged = panel_df.copy()
-                # Ensure all extra columns are present in merged, even if missing after merge
-                for col in patients_extra_cols:
-                    if col not in merged.columns:
-                        merged[col] = pd.NA
+                # Use cached merge function
+                merged = _cached_merge_patient_data(panel_df, patients_df)
                 st.markdown(
                     "### Combined patient_panel + patients (no duplicate columns, editable)"
                 )
@@ -3272,12 +3299,12 @@ def show():
                         "Search patients by name or ID",
                         placeholder="Enter patient name, ID, or MRN...",
                         help="Search across patient_id, name, and other identifiers",
+                        key="zmo_search_input",
                     )
 
                 with search_col2:
-                    if st.button("Clear search"):
-                        patient_search = ""
-                        st.rerun()
+                    if st.button("Clear search", key="zmo_clear_search"):
+                        st.session_state["zmo_search_input"] = ""
 
                 # Filter merged data based on patient search
                 if patient_search:
@@ -3348,7 +3375,9 @@ def show():
                 with col_filter3:
                     if st.button("Reset columns to default", key="zmo_reset_cols"):
                         save_col_config(all_cols, all_cols)
-                        st.rerun()
+                        st.session_state["zmo_col_search"] = ""
+                        st.session_state["zmo_show_only"] = False
+                        st.session_state["zmo_search_input"] = ""
 
                 # Filter columns based on search term
                 filtered_cols = all_cols
@@ -3364,7 +3393,9 @@ def show():
                     checked_cols = []
 
                     if not filtered_cols:
-                        st.warning("No columns match your search. Try a different search term.")
+                        st.warning(
+                            "No columns match your search. Try a different search term."
+                        )
                     else:
                         n_cols = 3  # Number of columns in the expander
                         col_chunks = [filtered_cols[i::n_cols] for i in range(n_cols)]
@@ -3384,7 +3415,9 @@ def show():
                     # If Show Only is checked and search has results, auto-select all matching columns
                     if show_only and col_search_term and filtered_cols:
                         checked_cols = filtered_cols
-                        st.caption(f"✓ Show Only enabled: Displaying {len(filtered_cols)} matching columns")
+                        st.caption(
+                            f"✓ Show Only enabled: Displaying {len(filtered_cols)} matching columns"
+                        )
                     elif show_only and not col_search_term:
                         st.warning("⚠️ 'Show Only' requires a search term to work")
 
@@ -3392,7 +3425,9 @@ def show():
                     if checked_cols:
                         hidden_count = len(all_cols) - len(checked_cols)
                         if hidden_count > 0:
-                            st.caption(f"Showing {len(checked_cols)} columns (hiding {hidden_count} others)")
+                            st.caption(
+                                f"Showing {len(checked_cols)} columns (hiding {hidden_count} others)"
+                            )
 
                 # Preserve order from config, add any new checked columns at the end
                 col_order = [col for col in col_order if col in checked_cols] + [
@@ -3407,11 +3442,56 @@ def show():
                 # Filter and reorder DataFrame
                 filtered = merged[col_order] if col_order else merged
 
-                # Dynamically set column type and human-readable names for editor compatibility
+                # Show editable table with current filtered columns
+                st.markdown("### Data Table")
+
+                # Initialize pagination in session state
+                if "zmo_page" not in st.session_state:
+                    st.session_state.zmo_page = 0
+
+                rows_per_page = 50
+                total_rows = len(filtered)
+                total_pages = (total_rows + rows_per_page - 1) // rows_per_page
+
+                # Pagination controls
+                col_page1, col_page2, col_page3 = st.columns([1, 3, 1])
+
+                with col_page1:
+                    if st.button(
+                        "← Previous",
+                        key="zmo_prev_page",
+                        disabled=st.session_state.zmo_page == 0,
+                    ):
+                        st.session_state.zmo_page -= 1
+
+                with col_page2:
+                    st.caption(
+                        f"Page {st.session_state.zmo_page + 1} of {max(1, total_pages)} | "
+                        f"Showing {len(filtered)} of {len(merged)} total patients | "
+                        f"{len(filtered.columns)} columns"
+                    )
+
+                with col_page3:
+                    if st.button(
+                        "Next →",
+                        key="zmo_next_page",
+                        disabled=st.session_state.zmo_page >= total_pages - 1,
+                    ):
+                        st.session_state.zmo_page += 1
+
+                # Clamp page number
+                st.session_state.zmo_page = max(
+                    0, min(st.session_state.zmo_page, total_pages - 1)
+                )
+
+                # Calculate slice for current page
+                start_idx = st.session_state.zmo_page * rows_per_page
+                end_idx = start_idx + rows_per_page
+                page_data = filtered.iloc[start_idx:end_idx].copy()
+
                 def format_col_name(col):
-                    # Auto-format: snake_case to Title Case
+                    """Format column name for display (friendly names)"""
                     name = col.replace("_", " ").title()
-                    # Apply overrides for special cases
                     overrides = {
                         "dob": "Date of Birth",
                         "patient_id": "Patient ID",
@@ -3423,8 +3503,8 @@ def show():
                     return overrides.get(col, name)
 
                 col_config = {}
-                for col in filtered.columns:
-                    dtype = filtered[col].dtype
+                for col in page_data.columns:
+                    dtype = page_data[col].dtype
                     display_name = format_col_name(col)
                     if pd.api.types.is_float_dtype(
                         dtype
@@ -3438,11 +3518,11 @@ def show():
                         )
                     else:
                         col_config[col] = st.column_config.DisabledColumn(display_name)
-                st.data_editor(
-                    filtered.head(200),
+
+                st.dataframe(
+                    page_data,
                     use_container_width=True,
-                    num_rows="dynamic",
-                    height=900,
+                    height=600,
                     column_config=col_config,
                 )
         except Exception as e:
@@ -3573,4 +3653,5 @@ def show():
             )
 
             if should_rerun:
+                st.cache_data.clear()
                 st.rerun()
