@@ -1,0 +1,9 @@
+Last,First,DOB,Assigned Reg Prov,Assigned CM,Fac,Phone,Street,City,State,Zip,Ins1,Policy,Pt Status,"Initial TV
+Date","Initial TV
+Notes","Initial TV
+Prov","Assigned 
+Reg Prov","Assigned
+CM"
+SMITH,JOHN,01/01/1980,ZEN-ANE,ZEN-DIA,FACILITY1,555-0101,123 Main St,Anytown,CA,12345,Insurance1,POL001,Active,,,,ZEN-ANE,ZEN-DIA
+JOHNSON,JANE,02/02/1985,ZEN-DIA,ZEN-MEC,FACILITY2,555-0102,456 Oak Ave,Somewhere,NY,67890,Insurance2,POL002,Active,,,,ZEN-DIA,ZEN-MEC
+WILLIAMS,BOB,03/03/1990,ZEN-MEC,ZEN-ANE,FACILITY3,555-0103,789 Pine Rd,Elsewhere,TX,54321,Insurance3,POL003,Active,,,,ZEN-MEC,ZEN-ANE

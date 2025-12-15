@@ -281,7 +281,7 @@ SELECT DISTINCT p.patient_id,
     p.chart_notes,
     COALESCE(p.intake_call_completed, 0) as intake_call_completed,
     p.intake_notes,
-    p.task_date,
+    p.initial_tv_completed_date as task_date,
     p.goc_value
 FROM patients p
     LEFT JOIN (

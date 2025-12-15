@@ -1,0 +1,283 @@
+================================================================================
+ALL DATE COLUMNS IN DATABASE
+================================================================================
+
+audit_log:
+  - timestamp                      (DATETIME)
+
+coordinator_monthly_summary:
+  - month_start_date               (DATE)
+  - month_end_date                 (DATE)
+  - created_date                   (DATETIME)
+  - updated_date                   (DATETIME)
+
+coordinator_tasks_1999_12:
+  - task_date                      (DATE)
+  - imported_at                    (TIMESTAMP)
+
+coordinator_tasks_2022_01:
+  - task_date                      (DATE)
+  - imported_at                    (TIMESTAMP)
+
+coordinator_tasks_2025_01:
+  - task_date                      (DATE)
+  - imported_at                    (TIMESTAMP)
+
+coordinator_tasks_2025_02:
+  - task_date                      (DATE)
+  - imported_at                    (TIMESTAMP)
+
+coordinator_tasks_2025_03:
+  - task_date                      (DATE)
+  - imported_at                    (TIMESTAMP)
+
+coordinator_tasks_2025_04:
+  - task_date                      (DATE)
+  - imported_at                    (TIMESTAMP)
+
+coordinator_tasks_2025_05:
+  - task_date                      (DATE)
+  - imported_at                    (TIMESTAMP)
+
+coordinator_tasks_2025_06:
+  - task_date                      (DATE)
+  - imported_at                    (TIMESTAMP)
+
+coordinator_tasks_2025_07:
+  - task_date                      (DATE)
+  - imported_at                    (TIMESTAMP)
+
+coordinator_tasks_2025_08:
+  - task_date                      (DATE)
+  - imported_at                    (TIMESTAMP)
+
+coordinator_tasks_2025_09:
+  - task_date                      (DATE)
+  - imported_at                    (TIMESTAMP)
+
+coordinator_tasks_2025_10:
+  - task_date                      (DATE)
+  - imported_at                    (TIMESTAMP)
+
+coordinator_tasks_2025_11:
+  - task_date                      (DATE)
+  - imported_at                    (TIMESTAMP)
+
+facilities:
+  - created_date                   (TIMESTAMP)
+
+onboarding_patients:
+  - date_of_birth                  (TEXT)
+  - annual_well_visit              (DATE)
+  - created_date                   (DATETIME)
+  - tv_date                        (DATE)
+  - initial_tv_completed_date      (TEXT)
+
+patient_assignments:
+  - assignment_date                (TEXT)
+
+patient_monthly_billing_2025_01:
+  - created_date                   (DATETIME)
+
+patient_monthly_billing_2025_02:
+  - created_date                   (DATETIME)
+
+patient_monthly_billing_2025_03:
+  - created_date                   (DATETIME)
+
+patient_monthly_billing_2025_04:
+  - created_date                   (DATETIME)
+
+patient_monthly_billing_2025_05:
+  - created_date                   (DATETIME)
+
+patient_monthly_billing_2025_06:
+  - created_date                   (DATETIME)
+
+patient_monthly_billing_2025_07:
+  - created_date                   (DATETIME)
+
+patient_monthly_billing_2025_08:
+  - created_date                   (DATETIME)
+
+patient_monthly_billing_2025_09:
+  - created_date                   (DATETIME)
+
+patient_monthly_billing_2025_10:
+  - created_date                   (DATETIME)
+
+patient_monthly_billing_2025_11:
+  - created_date                   (DATETIME)
+
+patient_monthly_billing_2025_12:
+  - created_date                   (DATETIME)
+
+patient_panel:
+  - date_of_birth                  (TEXT)
+  - enrollment_date                (TEXT)
+  - discharge_date                 (TEXT)
+  - created_date                   (TEXT)
+  - updated_date                   (TEXT)
+  - updated_by                     (TEXT)
+  - last_visit_date                (TEXT)
+  - initial_tv_completed_date      (TEXT)
+  - task_date                      (TEXT)
+
+patients:
+  - date_of_birth                  (TEXT)
+  - enrollment_date                (TEXT)
+  - discharge_date                 (TEXT)
+  - created_date                   (TEXT)
+  - updated_date                   (TEXT)
+  - updated_by                     (TEXT)
+  - last_visit_date                (TEXT)
+  - initial_tv_completed_date      (TEXT)
+  - tv_date                        (TEXT)
+
+provider_task_billing_status:
+  - task_date                      (DATE)
+  - week_start_date                (DATE)
+  - week_end_date                  (DATE)
+  - created_date                   (DATETIME)
+  - updated_date                   (DATETIME)
+
+provider_tasks_2001_01:
+  - task_date                      (DATE)
+  - imported_at                    (TIMESTAMP)
+
+provider_tasks_2023_05:
+  - task_date                      (DATE)
+  - imported_at                    (TIMESTAMP)
+
+provider_tasks_2023_06:
+  - task_date                      (DATE)
+  - imported_at                    (TIMESTAMP)
+
+provider_tasks_2023_07:
+  - task_date                      (DATE)
+  - imported_at                    (TIMESTAMP)
+
+provider_tasks_2023_10:
+  - task_date                      (DATE)
+  - imported_at                    (TIMESTAMP)
+
+provider_tasks_2023_11:
+  - task_date                      (DATE)
+  - imported_at                    (TIMESTAMP)
+
+provider_tasks_2023_12:
+  - task_date                      (DATE)
+  - imported_at                    (TIMESTAMP)
+
+provider_tasks_2024_01:
+  - task_date                      (DATE)
+  - imported_at                    (TIMESTAMP)
+
+provider_tasks_2024_02:
+  - task_date                      (DATE)
+  - imported_at                    (TIMESTAMP)
+
+provider_tasks_2024_03:
+  - task_date                      (DATE)
+  - imported_at                    (TIMESTAMP)
+
+provider_tasks_2024_04:
+  - task_date                      (DATE)
+  - imported_at                    (TIMESTAMP)
+
+provider_tasks_2024_05:
+  - task_date                      (DATE)
+  - imported_at                    (TIMESTAMP)
+
+provider_tasks_2024_06:
+  - task_date                      (DATE)
+  - imported_at                    (TIMESTAMP)
+
+provider_tasks_2024_07:
+  - task_date                      (DATE)
+  - imported_at                    (TIMESTAMP)
+
+provider_tasks_2024_08:
+  - task_date                      (DATE)
+  - imported_at                    (TIMESTAMP)
+
+provider_tasks_2024_09:
+  - task_date                      (DATE)
+  - imported_at                    (TIMESTAMP)
+
+provider_tasks_2024_10:
+  - task_date                      (DATE)
+  - imported_at                    (TIMESTAMP)
+
+provider_tasks_2024_11:
+  - task_date                      (DATE)
+  - imported_at                    (TIMESTAMP)
+
+provider_tasks_2024_12:
+  - task_date                      (DATE)
+  - imported_at                    (TIMESTAMP)
+
+provider_tasks_2025_01:
+  - task_date                      (DATE)
+  - imported_at                    (TIMESTAMP)
+
+provider_tasks_2025_02:
+  - task_date                      (DATE)
+  - imported_at                    (TIMESTAMP)
+
+provider_tasks_2025_03:
+  - task_date                      (DATE)
+  - imported_at                    (TIMESTAMP)
+
+provider_tasks_2025_04:
+  - task_date                      (DATE)
+  - imported_at                    (TIMESTAMP)
+
+provider_tasks_2025_05:
+  - task_date                      (DATE)
+  - imported_at                    (TIMESTAMP)
+
+provider_tasks_2025_06:
+  - task_date                      (DATE)
+  - imported_at                    (TIMESTAMP)
+
+provider_tasks_2025_07:
+  - task_date                      (DATE)
+  - imported_at                    (TIMESTAMP)
+
+provider_tasks_2025_08:
+  - task_date                      (DATE)
+  - imported_at                    (TIMESTAMP)
+
+provider_tasks_2025_09:
+  - task_date                      (DATE)
+  - imported_at                    (TIMESTAMP)
+
+provider_tasks_2025_10:
+  - task_date                      (DATE)
+  - imported_at                    (TIMESTAMP)
+
+provider_tasks_2025_11:
+  - task_date                      (DATE)
+  - imported_at                    (TIMESTAMP)
+
+provider_weekly_summary_with_billing:
+  - week_start_date                (DATE)
+  - week_end_date                  (DATE)
+  - created_date                   (DATETIME)
+  - updated_date                   (DATETIME)
+
+task_billing_codes:
+  - effective_date                 (TEXT)
+  - expiration_date                (TEXT)
+  - created_date                   (TEXT)
+
+users:
+  - hire_date                      (TEXT)
+  - termination_date               (TEXT)
+  - created_date                   (TEXT)
+  - updated_date                   (TEXT)
+
+================================================================================
+SUMMARY: 66 tables with date columns
+================================================================================

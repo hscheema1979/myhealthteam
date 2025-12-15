@@ -91,7 +91,7 @@ def show(user_id, user_role_ids=None):
         if has_cm_role:
             role_text.append("Coordinator Manager")
         st.info(f"**Management Access**: You have {' & '.join(role_text)} privileges with additional tabs available")
-        tab1, tab2, tab3, tab_patient_info, tab4 = st.tabs(["My Patients", "Phone Reviews", "Team Management", "Patient Info", "Help"])
+        tab1, tab2, tab3, tab_workflow, tab_patient_info, tab4 = st.tabs(["My Patients", "Phone Reviews", "Team Management", "Workflow Reassignment", "Patient Info", "Help"])
         with tab4:
             st.header("Help")
             st.markdown("This help uses real UI elements to explain coordinator views.")
@@ -404,6 +404,86 @@ def show(user_id, user_role_ids=None):
                             st.info(f"No data in table {selected_table} after filtering.")
             except Exception as e:
                 st.error(f"Error loading coordinator tasks: {e}")
+        
+        with tab_workflow:
+            st.header("🔄 Workflow Reassignment")
+            st.markdown("**Bulk workflow management**: Reassign workflows between coordinators for optimal team distribution.")
+            
+            # Only show for users with management roles (CM or Admin)
+            if user_role_ids and (40 in user_role_ids or 34 in user_role_ids):
+                try:
+                    from src.utils.workflow_utils import (
+                        get_workflows_for_reassignment,
+                        get_available_coordinators,
+                        execute_workflow_reassignment,
+                        get_reassignment_summary
+                    )
+                    from src.utils.workflow_reassignment_ui import (
+                        show_workflow_reassignment_table,
+                        display_workflow_summary_stats
+                    )
+                    
+                    # Get workflows available for reassignment
+                    workflows_df = get_workflows_for_reassignment(user_id, user_role_ids)
+                    
+                    if workflows_df.empty:
+                        st.info("No active workflows available for reassignment.")
+                    else:
+                        # Show summary first
+                        summary = get_reassignment_summary(workflows_df)
+                        
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.metric("Total Workflows", summary['total_workflows'])
+                        with col2:
+                            unique_coordinators = len(summary['by_coordinator'])
+                            st.metric("Active Coordinators", unique_coordinators)
+                        with col3:
+                            avg_steps = summary['avg_steps']
+                            st.metric("Average Step", f"{avg_steps:.1f}")
+                        
+                        # Show workflow distribution
+                        with st.expander("📊 Assignment Distribution", expanded=False):
+                            col_summary1, col_summary2 = st.columns(2)
+                            with col_summary1:
+                                st.markdown("**By Coordinator**")
+                                for coord, count in summary['by_coordinator'].items():
+                                    st.markdown(f"- {coord}: **{count}** workflows")
+                            with col_summary2:
+                                st.markdown("**By Workflow Type**")
+                                for workflow_type, count in summary['by_workflow_type'].items():
+                                    st.markdown(f"- {workflow_type}: **{count}** workflows")
+                        
+                        # Main reassignment interface
+                        st.subheader("📋 Workflows Available for Reassignment")
+                        
+                        # Get available coordinators for target selection
+                        available_coordinators = get_available_coordinators()
+                        coordinator_options = {coord['full_name']: coord['user_id'] for coord in available_coordinators}
+                        
+                        # Use shared workflow reassignment table
+                        selected_instance_ids, should_rerun = show_workflow_reassignment_table(
+                            workflows_df=workflows_df,
+                            user_id=user_id,
+                            table_key="coordinator_workflow",
+                            show_search_filter=True
+                        )
+                        
+                        # Rerun if reassignment was successful
+                        if should_rerun:
+                            st.rerun()
+                            
+                except ImportError as e:
+                    st.error(f"Workflow reassignment utilities not found: {e}")
+                    st.info("Please ensure workflow_reassignment_utils.py is in src/utils/ directory")
+                except Exception as e:
+                    st.error(f"Error in workflow reassignment: {e}")
+                    import traceback
+                    traceback.print_exc()
+            else:
+                st.info("Workflow reassignment is only available to users with Coordinator Manager or Admin privileges.")
+                st.markdown("Contact your administrator if you need access to this feature.")
+        
         with tab_patient_info:
             show_patient_info_tab_coordinator(user_id)
     else:
@@ -746,31 +826,7 @@ def show(user_id, user_role_ids=None):
                 st.dataframe(sample_df, use_container_width=True)
                 st.caption("What it shows: the real panel columns and a sample row. How to use: sort/filter columns as needed in the actual panel; minutes are monthly and color-coded in the real view.")
 
-            # Workflow Manager — Quick Start (fields)
-            with st.expander("Workflow Manager — Quick Start (Read-only)", expanded=True):
-                import datetime
-                st.selectbox("Workflow Template", ["Home Visit", "Initial TV", "Follow-up"], index=0, disabled=True)
-                st.date_input("Start Date", datetime.date.today(), disabled=True)
-                st.selectbox("Patient", ["Alice Nguyen"], index=0, disabled=True, key="workflow_patient_selectbox")
-                st.selectbox("Coordinator", ["Your Name"], index=0, disabled=True)
-                st.button("Start Workflow", disabled=True)
-                st.caption("What it does: creates a workflow instance tied to a patient/coordinator with tracked steps. How to use: choose a template, confirm date/patient, then Start; progress appears in Ongoing Workflows.")
-
-            # Ongoing Workflows — Status Table
-            with st.expander("Ongoing Workflows — Status Table (Read-only)", expanded=False):
-                import pandas as pd
-                wf_df = pd.DataFrame([
-                    {
-                        "Workflow": "Home Visit",
-                        "Patient": "Alice Nguyen",
-                        "Coordinator": "Your Name",
-                        "Started": "2025-11-19",
-                        "Completed Steps": 1,
-                        "Total Steps": 4,
-                    }
-                ])
-                st.dataframe(wf_df, use_container_width=True)
-                st.caption("Actions in the real UI: Open (view and complete steps), Save Progress (log notes/minutes). Use to track progress and capture time.")
+            # Workflow functionality moved to dedicated "Workflow Reassignment" tab for management coordinators
 
             # Task Entry — Logging
             with st.expander("Task Entry — Logging (Read-only)", expanded=False):
@@ -980,14 +1036,31 @@ def show_coordinator_patient_list(user_id, context="default"):
         'service_type': 'Service Type',
         'POC-A': 'POC-A (Appt Contact)',
         'POC-M': 'POC-M (Medical Contact)',
+        'goc_value': 'GOC',
+        'code_status': 'Code Status',
+        'subjective_risk_level': 'Risk',
+        'phone_medical': 'MED POC',
+        'phone_appointment': 'Appt POC',
+        'phone_medical_number': 'Med phone #',
+        'phone_appointment_number': 'Appt phone #',
+        'care_provider_name': 'CP Name',
+        'care_coordinator_name': 'CC Name',
     }
     required_columns = [
         'Status',
+        'GOC',
+        'Code Status',
+        'Risk',
         'First Name',
         'Last Name',
+        'MED POC',
+        'Appt POC',
+        'Med phone #',
+        'Appt phone #',
         'Facility',
-        'Provider Name',
-        "Provider's Last Visit Date",
+        'CP Name',
+        'CC Name',
+        'Last Visit Date',
         'Service Type',
         'Phone Number',
         'POC-A (Appt Contact)',

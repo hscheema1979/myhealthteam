@@ -1,0 +1,122 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║          HHC VIEW TEMPLATE - PATIENT STATUS FILTER ADDED                   ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+✅ FEATURE: Dynamic Patient Status Filter Dropdown
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+WHAT'S NEW
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+At the top of the HHC View Template tab, you'll now see:
+
+┌─────────────────────────────────────────────────┐
+│ Filter Patients                                 │
+├─────────────────────────────────────────────────┤
+│ Select Patient Status(es)                       │
+│ [✓ Active           ]     [Reset to All]        │
+│ [✓ Active-PCP       ]                           │
+│ [✓ Active-Geri      ]                           │
+│ [✓ HOSPICE          ]                           │
+│ [ ] Paused by HHC...                            │
+│ [ ] Canceled Services                           │
+│ [ ] Declined                                    │
+│ [ ] Deceased                                    │
+│ [ ] Inactiv e-*                                 │
+└─────────────────────────────────────────────────┘
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+HOW IT WORKS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Opens with DEFAULT selection: Active, Active-PCP, Active-Geri, HOSPICE
+2. You can CHECK/UNCHECK any status to filter
+3. Table updates immediately to show only selected statuses
+4. Summary metrics recalculate automatically
+5. CSV export includes only filtered patients
+6. Click "Reset to All" to restore all options
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+AVAILABLE STATUSES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✓ Default (Pre-checked):
+  • Active (216 patients)
+  • Active-PCP (207 patients)
+  • Active-Geri (113 patients)
+  • HOSPICE (1 patient)
+  
+○ Optional (Not checked by default):
+  • Paused by HHC , Pt in hospital (1 patient)
+  • Canceled Services (52 patients)
+  • Declined (6 patients)
+  • Deceased (20 patients)
+  • Inactiv e-Pt declined, Call0 (18 patients)
+  • Inactiv e-Ins changed, Call0 (13 patients)
+  • Inactiv e-Pt declined, Call1 (8 patients)
+  • Inactiv e-Ins changed, Call1 (1 patient)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EXAMPLE USE CASES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+View only Active patients:
+  → Uncheck Active-PCP, Active-Geri, HOSPICE
+  → Shows 216 patients
+
+See all active types including Paused:
+  → Check all of: Active, Active-PCP, Active-Geri, HOSPICE, Paused
+  → Shows 538 patients
+
+See everything including inactive:
+  → Click "Reset to All"
+  → Shows all 656 patients
+
+View only new patient type:
+  → Uncheck everything
+  → Check only the status you want
+  → Shows just those patients
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TECHNICAL DETAILS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ Dynamic - Loads all statuses from database (no hardcoding)
+✅ Parameterized SQL - Safe from SQL injection
+✅ Real-Time - Updates immediately on selection change
+✅ Validated - Won't allow empty selection
+✅ Persistent - Selections maintained during session
+✅ Efficient - Filtering done at database level
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CODE CHANGES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+File: Dev/src/dashboards/admin_dashboard.py
+Lines Added: ~35 lines (filter UI)
+Lines Modified: ~7 lines (query execution)
+
+Features:
+  • Query status list from database
+  • Create multiselect dropdown with defaults
+  • Add "Reset to All" button
+  • Validate selection (min 1 status)
+  • Build parameterized query dynamically
+  • Execute with selected statuses
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+AFTER RESTART
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Admin Dashboard → HHC View Template
+2. See "Filter Patients" section at top
+3. Multiselect dropdown with all available statuses
+4. Default: Active, Active-PCP, Active-Geri, HOSPICE selected
+5. Adjust filters as needed
+6. Table updates immediately
+7. CSV export includes filtered data only
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STATUS: ✅ COMPLETE & TESTED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Ready for: Immediate Streamlit restart and production deployment

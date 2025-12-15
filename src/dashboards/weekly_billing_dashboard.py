@@ -23,35 +23,35 @@ def get_available_months():
     """Get list of available months from provider_tasks data including partitioned tables."""
     conn = get_db_connection()
     
-    # Query both main table and partitioned tables
-    query = """
-    SELECT 
-        strftime('%Y', task_date) as year,
-        strftime('%m', task_date) as month,
-        'main' as source_table
-    FROM provider_tasks
-    WHERE task_date IS NOT NULL
+    # Check which tables exist
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT name FROM sqlite_master
+        WHERE type='table' AND name LIKE 'provider_tasks%'
+    """)
+    existing_tables = [row[0] for row in cursor.fetchall()]
+    cursor.close()
     
-    UNION
+    if not existing_tables:
+        conn.close()
+        return []
     
-    SELECT 
-        strftime('%Y', task_date) as year,
-        strftime('%m', task_date) as month,
-        'partitioned' as source_table
-    FROM provider_tasks_2025_10
-    WHERE task_date IS NOT NULL
+    # Build query dynamically based on existing tables
+    queries = []
     
-    UNION
+    # Add queries for each existing table
+    for table in existing_tables:
+        queries.append(f"""
+            SELECT
+                strftime('%Y', task_date) as year,
+                strftime('%m', task_date) as month,
+                '{table}' as source_table
+            FROM {table}
+            WHERE task_date IS NOT NULL
+        """)
     
-    SELECT 
-        strftime('%Y', task_date) as year,
-        strftime('%m', task_date) as month,
-        'partitioned' as source_table
-    FROM provider_tasks_2025_11
-    WHERE task_date IS NOT NULL
-    
-    ORDER BY year DESC, month DESC
-    """
+    # Combine all queries with UNION
+    query = " UNION ".join(queries) + " ORDER BY year DESC, month DESC"
     
     df = pd.read_sql_query(query, conn)
     conn.close()
@@ -85,21 +85,32 @@ def get_billing_weeks_list(selected_year=None, selected_month=None):
     """Get list of available billing weeks from provider_tasks including partitioned tables, optionally filtered by month/year."""
     conn = get_db_connection()
     
+    # Check which tables exist
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT name FROM sqlite_master
+        WHERE type='table' AND name LIKE 'provider_tasks%'
+    """)
+    existing_tables = [row[0] for row in cursor.fetchall()]
+    cursor.close()
+    
+    if not existing_tables:
+        conn.close()
+        return pd.DataFrame()
+    
     if selected_year and selected_month:
-        # Check if we need to query partitioned table for 2025 months
-        if selected_year == 2025 and selected_month in [10, 11]:
-            if selected_month == 10:
-                table_name = 'provider_tasks_2025_10'
-            elif selected_month == 11:
-                table_name = 'provider_tasks_2025_11'
-            
+        # Build table name for the selected year/month
+        table_name = f'provider_tasks_{selected_year}_{selected_month:02d}'
+        
+        if table_name in existing_tables:
+            # Use the specific partitioned table
             query = f"""
-            SELECT 
+            SELECT
                 strftime('%Y-%W', task_date) as billing_week,
                 strftime('%Y-%m-%d', MIN(task_date)) as week_start_date,
                 strftime('%Y-%m-%d', MAX(task_date)) as week_end_date
             FROM {table_name}
-            WHERE strftime('%Y', task_date) = ? 
+            WHERE strftime('%Y', task_date) = ?
             AND strftime('%m', task_date) = ?
             AND task_date IS NOT NULL
             GROUP BY strftime('%Y-%W', task_date)
@@ -107,30 +118,25 @@ def get_billing_weeks_list(selected_year=None, selected_month=None):
             """
             df = pd.read_sql_query(query, conn, params=[str(selected_year), f"{selected_month:02d}"])
         else:
-            query = """
-            SELECT 
-                strftime('%Y-%W', task_date) as billing_week,
-                strftime('%Y-%m-%d', MIN(task_date)) as week_start_date,
-                strftime('%Y-%m-%d', MAX(task_date)) as week_end_date
-            FROM provider_tasks
-            WHERE strftime('%Y', task_date) = ? 
-            AND strftime('%m', task_date) = ?
-            AND task_date IS NOT NULL
-            GROUP BY strftime('%Y-%W', task_date)
-            ORDER BY billing_week DESC
-            """
-            df = pd.read_sql_query(query, conn, params=[str(selected_year), f"{selected_month:02d}"])
+            # No data for this month/year combination
+            conn.close()
+            return pd.DataFrame()
     else:
-        query = """
-        SELECT 
-            strftime('%Y-%W', task_date) as billing_week,
-            strftime('%Y-%m-%d', MIN(task_date)) as week_start_date,
-            strftime('%Y-%m-%d', MAX(task_date)) as week_end_date
-        FROM provider_tasks
-        WHERE task_date IS NOT NULL
-        GROUP BY strftime('%Y-%W', task_date)
-        ORDER BY billing_week DESC
-        """
+        # Get all billing weeks from all existing tables
+        queries = []
+        for table in existing_tables:
+            queries.append(f"""
+                SELECT
+                    strftime('%Y-%W', task_date) as billing_week,
+                    strftime('%Y-%m-%d', MIN(task_date)) as week_start_date,
+                    strftime('%Y-%m-%d', MAX(task_date)) as week_end_date
+                FROM {table}
+                WHERE task_date IS NOT NULL
+                GROUP BY strftime('%Y-%W', task_date)
+            """)
+        
+        # Combine all queries
+        query = " UNION ".join(queries) + " ORDER BY billing_week DESC"
         df = pd.read_sql_query(query, conn)
     
     conn.close()
@@ -141,18 +147,40 @@ def get_billing_weeks_by_date_range(start_date, end_date):
     try:
         conn = get_db_connection()
         
-        query = """
-        SELECT 
-            strftime('%Y-%W', task_date) as billing_week,
-            strftime('%Y-%m-%d', MIN(task_date)) as week_start_date,
-            strftime('%Y-%m-%d', MAX(task_date)) as week_end_date
-        FROM provider_tasks
-        WHERE task_date >= ? AND task_date <= ?
-        AND task_date IS NOT NULL
-        GROUP BY strftime('%Y-%W', task_date)
-        ORDER BY billing_week DESC
-        """
-        df = pd.read_sql_query(query, conn, params=[start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d')])
+        # Check which tables exist
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT name FROM sqlite_master
+            WHERE type='table' AND name LIKE 'provider_tasks%'
+        """)
+        existing_tables = [row[0] for row in cursor.fetchall()]
+        cursor.close()
+        
+        if not existing_tables:
+            conn.close()
+            return pd.DataFrame()
+        
+        # Build query to search across all existing tables
+        queries = []
+        for table in existing_tables:
+            queries.append(f"""
+                SELECT
+                    strftime('%Y-%W', task_date) as billing_week,
+                    strftime('%Y-%m-%d', MIN(task_date)) as week_start_date,
+                    strftime('%Y-%m-%d', MAX(task_date)) as week_end_date
+                FROM {table}
+                WHERE task_date >= ? AND task_date <= ?
+                AND task_date IS NOT NULL
+                GROUP BY strftime('%Y-%W', task_date)
+            """)
+        
+        # Combine all queries
+        query = " UNION ".join(queries) + " ORDER BY billing_week DESC"
+        
+        df = pd.read_sql_query(query, conn, params=[
+            start_date.strftime('%Y-%m-%d'),
+            end_date.strftime('%Y-%m-%d')
+        ])
         
         conn.close()
         return df
@@ -197,15 +225,29 @@ def get_weekly_billing_summary_by_week(billing_week):
     """Get summary of weekly billing for a specific week from provider_tasks including partitioned tables."""
     conn = get_db_connection()
     
+    # Check which tables exist
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT name FROM sqlite_master
+        WHERE type='table' AND name LIKE 'provider_tasks%'
+    """)
+    existing_tables = [row[0] for row in cursor.fetchall()]
+    cursor.close()
+    
+    if not existing_tables:
+        conn.close()
+        return pd.DataFrame()
+    
     # Parse billing week to determine which table to query
     if '-' in billing_week:
         year, week = billing_week.split('-')
         year = int(year)
         
-        if year == 2025:
-            # Try October first
-            query_oct = """
-            SELECT 
+        # Try each existing table until we find data
+        df = pd.DataFrame()
+        for table in existing_tables:
+            query = f"""
+            SELECT
                 strftime('%Y-%W', task_date) as billing_week,
                 strftime('%Y-%m-%d', MIN(task_date)) as week_start_date,
                 strftime('%Y-%m-%d', MAX(task_date)) as week_end_date,
@@ -215,73 +257,43 @@ def get_weekly_billing_summary_by_week(billing_week):
                 0 as billed_tasks,
                 0 as paid_tasks,
                 0 as carried_over_tasks
-            FROM provider_tasks_2025_10
-            WHERE strftime('%Y-%W', task_date) = ?
-            AND task_date IS NOT NULL
-            GROUP BY strftime('%Y-%W', task_date)
-            """
-            df = pd.read_sql_query(query_oct, conn, params=[billing_week])
-            
-            # If no data found in October, try November
-            if df.empty:
-                query_nov = """
-                SELECT 
-                    strftime('%Y-%W', task_date) as billing_week,
-                    strftime('%Y-%m-%d', MIN(task_date)) as week_start_date,
-                    strftime('%Y-%m-%d', MAX(task_date)) as week_end_date,
-                    COUNT(*) as total_tasks,
-                    COUNT(DISTINCT provider_name) as provider_count,
-                    COUNT(DISTINCT patient_id) as patient_count,
-                    0 as billed_tasks,
-                    0 as paid_tasks,
-                    0 as carried_over_tasks
-                FROM provider_tasks_2025_11
-                WHERE strftime('%Y-%W', task_date) = ?
-                AND task_date IS NOT NULL
-                GROUP BY strftime('%Y-%W', task_date)
-                """
-                df = pd.read_sql_query(query_nov, conn, params=[billing_week])
-        else:
-            # For other years, use main table
-            query = """
-            SELECT 
-                strftime('%Y-%W', task_date) as billing_week,
-                strftime('%Y-%m-%d', MIN(task_date)) as week_start_date,
-                strftime('%Y-%m-%d', MAX(task_date)) as week_end_date,
-                COUNT(*) as total_tasks,
-                COUNT(DISTINCT provider_name) as provider_count,
-                COUNT(DISTINCT patient_id) as patient_count,
-                0 as billed_tasks,
-                0 as paid_tasks,
-                0 as carried_over_tasks
-            FROM provider_tasks
+            FROM {table}
             WHERE strftime('%Y-%W', task_date) = ?
             AND task_date IS NOT NULL
             GROUP BY strftime('%Y-%W', task_date)
             """
             df = pd.read_sql_query(query, conn, params=[billing_week])
+            
+            # If we found data, stop searching
+            if not df.empty:
+                break
     else:
-        # Fallback to main table if billing_week format is unexpected
-        query = """
-        SELECT 
-            strftime('%Y-%W', task_date) as billing_week,
-            strftime('%Y-%m-%d', MIN(task_date)) as week_start_date,
-            strftime('%Y-%m-%d', MAX(task_date)) as week_end_date,
-            COUNT(*) as total_tasks,
-            COUNT(DISTINCT provider_name) as provider_count,
-            COUNT(DISTINCT patient_id) as patient_count,
-            0 as billed_tasks,
-            0 as paid_tasks,
-            0 as carried_over_tasks
-        FROM provider_tasks
-        WHERE strftime('%Y-%W', task_date) = ?
-        AND task_date IS NOT NULL
-        GROUP BY strftime('%Y-%W', task_date)
-        """
-        df = pd.read_sql_query(query, conn, params=[billing_week])
+        # Fallback: try all tables if billing_week format is unexpected
+        df = pd.DataFrame()
+        for table in existing_tables:
+            query = f"""
+            SELECT
+                strftime('%Y-%W', task_date) as billing_week,
+                strftime('%Y-%m-%d', MIN(task_date)) as week_start_date,
+                strftime('%Y-%m-%d', MAX(task_date)) as week_end_date,
+                COUNT(*) as total_tasks,
+                COUNT(DISTINCT provider_name) as provider_count,
+                COUNT(DISTINCT patient_id) as patient_count,
+                0 as billed_tasks,
+                0 as paid_tasks,
+                0 as carried_over_tasks
+            FROM {table}
+            WHERE strftime('%Y-%W', task_date) = ?
+            AND task_date IS NOT NULL
+            GROUP BY strftime('%Y-%W', task_date)
+            """
+            df = pd.read_sql_query(query, conn, params=[billing_week])
+            
+            # If we found data, stop searching
+            if not df.empty:
+                break
     
     conn.close()
-    
     return df
 
 def get_provider_billing_details(billing_week):

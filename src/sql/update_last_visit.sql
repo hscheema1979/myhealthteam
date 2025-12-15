@@ -4,7 +4,7 @@ SET last_visit_date = (
                 SELECT v.last_visit_date
                 FROM patient_visits v
                 WHERE v.patient_id = REPLACE(
-                                patient_panel.last_name || ' ' || patient_panel.first_name || ' ' || patient_panel.date_of_birth,
+                                patient_panel.last_name || ' ' || patient_panel.first_name || ' ' || strftime('%m/%d/%Y', patient_panel.date_of_birth),
                                 ',',
                                 ''
                         )
@@ -13,7 +13,7 @@ SET last_visit_date = (
                 SELECT v.service_type
                 FROM patient_visits v
                 WHERE v.patient_id = REPLACE(
-                                patient_panel.last_name || ' ' || patient_panel.first_name || ' ' || patient_panel.date_of_birth,
+                                patient_panel.last_name || ' ' || patient_panel.first_name || ' ' || strftime('%m/%d/%Y', patient_panel.date_of_birth),
                                 ',',
                                 ''
                         )
@@ -22,7 +22,7 @@ WHERE EXISTS (
                 SELECT 1
                 FROM patient_visits v
                 WHERE v.patient_id = REPLACE(
-                                patient_panel.last_name || ' ' || patient_panel.first_name || ' ' || patient_panel.date_of_birth,
+                                patient_panel.last_name || ' ' || patient_panel.first_name || ' ' || strftime('%m/%d/%Y', patient_panel.date_of_birth),
                                 ',',
                                 ''
                         )
@@ -33,7 +33,7 @@ SET last_visit_date = (
                 SELECT v.last_visit_date
                 FROM patient_visits v
                 WHERE v.patient_id = REPLACE(
-                                patients.last_name || ' ' || patients.first_name || ' ' || patients.date_of_birth,
+                                patients.last_name || ' ' || patients.first_name || ' ' || strftime('%m/%d/%Y', patients.date_of_birth),
                                 ',',
                                 ''
                         )
@@ -42,7 +42,7 @@ SET last_visit_date = (
                 SELECT v.service_type
                 FROM patient_visits v
                 WHERE v.patient_id = REPLACE(
-                                patients.last_name || ' ' || patients.first_name || ' ' || patients.date_of_birth,
+                                patients.last_name || ' ' || patients.first_name || ' ' || strftime('%m/%d/%Y', patients.date_of_birth),
                                 ',',
                                 ''
                         )
@@ -51,7 +51,7 @@ WHERE EXISTS (
                 SELECT 1
                 FROM patient_visits v
                 WHERE v.patient_id = REPLACE(
-                                patients.last_name || ' ' || patients.first_name || ' ' || patients.date_of_birth,
+                                patients.last_name || ' ' || patients.first_name || ' ' || strftime('%m/%d/%Y', patients.date_of_birth),
                                 ',',
                                 ''
                         )

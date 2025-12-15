@@ -171,7 +171,7 @@ def show(user_id, user_role_ids=None):
             tab1, tab2, tab3, tab4, tab5, tab6, tab_patient_info, tab_help = st.tabs(["My Patients", "Team Management", "Onboarding Queue & Initial TV Visits", "Phone Reviews", "Task Review", "Daily Task Log", "Patient Info", "Help"])
 
             with tab1:
-                show_patient_list_section(user_id, section_id="cpm_patients_with_queue")
+                show_patient_list_section(user_id, section_id="cpm_patients_with_queue", has_cpm_role=has_cpm_role)
 
             with tab2:
                 show_team_management_section()
@@ -284,7 +284,7 @@ def show(user_id, user_role_ids=None):
             tab1, tab2, tab3, tab4, tab_patient_info, tab_help = st.tabs(["My Patients", "Onboarding Queue & Initial TV Visits", "Phone Reviews", "Task Review", "Patient Info", "Help"])
             
             with tab1:
-                show_patient_list_section(user_id, section_id="cp_patients_with_queue")
+                show_patient_list_section(user_id, section_id="cp_patients_with_queue", has_cpm_role=has_cpm_role)
                 
             with tab2:
                 show_provider_onboarding_queue(user_id, onboarding_queue)
@@ -331,7 +331,7 @@ def show(user_id, user_role_ids=None):
             tab1, tab2, tab3, tab_patient_info, tab_help = st.tabs(["My Patients", "Phone Reviews", "Task Review", "Patient Info", "Help"])
             
             with tab1:
-                show_patient_list_section(user_id, section_id="cp_patients")
+                show_patient_list_section(user_id, section_id="cp_patients", has_cpm_role=has_cpm_role)
                 
             with tab2:
                 show_phone_review_entry(mode="cp", user_id=user_id)
@@ -355,7 +355,7 @@ def show(user_id, user_role_ids=None):
                 st.subheader("Sections")
                 st.markdown("- My Patients: act on your panel.\n- Phone Reviews: structured entry forms.\n- Task Review: filter and download tasks.")
 
-def show_patient_list_section(user_id, section_id=None):
+def show_patient_list_section(user_id, section_id=None, has_cpm_role=False):
 
     # Get all providers and coordinators for filtering capabilities
     try:
@@ -366,22 +366,9 @@ def show_patient_list_section(user_id, section_id=None):
         all_providers = []
         all_coordinators = []
 
-    # Get all patient data with provider assignments (to allow viewing other providers' patients)
+    # Get all patient data (like admin dashboard shows all workflows, provider dashboard should show all patients)
     try:
-        patient_data_list = []
-        for provider in all_providers:
-            provider_patients = database.get_provider_patient_panel_enhanced(provider['user_id'])
-            patient_data_list.extend(provider_patients)
-        
-        # Remove duplicates based on patient_id
-        seen_patient_ids = set()
-        unique_patients = []
-        for patient in patient_data_list:
-            patient_id = patient.get('patient_id')
-            if patient_id and patient_id not in seen_patient_ids:
-                seen_patient_ids.add(patient_id)
-                unique_patients.append(patient)
-        patient_data_list = unique_patients
+        patient_data_list = database.get_all_patient_panel()
     except Exception as e:
         st.error(f"Error fetching patient data: {e}")
         patient_data_list = []
@@ -407,8 +394,9 @@ def show_patient_list_section(user_id, section_id=None):
             provider_name = f"{provider.get('full_name', provider.get('username', 'Unknown'))}"
             provider_options.append(provider_name)
         
-        # Default to showing only the logged-in user's patients
+        # Default to showing only the logged-in provider's patients (like other dashboards)
         current_user_name = None
+        current_provider_id = None
         try:
             current_user = database.get_user_by_id(user_id)
             if current_user:
@@ -416,16 +404,21 @@ def show_patient_list_section(user_id, section_id=None):
                 try:
                     full_name = current_user['full_name']
                     username = current_user['username']
+                    current_provider_id = current_user['user_id']
                 except (KeyError, TypeError):
                     # Fallback if direct access fails
                     full_name = None
                     username = None
+                    current_provider_id = None
                 
                 current_user_name = full_name if full_name else username if username else "Unknown User"
         except Exception:
             pass
         
-        # Set default selection - only current user if found, otherwise "All Providers"
+        # Add "All Providers" option for admin/managers who need to see everyone
+        provider_options = ["All Providers"] + [opt for opt in provider_options if opt != "All Providers"]
+        
+        # Set default selection - current user's patients only
         default_selection = [current_user_name] if current_user_name and current_user_name in provider_options else ["All Providers"]
         
         selected_providers = st.multiselect(
@@ -465,9 +458,19 @@ def show_patient_list_section(user_id, section_id=None):
                 selected_provider_ids.append(str(provider_id))
         
         if selected_provider_ids:
+            # For provider dashboard, also check if current user should see all providers
+            # If user has CPM role (38), they can see all Providers
+            # If regular provider, they can only see their own patients unless "All Providers" selected
+            if not has_cpm_role and "All Providers" not in selected_providers:
+                # Regular provider - only show their own patients
+                current_user_provider_id = str(current_provider_id) if current_provider_id else None
+                if current_user_provider_id and current_user_provider_id not in selected_provider_ids:
+                    selected_provider_ids = [current_user_provider_id]
+            
             filtered_patients = [
                 p for p in filtered_patients
                 if str(p.get('assigned_provider_id', '')) in selected_provider_ids
+                or str(p.get('provider_id', '')) in selected_provider_ids  # Check both possible fields
             ]
 
     # Use filtered results
@@ -528,10 +531,16 @@ def show_patient_list_section(user_id, section_id=None):
                 ('status', 'Status'),
                 ('goc_value', 'GOC'),
                 ('code_status', 'Code Status'),
+                ('subjective_risk_level', 'Risk'),
                 ('first_name', 'First Name'),
                 ('last_name', 'Last Name'),
+                ('phone_medical', 'MED POC'),
+                ('phone_appointment', 'Appt POC'),
+                ('phone_medical_number', 'Med phone #'),
+                ('phone_appointment_number', 'Appt phone #'),
                 ('facility', 'Facility'),
-                ('assigned_coordinator', 'Assigned Coordinator'),
+                ('provider_name', 'CP Name'),
+                ('assigned_coordinator', 'CC Name'),
                 ('last_visit_date', 'Last Visit Date'),
                 ('service_type', 'Service Type'),
                 ('phone_primary', 'Phone Number'),

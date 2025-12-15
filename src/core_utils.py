@@ -6,12 +6,15 @@ import sqlite3
 import pandas as pd
 from typing import List, Dict, Any
 
-DB_PATH = 'production.db'  # Adjust path as needed
+from src.database import DB_PATH
 
-def get_user_role_ids(user_id: int, db_path: str = DB_PATH) -> List[int]:
+def get_user_role_ids(user_id: int, db_path: str = None) -> List[int]:
     """
     Returns a list of role_ids for the given user_id from the user_roles table.
     """
+    if db_path is None:
+        db_path = DB_PATH
+        
     conn = sqlite3.connect(db_path)
     try:
         cursor = conn.cursor()

@@ -6,8 +6,8 @@ param(
 
 Write-Host "Starting dynamic CSV download process using index tab..."
 
-# Create downloads directory (relative to current working directory)
-$downloadsDir = "../downloads"
+# Create downloads directory in the Dev folder
+$downloadsDir = "downloads"
 New-Item -ItemType Directory -Force -Path $downloadsDir | Out-Null
 
 # Download the index tab as CSV

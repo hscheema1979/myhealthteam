@@ -3,9 +3,10 @@
   Monitors the Streamlit app process by PID every N seconds and restarts it if it exits.
 
 .DESCRIPTION
-  Launches the Streamlit app in a visible PowerShell window and tracks the child python.exe
-  process running `python -m streamlit run <app.py>`. Every CheckInterval seconds, it verifies
-  that the tracked PID is still alive; if not, it restarts the app and updates the tracked PID.
+  Launches the Streamlit app in a visible PowerShell window from the script's directory.
+  Tracks the child python.exe process running `python -m streamlit run <app.py>`.
+  Every CheckInterval seconds, it verifies that the tracked PID is still alive;
+  if not, it restarts the app and updates the tracked PID.
 
 .PARAMETER CheckInterval
   Number of seconds between checks (default: 30).
@@ -19,11 +20,13 @@
 .PARAMETER LogPath
   Path to the monitor log file (defaults to Streamlit\run_and_monitor.log).
 
+.PARAMETER UsePrototype
+  Switch to enable Prototype Mode (sets USE_PROTOTYPE=1 environment variable).
+
 .NOTES
   - This script is intended to be run by a user (visible window). It will open the app in a
     new visible PowerShell window and keep monitoring from the current window.
-  - You can register this monitor to run at logon using a Scheduled Task (Interactive), or place
-    a shortcut in the Startup folder.
+  - YOU MUST RUN THIS SCRIPT FROM ITS DIRECTORY OR PROVIDE ABSOLUTE PATHS.
 #>
 
 param(
@@ -31,7 +34,8 @@ param(
   [int]$MaxConsecutiveFailures = 5,
   [string]$AppPath,
   [string]$LogPath,
-  [int]$Port = 8502  # Dev environment default
+  [int]$Port = 8502,  # Dev environment default
+  [switch]$UsePrototype # Logic to use prototype.db
 )
 
 # Resolve default paths relative to this script
@@ -66,12 +70,32 @@ function Find-StreamlitProcess {
 }
 
 function Start-StreamlitVisible {
-  param([string]$AppPath, [int]$Port = 8502)
-  Write-Log "Starting Streamlit app in visible PowerShell window on port $Port..."
+  param([string]$AppPath, [int]$Port = 8502, [switch]$UsePrototype)
+  
+  $dbMsg = if ($UsePrototype) { "PROTOTYPE DB" } else { "Production DB" }
+  Write-Log "Starting Streamlit app ($dbMsg) in visible PowerShell window on port $Port..."
+  
+  # IMPORTANT: Propagate the environment variable to the current process so the child inherits it.
+  if ($UsePrototype) {
+    $env:USE_PROTOTYPE = "1"
+    Write-Log "Set env:USE_PROTOTYPE = 1"
+  } else {
+    $env:USE_PROTOTYPE = $null
+  }
+
   try {
-    # Launch a new visible PowerShell window that runs the app and stays open
-    Start-Process -FilePath 'powershell.exe' -ArgumentList '-NoExit', '-Command', "python -m streamlit run `"$AppPath`" --server.port $Port" -WindowStyle Normal | Out-Null
-    Start-Sleep -Seconds 3
+    # Use simple command string, relying on environment inheritance
+    $cmd = "python -m streamlit run `"$AppPath`" --server.port $Port"
+    
+    # Launch new visible PowerShell window that runs the app and stays open.
+    # CRITICAL: Set WorkingDirectory to $scriptDir to ensure relative DB paths work.
+    Start-Process -FilePath 'powershell.exe' `
+                  -ArgumentList '-NoExit', '-Command', $cmd `
+                  -WorkingDirectory $scriptDir `
+                  -WindowStyle Normal | Out-Null
+    
+    Start-Sleep -Seconds 5 # Give it a moment to spin up
+    
     $p = Find-StreamlitProcess -AppPath $AppPath
     if ($p) {
       Write-Log "Located streamlit process: PID=$($p.ProcessId) CommandLine=$($p.CommandLine)"
@@ -94,7 +118,10 @@ function Is-ProcessAlive {
   } catch { return $false }
 }
 
-Write-Log "Streamlit monitor started. AppPath=$AppPath CheckInterval=${CheckInterval}s LogPath=$LogPath"
+Write-Log "Streamlit monitor started." 
+Write-Log "  AppPath: $AppPath"
+Write-Log "  WorkingDir: $scriptDir"
+Write-Log "  PrototypeMode: $UsePrototype"
 
 # Initial start (if not already running)
 $existing = Find-StreamlitProcess -AppPath $AppPath
@@ -102,17 +129,15 @@ if ($existing) {
   $TrackedPid = $existing.ProcessId
   Write-Log "Detected existing app process. Tracking PID=$TrackedPid"
 } else {
-  $TrackedPid = Start-StreamlitVisible -AppPath $AppPath -Port $Port
+  $TrackedPid = Start-StreamlitVisible -AppPath $AppPath -Port $Port -UsePrototype:$UsePrototype
 }
 
 
 function Find-CaddyProcess {
-  # Find caddy.exe process
   try {
     $processes = Get-CimInstance Win32_Process |
       Where-Object { $_.Name -eq 'caddy.exe' }
     if ($processes) {
-      # Return the most recent by CreationDate
       $p = $processes | Sort-Object CreationDate -Descending | Select-Object -First 1
       return $p
     }
@@ -124,8 +149,10 @@ function Start-CaddyVisible {
   param([string]$CaddyPath, [string]$ConfigPath)
   Write-Log "Starting Caddy in visible PowerShell window..."
   try {
-    # Launch a new visible PowerShell window that runs Caddy and stays open
-    Start-Process -FilePath 'powershell.exe' -ArgumentList '-NoExit', '-Command', "& `"$CaddyPath`" run --config `"$ConfigPath`"" -WindowStyle Normal | Out-Null
+    Start-Process -FilePath 'powershell.exe' `
+                  -ArgumentList '-NoExit', '-Command', "& `"$CaddyPath`" run --config `"$ConfigPath`"" `
+                  -WorkingDirectory $scriptDir `
+                  -WindowStyle Normal | Out-Null
     Start-Sleep -Seconds 3
     $p = Find-CaddyProcess
     if ($p) {
@@ -145,7 +172,6 @@ $CaddyPath = Join-Path $scriptDir 'scripts\tools\caddy.exe'
 $CaddyConfigPath = Join-Path $scriptDir 'scripts\tools\Caddyfile'
 $TrackedCaddyPid = $null
 
-# Initial start for Caddy (if not already running)
 $existingCaddy = Find-CaddyProcess
 if ($existingCaddy) {
   $TrackedCaddyPid = $existingCaddy.ProcessId
@@ -162,7 +188,7 @@ while ($true) {
   # Monitor Streamlit
   if (-not $TrackedPid -or -not (Is-ProcessAlive -ProcessId $TrackedPid)) {
     Write-Log "Tracked Streamlit process missing. Restarting..."
-    $TrackedPid = Start-StreamlitVisible -AppPath $AppPath -Port $Port
+    $TrackedPid = Start-StreamlitVisible -AppPath $AppPath -Port $Port -UsePrototype:$UsePrototype
     if ($TrackedPid) {
       $ConsecutiveFailures = 0
     } else {
@@ -178,7 +204,7 @@ while ($true) {
     }
   }
   else {
-    Write-Log "Streamlit PID=$TrackedPid is alive."
+    # Keep output clean, check periodically
   }
 
   # Monitor Caddy
@@ -186,12 +212,7 @@ while ($true) {
     Write-Log "Tracked Caddy process missing. Restarting..."
     $TrackedCaddyPid = Start-CaddyVisible -CaddyPath $CaddyPath -ConfigPath $CaddyConfigPath
   } elseif (-not $TrackedCaddyPid -and (Test-Path $CaddyPath)) {
-      # Try to start if it wasn't running initially or failed previously
       $TrackedCaddyPid = Start-CaddyVisible -CaddyPath $CaddyPath -ConfigPath $CaddyConfigPath
-  } else {
-      if ($TrackedCaddyPid) {
-          Write-Log "Caddy PID=$TrackedCaddyPid is alive."
-      }
   }
 
   Start-Sleep -Seconds $CheckInterval

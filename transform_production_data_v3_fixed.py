@@ -249,116 +249,116 @@ def build_first_name_provider_map(conn):
     return first_name_map
 
 
-def process_provider_assignments(csv_dir, conn):
-    """Process provider assignment files (ANGELA.csv, LOURDES.csv, etc.)
-    UPDATES patient_assignments to refine ZMO baseline with provider tab data
-    NOTE: Must run AFTER process_zmo which creates baseline assignments from ZMO
-    """
-    first_name_map = build_first_name_provider_map(conn)
+# def process_provider_assignments(csv_dir, conn):
+#     """Process provider assignment files (ANGELA.csv, LOURDES.csv, etc.)
+#     UPDATES patient_assignments to refine ZMO baseline with provider tab data
+#     NOTE: Must run AFTER process_zmo which creates baseline assignments from ZMO
+#     """
+#     first_name_map = build_first_name_provider_map(conn)
 
-    all_files = glob.glob(os.path.join(csv_dir, "*.csv"))
-    assignment_files = []
-    exclude_patterns = [
-        "PSL_",
-        "RVZ_",
-        "CMLog_",
-        "ZMO_",
-        "index",
-        "psl",
-        "rvz",
-        "cmlog",
-    ]
+#     all_files = glob.glob(os.path.join(csv_dir, "*.csv"))
+#     assignment_files = []
+#     exclude_patterns = [
+#         "PSL_",
+#         "RVZ_",
+#         "CMLog_",
+#         "ZMO_",
+#         "index",
+#         "psl",
+#         "rvz",
+#         "cmlog",
+#     ]
 
-    for f in all_files:
-        basename = os.path.basename(f)
-        if not any(basename.startswith(p) for p in exclude_patterns):
-            name_part = basename.replace(".csv", "").strip()
-            if name_part and name_part[0].isupper():
-                assignment_files.append(f)
+#     for f in all_files:
+#         basename = os.path.basename(f)
+#         if not any(basename.startswith(p) for p in exclude_patterns):
+#             name_part = basename.replace(".csv", "").strip()
+#             if name_part and name_part[0].isupper():
+#                 assignment_files.append(f)
 
-    print(f"  Found {len(assignment_files)} provider assignment files")
-    assignments_created = 0
+#     print(f"  Found {len(assignment_files)} provider assignment files")
+#     assignments_created = 0
 
-    for file_path in assignment_files:
-        basename = os.path.basename(file_path)
-        provider_first_name = (
-            basename.replace(".csv", "").strip().replace(" ", "").upper()
-        )
-        print(f"  Processing: {basename}")
+#     for file_path in assignment_files:
+#         basename = os.path.basename(file_path)
+#         provider_first_name = (
+#             basename.replace(".csv", "").strip().replace(" ", "").upper()
+#         )
+#         print(f"  Processing: {basename}")
 
-        provider_info = first_name_map.get(provider_first_name)
-        if not provider_info:
-            print(f"    ⚠️  Provider '{provider_first_name}' not found - skipping")
-            continue
+#         provider_info = first_name_map.get(provider_first_name)
+#         if not provider_info:
+#             print(f"    ⚠️  Provider '{provider_first_name}' not found - skipping")
+#             continue
 
-        provider_id, provider_full_name = provider_info
-        print(f"    -> {provider_full_name} (ID: {provider_id})")
+#         provider_id, provider_full_name = provider_info
+#         print(f"    -> {provider_full_name} (ID: {provider_id})")
 
-        try:
-            df = pd.read_csv(
-                file_path, encoding="utf-8", on_bad_lines="skip", header=None
-            )
-            if df.empty:
-                continue
+#         try:
+#             df = pd.read_csv(
+#                 file_path, encoding="utf-8", on_bad_lines="skip", header=None
+#             )
+#             if df.empty:
+#                 continue
 
-            file_assignments = 0
-            for idx, row in df.iterrows():
-                try:
-                    # Column positions: 0=Status, 1=NameField (could be "NAME DOB" or just name), 2=DOB or FirstName, 3=DOB or Address
-                    status = str(row.iloc[0] if len(row) > 0 else "").strip()
-                    if "Active" not in status:
-                        continue
+#             file_assignments = 0
+#             for idx, row in df.iterrows():
+#                 try:
+#                     # Column positions: 0=Status, 1=NameField (could be "NAME DOB" or just name), 2=DOB or FirstName, 3=DOB or Address
+#                     status = str(row.iloc[0] if len(row) > 0 else "").strip()
+#                     if "Active" not in status:
+#                         continue
 
-                    # Column 2 usually has DOB
-                    dob = str(row.iloc[2] if len(row) > 2 else "").strip()
+#                     # Column 2 usually has DOB
+#                     dob = str(row.iloc[2] if len(row) > 2 else "").strip()
 
-                    # Column 1 might be "LASTNAME FIRSTNAME DOB" combined or separate
-                    name_field = str(row.iloc[1] if len(row) > 1 else "").strip()
+#                     # Column 1 might be "LASTNAME FIRSTNAME DOB" combined or separate
+#                     name_field = str(row.iloc[1] if len(row) > 1 else "").strip()
 
-                    # If name_field contains the DOB, it's combined format - extract name part
-                    if dob and dob in name_field:
-                        # Format: "LASTNAME FIRSTNAME DOB" - remove DOB to get name
-                        name_part = name_field.replace(dob, "").strip()
-                        # Split into last and first name
-                        name_parts = name_part.split(None, 1)  # Split on first space
-                        if len(name_parts) >= 2:
-                            last_name = name_parts[0]
-                            first_name = name_parts[1]
-                        else:
-                            continue
-                    else:
-                        # Separate columns format
-                        last_name = name_field
-                        first_name = str(row.iloc[2] if len(row) > 2 else "").strip()
-                        dob = str(row.iloc[3] if len(row) > 3 else "").strip()
+#                     # If name_field contains the DOB, it's combined format - extract name part
+#                     if dob and dob in name_field:
+#                         # Format: "LASTNAME FIRSTNAME DOB" - remove DOB to get name
+#                         name_part = name_field.replace(dob, "").strip()
+#                         # Split into last and first name
+#                         name_parts = name_part.split(None, 1)  # Split on first space
+#                         if len(name_parts) >= 2:
+#                             last_name = name_parts[0]
+#                             first_name = name_parts[1]
+#                         else:
+#                             continue
+#                     else:
+#                         # Separate columns format
+#                         last_name = name_field
+#                         first_name = str(row.iloc[2] if len(row) > 2 else "").strip()
+#                         dob = str(row.iloc[3] if len(row) > 3 else "").strip()
 
-                    if not last_name or not first_name or not dob:
-                        continue
+#                     if not last_name or not first_name or not dob:
+#                         continue
 
-                    # Create patient_id: LASTNAME FIRSTNAME DOB format (uppercase)
-                    patient_id = (
-                        f"{last_name.upper()} {first_name.upper()} {dob}".strip()
-                    )
-                    if len(patient_id) < 5:
-                        continue
-                    # UPDATE assignment (refine ZMO baseline with provider tab data)
-                    # Only update if patient exists (from ZMO)
-                    result = conn.execute(
-                        "UPDATE patient_assignments SET provider_id = ? WHERE patient_id = ?",
-                        (provider_id, patient_id),
-                    )
-                    if result.rowcount > 0:
-                        file_assignments += 1
-                except:
-                    continue
+#                     # Create patient_id: LASTNAME FIRSTNAME DOB format (uppercase)
+#                     patient_id = (
+#                         f"{last_name.upper()} {first_name.upper()} {dob}".strip()
+#                     )
+#                     if len(patient_id) < 5:
+#                         continue
+#                     # UPDATE assignment (refine ZMO baseline with provider tab data)
+#                     # Only update if patient exists (from ZMO)
+#                     result = conn.execute(
+#                         "UPDATE patient_assignments SET provider_id = ? WHERE patient_id = ?",
+#                         (provider_id, patient_id),
+#                     )
+#                     if result.rowcount > 0:
+#                         file_assignments += 1
+#                 except:
+#                     continue
 
-            print(f"    Created {file_assignments} assignments")
-            assignments_created += file_assignments
-        except Exception as e:
-            print(f"    ❌ Error: {e}")
+#             print(f"    Created {file_assignments} assignments")
+#             assignments_created += file_assignments
+#         except Exception as e:
+#             print(f"    ❌ Error: {e}")
 
-    conn.commit()
-    return assignments_created
+#     conn.commit()
+#     return assignments_created
 
 
 def process_psl(file_path, conn, provider_map, id_to_name):
@@ -759,6 +759,7 @@ def process_zmo(file_path, conn, provider_map):
 
         # Step 3: Insert data (DELETE first)
         conn.execute("DELETE FROM patients")
+        # NOTE: patient_assignments is now handled by process_provider_assignments_from_zmo
         conn.execute("DELETE FROM patient_assignments")
         conn.execute("DELETE FROM onboarding_patients")
         # NOTE: patient_panel is NOT deleted here - it will be rebuilt by post_import_processing.sql
@@ -776,11 +777,14 @@ def process_zmo(file_path, conn, provider_map):
 
         # Patient panel - REMOVED: rebuilt by populate_patient_panel.sql from patients table with ALL columns
 
-        # Assignments
-        conn.executemany(
-            "INSERT INTO patient_assignments (patient_id, provider_id, coordinator_id) VALUES (?,?,?)",
-            assignments_data,
-        )
+        # Assignments - Use proper table structure with source tracking
+        if assignments_data:
+            conn.executemany(
+                """INSERT INTO patient_assignments (
+                    patient_id, provider_id, coordinator_id, status, source
+                ) VALUES (?, ?, ?, 'active', 'ZMO_IMPORT')""",
+                assignments_data,
+            )
 
         # Onboarding
         conn.executemany(
@@ -792,11 +796,12 @@ def process_zmo(file_path, conn, provider_map):
         )
 
         print(f"  Imported {len(patients_data)} patients")
+        print(f"  Created {len(assignments_data)} provider assignments")
         if duplicate_count > 0:
             print(
                 f"  ⚠️  Found {duplicate_count} duplicate patient_ids (appended -1, -2, etc.)"
             )
-        return len(patients_data)
+        return len(patients_data), len(assignments_data)
 
     except Exception as e:
         print(f"  Error: {e}")
@@ -816,16 +821,18 @@ def main():
     print("=" * 60)
     zmo_file = os.path.join(CSV_DIR, "ZMO_MAIN.csv")
     total_patients = 0
+    total_assignments = 0
     if os.path.exists(zmo_file):
-        total_patients = process_zmo(zmo_file, conn, pmap)
+        total_patients, total_assignments = process_zmo(zmo_file, conn, pmap)
     else:
         print(f"⚠️  Warning: {zmo_file} not found - skipping patient import")
 
-    # STEP 2: Refine Provider Assignments from Provider Tabs (UPDATES ZMO baseline)
+    # STEP 2: Provider Assignments are now handled entirely within process_zmo()
+    # No need for separate provider CSV file processing anymore
     print("\n" + "=" * 60)
-    print("STEP 2: Refining Provider Assignments from Provider Tabs")
+    print("STEP 2: Provider Assignments (Handled in ZMO Processing)")
     print("=" * 60)
-    total_assignments = process_provider_assignments(CSV_DIR, conn)
+    print("  ✅ Provider assignments processed from ZMO data in Step 1")
 
     # STEP 3: Import task data
     print("\n" + "=" * 60)

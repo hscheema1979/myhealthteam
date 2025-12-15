@@ -1,0 +1,7838 @@
+{
+  "timestamp": "2025-12-11T19:00:00Z",
+  "database_path": "production.db",
+  "summary": {
+    "total_tables_in_db": 72,
+    "missing_tables_count": 4,
+    "missing_columns_count": 0
+  },
+  "existing_tables": [
+    "audit_log",
+    "coordinator_monthly_summary",
+    "coordinator_tasks_1999_12",
+    "coordinator_tasks_2022_01",
+    "coordinator_tasks_2025_01",
+    "coordinator_tasks_2025_02",
+    "coordinator_tasks_2025_03",
+    "coordinator_tasks_2025_04",
+    "coordinator_tasks_2025_05",
+    "coordinator_tasks_2025_06",
+    "coordinator_tasks_2025_07",
+    "coordinator_tasks_2025_08",
+    "coordinator_tasks_2025_09",
+    "coordinator_tasks_2025_10",
+    "coordinator_tasks_2025_11",
+    "coordinator_tasks_2025_12",
+    "facilities",
+    "onboarding_patients",
+    "patient_assignments",
+    "patient_monthly_billing_2025_01",
+    "patient_monthly_billing_2025_02",
+    "patient_monthly_billing_2025_03",
+    "patient_monthly_billing_2025_04",
+    "patient_monthly_billing_2025_05",
+    "patient_monthly_billing_2025_06",
+    "patient_monthly_billing_2025_07",
+    "patient_monthly_billing_2025_08",
+    "patient_monthly_billing_2025_09",
+    "patient_monthly_billing_2025_10",
+    "patient_monthly_billing_2025_11",
+    "patient_monthly_billing_2025_12",
+    "patient_panel",
+    "patient_visits",
+    "patients",
+    "provider_task_billing_status",
+    "provider_tasks_2001_01",
+    "provider_tasks_2023_05",
+    "provider_tasks_2023_06",
+    "provider_tasks_2023_07",
+    "provider_tasks_2023_10",
+    "provider_tasks_2023_11",
+    "provider_tasks_2023_12",
+    "provider_tasks_2024_01",
+    "provider_tasks_2024_02",
+    "provider_tasks_2024_03",
+    "provider_tasks_2024_04",
+    "provider_tasks_2024_05",
+    "provider_tasks_2024_06",
+    "provider_tasks_2024_07",
+    "provider_tasks_2024_08",
+    "provider_tasks_2024_09",
+    "provider_tasks_2024_10",
+    "provider_tasks_2024_11",
+    "provider_tasks_2024_12",
+    "provider_tasks_2025_01",
+    "provider_tasks_2025_02",
+    "provider_tasks_2025_03",
+    "provider_tasks_2025_04",
+    "provider_tasks_2025_05",
+    "provider_tasks_2025_06",
+    "provider_tasks_2025_07",
+    "provider_tasks_2025_08",
+    "provider_tasks_2025_09",
+    "provider_tasks_2025_10",
+    "provider_tasks_2025_11",
+    "provider_tasks_2025_12",
+    "provider_weekly_summary_with_billing",
+    "roles",
+    "task_billing_codes",
+    "user_roles",
+    "user_sessions",
+    "users"
+  ],
+  "missing_tables": [
+    "sqlite_master",
+    "workflow_templates",
+    "workflow_instances",
+    "coordinators"
+  ],
+  "missing_columns": {},
+  "table_details": {
+    "audit_log": [
+      {
+        "name": "audit_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "action_type",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "table_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "record_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "old_value",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "new_value",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "user_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "timestamp",
+        "type": "DATETIME",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      },
+      {
+        "name": "description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      }
+    ],
+    "coordinator_monthly_summary": [
+      {
+        "name": "summary_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "coordinator_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "coordinator_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "year",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "month",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "month_start_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "month_end_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "total_tasks_completed",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "total_time_spent_minutes",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "created_date",
+        "type": "DATETIME",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      },
+      {
+        "name": "updated_date",
+        "type": "DATETIME",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      }
+    ],
+    "coordinator_tasks_1999_12": [
+      {
+        "name": "coordinator_task_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "coordinator_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "duration_minutes",
+        "type": "REAL",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_type",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "notes",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "source_system",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'CSV_IMPORT'",
+        "primary_key": false
+      },
+      {
+        "name": "imported_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      },
+      {
+        "name": "coordinator_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      }
+    ],
+    "coordinator_tasks_2022_01": [
+      {
+        "name": "coordinator_task_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "coordinator_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "duration_minutes",
+        "type": "REAL",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_type",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "notes",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "source_system",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'CSV_IMPORT'",
+        "primary_key": false
+      },
+      {
+        "name": "imported_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      },
+      {
+        "name": "coordinator_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      }
+    ],
+    "coordinator_tasks_2025_01": [
+      {
+        "name": "coordinator_task_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "coordinator_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "duration_minutes",
+        "type": "REAL",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_type",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "notes",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "source_system",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'CSV_IMPORT'",
+        "primary_key": false
+      },
+      {
+        "name": "imported_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      },
+      {
+        "name": "coordinator_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      }
+    ],
+    "coordinator_tasks_2025_02": [
+      {
+        "name": "coordinator_task_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "coordinator_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "duration_minutes",
+        "type": "REAL",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_type",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "notes",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "source_system",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'CSV_IMPORT'",
+        "primary_key": false
+      },
+      {
+        "name": "imported_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      },
+      {
+        "name": "coordinator_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      }
+    ],
+    "coordinator_tasks_2025_03": [
+      {
+        "name": "coordinator_task_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "coordinator_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "duration_minutes",
+        "type": "REAL",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_type",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "notes",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "source_system",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'CSV_IMPORT'",
+        "primary_key": false
+      },
+      {
+        "name": "imported_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      },
+      {
+        "name": "coordinator_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      }
+    ],
+    "coordinator_tasks_2025_04": [
+      {
+        "name": "coordinator_task_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "coordinator_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "duration_minutes",
+        "type": "REAL",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_type",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "notes",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "source_system",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'CSV_IMPORT'",
+        "primary_key": false
+      },
+      {
+        "name": "imported_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      },
+      {
+        "name": "coordinator_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      }
+    ],
+    "coordinator_tasks_2025_05": [
+      {
+        "name": "coordinator_task_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "coordinator_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "duration_minutes",
+        "type": "REAL",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_type",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "notes",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "source_system",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'CSV_IMPORT'",
+        "primary_key": false
+      },
+      {
+        "name": "imported_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      },
+      {
+        "name": "coordinator_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      }
+    ],
+    "coordinator_tasks_2025_06": [
+      {
+        "name": "coordinator_task_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "coordinator_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "duration_minutes",
+        "type": "REAL",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_type",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "notes",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "source_system",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'CSV_IMPORT'",
+        "primary_key": false
+      },
+      {
+        "name": "imported_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      },
+      {
+        "name": "coordinator_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      }
+    ],
+    "coordinator_tasks_2025_07": [
+      {
+        "name": "coordinator_task_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "coordinator_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "duration_minutes",
+        "type": "REAL",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_type",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "notes",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "source_system",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'CSV_IMPORT'",
+        "primary_key": false
+      },
+      {
+        "name": "imported_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      },
+      {
+        "name": "coordinator_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      }
+    ],
+    "coordinator_tasks_2025_08": [
+      {
+        "name": "coordinator_task_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "coordinator_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "duration_minutes",
+        "type": "REAL",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_type",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "notes",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "source_system",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'CSV_IMPORT'",
+        "primary_key": false
+      },
+      {
+        "name": "imported_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      },
+      {
+        "name": "coordinator_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      }
+    ],
+    "coordinator_tasks_2025_09": [
+      {
+        "name": "coordinator_task_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "coordinator_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "duration_minutes",
+        "type": "REAL",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_type",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "notes",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "source_system",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'CSV_IMPORT'",
+        "primary_key": false
+      },
+      {
+        "name": "imported_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      },
+      {
+        "name": "coordinator_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      }
+    ],
+    "coordinator_tasks_2025_10": [
+      {
+        "name": "coordinator_task_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "coordinator_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "duration_minutes",
+        "type": "REAL",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_type",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "notes",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "source_system",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'CSV_IMPORT'",
+        "primary_key": false
+      },
+      {
+        "name": "imported_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      },
+      {
+        "name": "coordinator_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      }
+    ],
+    "coordinator_tasks_2025_11": [
+      {
+        "name": "coordinator_task_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "coordinator_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "duration_minutes",
+        "type": "REAL",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_type",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "notes",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "source_system",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'CSV_IMPORT'",
+        "primary_key": false
+      },
+      {
+        "name": "imported_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      },
+      {
+        "name": "coordinator_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      }
+    ],
+    "coordinator_tasks_2025_12": [
+      {
+        "name": "coordinator_task_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "coordinator_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "coordinator_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "duration_minutes",
+        "type": "REAL",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_type",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "notes",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "source_system",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'CSV_IMPORT'",
+        "primary_key": false
+      },
+      {
+        "name": "imported_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      }
+    ],
+    "facilities": [
+      {
+        "name": "facility_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "facility_name",
+        "type": "TEXT",
+        "nullable": false,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "address",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "phone",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "email",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "created_date",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      }
+    ],
+    "onboarding_patients": [
+      {
+        "name": "onboarding_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "first_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "last_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "date_of_birth",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "phone_primary",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "email",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "hypertension",
+        "type": "BOOLEAN",
+        "nullable": true,
+        "default": "FALSE",
+        "primary_key": false
+      },
+      {
+        "name": "mental_health_concerns",
+        "type": "BOOLEAN",
+        "nullable": true,
+        "default": "FALSE",
+        "primary_key": false
+      },
+      {
+        "name": "dementia",
+        "type": "BOOLEAN",
+        "nullable": true,
+        "default": "FALSE",
+        "primary_key": false
+      },
+      {
+        "name": "annual_well_visit",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "created_date",
+        "type": "DATETIME",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      },
+      {
+        "name": "tv_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "tv_time",
+        "type": "TIME",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "tv_scheduled",
+        "type": "BOOLEAN",
+        "nullable": true,
+        "default": "FALSE",
+        "primary_key": false
+      },
+      {
+        "name": "assigned_provider_user_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_notified",
+        "type": "BOOLEAN",
+        "nullable": true,
+        "default": "FALSE",
+        "primary_key": false
+      },
+      {
+        "name": "eligibility_status",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "eligibility_notes",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "eligibility_verified",
+        "type": "BOOLEAN",
+        "nullable": true,
+        "default": "FALSE",
+        "primary_key": false
+      },
+      {
+        "name": "emed_chart_created",
+        "type": "BOOLEAN",
+        "nullable": true,
+        "default": "FALSE",
+        "primary_key": false
+      },
+      {
+        "name": "chart_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "facility_confirmed",
+        "type": "BOOLEAN",
+        "nullable": true,
+        "default": "FALSE",
+        "primary_key": false
+      },
+      {
+        "name": "chart_notes",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "intake_call_completed",
+        "type": "BOOLEAN",
+        "nullable": true,
+        "default": "FALSE",
+        "primary_key": false
+      },
+      {
+        "name": "intake_notes",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "initial_tv_completed",
+        "type": "BOOLEAN",
+        "nullable": true,
+        "default": "FALSE",
+        "primary_key": false
+      },
+      {
+        "name": "assigned_coordinator_user_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "initial_tv_completed_date",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "initial_tv_notes",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "initial_tv_provider",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "provider_completed_initial_tv",
+        "type": "BOOLEAN",
+        "nullable": true,
+        "default": "FALSE",
+        "primary_key": false
+      },
+      {
+        "name": "visit_type",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'Home Visit'",
+        "primary_key": false
+      },
+      {
+        "name": "billing_code",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'99345'",
+        "primary_key": false
+      },
+      {
+        "name": "duration_minutes",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "45",
+        "primary_key": false
+      },
+      {
+        "name": "mh_schizophrenia",
+        "type": "BOOLEAN",
+        "nullable": true,
+        "default": "FALSE",
+        "primary_key": false
+      },
+      {
+        "name": "mh_depression",
+        "type": "BOOLEAN",
+        "nullable": true,
+        "default": "FALSE",
+        "primary_key": false
+      },
+      {
+        "name": "mh_anxiety",
+        "type": "BOOLEAN",
+        "nullable": true,
+        "default": "FALSE",
+        "primary_key": false
+      },
+      {
+        "name": "mh_stress",
+        "type": "BOOLEAN",
+        "nullable": true,
+        "default": "FALSE",
+        "primary_key": false
+      },
+      {
+        "name": "mh_adhd",
+        "type": "BOOLEAN",
+        "nullable": true,
+        "default": "FALSE",
+        "primary_key": false
+      },
+      {
+        "name": "mh_bipolar",
+        "type": "BOOLEAN",
+        "nullable": true,
+        "default": "FALSE",
+        "primary_key": false
+      },
+      {
+        "name": "mh_suicidal",
+        "type": "BOOLEAN",
+        "nullable": true,
+        "default": "FALSE",
+        "primary_key": false
+      }
+    ],
+    "patient_assignments": [
+      {
+        "name": "assignment_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "provider_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "coordinator_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "assignment_date",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "datetime('now')",
+        "primary_key": false
+      }
+    ],
+    "patient_monthly_billing_2025_01": [
+      {
+        "name": "billing_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "billing_code",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "total_minutes",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "billing_status",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'Pending'",
+        "primary_key": false
+      },
+      {
+        "name": "created_date",
+        "type": "DATETIME",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      }
+    ],
+    "patient_monthly_billing_2025_02": [
+      {
+        "name": "billing_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "billing_code",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "total_minutes",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "billing_status",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'Pending'",
+        "primary_key": false
+      },
+      {
+        "name": "created_date",
+        "type": "DATETIME",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      }
+    ],
+    "patient_monthly_billing_2025_03": [
+      {
+        "name": "billing_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "billing_code",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "total_minutes",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "billing_status",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'Pending'",
+        "primary_key": false
+      },
+      {
+        "name": "created_date",
+        "type": "DATETIME",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      }
+    ],
+    "patient_monthly_billing_2025_04": [
+      {
+        "name": "billing_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "billing_code",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "total_minutes",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "billing_status",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'Pending'",
+        "primary_key": false
+      },
+      {
+        "name": "created_date",
+        "type": "DATETIME",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      }
+    ],
+    "patient_monthly_billing_2025_05": [
+      {
+        "name": "billing_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "billing_code",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "total_minutes",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "billing_status",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'Pending'",
+        "primary_key": false
+      },
+      {
+        "name": "created_date",
+        "type": "DATETIME",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      }
+    ],
+    "patient_monthly_billing_2025_06": [
+      {
+        "name": "billing_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "billing_code",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "total_minutes",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "billing_status",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'Pending'",
+        "primary_key": false
+      },
+      {
+        "name": "created_date",
+        "type": "DATETIME",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      }
+    ],
+    "patient_monthly_billing_2025_07": [
+      {
+        "name": "billing_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "billing_code",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "total_minutes",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "billing_status",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'Pending'",
+        "primary_key": false
+      },
+      {
+        "name": "created_date",
+        "type": "DATETIME",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      }
+    ],
+    "patient_monthly_billing_2025_08": [
+      {
+        "name": "billing_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "billing_code",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "total_minutes",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "billing_status",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'Pending'",
+        "primary_key": false
+      },
+      {
+        "name": "created_date",
+        "type": "DATETIME",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      }
+    ],
+    "patient_monthly_billing_2025_09": [
+      {
+        "name": "billing_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "billing_code",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "total_minutes",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "billing_status",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'Pending'",
+        "primary_key": false
+      },
+      {
+        "name": "created_date",
+        "type": "DATETIME",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      }
+    ],
+    "patient_monthly_billing_2025_10": [
+      {
+        "name": "billing_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "billing_code",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "total_minutes",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "billing_status",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'Pending'",
+        "primary_key": false
+      },
+      {
+        "name": "created_date",
+        "type": "DATETIME",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      }
+    ],
+    "patient_monthly_billing_2025_11": [
+      {
+        "name": "billing_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "billing_code",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "total_minutes",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "billing_status",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'Pending'",
+        "primary_key": false
+      },
+      {
+        "name": "created_date",
+        "type": "DATETIME",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      }
+    ],
+    "patient_monthly_billing_2025_12": [
+      {
+        "name": "billing_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "billing_code",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "total_minutes",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "billing_status",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'Pending'",
+        "primary_key": false
+      },
+      {
+        "name": "created_date",
+        "type": "DATETIME",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      }
+    ],
+    "patient_panel": [
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "first_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "last_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "date_of_birth",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "gender",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "phone_primary",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "phone_secondary",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "email",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "address_street",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "address_city",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "address_state",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "address_zip",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "emergency_contact_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "emergency_contact_phone",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "emergency_contact_relationship",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "insurance_primary",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "insurance_policy_number",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "insurance_secondary",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "medical_record_number",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "enrollment_date",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "discharge_date",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "notes",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "created_date",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "updated_date",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "created_by",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "updated_by",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "current_facility_id",
+        "type": "INT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "hypertension",
+        "type": "INT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "mental_health_concerns",
+        "type": "INT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "dementia",
+        "type": "INT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "last_annual_wellness_visit",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "last_first_dob",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "status",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "medical_records_requested",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "referral_documents_received",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "insurance_cards_received",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "emed_signature_received",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "last_visit_date",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "facility",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "assigned_coordinator_id",
+        "type": "INT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "er_count_1yr",
+        "type": "INT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "hospitalization_count_1yr",
+        "type": "INT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "clinical_biometric",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "chronic_conditions_provider",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "cancer_history",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "subjective_risk_level",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "provider_mh_schizophrenia",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "provider_mh_depression",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "provider_mh_anxiety",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "provider_mh_stress",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "provider_mh_adhd",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "provider_mh_bipolar",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "provider_mh_suicidal",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "active_specialists",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "code_status",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "cognitive_function",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "functional_status",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "goals_of_care",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "active_concerns",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "initial_tv_completed_date",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "initial_tv_notes",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "initial_tv_provider",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "provider_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "provider_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "coordinator_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "coordinator_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "stage1_complete",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "stage2_complete",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "initial_tv_completed",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "source_table",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "source_column",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "last_visit_provider_id",
+        "type": "INT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "last_visit_provider_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "last_visit_service_type",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "region_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "eligibility_status",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "eligibility_notes",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "eligibility_verified",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "emed_chart_created",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "chart_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "facility_confirmed",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "chart_notes",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "intake_call_completed",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "intake_notes",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "goc_value",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      }
+    ],
+    "patient_visits": [
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "last_visit_date",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "service_type",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      }
+    ],
+    "patients": [
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "region_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "first_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "last_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "date_of_birth",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "gender",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "phone_primary",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "phone_secondary",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "email",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "address_street",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "address_city",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "address_state",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "address_zip",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "emergency_contact_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "emergency_contact_phone",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "emergency_contact_relationship",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "insurance_primary",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "insurance_policy_number",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "insurance_secondary",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "medical_record_number",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "enrollment_date",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "discharge_date",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "notes",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "created_date",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "datetime('now')",
+        "primary_key": false
+      },
+      {
+        "name": "updated_date",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "datetime('now')",
+        "primary_key": false
+      },
+      {
+        "name": "created_by",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "updated_by",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "current_facility_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "hypertension",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "mental_health_concerns",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "dementia",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "last_annual_wellness_visit",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "last_first_dob",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "status",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'Active'",
+        "primary_key": false
+      },
+      {
+        "name": "medical_records_requested",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "referral_documents_received",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "insurance_cards_received",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "emed_signature_received",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "last_visit_date",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "facility",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "assigned_coordinator_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "er_count_1yr",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "hospitalization_count_1yr",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "clinical_biometric",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "chronic_conditions_provider",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "cancer_history",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "subjective_risk_level",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "provider_mh_schizophrenia",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_mh_depression",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_mh_anxiety",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_mh_stress",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_mh_adhd",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_mh_bipolar",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_mh_suicidal",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "active_specialists",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "code_status",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "cognitive_function",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "functional_status",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "goals_of_care",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "active_concerns",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "initial_tv_completed_date",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "initial_tv_notes",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "service_type",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "tv_time",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "eligibility_status",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "eligibility_notes",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "eligibility_verified",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "emed_chart_created",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "chart_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "facility_confirmed",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "chart_notes",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "intake_call_completed",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "intake_notes",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "goc_value",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "appointment_contact_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "appointment_contact_phone",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "appointment_contact_email",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "medical_contact_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "medical_contact_phone",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "medical_contact_email",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "primary_care_provider",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "pcp_last_seen",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "active_specialist",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "specialist_last_seen",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "chronic_conditions_onboarding",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "mh_schizophrenia",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "mh_depression",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "mh_anxiety",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "mh_stress",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "mh_adhd",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "mh_bipolar",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "mh_suicidal",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "tv_date",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "tv_scheduled",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "patient_notified",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "initial_tv_provider",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      }
+    ],
+    "provider_task_billing_status": [
+      {
+        "name": "billing_status_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "provider_task_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "provider_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "provider_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_week",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "week_start_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "week_end_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "minutes_of_service",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_status",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'Pending'",
+        "primary_key": false
+      },
+      {
+        "name": "is_billed",
+        "type": "BOOLEAN",
+        "nullable": true,
+        "default": "FALSE",
+        "primary_key": false
+      },
+      {
+        "name": "is_invoiced",
+        "type": "BOOLEAN",
+        "nullable": true,
+        "default": "FALSE",
+        "primary_key": false
+      },
+      {
+        "name": "is_claim_submitted",
+        "type": "BOOLEAN",
+        "nullable": true,
+        "default": "FALSE",
+        "primary_key": false
+      },
+      {
+        "name": "is_insurance_processed",
+        "type": "BOOLEAN",
+        "nullable": true,
+        "default": "FALSE",
+        "primary_key": false
+      },
+      {
+        "name": "is_approved_to_pay",
+        "type": "BOOLEAN",
+        "nullable": true,
+        "default": "FALSE",
+        "primary_key": false
+      },
+      {
+        "name": "is_paid",
+        "type": "BOOLEAN",
+        "nullable": true,
+        "default": "FALSE",
+        "primary_key": false
+      },
+      {
+        "name": "is_carried_over",
+        "type": "BOOLEAN",
+        "nullable": true,
+        "default": "FALSE",
+        "primary_key": false
+      },
+      {
+        "name": "created_date",
+        "type": "DATETIME",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      },
+      {
+        "name": "updated_date",
+        "type": "DATETIME",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      }
+    ],
+    "provider_tasks_2001_01": [
+      {
+        "name": "provider_task_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "provider_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "notes",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "minutes_of_service",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "source_system",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'CSV_IMPORT'",
+        "primary_key": false
+      },
+      {
+        "name": "imported_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      },
+      {
+        "name": "status",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'completed'",
+        "primary_key": false
+      },
+      {
+        "name": "is_deleted",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "provider_paid",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_paid_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      }
+    ],
+    "provider_tasks_2023_05": [
+      {
+        "name": "provider_task_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "provider_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "notes",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "minutes_of_service",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "source_system",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'CSV_IMPORT'",
+        "primary_key": false
+      },
+      {
+        "name": "imported_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      },
+      {
+        "name": "status",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'completed'",
+        "primary_key": false
+      },
+      {
+        "name": "is_deleted",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "provider_paid",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_paid_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      }
+    ],
+    "provider_tasks_2023_06": [
+      {
+        "name": "provider_task_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "provider_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "notes",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "minutes_of_service",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "source_system",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'CSV_IMPORT'",
+        "primary_key": false
+      },
+      {
+        "name": "imported_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      },
+      {
+        "name": "status",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'completed'",
+        "primary_key": false
+      },
+      {
+        "name": "is_deleted",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "provider_paid",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_paid_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      }
+    ],
+    "provider_tasks_2023_07": [
+      {
+        "name": "provider_task_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "provider_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "notes",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "minutes_of_service",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "source_system",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'CSV_IMPORT'",
+        "primary_key": false
+      },
+      {
+        "name": "imported_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      },
+      {
+        "name": "status",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'completed'",
+        "primary_key": false
+      },
+      {
+        "name": "is_deleted",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "provider_paid",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_paid_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      }
+    ],
+    "provider_tasks_2023_10": [
+      {
+        "name": "provider_task_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "provider_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "notes",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "minutes_of_service",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "source_system",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'CSV_IMPORT'",
+        "primary_key": false
+      },
+      {
+        "name": "imported_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      },
+      {
+        "name": "status",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'completed'",
+        "primary_key": false
+      },
+      {
+        "name": "is_deleted",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "provider_paid",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_paid_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      }
+    ],
+    "provider_tasks_2023_11": [
+      {
+        "name": "provider_task_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "provider_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "notes",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "minutes_of_service",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "source_system",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'CSV_IMPORT'",
+        "primary_key": false
+      },
+      {
+        "name": "imported_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      },
+      {
+        "name": "status",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'completed'",
+        "primary_key": false
+      },
+      {
+        "name": "is_deleted",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "provider_paid",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_paid_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      }
+    ],
+    "provider_tasks_2023_12": [
+      {
+        "name": "provider_task_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "provider_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "notes",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "minutes_of_service",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "source_system",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'CSV_IMPORT'",
+        "primary_key": false
+      },
+      {
+        "name": "imported_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      },
+      {
+        "name": "status",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'completed'",
+        "primary_key": false
+      },
+      {
+        "name": "is_deleted",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "provider_paid",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_paid_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      }
+    ],
+    "provider_tasks_2024_01": [
+      {
+        "name": "provider_task_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "provider_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "notes",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "minutes_of_service",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "source_system",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'CSV_IMPORT'",
+        "primary_key": false
+      },
+      {
+        "name": "imported_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      },
+      {
+        "name": "status",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'completed'",
+        "primary_key": false
+      },
+      {
+        "name": "is_deleted",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "provider_paid",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_paid_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      }
+    ],
+    "provider_tasks_2024_02": [
+      {
+        "name": "provider_task_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "provider_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "notes",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "minutes_of_service",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "source_system",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'CSV_IMPORT'",
+        "primary_key": false
+      },
+      {
+        "name": "imported_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      },
+      {
+        "name": "status",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'completed'",
+        "primary_key": false
+      },
+      {
+        "name": "is_deleted",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "provider_paid",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_paid_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      }
+    ],
+    "provider_tasks_2024_03": [
+      {
+        "name": "provider_task_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "provider_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "notes",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "minutes_of_service",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "source_system",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'CSV_IMPORT'",
+        "primary_key": false
+      },
+      {
+        "name": "imported_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      },
+      {
+        "name": "status",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'completed'",
+        "primary_key": false
+      },
+      {
+        "name": "is_deleted",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "provider_paid",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_paid_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      }
+    ],
+    "provider_tasks_2024_04": [
+      {
+        "name": "provider_task_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "provider_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "notes",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "minutes_of_service",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "source_system",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'CSV_IMPORT'",
+        "primary_key": false
+      },
+      {
+        "name": "imported_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      },
+      {
+        "name": "status",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'completed'",
+        "primary_key": false
+      },
+      {
+        "name": "is_deleted",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "provider_paid",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_paid_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      }
+    ],
+    "provider_tasks_2024_05": [
+      {
+        "name": "provider_task_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "provider_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "notes",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "minutes_of_service",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "source_system",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'CSV_IMPORT'",
+        "primary_key": false
+      },
+      {
+        "name": "imported_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      },
+      {
+        "name": "status",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'completed'",
+        "primary_key": false
+      },
+      {
+        "name": "is_deleted",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "provider_paid",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_paid_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      }
+    ],
+    "provider_tasks_2024_06": [
+      {
+        "name": "provider_task_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "provider_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "notes",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "minutes_of_service",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "source_system",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'CSV_IMPORT'",
+        "primary_key": false
+      },
+      {
+        "name": "imported_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      },
+      {
+        "name": "status",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'completed'",
+        "primary_key": false
+      },
+      {
+        "name": "is_deleted",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "provider_paid",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_paid_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      }
+    ],
+    "provider_tasks_2024_07": [
+      {
+        "name": "provider_task_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "provider_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "notes",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "minutes_of_service",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "source_system",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'CSV_IMPORT'",
+        "primary_key": false
+      },
+      {
+        "name": "imported_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      },
+      {
+        "name": "status",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'completed'",
+        "primary_key": false
+      },
+      {
+        "name": "is_deleted",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "provider_paid",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_paid_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      }
+    ],
+    "provider_tasks_2024_08": [
+      {
+        "name": "provider_task_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "provider_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "notes",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "minutes_of_service",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "source_system",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'CSV_IMPORT'",
+        "primary_key": false
+      },
+      {
+        "name": "imported_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      },
+      {
+        "name": "status",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'completed'",
+        "primary_key": false
+      },
+      {
+        "name": "is_deleted",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "provider_paid",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_paid_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      }
+    ],
+    "provider_tasks_2024_09": [
+      {
+        "name": "provider_task_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "provider_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "notes",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "minutes_of_service",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "source_system",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'CSV_IMPORT'",
+        "primary_key": false
+      },
+      {
+        "name": "imported_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      },
+      {
+        "name": "status",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'completed'",
+        "primary_key": false
+      },
+      {
+        "name": "is_deleted",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "provider_paid",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_paid_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      }
+    ],
+    "provider_tasks_2024_10": [
+      {
+        "name": "provider_task_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "provider_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "notes",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "minutes_of_service",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "source_system",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'CSV_IMPORT'",
+        "primary_key": false
+      },
+      {
+        "name": "imported_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      },
+      {
+        "name": "status",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'completed'",
+        "primary_key": false
+      },
+      {
+        "name": "is_deleted",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "provider_paid",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_paid_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      }
+    ],
+    "provider_tasks_2024_11": [
+      {
+        "name": "provider_task_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "provider_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "notes",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "minutes_of_service",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "source_system",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'CSV_IMPORT'",
+        "primary_key": false
+      },
+      {
+        "name": "imported_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      },
+      {
+        "name": "status",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'completed'",
+        "primary_key": false
+      },
+      {
+        "name": "is_deleted",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "provider_paid",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_paid_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      }
+    ],
+    "provider_tasks_2024_12": [
+      {
+        "name": "provider_task_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "provider_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "notes",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "minutes_of_service",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "source_system",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'CSV_IMPORT'",
+        "primary_key": false
+      },
+      {
+        "name": "imported_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      },
+      {
+        "name": "status",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'completed'",
+        "primary_key": false
+      },
+      {
+        "name": "is_deleted",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "provider_paid",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_paid_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      }
+    ],
+    "provider_tasks_2025_01": [
+      {
+        "name": "provider_task_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "provider_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "notes",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "minutes_of_service",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "source_system",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'CSV_IMPORT'",
+        "primary_key": false
+      },
+      {
+        "name": "imported_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      },
+      {
+        "name": "status",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'completed'",
+        "primary_key": false
+      },
+      {
+        "name": "is_deleted",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "provider_paid",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_paid_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      }
+    ],
+    "provider_tasks_2025_02": [
+      {
+        "name": "provider_task_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "provider_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "notes",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "minutes_of_service",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "source_system",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'CSV_IMPORT'",
+        "primary_key": false
+      },
+      {
+        "name": "imported_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      },
+      {
+        "name": "status",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'completed'",
+        "primary_key": false
+      },
+      {
+        "name": "is_deleted",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "provider_paid",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_paid_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      }
+    ],
+    "provider_tasks_2025_03": [
+      {
+        "name": "provider_task_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "provider_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "notes",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "minutes_of_service",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "source_system",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'CSV_IMPORT'",
+        "primary_key": false
+      },
+      {
+        "name": "imported_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      },
+      {
+        "name": "status",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'completed'",
+        "primary_key": false
+      },
+      {
+        "name": "is_deleted",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "provider_paid",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_paid_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      }
+    ],
+    "provider_tasks_2025_04": [
+      {
+        "name": "provider_task_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "provider_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "notes",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "minutes_of_service",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "source_system",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'CSV_IMPORT'",
+        "primary_key": false
+      },
+      {
+        "name": "imported_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      },
+      {
+        "name": "status",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'completed'",
+        "primary_key": false
+      },
+      {
+        "name": "is_deleted",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "provider_paid",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_paid_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      }
+    ],
+    "provider_tasks_2025_05": [
+      {
+        "name": "provider_task_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "provider_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "notes",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "minutes_of_service",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "source_system",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'CSV_IMPORT'",
+        "primary_key": false
+      },
+      {
+        "name": "imported_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      },
+      {
+        "name": "status",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'completed'",
+        "primary_key": false
+      },
+      {
+        "name": "is_deleted",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "provider_paid",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_paid_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      }
+    ],
+    "provider_tasks_2025_06": [
+      {
+        "name": "provider_task_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "provider_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "notes",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "minutes_of_service",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "source_system",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'CSV_IMPORT'",
+        "primary_key": false
+      },
+      {
+        "name": "imported_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      },
+      {
+        "name": "status",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'completed'",
+        "primary_key": false
+      },
+      {
+        "name": "is_deleted",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "provider_paid",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_paid_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      }
+    ],
+    "provider_tasks_2025_07": [
+      {
+        "name": "provider_task_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "provider_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "notes",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "minutes_of_service",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "source_system",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'CSV_IMPORT'",
+        "primary_key": false
+      },
+      {
+        "name": "imported_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      },
+      {
+        "name": "status",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'completed'",
+        "primary_key": false
+      },
+      {
+        "name": "is_deleted",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "provider_paid",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_paid_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      }
+    ],
+    "provider_tasks_2025_08": [
+      {
+        "name": "provider_task_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "provider_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "notes",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "minutes_of_service",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "source_system",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'CSV_IMPORT'",
+        "primary_key": false
+      },
+      {
+        "name": "imported_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      },
+      {
+        "name": "status",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'completed'",
+        "primary_key": false
+      },
+      {
+        "name": "is_deleted",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "provider_paid",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_paid_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      }
+    ],
+    "provider_tasks_2025_09": [
+      {
+        "name": "provider_task_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "provider_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "notes",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "minutes_of_service",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "source_system",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'CSV_IMPORT'",
+        "primary_key": false
+      },
+      {
+        "name": "imported_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      },
+      {
+        "name": "status",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'completed'",
+        "primary_key": false
+      },
+      {
+        "name": "is_deleted",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "provider_paid",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_paid_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      }
+    ],
+    "provider_tasks_2025_10": [
+      {
+        "name": "provider_task_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "provider_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "notes",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "minutes_of_service",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "source_system",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'CSV_IMPORT'",
+        "primary_key": false
+      },
+      {
+        "name": "imported_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      },
+      {
+        "name": "status",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'completed'",
+        "primary_key": false
+      },
+      {
+        "name": "is_deleted",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "provider_paid",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_paid_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      }
+    ],
+    "provider_tasks_2025_11": [
+      {
+        "name": "provider_task_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "provider_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "notes",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "minutes_of_service",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "source_system",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'CSV_IMPORT'",
+        "primary_key": false
+      },
+      {
+        "name": "imported_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      },
+      {
+        "name": "status",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'completed'",
+        "primary_key": false
+      },
+      {
+        "name": "is_deleted",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "provider_paid",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "provider_paid_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      }
+    ],
+    "provider_tasks_2025_12": [
+      {
+        "name": "provider_task_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "provider_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "provider_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "task_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "notes",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "minutes_of_service",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "source_system",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'CSV_IMPORT'",
+        "primary_key": false
+      },
+      {
+        "name": "imported_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      },
+      {
+        "name": "status",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'completed'",
+        "primary_key": false
+      },
+      {
+        "name": "is_deleted",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      }
+    ],
+    "provider_weekly_summary_with_billing": [
+      {
+        "name": "summary_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "provider_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "provider_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "week_start_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "week_end_date",
+        "type": "DATE",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "year",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "week_number",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "total_tasks_completed",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "total_time_spent_minutes",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      },
+      {
+        "name": "billing_code",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "status",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'Active'",
+        "primary_key": false
+      },
+      {
+        "name": "paid",
+        "type": "BOOLEAN",
+        "nullable": true,
+        "default": "FALSE",
+        "primary_key": false
+      },
+      {
+        "name": "created_date",
+        "type": "DATETIME",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      },
+      {
+        "name": "updated_date",
+        "type": "DATETIME",
+        "nullable": true,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      }
+    ],
+    "roles": [
+      {
+        "name": "role_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "role_name",
+        "type": "TEXT",
+        "nullable": false,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      }
+    ],
+    "task_billing_codes": [
+      {
+        "name": "code_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "task_description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "service_type",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "location_type",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "patient_type",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "min_minutes",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "max_minutes",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "billing_code",
+        "type": "TEXT",
+        "nullable": false,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "description",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "rate",
+        "type": "DECIMAL(10,2)",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "effective_date",
+        "type": "TEXT",
+        "nullable": false,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "expiration_date",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "created_date",
+        "type": "TEXT",
+        "nullable": false,
+        "default": "datetime('now')",
+        "primary_key": false
+      }
+    ],
+    "user_roles": [
+      {
+        "name": "user_id",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "role_id",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "is_primary",
+        "type": "BOOLEAN",
+        "nullable": true,
+        "default": "0",
+        "primary_key": false
+      }
+    ],
+    "user_sessions": [
+      {
+        "name": "session_id",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "user_id",
+        "type": "INTEGER",
+        "nullable": false,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "created_at",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "expires_at",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "last_activity",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      }
+    ],
+    "users": [
+      {
+        "name": "user_id",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": true
+      },
+      {
+        "name": "first_name",
+        "type": "TEXT",
+        "nullable": false,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "last_name",
+        "type": "TEXT",
+        "nullable": false,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "email",
+        "type": "TEXT",
+        "nullable": false,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "phone",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "status",
+        "type": "TEXT",
+        "nullable": false,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "hire_date",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "termination_date",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "max_patients",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "performance_rating",
+        "type": "REAL",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "created_date",
+        "type": "TEXT",
+        "nullable": false,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      },
+      {
+        "name": "updated_date",
+        "type": "TEXT",
+        "nullable": false,
+        "default": "CURRENT_TIMESTAMP",
+        "primary_key": false
+      },
+      {
+        "name": "full_name",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "password",
+        "type": "TEXT",
+        "nullable": true,
+        "default": "'pass123'",
+        "primary_key": false
+      },
+      {
+        "name": "username",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "last_login",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      },
+      {
+        "name": "alias",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "primary_key": false
+      }
+    ]
+  }
+}

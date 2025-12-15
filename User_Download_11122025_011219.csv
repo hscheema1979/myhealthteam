@@ -1,0 +1,35 @@
+First Name [Required],Last Name [Required],Email Address [Required],Status [READ ONLY],Last Sign In [READ ONLY],Email Usage [READ ONLY]
+Albert,Diaz,albert@myhealthteam.org,Active,2025/12/07 12:40:53,0.0GB
+Andrew,Szalas NP,andrews@myhealthteam.org,Active,2025/12/09 15:29:45,0.26GB
+Angel,Valian,wounds@myhealthteam.org,Active,2025/11/10 11:10:55,0.67GB
+Angela,Otegbulu,angela@myhealthteam.org,Active,2025/11/24 19:10:19,0.0GB
+Anisha,Jackson,anisha@myhealthteam.org,Suspended,2025/09/28 23:20:27,0.02GB
+Bianchi,Sanchez,bianchi@myhealthteam.org,Active,2025/11/27 11:28:33,1.01GB
+Butch,Butch,butch@myhealthteam.org,Suspended,2025/06/13 09:30:26,0.0GB
+Carla,Khristina,carla@myhealthteam.org,Active,2025/12/08 09:03:31,0.0GB
+Cindy,Mariano,cindy@myhealthteam.org,Active,2025/12/03 20:51:12,0.01GB
+Claudia,Melara,claudia@myhealthteam.org,Active,2025/12/09 08:29:54,0.02GB
+Connie,Gonzalez,connie@myhealthteam.org,Active,2025/12/03 12:26:23,0.71GB
+Dianela,Medez,dianela@myhealthteam.org,Active,2025/12/02 11:12:33,2.02GB
+Dilasha,Thapa,dilasha@myhealthteam.org,Active,2025/12/09 15:54:44,0.0GB
+Dr Malhotra's,Mobile & Telehealth Team,admin1@myhealthteam.org,Active,2025/12/09 11:16:57,1.17GB
+Eden,Dabalus,eden@myhealthteam.org,Active,2025/12/10 09:15:25,0.0GB
+Ethel,Antonio,ethel@myhealthteam.org,Active,2025/12/10 19:06:09,0.07GB
+Harpreet,Cheema,harpreet@myhealthteam.org,Active,2025/12/10 00:53:37,0.0GB
+Hector,Hernandez,hector@myhealthteam.org,Suspended,2025/11/04 13:34:43,4.06GB
+Jan,Estomo,jan@myhealthteam.org,Active,2025/12/10 09:19:26,3.1GB
+Jaspreet,Kaur,jaspreet@myhealthteam.org,Active,2025/12/04 16:50:42,0.0GB
+Jose,Soberanis,jose@myhealthteam.org,Active,2025/12/10 14:21:08,4.22GB
+Justin,Malhotra MD,admin@myhealthteam.org,Active,2025/12/09 22:49:14,5.78GB
+Laura,Angela Sumpay,laura@myhealthteam.org,Active,2025/12/10 15:51:28,0.09GB
+Lidia,Hernandez,lidia@myhealthteam.org,Active,2025/12/09 12:33:09,0.14GB
+Lourdes,Villasenor NP,lourdesv@myhealthteam.org,Active,2025/11/29 11:48:48,0.28GB
+Manuel,Rios,manuel@myhealthteam.org,Active,2025/12/10 13:40:48,0.06GB
+Mayra,Soberanis,mayra@myhealthteam.org,Suspended,2025/09/21 20:22:19,1.67GB
+Nathan,Barile,admin.amc@myhealthteam.org,Suspended,2024/02/19 08:01:35,0.0GB
+Priyanka,Shah,priyanka@myhealthteam.org,Active,2025/11/26 09:51:49,0.0GB
+Sherwin,Maningas,sherwin@myhealthteam.org,Active,2025/12/10 00:24:39,0.11GB
+Shirley,Alter,shirley@myhealthteam.org,Active,2025/12/04 14:07:42,0.34GB
+Vicrumdeep,Tung MD,vtungmd@myhealthteam.org,Active,2025/11/10 11:52:13,0.1GB
+Volnero,Cura,cura@myhealthteam.org,Active,2025/09/20 12:37:42,0.0GB
+WoundAdmin,Manager,woundcare@myhealthteam.org,Active,2025/12/09 13:28:41,0.2GB
