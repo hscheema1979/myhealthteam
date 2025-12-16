@@ -23,8 +23,6 @@ from src.dashboards import (
     justin_simple_payment_tracker,
     monthly_coordinator_billing_dashboard,
     onboarding_dashboard,
-    provider_payment_dashboard,
-    weekly_billing_dashboard,
     weekly_provider_billing_dashboard,
     weekly_provider_payroll_dashboard,
 )

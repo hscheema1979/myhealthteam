@@ -168,11 +168,6 @@ def export_to_csv(df, filename):
 
 def display_monthly_coordinator_billing_dashboard():
     """Main billing dashboard"""
-    st.title("Monthly Coordinator Billing Dashboard")
-    st.markdown(
-        "Coordinator minutes aggregated by patient with automatic billing code assignment"
-    )
-
     # Get available months
     months = get_available_months()
 

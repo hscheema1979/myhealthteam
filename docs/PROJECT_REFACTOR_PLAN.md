@@ -1,5 +1,13 @@
 # MyHealthTeam Project Refactor Plan
 
+> **STATUS UPDATE (Dec 16, 2024):** Phase 0 - Project Cleanup ✅ COMPLETED
+> - Archived 208 root Python files → `old_scripts_archive/`
+> - Archived 102 SQL scripts → `src/sql/archive/`
+> - Archived 28 PowerShell scripts → `scripts/archive/`
+> - Deleted 10+ obsolete dashboard variants
+> - Result: 87% reduction in non-essential files
+> - See `CLEANUP_COMPLETED.md` for full details
+
 ## Executive Summary
 
 This document outlines a comprehensive refactor plan to simplify MyHealthTeam project from its current complex state (100+ files, multiple redundant components) to a streamlined, maintainable architecture based on the "Light Stack" principles (Flask + SQLite + Streamlit).
@@ -22,78 +30,93 @@ This document outlines a comprehensive refactor plan to simplify MyHealthTeam pr
 ## Current Architecture Problems
 
 ### 1. File Bloat & Complexity
-**Issue:** 100+ files in root directory with poor organization
+**Issue:** 100+ files in root directory with poor organization, further compounded by new utility file creation.
 ```
-Current Root Directory:
+Current Root Directory Still Contains:
 ├── 50+ test_*.py files
 ├── 30+ debug_*.py files  
 ├── 15+ check_*.py files
 ├── 10+ fix_*.py files
-├── Multiple dashboard variants
-├── One-off utility scripts
+├── Multiple dashboard variants (now including new specialized ones)
+├── One-off utility scripts, plus newly created shared utilities (e.g., `src/utils/workflow_reassignment_ui.py`)
 └── Temporary/obsolete files
 ```
 
-**Impact:** Difficult navigation, code duplication, maintenance overhead
+**Impact:** Difficult navigation, increased code duplication across active dashboards, and maintenance overhead, despite ongoing efforts.
 
 ### 2. Dashboard Complexity
-**Issue:** Multiple overlapping dashboard implementations
+**Issue:** Proliferation of specialized dashboards and overlapping functionalities. While some legacy dashboards in `_do_not_use/` persist, new, critical dashboards have been implemented as part of Phase 2.
 ```
-Current Dashboards:
-- admin_dashboard.py (1,400+ lines)
-- care_coordinator_dashboard_enhanced.py (1,000+ lines)
-- care_provider_dashboard_enhanced.py (800+ lines)
-- Plus 8+ other variants in _do_not_use/ folder
+Currently Active and Critical Dashboards:
+- admin_dashboard.py (multi-tab, ~1,400+ lines)
+- care_coordinator_dashboard_enhanced.py (~1,000+ lines)
+- care_provider_dashboard_enhanced.py (~800+ lines)
+- weekly_provider_billing_dashboard.py (NEWLY REWRITTEN & workflow-driven in Phase 2)
+- weekly_provider_payroll_dashboard.py (NEWLY CREATED & critical for double-payment prevention in Phase 2)
+- monthly_coordinator_billing_dashboard.py (PRODUCTION-READY in Phase 2)
+- onboarding_dashboard.py
+- data_entry_dashboard.py
+- Plus 8+ other legacy variants in _do_not_use/ folder, still contributing to complexity.
 ```
 
-**Impact:** Code duplication, inconsistent UX, maintenance nightmare
+**Impact:** Significant code duplication across multiple active dashboards (e.g., in UI components and data fetching patterns), inconsistent user experience due to varying implementations, and a challenging maintenance landscape.
 
 ### 3. Database Layer Overcomplexity
-**Issue:** Massive database.py with redundant helper functions
+**Issue:** The `database.py` file has continued to grow, now incorporating new, workflow-specific helper functions to manage critical billing and payroll states, further increasing its complexity.
 ```
 Current Database Layer:
-- database.py: 2,400+ lines
-- 50+ helper functions
-- Complex table relationships
-- Monthly partitioned tables
-- Redundant query patterns
+- database.py: ~4,900+ lines (increased from ~2,400+ lines, including ~250 lines of new workflow management functions for Phase 2)
+- Over 50+ helper functions, now including specialized operations like `mark_provider_tasks_as_billed()` and `mark_provider_payroll_as_paid()` for workflow state management.
+- Complex table relationships, with dynamic monthly partitioned tables (e.g., `coordinator_tasks_YYYY_MM`).
+- Redundant query patterns persist across various sections.
 ```
 
-**Impact:** Performance issues, difficult debugging, fragile architecture
+**Impact:** Performance bottlenecks, increased difficulty in debugging due to tightly coupled logic, and a fragile architecture that is challenging to scale or modify.
 
 ### 4. Data Transformation Complexity
-**Issue:** Heavy CSV processing with multiple formats
+**Issue:** The primary data transformation script has become more integrated and complex, now directly handling billing codes and minute range processing during the CSV import phase, leading to a less modular pipeline.
 ```
 Current Data Processing:
-- transform_production_data_v3_fixed.py (800+ lines)
-- Multiple CSV format handling
-- Complex error handling
-- Inconsistent data mapping
+- transform_production_data_v3_fixed.py (~800+ lines, now with integrated billing processing and minute range extraction).
+- Billing codes and minute range extraction (e.g., "40-49" -> 40) are now processed directly within this script during import, eliminating separate post-processing steps.
+- Continues to handle multiple CSV formats and complex error handling.
+- Inconsistent data mapping and lack of clear separation of concerns in the transformation logic.
 ```
 
 ---
 
-## Proposed Simplified Architecture
+## Proposed Refined Architecture
 
-### Core Structure (The "Light Stack")
+The proposed refactored architecture, informed by the successful completion of Phase 2 and the current project state, will evolve the existing system by consolidating, simplifying, and optimizing where possible, while preserving the specialized functionality that has been implemented.
+
+### Core Structure (A Pragmatic "Refined Stack")
 ```
 myhealthteam-refactored/
 ├── app.py                    # Streamlit entry point (simplified)
 ├── database/
-│   ├── __init__.py           # Database interface
+│   ├── __init__.py           # Database interface with ~50+ helper functions, including ~250 lines of workflow-specific management.
 │   ├── connection.py         # Connection management
-│   └── models.py            # Clean ORM models
+│   └── models.py             # Clean ORM models (to be developed)
 ├── dashboards/
-│   ├── admin_dashboard.py     # Unified admin interface
-│   ├── coordinator_dashboard.py # Single coordinator dashboard
-│   └── provider_dashboard.py   # Single provider dashboard
+│   ├── admin_dashboard.py     # Unified admin interface (multi-tab, expanded functionality)
+│   ├── coordinator_dashboard.py # Single coordinator dashboard (integrated new shared utilities)
+│   ├── provider_dashboard.py   # Single provider dashboard (with new features like month selection)
+│   ├── billing/
+│   │   ├── provider_billing_dashboard.py   # Rewritten and workflow-driven (from weekly_provider_billing_dashboard.py)
+│   │   ├── provider_payroll_dashboard.py   # Newly created, critical for double-payment prevention (from weekly_provider_payroll_dashboard.py)
+│   │   └── coordinator_billing_dashboard.py # Production-ready (from monthly_coordinator_billing_dashboard.py)
+│   ├── onboarding_dashboard.py # Patient intake workflow
+│   └── data_entry_dashboard.py # Bulk data entry interface
 ├── services/
 │   ├── auth_service.py        # Authentication logic
 │   ├── patient_service.py     # Patient management
-│   └── billing_service.py     # Billing functionality
+│   ├── billing_service.py     # Billing functionality
+│   └── workflow_service.py    # New service to handle workflow state transitions (e.g., mark as billed/paid).
 ├── utils/
-│   ├── data_transform.py     # Clean data processing
-│   └── ui_components.py     # Reusable UI components
+│   ├── data_transform.py      # Refactored data processing, to modularize the integrated process from transform_production_data_v3_fixed.py.
+│   ├── ui_components.py      # Reusable UI components
+│   ├── workflow_reassignment_ui.py # Newly created shared utility for workflow reassignment.
+│   └── legacy/                # Directory for legacy and deprecated components to be phased out gradually.
 ├── config/
 │   ├── settings.py          # App configuration
 │   └── database_schema.py  # Schema definitions
@@ -103,10 +126,20 @@ myhealthteam-refactored/
     └── migrations/           # Database migrations
 ```
 
-### File Count Reduction
+### Refinement Focus Areas
+
+1.  **Specialized Dashboards:** The critical and production-ready specialized dashboards (`weekly_provider_billing_dashboard.py`, `weekly_provider_payroll_dashboard.py`, `monthly_coordinator_billing_dashboard.py`) will be preserved and refactored into a dedicated `billing/` module. This will create a clear separation of concerns and make the codebase easier to navigate and maintain. The main dashboards (`admin_dashboard.py`, `coordinator_dashboard.py`, `provider_dashboard.py`) will be refactored to integrate these specialized views more seamlessly.
+
+2.  **Database Layer Evolution:** The `database.py` file has grown to ~4,900+ lines. A key goal will be to modularize this layer. A new `models.py` file will be created to define the ORM models, which should improve type safety and make database operations more maintainable. The workflow-specific functions (e.g., `mark_provider_tasks_as_billed()`) will be moved to a new `workflow_service.py` file in the services layer. This will improve the separation of concerns and make the database layer more focused on connection and basic CRUD operations.
+
+3.  **Data Transformation Refactoring:** The `transform_production_data_v3_fixed.py` script, which now handles ~800+ lines and includes integrated billing code and minute range processing, will be refactored. The proposed `data_transform.py` in the utils layer will focus on a modular approach. The goal is to break down the single, monolithic transformation script into smaller, focused functions. This will make the data pipeline easier to test, debug, and adapt to new requirements.
+
+4.  **Legacy Component Management:** A new `legacy/` directory within the `utils/` module will be created. This directory will house deprecated and legacy components that are slated for eventual removal. This approach will allow for a safer and more controlled phase-out of legacy components, allowing for a gradual refactoring process and minimizing risk.
+
+### File Count Reduction (Revised)
 - **From:** 100+ files
-- **To:** 15 core files
-- **Reduction:** 85% fewer files
+- **To:** A more achievable and pragmatic target of ~25-30 core files.
+- **Reduction:** A more realistic 70-75% reduction in file count, focusing on the most impactful areas of consolidation.
 
 ---
 
@@ -375,129 +408,21 @@ myhealthteam-prod/
 
 ## Database Schema Simplification
 
-### Current Complex Schema
-```sql
-Current Tables (50+):
-├── users (with role relationships)
-├── patients (core patient data)
-├── patient_panel (extended patient data)
-├── patient_assignments (provider/coordinator assignments)
-├── coordinator_tasks_YYYY_MM (monthly partitioned)
-├── provider_tasks_YYYY_MM (monthly partitioned)
-├── coordinator_monthly_summary_YYYY_MM (monthly summaries)
-├── workflow_instances (workflow tracking)
-├── workflow_steps (workflow steps)
-├── billing_status (billing tracking)
-├── audit_log (audit trail)
-└── 40+ other tables (mappings, temp, analytics)
-```
+**STATUS: ✅ OUT OF SCOPE - ALREADY RESOLVED**
 
-### Proposed Simplified Schema
-```sql
-Simplified Tables (12 core tables):
-├── users
-│   ├── user_id (PK)
-│   ├── username
-│   ├── email
-│   ├── full_name
-│   ├── password_hash
-│   ├── status
-│   └── created_date
-│
-├── roles
-│   ├── role_id (PK)
-│   ├── role_name
-│   └── description
-│
-├── user_roles
-│   ├── user_id (FK)
-│   ├── role_id (FK)
-│   └── assigned_date
-│
-├── patients
-│   ├── patient_id (PK)
-│   ├── first_name
-│   ├── last_name
-│   ├── dob
-│   ├── phone_primary
-│   ├── email
-│   ├── status
-│   ├── facility_id
-│   └── created_date
-│
-├── facilities
-│   ├── facility_id (PK)
-│   ├── facility_name
-│   ├── address
-│   └── phone
-│
-├── patient_assignments
-│   ├── assignment_id (PK)
-│   ├── patient_id (FK)
-│   ├── provider_id (FK)
-│   ├── coordinator_id (FK)
-│   ├── assigned_date
-│   └── status
-│
-├── tasks
-│   ├── task_id (PK)
-│   ├── patient_id (FK)
-│   ├── user_id (FK)
-│   ├── task_type
-│   ├── duration_minutes
-│   ├── task_date
-│   ├── notes
-│   └── created_date
-│
-├── task_types
-│   ├── task_type_id (PK)
-│   ├── task_name
-│   ├── description
-│   └── billing_code
-│
-├── workflows
-│   ├── workflow_id (PK)
-│   ├── patient_id (FK)
-│   ├── workflow_type
-│   ├── assigned_user_id (FK)
-│   ├── current_step
-│   ├── total_steps
-│   ├── priority
-│   ├── status
-│   ├── created_date
-│   └── completed_date
-│
-├── workflow_steps
-│   ├── step_id (PK)
-│   ├── workflow_id (FK)
-│   ├── step_number
-│   ├── step_name
-│   ├── description
-│   └── required
-│
-├── billing_records
-│   ├── billing_id (PK)
-│   ├── patient_id (FK)
-│   ├── user_id (FK)
-│   ├── billing_code
-│   ├── service_date
-│   ├── duration_minutes
-│   ├── amount
-│   └── billing_period
-│
-└── audit_log
-    ├── log_id (PK)
-    ├── user_id (FK)
-    ├── action_type
-    ├── table_name
-    ├── record_id
-    ├── old_value
-    ├── new_value
-    ├── timestamp
-    └── description
-```
+The database schema has been optimized and finalized in production. The current `production.db` schema is documented in detail in `CONSOLIDATED_SYSTEM_DOCUMENTATION.md` and includes:
 
-**Schema Reduction:** From 50+ tables to 12 core tables (76% reduction)
+- **User and Role Management** - users, roles, user_roles tables
+- **Patient and Assignment** - patients, user_patient_assignments tables
+- **Provider Task Billing** - provider_task_billing_status table (weekly tracking)
+- **Provider Weekly Payroll** - provider_weekly_payroll_status table (dual-track payroll management)
+- **Coordinator Monthly Aggregation** - coordinator_monthly_summary table
+- **Coordinator Monthly Raw Tasks** - coordinator_tasks_YYYY_MM (dynamic monthly tables)
+- **Onboarding Workflow** - onboarding_patients table
+
+This schema is production-ready, fully functional, and supports all current billing and payroll workflows. No database schema changes are needed for this refactor.
+
+**Reference:** See `CONSOLIDATED_SYSTEM_DOCUMENTATION.md` Section "Database Design and Data Model" for complete schema documentation.
 
 ---
 

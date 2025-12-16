@@ -3240,7 +3240,7 @@ def show():
                     )
 
             with billing_tab2:
-                st.subheader("Weekly Provider Billing (P00)")
+                st.subheader("Weekly Provider Billing")
                 st.markdown(
                     "Track provider billing by week using provider tasks and billing status"
                 )
