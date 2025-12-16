@@ -184,7 +184,7 @@ def can_mark_as_billed(user_role_ids):
     """Check if user can mark tasks as billed (Harpreet/Admin=34 or Justin/Superuser=superuser)"""
     # Role 34 = Admin (Harpreet)
     # For Justin, check if user has admin or specific role
-    return 34 in user_role_ids or len(user_role_ids) > 0  # Simplified for now
+    return 34 in user_role_ids  # Only Harpreet (Admin) can mark as billed
 
 
 def export_for_3rd_party_biller(df):

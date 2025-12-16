@@ -200,7 +200,7 @@ def get_payroll_status_options():
 def can_view_payroll(user_role_ids):
     """Check if user can view payroll data (Harpreet/Admin role 34 or Justin)"""
     # Role 34 = Admin (Harpreet), Justin is superuser
-    return 34 in user_role_ids or len(user_role_ids) > 0
+    return 34 in user_role_ids
 
 
 def can_edit_payroll(user_id, user_role_ids):
