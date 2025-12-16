@@ -49,7 +49,6 @@ def get_available_months():
                 
                 # Parse the date string and format it properly
                 if date_str and isinstance(date_str, str):
-                    from datetime import datetime
                     date_obj = datetime.strptime(date_str, '%Y-%m-%d')
                     month = date_obj.strftime('%m')
                     year_month = date_obj.strftime('%Y-%m')
@@ -382,7 +381,6 @@ def display_weekly_provider_payroll_dashboard(user_id=None, user_role_ids=None):
                     # Extract year_month from week_start_date
                     if week.get("week_start_date"):
                         try:
-                            from datetime import datetime
                             week_date = datetime.strptime(week["week_start_date"], '%Y-%m-%d')
                             week_year_month = week_date.strftime('%Y-%m')
                             if (str(week["year"]) == str(selected_month["year"]) and 

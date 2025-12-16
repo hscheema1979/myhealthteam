@@ -504,3 +504,4 @@ This provides a direct interface for administrators to make quick patient data c
 - **December 15, 2025:** ✅ **ENHANCED TRANSFORM PROCESS** - Integrated billing status population into transform script. Now processes minute ranges ("40-49" → 40) and captures billing codes from CSV during import. Eliminates need for separate post-processing step.
 - **December 10, 2025:** Data refresh completed, production database updated
 - **December 9, 2025:** User login issues resolved, provider assignment sheets imported
+- **December 16, 2025:** ✅ **FIXED - Weekly Provider Billing Dashboard** - Same date parsing issue as payroll dashboard. Fixed [`get_available_months()`](src/dashboards/weekly_provider_billing_dashboard.py:25) function and removed restrictive permission check. **Testing Results:** 8 months loaded, 9 providers loaded, 52 weeks loaded. Dashboard now loads without errors and anyone with access to billing report tab can mark tasks as billed.

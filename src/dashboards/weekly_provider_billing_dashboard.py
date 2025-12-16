@@ -25,37 +25,55 @@ def get_available_months():
     try:
         query = """
         SELECT DISTINCT
-            strftime('%Y', week_start_date) as year,
-            strftime('%m', week_start_date) as month,
-            strftime('%Y-%m', week_start_date) as year_month,
-            strftime('%B %Y', week_start_date) as display
+            week_start_date
         FROM provider_task_billing_status
         WHERE week_start_date IS NOT NULL
-        ORDER BY year_month DESC
+        ORDER BY week_start_date DESC
         LIMIT 24
         """
         rows = conn.execute(query).fetchall()
 
+        # Use a set to avoid duplicate months
+        months_set = set()
         months = []
+        
+        # Add "All Months" option first
         months.append(
             {"year": None, "month": None, "year_month": "all", "display": "All Months"}
         )
+        
         for row in rows:
             try:
-                year = row[0]
-                month = row[1]
-                year_month = row[2]
-                display = row[3]
-                months.append(
-                    {
-                        "year": year,
-                        "month": month,
-                        "year_month": year_month,
-                        "display": display,
-                    }
-                )
-            except (ValueError, IndexError):
+                date_str = row[0]
+                
+                # Parse the date string and format it properly
+                if date_str and isinstance(date_str, str):
+                    from datetime import datetime
+                    date_obj = datetime.strptime(date_str, '%Y-%m-%d')
+                    month = date_obj.strftime('%m')
+                    year = date_obj.strftime('%Y')
+                    year_month = date_obj.strftime('%Y-%m')
+                    display = date_obj.strftime('%B %Y')
+                    
+                    # Only add if we haven't seen this year_month before
+                    if year_month not in months_set:
+                        months_set.add(year_month)
+                        months.append(
+                            {
+                                "year": year,
+                                "month": month,
+                                "year_month": year_month,
+                                "display": display,
+                            }
+                        )
+            except (ValueError, IndexError, TypeError) as e:
+                # Skip problematic rows but continue processing
                 continue
+
+        # Sort months in descending order (most recent first), keeping "All Months" at top
+        all_months = months[:1]
+        other_months = sorted(months[1:], key=lambda x: x['year_month'], reverse=True)
+        months = all_months + other_months
 
         return months
     except Exception as e:
@@ -278,10 +296,10 @@ def get_billing_status_options():
 
 
 def can_mark_as_billed(user_role_ids):
-    """Check if user can mark tasks as billed (Harpreet/Admin=34 or Justin/Superuser=superuser)"""
-    # Role 34 = Admin (Harpreet)
-    # For Justin, check if user has admin or specific role
-    return 34 in user_role_ids  # Only Harpreet (Admin) can mark as billed
+    """Check if user can mark tasks as billed"""
+    # Anyone with access to the billing report tab can mark tasks as billed
+    # No restrictive role check - if they can access the dashboard, they can edit
+    return True
 
 
 def export_for_3rd_party_biller(df):
@@ -316,7 +334,7 @@ def display_weekly_provider_billing_dashboard(user_id=None, user_role_ids=None):
 
     if not can_edit:
         st.info(
-            "ℹ️ View Mode: You can view billing data but cannot modify status. Only Harpreet can mark tasks as billed."
+            "ℹ️ View Mode: You can view billing data but cannot modify status."
         )
 
     # Get available weeks
@@ -350,7 +368,7 @@ def display_weekly_provider_billing_dashboard(user_id=None, user_role_ids=None):
         st.markdown("**Select Week**")
         if selected_month:
             # Filter weeks by selected month
-            if selected_month["table_name"] == "all":
+            if selected_month["year_month"] == "all":
                 filtered_weeks = weeks
             else:
                 filtered_weeks = [
