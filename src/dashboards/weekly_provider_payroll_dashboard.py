@@ -434,13 +434,20 @@ def display_weekly_provider_payroll_dashboard(user_id=None, user_role_ids=None):
     )
 
     # Main content - handle the filter logic
-    if show_all_weeks:
+    if show_all_weeks and selected_month and selected_month["year_month"] != "all":
+        # Show all weeks for the selected month
         pay_week = None
-        pay_year = None
+        pay_year = selected_month["year"]
     elif selected_week:
+        # Show specific selected week
         pay_week = selected_week["week_number"]
         pay_year = selected_week["year"]
+    elif selected_month and selected_month["year_month"] != "all":
+        # Default to first week of selected month if no week selected
+        pay_week = None
+        pay_year = selected_month["year"]
     else:
+        # Show all data (no filters)
         pay_week = None
         pay_year = None
 
