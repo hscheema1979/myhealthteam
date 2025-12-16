@@ -215,9 +215,9 @@ def export_for_3rd_party_biller(df):
 
 def display_weekly_provider_billing_dashboard(user_id=None, user_role_ids=None):
     """Main provider billing dashboard"""
-    st.title("Weekly Provider Billing Dashboard")
+    st.title("Weekly Provider Billing (P00)")
     st.markdown(
-        "**Workflow Status Tracking** for Medicare billing via 3rd party billing service. This dashboard manages the billing lifecycle from task completion through Medicare reimbursement."
+        "Track provider billing by week using provider tasks and billing status"
     )
 
     # Check if user has permission to mark tasks as billed
@@ -237,33 +237,40 @@ def display_weekly_provider_billing_dashboard(user_id=None, user_role_ids=None):
         )
         return
 
-    # Week selector in main content (not sidebar) - matching monthly dashboard pattern
-    selected_week = st.selectbox(
-        "Select Billing Week",
-        options=weeks,
-        format_func=lambda x: x["display"],
-        key="provider_billing_week",
-    )
-
-    # Status filter and options
-    col1, col2, col3 = st.columns([2, 1, 1])
+    # Month and week selectors - hierarchical filtering
+    col1, col2 = st.columns(2)
 
     with col1:
-        billing_status_options = get_billing_status_options()
-        selected_status = st.selectbox(
-            "Filter by Billing Status",
-            options=billing_status_options,
-            key="provider_billing_status",
+        st.markdown("**Select Billing Period**")
+        show_all_weeks = st.checkbox("Show All Weeks", value=False)
+
+    with col2:
+        st.markdown("")  # Empty space for alignment
+
+    # Week selector
+    col1, col2 = st.columns([2, 1])
+
+    with col1:
+        selected_week = st.selectbox(
+            "Select Week",
+            options=weeks,
+            format_func=lambda x: x["display"],
+            key="provider_billing_week",
         )
 
     with col2:
-        show_all_weeks = st.checkbox("Show All Weeks", value=False)
-
-    with col3:
         if selected_week:
             st.markdown(
-                f"**Week:** {selected_week['week_start_date']} to {selected_week['week_end_date']}"
+                f"**{selected_week['week_start_date']} to {selected_week['week_end_date']}**"
             )
+
+    # Status filter
+    billing_status_options = get_billing_status_options()
+    selected_status = st.selectbox(
+        "Filter by Billing Status",
+        options=billing_status_options,
+        key="provider_billing_status",
+    )
 
     # Main content
     if selected_week:
@@ -274,7 +281,7 @@ def display_weekly_provider_billing_dashboard(user_id=None, user_role_ids=None):
         summary = get_billing_summary(billing_week)
 
         if summary:
-            st.subheader(get_section_title("Billing Summary"))
+            st.markdown("### Billing Summary")
 
             col1, col2, col3, col4, col5 = st.columns(5)
 
@@ -318,7 +325,7 @@ def display_weekly_provider_billing_dashboard(user_id=None, user_role_ids=None):
         billing_df = get_provider_billing_data(billing_week, status_filter)
 
         if not billing_df.empty:
-            st.subheader("Billing Data by Provider")
+            st.markdown("### Billing Data by Provider")
 
             show_audit_trail = st.checkbox("Show Audit Trail", value=False)
 
@@ -367,7 +374,7 @@ def display_weekly_provider_billing_dashboard(user_id=None, user_role_ids=None):
 
             # Mark as billed functionality
             if can_edit and not display_df.empty:
-                st.subheader(get_section_title("Billing Actions"))
+                st.markdown("### Billing Actions")
 
                 col1, col2 = st.columns([3, 1])
 
@@ -433,7 +440,7 @@ def display_weekly_provider_billing_dashboard(user_id=None, user_role_ids=None):
                         )
 
             # Export options
-            st.subheader(get_section_title("Export Options"))
+            st.markdown("### Export Options")
 
             col1, col2, col3 = st.columns(3)
 
