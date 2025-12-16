@@ -1,4 +1,0 @@
-coverage_type,description,total_records,details,status
-"Production Complete Sept Coverage","Sept 1-30 Provider Tasks",1,"199 provider tasks + 2913 coordinator tasks","Complete data"
-"Staging Limited Sept Coverage","Sept 26-30 Provider Tasks Only",34,"34 provider tasks, 0 coordinator tasks","Partial data (import design)"
-"Staging Patient Data Coverage",SOURCE_PATIENT_DATA,621,"621 patients in raw sheet format","Source data for import"

@@ -1,3 +1,0 @@
-care.myhealthteam.org, hscheema.duckdns.org {
-    reverse_proxy localhost:8501
-}

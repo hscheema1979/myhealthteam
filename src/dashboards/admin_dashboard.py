@@ -7,7 +7,7 @@ import time
 # try:
 #     # reuse the unfiltered patient summary helper from provider dashboard for consistency
 #     from src.dashboards.care_provider_dashboard_enhanced import show_unfiltered_patient_summary
-# except Exception:
+#   except Exception:
 #     show_unfiltered_patient_summary = None
 from datetime import datetime, timedelta
 
@@ -3050,60 +3050,20 @@ def show():
 
             st.divider()
 
-            # Fetch patients with selected statuses
-            conn = db.get_db_connection()
-            cursor = conn.cursor()
+            # Fetch patients with selected statuses using the new HHC export function
+            hhc_data = db.get_hhc_export_data(selected_statuses)
 
-            query = """
-            SELECT
-                p.patient_id,
-                p.status as 'Pt Status',
-                (SELECT last_visit_date FROM patient_visits WHERE patient_id = p.patient_id ORDER BY last_visit_date DESC LIMIT 1) as 'Last Visit',
-                (SELECT service_type FROM patient_visits WHERE patient_id = p.patient_id ORDER BY last_visit_date DESC LIMIT 1) as 'Last Visit Type',
-                COALESCE(p.last_first_dob, p.last_name || ' ' || p.first_name || ' ' || COALESCE(p.date_of_birth, '')) as 'LAST FIRST DOB',
-                p.last_name as 'Last',
-                p.first_name as 'First',
-                p.phone_primary as 'Contact',
-                (p.first_name || ' ' || p.last_name) as 'Name',
-                p.address_city as 'City',
-                p.facility as 'Fac',
-                COALESCE(p.tv_date, p.initial_tv_completed_date) as 'Initial TV',
-                COALESCE((SELECT DISTINCT pr.first_name || ' ' || pr.last_name FROM provider_tasks pt LEFT JOIN users pr ON pt.provider_id = pr.user_id WHERE pt.patient_id = p.patient_id LIMIT 1), 'Unassigned') as 'Prov',
-                p.insurance_primary as 'Insurance Eligibility',
-                CASE WHEN p.assigned_coordinator_id IS NOT NULL THEN 'Yes' ELSE 'No' END as 'Assigned',
-                COALESCE(p.initial_tv_provider, '') as 'Reg Prov',
-                COALESCE((SELECT first_name || ' ' || last_name FROM users WHERE user_id = p.assigned_coordinator_id), 'Unassigned') as 'Care Coordinator',
-                COALESCE((SELECT step1_date FROM workflow_instances WHERE patient_id = p.patient_id AND LOWER(template_name) LIKE '%prescreen%' LIMIT 1), '') as 'Prescreen Call',
-                p.notes as 'Notes',
-                COALESCE(p.tv_date, p.initial_tv_completed_date) as 'Initial TV Date',
-                COALESCE(p.initial_tv_notes, '') as 'Initial TV Notes',
-                COALESCE((SELECT step1_date FROM workflow_instances WHERE patient_id = p.patient_id AND (LOWER(template_name) LIKE '%home%visit%' OR LOWER(template_name) LIKE '%hv%') LIMIT 1), '') as 'Initial HV Date',
-                NULL as 'Labs',
-                NULL as 'Imaging',
-                p.notes as 'General Notes',
-                p.subjective_risk_level as 'Risk',
-                COALESCE(p.medical_contact_phone, '') as 'Medical POC',
-                COALESCE(p.appointment_contact_phone, '') as 'Appt POC',
-                p.code_status as 'code',
-                p.goc_value as 'goc'
-            FROM patients p
-            WHERE p.status IN ({})
-             ORDER BY p.last_name, p.first_name
-            """
+            if hhc_data:
+                # Convert to DataFrame for consistency with existing code
+                df_hhc = pd.DataFrame(hhc_data)
+                rows = [list(row.values()) for row in hhc_data]
+                columns = list(hhc_data[0].keys())
+            else:
+                df_hhc = pd.DataFrame()
+                rows = []
+                columns = []
 
-            # Build parameter list for SQL IN clause
-            placeholders = ",".join(["?" for _ in selected_statuses])
-            query = query.format(placeholders)
-
-            cursor.execute(query, selected_statuses)
-            columns = [description[0] for description in cursor.description]
-            rows = cursor.fetchall()
-            conn.close()
-
-            if rows:
-                # Create DataFrame with the results
-                df_hhc = pd.DataFrame([dict(zip(columns, row)) for row in rows])
-
+            if rows and not df_hhc.empty:
                 # Display summary metrics
                 col1, col2, col3, col4 = st.columns(4)
                 with col1:

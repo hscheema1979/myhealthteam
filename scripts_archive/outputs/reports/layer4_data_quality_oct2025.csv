@@ -1,3 +1,0 @@
-quality_check,data_type,total_records,valid_patient_names,valid_provider_codes,valid_dates,valid_services,patient_name_quality_score,provider_code_quality_score
-"Data Quality Assessment","Provider Tasks",105,105,105,105,105,100.0,100.0
-"Data Quality Assessment","Coordinator Tasks",0,0,0,0,0,,

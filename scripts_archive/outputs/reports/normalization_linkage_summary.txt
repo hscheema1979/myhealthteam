@@ -1,8 +1,0 @@
-Normalization linkage verification summary (read-only)
-Timestamp: 2025-11-23 21:27:02
-Staging DB: D:\Git\myhealthteam2\Streamlit\sheets_data.db
-Production DB: D:\Git\myhealthteam2\Streamlit\production.db
-
-Provider linkage: 4/42646 matched (0.01%).
-Coordinator linkage: 0/39933 matched (0.00%).
-Tasks without panel: 1; Panel without tasks: 529.

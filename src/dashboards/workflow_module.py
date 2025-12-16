@@ -747,13 +747,41 @@ def show_workflow_management(
 
     with top_col1:
         st.markdown("**Quick Start Workflow**")
+
+        # Build patient options for workflow dropdown
+        # Use passed active_patients if available (respects patient panel filters)
+        # Otherwise fetch all active patients from database
+        if (
+            active_patients
+            and isinstance(active_patients, list)
+            and len(active_patients) > 0
+        ):
+            workflow_patient_options = ["Select Patient..."] + active_patients
+        else:
+            # Fallback: get all active patients from database for supervisors/admins
+            try:
+                conn = get_db_connection()
+                patients_rows = conn.execute("""
+                    SELECT first_name, last_name
+                    FROM patients
+                    WHERE status LIKE 'Active%'
+                    ORDER BY last_name, first_name
+                """).fetchall()
+                conn.close()
+
+                workflow_patient_options = ["Select Patient..."] + [
+                    f"{row['first_name']} {row['last_name']}".strip()
+                    for row in patients_rows
+                ]
+            except Exception as e:
+                st.error(f"Error fetching patients: {e}")
+                workflow_patient_options = ["Select Patient..."]
+
         with st.form("quick_start_workflow_form"):
             # Patient selection
-            if active_patients and isinstance(active_patients, list):
-                patient_options = ["Select Patient..."] + active_patients
-            else:
-                patient_options = ["Select Patient..."]
-            selected_patient = st.selectbox("Patient", patient_options, index=0)
+            selected_patient = st.selectbox(
+                "Patient", workflow_patient_options, index=0
+            )
 
             # Workflow type selection - get from database
             try:

@@ -1,6 +1,0 @@
-database,data_type,total_rows,unique_patients,unique_providers,earliest_date,latest_date,status
-"Production Provider Tasks","Raw Task Data",199,179,6,2025-09-02,2025-09-26,"Normalized system"
-"Production Coordinator Tasks","Raw Task Data",2913,371,6,2025-09-01,2025-09-30,"Normalized system"
-"Production Patient Panel","Normalized Patient Data",533,520,10,,,"Import result"
-"Staging Provider Tasks","Raw Sheet Data",34,34,4,2025-09-26,2025-09-30,"Raw source"
-"Staging Patient Data","Raw Sheet Data",621,595,N/A,N/A,N/A,"Raw source"

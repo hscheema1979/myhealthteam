@@ -1,4 +1,0 @@
-dataset,total_rows,unique_patients,min_date,max_date
-"Staging Provider Tasks (Sept 26-30)",34,34,2025-09-26,2025-09-30
-"Production Provider Tasks (Sept 26-30)",8,8,2025-09-26,2025-09-26
-"Production Provider Tasks (All Sept 2025)",199,179,2025-09-02,2025-09-26

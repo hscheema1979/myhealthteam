@@ -1,7 +1,0 @@
-provider_name,total_tasks,unique_patients,total_minutes,first_task_date,last_task_date,activity_type
-"Szalas NP, Andrew",122,121,5060,2025-09-02,2025-09-26,"Provider task activity"
-"Melara, Claudia",64,58,1520,2025-09-03,2025-09-26,"Provider task activity"
-"Villasenor NP, Lourdes",7,7,150,2025-09-04,2025-09-12,"Provider task activity"
-"Antonio, Ethel",4,4,240,2025-09-03,2025-09-03,"Provider task activity"
-"Malhotra MD, Justin",1,1,,2025-09-04,2025-09-04,"Provider task activity"
-"Jackson, Anisha",1,1,30,2025-09-19,2025-09-19,"Provider task activity"

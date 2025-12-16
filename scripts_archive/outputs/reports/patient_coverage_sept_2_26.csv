@@ -1,4 +1,0 @@
-category,patient_count,source
-"Provider Tasks Patients",179,"Raw patient names from tasks"
-"Coordinator Tasks Patients",359,"Raw patient IDs from tasks"
-"Patient Panel Patients",520,"Normalized patient names"

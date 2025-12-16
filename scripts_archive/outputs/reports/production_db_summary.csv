@@ -1,5 +1,0 @@
-table_name,total_rows,valid_names,earliest_date,latest_date
-"patients table",1065,537,"2025-09-29 18:40:42","2025-11-07 07:39:15"
-"patient_panel table",533,527,"2025-09-27 14:09:42","2025-11-19 07:52:00"
-"provider_tasks table",4737,4737,2001-01-01,2025-09-26
-"coordinator_tasks table",15342,15342,2025-01-03,2025-10-01

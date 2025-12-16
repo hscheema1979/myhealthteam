@@ -574,10 +574,10 @@ def get_onboarding_queue_stats():
         # Get stats from regular patients who might be in onboarding
         patient_stats = conn.execute("""
             SELECT
-                COUNT(CASE WHEN p.status LIKE 'Active%' AND upa.user_id IS NULL THEN 1 END) as unassigned_active_patients,
+                COUNT(CASE WHEN p.status LIKE 'Active%' AND upa.provider_id IS NULL THEN 1 END) as unassigned_active_patients,
                 COUNT(CASE WHEN p.status = 'Active' AND p.created_date > date('now', '-30 days') THEN 1 END) as new_patients_30_days
             FROM patients p
-            LEFT JOIN user_patient_assignments upa ON p.patient_id = upa.patient_id
+            LEFT JOIN patient_assignments upa ON p.patient_id = upa.patient_id
         """).fetchone()
 
         return {
@@ -1461,21 +1461,19 @@ def get_user_patient_assignments(user_id):
         SELECT
             upa.patient_id,
             p.first_name || ' ' || p.last_name AS patient_name,
-            upa.role_id,
-            upa.user_id,
+            upa.provider_id as user_id,
             p.address_street,
             p.address_city,
             p.address_state,
             p.address_zip,
             p.phone_primary,
-            p.email,
             p.status AS patient_status
         FROM
-            user_patient_assignments upa
+            patient_assignments upa
         JOIN
             patients p ON upa.patient_id = p.patient_id
         WHERE
-            upa.user_id = ?;
+            upa.provider_id = ?
     """,
         (user_id,),
     )
@@ -1862,6 +1860,78 @@ def set_default_billing_codes(billing_codes):
         conn.close()
 
 
+def sync_patient_last_visit_all_tables(conn, patient_id, last_visit_date, service_type):
+    """
+    Synchronize last_visit_date and service_type across ALL patient-related tables.
+
+    This ensures consistency when a new visit is recorded:
+    - patients table (canonical source)
+    - patient_panel table (denormalized for dashboards)
+    - hhc_patients_export table (for HHC export views)
+
+    Args:
+        conn: Database connection
+        patient_id: Patient ID to update
+        last_visit_date: Date of the last visit
+        service_type: Type of service from task_description
+    """
+    try:
+        # 1. Update patients table (canonical source)
+        conn.execute(
+            """
+            UPDATE patients
+            SET last_visit_date = ?,
+                service_type = ?
+            WHERE patient_id = ?
+        """,
+            (last_visit_date, service_type, patient_id),
+        )
+
+        # 2. Update patient_panel table (denormalized for dashboard display)
+        conn.execute(
+            """
+            UPDATE patient_panel
+            SET last_visit_date = ?,
+                last_visit_service_type = ?
+            WHERE patient_id = ?
+        """,
+            (last_visit_date, service_type, patient_id),
+        )
+
+        # 3. Update hhc_patients_export table if it exists (for HHC export functionality)
+        # Note: Since hhc_patients_export is materialized from hhc_export_view which queries
+        # from the patients table, updates to patients table automatically propagate
+        # The HHC export view will reflect the latest visit data on next query
+        try:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='hhc_patients_export'"
+            )
+            if cursor.fetchone():
+                # Table exists - trigger a refresh by recreating from view
+                # This ensures HHC export reflects the latest patient data
+                conn.execute("DROP TABLE IF EXISTS hhc_patients_export")
+                conn.execute(
+                    """
+                    CREATE TABLE hhc_patients_export AS
+                    SELECT * FROM hhc_export_view
+                    """
+                )
+                print(f"Refreshed hhc_patients_export for patient {patient_id}")
+        except Exception as e:
+            # HHC export table might not exist yet, which is OK
+            print(f"Note: hhc_patients_export refresh skipped: {e}")
+
+        print(
+            f"Synced last visit ({last_visit_date}, service: {service_type}) across all patient tables for {patient_id}"
+        )
+        return True
+
+    except Exception as e:
+        print(f"Error syncing patient visit data across tables: {e}")
+        return False
+
+
 def save_daily_task(
     provider_id, patient_id, task_date, task_description, notes, billing_code=None
 ):
@@ -2073,57 +2143,36 @@ def save_daily_task(
             except:
                 provider_name = f"Provider ID {provider_id}"
 
+            # Sync last visit data across ALL patient tables (patients, patient_panel, hhc_patients_export)
+            sync_patient_last_visit_all_tables(conn, pid, task_date, task_description)
+
+            # Also update initial TV specific fields in patient_panel
+            conn.execute(
+                """
+                UPDATE patient_panel
+                SET initial_tv_completed = 1,
+                    initial_tv_completed_date = ?,
+                    initial_tv_notes = ?,
+                    initial_tv_provider = ?
+                WHERE patient_id = ?
+            """,
+                (task_date, notes, provider_name, pid),
+            )
+
             # Update initial TV fields in patients table
             conn.execute(
                 """
                 UPDATE patients
-                SET last_visit_date = ?,
-                    initial_tv_completed_date = ?,
+                SET initial_tv_completed_date = ?,
                     initial_tv_notes = ?,
-                    initial_tv_provider = ?,
-                    service_type = ?
+                    initial_tv_provider = ?
                 WHERE patient_id = ?
             """,
-                (task_date, task_date, notes, provider_name, task_description, pid),
-            )
-
-            # Update initial TV fields in patient_panel table
-            conn.execute(
-                """
-                UPDATE patient_panel
-                SET last_visit_date = ?,
-                    initial_tv_completed = 1,
-                    initial_tv_completed_date = ?,
-                    initial_tv_notes = ?,
-                    initial_tv_provider = ?,
-                    last_visit_service_type = ?
-                WHERE patient_id = ?
-            """,
-                (task_date, task_date, notes, provider_name, task_description, pid),
+                (task_date, notes, provider_name, pid),
             )
         else:
-            # For non-initial TV tasks, update last_visit_date and service_type
-            # Update last_visit_date and service_type in patients table
-            conn.execute(
-                """
-                UPDATE patients
-                SET last_visit_date = ?,
-                    service_type = ?
-                WHERE patient_id = ?
-            """,
-                (task_date, task_description, pid),
-            )
-
-            # Update last_visit_date and service_type in patient_panel table
-            conn.execute(
-                """
-                UPDATE patient_panel
-                SET last_visit_date = ?,
-                    last_visit_service_type = ?
-                WHERE patient_id = ?
-            """,
-                (task_date, task_description, pid),
-            )
+            # For non-initial TV tasks, sync last_visit_date and service_type across all tables
+            sync_patient_last_visit_all_tables(conn, pid, task_date, task_description)
 
         conn.commit()
         return True
@@ -3543,107 +3592,82 @@ def get_coordinator_monthly_patient_service_minutes(coordinator_id, months_back=
 
 
 def get_provider_patient_panel_enhanced(user_id):
-    """Get enhanced provider patient panel with new columns (P0 Enhancement)"""
+    """Get all patients from unified patient_panel table for Provider dashboard filtering"""
     conn = get_db_connection()
     try:
-        # Use a subquery to get distinct patient_ids for this user to avoid duplicate assignment rows
-        # Join with patient_panel to get the correct last_visit_date that's used in admin dashboard
+        # Return ALL patients from unified patient_panel - UI will filter by provider_id
         query = """
             SELECT
-                p.patient_id,
-                p.first_name,
-                p.last_name,
-                p.date_of_birth,
-                p.status,
-                p.address_street,
-                p.address_city,
-                p.address_state,
-                p.address_zip,
-                p.phone_primary,
-                p.email,
-                p.facility AS facility,
-                p.current_facility_id,
-                COALESCE(pp.last_visit_date, p.last_visit_date) as last_visit_date,
-                COALESCE(pp.last_visit_service_type, p.service_type) as service_type,
-                pp.last_visit_service_type,
-                pa.coordinator_id as assigned_coordinator_id,
-                pa.provider_id as assigned_provider_id,
-                -- Include clinical fields from patient_panel
-                COALESCE(pp.goc_value, p.goc_value) as goc_value,
-                COALESCE(pp.code_status, p.code_status) as code_status,
-                COALESCE(pp.cognitive_function, p.cognitive_function) as cognitive_function,
-                COALESCE(pp.functional_status, p.functional_status) as functional_status,
-                COALESCE(pp.subjective_risk_level, p.subjective_risk_level) as subjective_risk_level,
-                COALESCE(pp.er_count_1yr, p.er_count_1yr) as er_count_1yr,
-                COALESCE(pp.hospitalization_count_1yr, p.hospitalization_count_1yr) as hospitalization_count_1yr,
-                COALESCE(pp.mental_health_concerns, p.mental_health_concerns) as mental_health_concerns,
-                COALESCE(pp.goals_of_care, p.goals_of_care) as goals_of_care,
-                COALESCE(pp.active_specialists, p.active_specialists) as active_specialists
-            FROM patient_assignments pa
-            JOIN patients p ON pa.patient_id = p.patient_id
-            LEFT JOIN patient_panel pp ON p.patient_id = pp.patient_id
-            WHERE pa.provider_id = ?
-            ORDER BY p.last_name, p.first_name
+                patient_id,
+                first_name,
+                last_name,
+                date_of_birth,
+                phone_primary as phone,
+                facility,
+                status,
+                last_visit_date as last_visited_date_display,
+                last_visit_date,
+                service_type,
+                provider_name as care_provider_name,
+                coordinator_name as care_coordinator_name,
+                code_status,
+                goc_value,
+                subjective_risk_level,
+                provider_id,
+                coordinator_id,
+                goals_of_care,
+                appointment_contact_name,
+                appointment_contact_phone,
+                medical_contact_name,
+                medical_contact_phone
+            FROM patient_panel
+            ORDER BY last_name, first_name
         """
-        result = conn.execute(query, (user_id,)).fetchall()
+        result = conn.execute(query).fetchall()
         return [dict(row) for row in result]
     except Exception as e:
         print(f"Error in get_provider_patient_panel_enhanced: {e}")
-        # Return empty list if all else fails
         return []
     finally:
         conn.close()
 
 
 def get_coordinator_patient_panel_enhanced(user_id):
-    """Get enhanced coordinator patient panel with new columns (P0 Enhancement)"""
+    """Get all patients from unified patient_panel table for Coordinator dashboard filtering"""
     conn = get_db_connection()
     try:
-        # Use a subquery to get distinct patient_ids for this user to avoid duplicate assignment rows
-        # Join with patient_panel to get the correct last_visit_date that's used in admin dashboard
+        # Return ALL patients from unified patient_panel - UI will filter by coordinator_id
         query = """
-SELECT
-    p.patient_id,
-    p.first_name,
-    p.last_name,
-    p.date_of_birth,
-    p.status,
-    p.address_street,
-    p.address_city,
-    p.address_state,
-    p.address_zip,
-    p.phone_primary,
-    p.email,
-    p.facility AS facility,
-    p.current_facility_id,
-    COALESCE(pp.last_visit_date, p.last_visit_date) as last_visit_date,
-    COALESCE(pp.last_visit_service_type, p.service_type) as service_type,
-    pp.last_visit_service_type,
-    p.appointment_contact_name,
-    p.appointment_contact_phone,
-    p.medical_contact_name,
-    p.medical_contact_phone,
-    pa.provider_id as assigned_provider_id,
-    pa.coordinator_id as assigned_coordinator_id
-FROM patient_assignments pa
-JOIN patients p ON pa.patient_id = p.patient_id
-LEFT JOIN patient_panel pp ON p.patient_id = pp.patient_id
-WHERE pa.coordinator_id = ?
-ORDER BY p.last_name, p.first_name
+            SELECT
+                patient_id,
+                first_name,
+                last_name,
+                date_of_birth,
+                phone_primary as phone,
+                facility,
+                status,
+                last_visit_date as last_visited_date_display,
+                last_visit_date,
+                service_type,
+                provider_name as care_provider_name,
+                coordinator_name as care_coordinator_name,
+                code_status,
+                goc_value,
+                subjective_risk_level,
+                provider_id,
+                coordinator_id,
+                goals_of_care,
+                appointment_contact_name,
+                appointment_contact_phone,
+                medical_contact_name,
+                medical_contact_phone,
+                care_provider_name,
+                care_coordinator_name
+            FROM patient_panel
+            ORDER BY last_name, first_name
         """
-        result = conn.execute(query, (user_id,)).fetchall()
-        # Add POC-A and POC-M columns (name & phone combined)
-        patients = []
-        for row in result:
-            d = dict(row)
-            d["POC-A"] = (
-                f"{d.get('appointment_contact_name','') or ''} {d.get('appointment_contact_phone','') or ''}".strip()
-            )
-            d["POC-M"] = (
-                f"{d.get('medical_contact_name','') or ''} {d.get('medical_contact_phone','') or ''}".strip()
-            )
-            patients.append(d)
-        return patients
+        result = conn.execute(query).fetchall()
+        return [dict(row) for row in result]
     except Exception as e:
         print(f"Error in get_coordinator_patient_panel_enhanced: {e}")
         return []
@@ -3670,6 +3694,51 @@ def get_all_facilities():
         conn.close()
 
 
+def get_hhc_export_data(selected_statuses=None):
+    """Get comprehensive HHC export data for admin dashboard"""
+    conn = get_db_connection()
+    try:
+        if not selected_statuses:
+            selected_statuses = ["Active", "Active-PCP", "Active-Geri", "HOSPICE"]
+
+        # Build parameter list for SQL IN clause
+        placeholders = ",".join(["?" for _ in selected_statuses])
+
+        query = f"""
+        SELECT
+            patient_id,
+            status as "Pt Status",
+            last_visit_date as "Last Visit",
+            service_type as "Last Visit Type",
+            COALESCE(last_name || ' ' || first_name || ' ' || COALESCE(date_of_birth, ''), last_name || ' ' || first_name) as "LAST FIRST DOB",
+            last_name as "Last",
+            first_name as "First",
+            phone_primary as "Contact",
+            (first_name || ' ' || last_name) as "Name",
+            facility as "Fac",
+            goals_of_care as "Goals of Care",
+            goc_value as "goc",
+            code_status as "code",
+            subjective_risk_level as "Risk",
+            provider_name as "Prov",
+            coordinator_name as "Care Coordinator",
+            appointment_contact_phone as "Appt POC",
+            medical_contact_phone as "Medical POC",
+            CASE WHEN coordinator_id IS NOT NULL THEN 'Yes' ELSE 'No' END as "Assigned"
+        FROM patient_panel
+        WHERE status IN ({placeholders})
+        ORDER BY last_name, first_name
+        """
+
+        result = conn.execute(query, selected_statuses).fetchall()
+        return [dict(row) for row in result]
+    except Exception as e:
+        print(f"Error in get_hhc_export_data: {e}")
+        return []
+    finally:
+        conn.close()
+
+
 def get_all_patients_simple():
     """Get all patients from the database - simple test function"""
     conn = get_db_connection()
@@ -3689,9 +3758,9 @@ def get_user_patient_assignments_simple(user_id):
     try:
         query = """
             SELECT upa.patient_id, p.first_name, p.last_name, p.status
-            FROM user_patient_assignments upa
+            FROM patient_assignments upa
             JOIN patients p ON upa.patient_id = p.patient_id
-            WHERE upa.user_id = ?
+            WHERE upa.provider_id = ?
             LIMIT 10
         """
         result = conn.execute(query, (user_id,)).fetchall()
@@ -3744,17 +3813,17 @@ def get_provider_panel_patients_by_month(provider_id, selected_month):
                 p.status,
                 p.phone_primary
             FROM (
-                SELECT DISTINCT patient_id FROM user_patient_assignments WHERE user_id = ?
-            ) upa
-            JOIN patients p ON upa.patient_id = p.patient_id
+                SELECT DISTINCT patient_id FROM patient_assignments WHERE provider_id = ?
+            ) assigned
+            JOIN patients p ON assigned.patient_id = p.patient_id
             LEFT JOIN (
-                SELECT patient_id, MAX(task_date) AS last_task_date
+                SELECT patient_id, MAX(task_date) as last_task_date
                 FROM provider_tasks_2025_09
+                WHERE provider_id = ?
                 GROUP BY patient_id
             ) lp ON p.patient_id = lp.patient_id
-            LEFT JOIN facilities f ON p.current_facility_id = f.facility_id
-            WHERE (p.last_visit_date IS NULL OR strftime('%Y-%m', COALESCE(p.last_visit_date, lp.last_task_date)) <= ?)
-            ORDER BY p.last_name, p.first_name
+            LEFT JOIN facilities f ON p.facility_id = f.facility_id
+            WHERE p.status LIKE 'Active%'
         """
 
         result = conn.execute(query, (provider_id, selected_month)).fetchall()
@@ -3815,12 +3884,52 @@ def get_calendar_months():
 def get_all_patient_panel():
     """
     Get all patient records from the patient_panel table.
-    Returns a list of dictionaries containing all patient panel data.
+    Returns a list of dictionaries containing patient data with assigned provider/coordinator info.
     """
     conn = get_db_connection()
     try:
-        query = "SELECT * FROM patient_panel"
+        query = """
+        SELECT
+            patient_id,
+            first_name,
+            last_name,
+            date_of_birth,
+            phone_primary,
+            facility,
+            status,
+            last_visit_date,
+            last_visit_service_type,
+            provider_id,
+            coordinator_id,
+            provider_name,
+            coordinator_name,
+            care_provider_name,
+            care_coordinator_name,
+            goals_of_care,
+            goc_value,
+            code_status,
+            subjective_risk_level,
+            service_type,
+            appointment_contact_name,
+            appointment_contact_phone,
+            medical_contact_name,
+            medical_contact_phone,
+            updated_date
+        FROM patient_panel
+        ORDER BY last_name, first_name
+        """
         df = pd.read_sql_query(query, conn)
+        # Replace NaN with None for proper filtering
+        df = df.where(pd.notnull(df), None)
+
+        # Convert provider_id and coordinator_id to proper integers (not float)
+        # Handle None values properly - convert None to 0 for unassigned patients
+        for col in ["provider_id", "coordinator_id"]:
+            if col in df.columns:
+                df[col] = df[col].apply(
+                    lambda x: int(x) if x is not None and not pd.isna(x) else 0
+                )
+
         return df.to_dict(orient="records")
     except Exception as e:
         print(f"Error in get_all_patient_panel: {e}")

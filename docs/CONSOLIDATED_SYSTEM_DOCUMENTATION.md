@@ -1,7 +1,7 @@
 # ZEN Medical Healthcare Management System - Consolidated Documentation
 
-**Document Version:** 2.0  
-**Last Updated:** December 2025  
+**Document Version:** 2.2  
+**Last Updated:** December 17, 2025
 **Author:** Engineering Team  
 **Purpose:** Comprehensive system documentation reflecting Phase 2 implementation with billing/payroll workflows and actual dashboard architecture
 
@@ -18,6 +18,8 @@
 7. [Technical Implementation](#technical-implementation)
 8. [Deployment and Operations](#deployment-and-operations)
 9. [Security and Compliance](#security-and-compliance)
+10. [Patient Visit Tracking System](#patient-visit-tracking-system)
+11. [December 2025 System Improvements](#december-2025-system-improvements)
 
 ---
 
@@ -936,6 +938,175 @@ All critical operations logged to provider_task_billing_status audit fields:
 
 ---
 
+## Patient Visit Tracking System
+
+### Overview
+The visit tracking system ensures that whenever a provider records a new visit, the `last_visit_date` and `service_type` are synchronously updated across ALL patient-related tables, keeping dashboards and exports in perfect sync.
+
+### Core Components
+
+#### 1. Database Functions (`src/database.py`)
+
+**New Function: `sync_patient_last_visit_all_tables()`** (lines 1862-1925)
+- **Purpose:** Centralized synchronization of visit data across all patient tables
+- **Trigger:** Called from `save_daily_task()` after visit is recorded
+- **Updates 3 tables in single transaction:**
+
+```python
+sync_patient_last_visit_all_tables(conn, patient_id, last_visit_date, service_type)
+```
+
+**Tables Updated:**
+1. **patients** (canonical source):
+   - `last_visit_date` - Date of most recent visit
+   - `service_type` - Type of service from task_description
+
+2. **patient_panel** (denormalized for dashboards):
+   - `last_visit_date` - Synchronized from patients table
+   - `last_visit_service_type` - Synchronized from patients table
+
+3. **hhc_patients_export** (for HHC export functionality):
+   - Automatically refreshed by recreating from `hhc_export_view`
+   - Ensures HHC exports always reflect latest visit data
+
+**Error Handling:**
+- Gracefully handles missing tables (no exceptions thrown)
+- Logs all synchronization operations
+- Continues if individual table updates fail
+
+#### 2. Updated `save_daily_task()` Function (lines 1927-2176)
+
+**Integration Points:**
+- Called when provider logs a visit via Care Provider Dashboard
+- For initial TV (Telehealth) visits:
+  - Calls `sync_patient_last_visit_all_tables()` to update all tables
+  - Updates initial TV specific fields (`initial_tv_completed_date`, `initial_tv_provider`, etc.)
+  - Updates onboarding completion status
+
+- For regular provider visits:
+  - Calls `sync_patient_last_visit_all_tables()` to update all tables
+  - Records visit to monthly `provider_tasks_YYYY_MM` table
+  - Creates billing status record if billable
+
+**Transaction Safety:**
+- All updates committed together in single transaction
+- Rollback on any error
+- Database connection properly closed in finally block
+
+#### 3. Transform Script Updates (`transform_production_data_v3_fixed.py`)
+
+**Updated `update_patient_last_visit_dates()`** (lines 827-902)
+- **Purpose:** Batch update last visit data during data imports/transforms
+- **Captures:** Both `last_visit_date` AND `service_type` from provider task tables
+- **Logic:** Uses ROW_NUMBER() to identify most recent visit per patient
+- **Updates:** `patients` table (source for all downstream tables)
+
+**Updated `populate_patient_panel()`** (lines 904-1066)
+- **New Column:** `last_visit_service_type TEXT` added to schema
+- **Populated From:** `p.service_type as last_visit_service_type`
+- **Purpose:** Denormalized panel view includes service type for dashboard display
+
+### Data Flow Architecture
+
+```
+Provider Records New Visit
+    ↓
+save_daily_task() called with:
+├─ provider_id
+├─ patient_id
+├─ task_date
+├─ task_description (service type)
+├─ billing_code
+└─ notes
+    ↓
+sync_patient_last_visit_all_tables() called
+    ├─→ UPDATE patients table
+    │   ├─ last_visit_date = task_date
+    │   └─ service_type = task_description
+    │
+    ├─→ UPDATE patient_panel table
+    │   ├─ last_visit_date = task_date
+    │   └─ last_visit_service_type = task_description
+    │
+    └─→ Refresh hhc_patients_export table
+        └─ Recreated from hhc_export_view
+           (which queries from patients table)
+    ↓
+Transaction COMMITTED
+    ↓
+All downstream systems updated:
+├─ Care Provider Dashboard (refreshes patient list)
+├─ Admin HHC View (shows latest visits)
+├─ HHC Export (includes current visit data)
+└─ Database queries (all see new visit)
+```
+
+### Dashboard Integration
+
+#### Provider Dashboard (`care_provider_dashboard_enhanced.py`)
+- **Source:** `get_all_patient_panel()` function
+- **Displays:** "Last Visit Date" and "Service Type" columns
+- **Updates:** Real-time when save_daily_task() completes
+- **Color Coding:** Last visit dates colored by recency
+  - Green: ≤30 days
+  - Yellow: 31-60 days
+  - Red: ≥61 days (Gap >60d)
+
+#### Admin HHC View (`admin_dashboard.py` - HHC tab)
+- **Source:** `patient_panel` and `hhc_patients_export` tables
+- **Displays:** "Last Visit", "Last Visit Type" columns
+- **Refresh:** Automatic via sync_patient_last_visit_all_tables()
+- **Used For:** HHC export of patient visit history
+
+#### HHC Export (`get_hhc_export_data()`)
+- **Source:** `patient_panel` table
+- **Columns:** `last_visit_date` and `service_type`
+- **Refresh:** Synced when new visit recorded
+- **Export Format:** CSV with visit tracking fields
+
+### Service Type Classification
+
+Service types come from `task_description` field recorded during visit:
+- **Initial TV Telehealth:** "PCP-Visit Telehealth (TE) (NEW pt)"
+- **Follow-up Visits:** Various provider-entered descriptions
+- **Stored In:**
+  - `patients.service_type` - Current service type
+  - `patient_panel.last_visit_service_type` - Type of last visit
+  - `provider_tasks_YYYY_MM.task_description` - Raw task record
+
+### Data Consistency Guarantees
+
+**Single Source of Truth:**
+- `patients` table is canonical for `last_visit_date` and `service_type`
+- All other tables derive from patients table
+- No conflicting data sources
+
+**Batch Import Consistency:**
+- Transform script (`update_patient_last_visit_dates()`) updates patients table
+- Calls `populate_patient_panel()` to rebuild denormalized view
+- HHC export view queries patients table directly
+
+**Real-Time Consistency:**
+- `save_daily_task()` uses `sync_patient_last_visit_all_tables()` function
+- All tables updated in single transaction
+- HHC export table refreshed immediately
+
+**Error Handling:**
+- Missing tables don't cause failures
+- All updates logged for audit trail
+- Graceful degradation if hhc_patients_export doesn't exist yet
+
+### Key Implementation Rules
+
+✅ **ALWAYS use `sync_patient_last_visit_all_tables()`** when updating visit information  
+✅ **ALWAYS call within same transaction** as visit record creation  
+✅ **ALWAYS include BOTH `last_visit_date` AND `service_type`** in updates  
+✅ **ALWAYS commit after sync function** completes  
+✅ **NEVER update patient_panel directly** - let sync function handle it  
+✅ **NEVER update hhc_patients_export directly** - it's materialized from view  
+
+---
+
 ## Conclusion and Current Status
 
 ### Phase 2 Completion Status
@@ -947,13 +1118,47 @@ All critical operations logged to provider_task_billing_status audit fields:
 - ✅ Hierarchical filtering (Month → Week → Status)
 - ✅ Professional UI standards (no emojis)
 
+### December 16, 2025 - Workflow Assignment Patient Dropdown Fix
+
+**Issue:** Workflow quick start dropdown showed no patients for Jan (supervisor) in the Workflow Assignment tab.
+
+**Root Cause:** The patient list for the workflow dropdown was being filtered by Active* status before being passed, which was failing because the filtering logic was checking status values that didn't exist or were formatted differently.
+
+**Solution Implemented:**
+1. **Primary approach:** Workflow module now fetches active patients directly from the database using SQL `WHERE status LIKE 'Active%'`
+2. **Smart fallback:** If `active_patients` parameter is provided and populated (for regular coordinators with filtered patient panels), use that list (respects patient panel filters)
+3. **Supervisor behavior:** For supervisors/admins (Jan, Jose), falls back to database query and shows ALL active patients system-wide
+4. **Regular coordinator behavior:** For regular coordinators, workflow dropdown matches their patient panel filter selection
+
+**Files Modified:**
+- `src/dashboards/workflow_module.py` (lines 748-779): Updated `show_workflow_management()` function to fetch patients directly from database with smart fallback logic
+- `src/dashboards/care_coordinator_dashboard_enhanced.py` (lines 1413-1431): Simplified patient list generation for passing to workflow module
+
+**Key Implementation Details:**
+```python
+# In workflow_module.py - Quick Start patient selector
+if active_patients and isinstance(active_patients, list) and len(active_patients) > 0:
+    # Use filtered patient list (respects patient panel filters for regular coordinators)
+    workflow_patient_options = ["Select Patient..."] + active_patients
+else:
+    # Fallback: Fetch all active patients from database (for supervisors/admins)
+    # Query: SELECT first_name, last_name FROM patients WHERE status LIKE 'Active%'
+```
+
+**Testing Results:**
+- ✅ Jan can now see all active patients in workflow quick start dropdown
+- ✅ Regular coordinators see filtered patient list matching their patient panel selection
+- ✅ No dependency on patient_data_list transformation logic
+- ✅ Direct database query ensures consistency with actual patient status values
+
 ### Active Issues and Solutions
-1. **Cache Clearing:** After code updates, clear `__pycache__` and restart Streamlit
-2. **Remote Deployment:** Must pull latest code on VPS and restart Streamlit server
+1. **Cache Clearing:** After code updates, clear `__pycache__` and refresh browser (Streamlit auto-reloads)
+2. **Remote Deployment:** Must pull latest code on VPS and refresh browser
 3. **Multi-Role Support:** Always check user_role_ids list, not single role
+4. **Patient Status Filtering:** Use `LIKE 'Active%'` to match all Active variants (Active, Active-Geri, Active-PCP)
 
 ### Next Steps
-1. Test all 8 admin tabs with role 34 user (Harpreet)
+1. Test all workflow assignment functionality with Jan and regular coordinators
 2. Verify weekly billing workflow end-to-end
 3. Verify weekly payroll workflow end-to-end
 4. Document any production data issues

@@ -316,6 +316,28 @@ def can_edit_payroll(user_id, user_role_ids):
 
 def display_weekly_provider_payroll_dashboard(user_id=None, user_role_ids=None):
     """Main provider payroll dashboard for Justin"""
+    
+    # Custom CSS for better dropdown width control
+    st.markdown("""
+    <style>
+    /* Make payroll status dropdown width fit content */
+    div[data-baseweb="selectbox"] > div > div > select {
+        min-width: fit-content !important;
+        width: fit-content !important;
+        max-width: 200px !important;
+    }
+    
+    /* Provider dropdown - also fit content */
+    div[data-testid="stSelectbox-1"] select,
+    div[data-testid="stSelectbox-2"] select,
+    div[data-testid="stSelectbox-3"] select {
+        min-width: fit-content !important;
+        width: fit-content !important;
+        max-width: 250px !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
     st.title("Weekly Provider Payroll Dashboard")
     st.markdown(
         """

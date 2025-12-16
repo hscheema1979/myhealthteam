@@ -1,4 +1,0 @@
-table_name,total_rows,earliest_created,latest_created,data_type
-"Production patient_panel",533,"2025-09-27 14:09:42","2025-11-19 07:52:00","Normalized patient data"
-"Production patients",1065,"2025-09-29 18:40:42","2025-11-07 07:39:15","Master patient data"
-"Staging SOURCE_PATIENT_DATA",621,N/A,N/A,"Raw patient data"

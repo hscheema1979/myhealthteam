@@ -48,7 +48,6 @@ def get_available_months():
                 
                 # Parse the date string and format it properly
                 if date_str and isinstance(date_str, str):
-                    from datetime import datetime
                     date_obj = datetime.strptime(date_str, '%Y-%m-%d')
                     month = date_obj.strftime('%m')
                     year = date_obj.strftime('%Y')
@@ -329,6 +328,27 @@ def export_for_3rd_party_biller(df):
 
 
 def display_weekly_provider_billing_dashboard(user_id=None, user_role_ids=None):
+    # Custom CSS for better dropdown width control
+    st.markdown("""
+    <style>
+    /* Make billing status dropdown width fit content */
+    div[data-baseweb="selectbox"] > div > div > select {
+        min-width: fit-content !important;
+        width: fit-content !important;
+        max-width: 300px !important;
+    }
+    
+    /* Provider dropdown - also fit content */
+    div[data-testid="stSelectbox-1"] select,
+    div[data-testid="stSelectbox-2"] select,
+    div[data-testid="stSelectbox-3"] select {
+        min-width: fit-content !important;
+        width: fit-content !important;
+        max-width: 250px !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
     # Check if user has permission to mark tasks as billed
     can_edit = can_mark_as_billed(user_role_ids or [])
 

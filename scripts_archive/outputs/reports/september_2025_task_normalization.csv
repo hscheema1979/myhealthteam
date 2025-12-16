@@ -1,5 +1,0 @@
-data_source,total_tasks,earliest_date,latest_date
-"Production provider_tasks Sept 2025",199,2025-09-02,2025-09-26
-"Production coordinator_tasks Sept 2025",2913,2025-09-01,2025-09-30
-"Staging staging_provider_tasks Sept 2025",34,2025-09-26,2025-09-30
-"Staging staging_coordinator_tasks Sept 2025",0,,
