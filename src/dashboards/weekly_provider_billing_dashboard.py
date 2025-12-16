@@ -238,26 +238,15 @@ def display_weekly_provider_billing_dashboard(user_id=None, user_role_ids=None):
         return
 
     # Week selector in main content (not sidebar) - matching monthly dashboard pattern
+    selected_week = st.selectbox(
+        "Select Billing Week",
+        options=weeks,
+        format_func=lambda x: x["display"],
+        key="provider_billing_week",
+    )
+
+    # Status filter and options
     col1, col2, col3 = st.columns([2, 1, 1])
-
-    with col1:
-        selected_week = st.selectbox(
-            "Select Billing Week",
-            options=weeks,
-            format_func=lambda x: x["display"],
-            key="provider_billing_week",
-        )
-
-    with col2:
-        if selected_week:
-            st.metric("Week Start", selected_week["week_start_date"])
-
-    with col3:
-        if selected_week:
-            st.metric("Week End", selected_week["week_end_date"])
-
-    # Status filter
-    col1, col2 = st.columns(2)
 
     with col1:
         billing_status_options = get_billing_status_options()
@@ -269,6 +258,12 @@ def display_weekly_provider_billing_dashboard(user_id=None, user_role_ids=None):
 
     with col2:
         show_all_weeks = st.checkbox("Show All Weeks", value=False)
+
+    with col3:
+        if selected_week:
+            st.markdown(
+                f"**Week:** {selected_week['week_start_date']} to {selected_week['week_end_date']}"
+            )
 
     # Main content
     if selected_week:
