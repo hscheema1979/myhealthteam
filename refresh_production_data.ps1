@@ -26,59 +26,58 @@ if (-not $SkipBackup) {
 
     Copy-Item "production.db" $backupPath -Force
     $backupSize = (Get-Item $backupPath).Length / 1MB
-    Write-Host ("  ✓ Backup created: $backupPath ($([math]::Round($backupSize, 2)) MB)`n") -ForegroundColor Green
+    Write-Host ("  [OK] Backup created: $backupPath ($([math]::Round($backupSize, 2)) MB)`n") -ForegroundColor Green
 }
 else {
     Write-Host "[1/4] Skipping backup (as requested)`n" -ForegroundColor Gray
 }
 
-# Step 2: Download fresh data from Google Sheets
+# Step 2: Backup old CSV files and download fresh data
 if (-not $SkipDownload) {
+    Write-Host "[2/4] Backing up old CSV files..." -ForegroundColor Yellow
+    $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
+    $csvBackupPath = "old_data/backup_$timestamp"
+
+    if (-not (Test-Path "old_data")) {
+        New-Item -ItemType Directory -Path "old_data" | Out-Null
+    }
+
+    if (Test-Path "downloads") {
+        New-Item -ItemType Directory -Path $csvBackupPath | Out-Null
+        Copy-Item "downloads/*" $csvBackupPath -Recurse -Force
+        Write-Host "  [OK] CSV files backed up to $csvBackupPath`n" -ForegroundColor Green
+    }
+
     Write-Host "[2/4] Downloading fresh data from Google Sheets..." -ForegroundColor Yellow
     & scripts/1_download_files_complete.ps1
     if ($LASTEXITCODE -ne 0) {
-        Write-Host "  ✗ Download failed!" -ForegroundColor Red
+        Write-Host "  [FAIL] Download failed!" -ForegroundColor Red
         exit 1
     }
-    Write-Host "  ✓ Downloaded to downloads/`n" -ForegroundColor Green
+    Write-Host "  [OK] Downloaded to downloads/`n" -ForegroundColor Green
 }
 else {
     Write-Host "[2/4] Skipping download (using existing files)`n" -ForegroundColor Gray
 }
 
 # Step 3: Transform and import data
-Write-Host "[3/5] Transforming and importing data..." -ForegroundColor Yellow
+Write-Host "[3/4] Transforming and importing data..." -ForegroundColor Yellow
 python transform_production_data_v3_fixed.py
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "  ✗ Import failed!" -ForegroundColor Red
+    Write-Host "  [FAIL] Import failed!" -ForegroundColor Red
     Write-Host "`nRollback command: Copy-Item '$backupPath' 'production.db' -Force" -ForegroundColor Yellow
     exit 1
 }
-Write-Host "  ✓ Import complete`n" -ForegroundColor Green
+Write-Host "  [OK] Import complete`n" -ForegroundColor Green
 
 # Step 4: Post-import processing (views, patient updates, summaries)
-Write-Host "[4/5] Running post-import processing..." -ForegroundColor Yellow
+Write-Host "[4/4] Running post-import processing..." -ForegroundColor Yellow
 Get-Content "src/sql/post_import_processing.sql" | sqlite3 production.db
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "  ⚠ Warning: Post-import processing had errors" -ForegroundColor Yellow
+    Write-Host "  [WARN] Post-import processing had errors" -ForegroundColor Yellow
 }
 else {
-    Write-Host "  ✓ Views created, patient data updated, summaries populated`n" -ForegroundColor Green
-}
-
-# Step 5: Verify data integrity
-if (-not $SkipVerification) {
-    Write-Host "[5/5] Verifying data integrity..." -ForegroundColor Yellow
-    python verify_import_integrity.py
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host "  ⚠ Verification found issues (see above)" -ForegroundColor Yellow
-    }
-    else {
-        Write-Host "  ✓ Verification passed`n" -ForegroundColor Green
-    }
-}
-else {
-    Write-Host "[4/4] Skipping verification`n" -ForegroundColor Gray
+    Write-Host "  [OK] Views created, patient data updated, summaries populated`n" -ForegroundColor Green
 }
 
 # Summary

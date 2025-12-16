@@ -1,31 +1,40 @@
-import sqlite3
-import pandas as pd
-from datetime import datetime, timedelta
-import os
 import calendar
+import os
+import sqlite3
+from datetime import datetime, timedelta
 
+import pandas as pd
 
 # Database path toggle: Checks for 'USE_PROTOTYPE_MODE' file existence
 # This is more reliable than environment variables in nested PowerShell contexts
-PROTOTYPE_FLAG_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'USE_PROTOTYPE_MODE')
+PROTOTYPE_FLAG_FILE = os.path.join(
+    os.path.dirname(os.path.dirname(__file__)), "USE_PROTOTYPE_MODE"
+)
 
-if os.path.exists(PROTOTYPE_FLAG_FILE) or os.getenv('USE_PROTOTYPE') == '1':
+if os.path.exists(PROTOTYPE_FLAG_FILE) or os.getenv("USE_PROTOTYPE") == "1":
     # Use relative path for cross-platform compatibility (Windows + Linux)
     # Assumes prototype.db is in the project root directory
-    _base_db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "prototype.db")
-    print(f"⚠️  USING PROTOTYPE DATABASE (Flag file found: {os.path.exists(PROTOTYPE_FLAG_FILE)}) ⚠️")
+    _base_db_path = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)), "prototype.db"
+    )
+    print(
+        f"⚠️  USING PROTOTYPE DATABASE (Flag file found: {os.path.exists(PROTOTYPE_FLAG_FILE)}) ⚠️"
+    )
 else:
     # Use relative path for cross-platform compatibility (Windows + Linux)
     # Assumes production.db is in the project root directory
-    _base_db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "production.db")
+    _base_db_path = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)), "production.db"
+    )
 
 DB_PATH = os.getenv("DATABASE_PATH", _base_db_path)
+
 
 def get_db_connection(db_path: str = None):
     """Return a SQLite connection. If db_path provided, use that path."""
     if db_path is None:
         db_path = DB_PATH
-    
+
     print(f"Attempting to connect to DB: {db_path}")
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
@@ -38,7 +47,10 @@ def get_coordinator_patient_minutes_for_month(coordinator_id, year, month):
     try:
         table_name = f"coordinator_tasks_{year}_{str(month).zfill(2)}"
         # Check if table exists
-        table_exists = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table_name,)).fetchone()
+        table_exists = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+            (table_name,),
+        ).fetchone()
         if not table_exists:
             return {}
         # Query sum of duration_minutes per patient for this coordinator
@@ -49,7 +61,7 @@ def get_coordinator_patient_minutes_for_month(coordinator_id, year, month):
             GROUP BY patient_id
         """
         result = conn.execute(query, (coordinator_id,)).fetchall()
-        return {row['patient_id']: row['total_minutes'] or 0 for row in result}
+        return {row["patient_id"]: row["total_minutes"] or 0 for row in result}
     except Exception as e:
         print(f"Error in get_coordinator_patient_minutes_for_month: {e}")
         return {}
@@ -69,15 +81,28 @@ def get_coordinator_monthly_minutes_live():
         month = now.month
         table_name = f"coordinator_tasks_{year}_{str(month).zfill(2)}"
         # Check if table exists
-        table_exists = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table_name,)).fetchone()
+        table_exists = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+            (table_name,),
+        ).fetchone()
         if not table_exists:
             return []
-        df = pd.read_sql_query(f"SELECT coordinator_id, duration_minutes FROM {table_name} WHERE duration_minutes IS NOT NULL AND duration_minutes > 0", conn)
+        df = pd.read_sql_query(
+            f"SELECT coordinator_id, duration_minutes FROM {table_name} WHERE duration_minutes IS NOT NULL AND duration_minutes > 0",
+            conn,
+        )
         if df.empty:
             return []
-        summary = df.groupby('coordinator_id').agg({'duration_minutes':'sum'}).reset_index()
-        summary = summary.rename(columns={'coordinator_id':'coordinator_id','duration_minutes':'total_minutes'})
-        return summary.to_dict(orient='records')
+        summary = (
+            df.groupby("coordinator_id").agg({"duration_minutes": "sum"}).reset_index()
+        )
+        summary = summary.rename(
+            columns={
+                "coordinator_id": "coordinator_id",
+                "duration_minutes": "total_minutes",
+            }
+        )
+        return summary.to_dict(orient="records")
     finally:
         conn.close()
 
@@ -88,7 +113,10 @@ def ensure_user_sessions_table(conn: sqlite3.Connection = None):
         if conn is None:
             conn = get_db_connection()
             close_conn = True
-        exists = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", ("user_sessions",)).fetchone()
+        exists = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+            ("user_sessions",),
+        ).fetchone()
         if not exists:
             conn.execute(
                 """
@@ -106,9 +134,11 @@ def ensure_user_sessions_table(conn: sqlite3.Connection = None):
         if close_conn and conn:
             conn.close()
 
+
 def create_user_session(user_id: int, days_valid: int = 30) -> str:
     import uuid
     from datetime import datetime, timedelta
+
     conn = get_db_connection()
     try:
         ensure_user_sessions_table(conn)
@@ -124,8 +154,10 @@ def create_user_session(user_id: int, days_valid: int = 30) -> str:
     finally:
         conn.close()
 
+
 def get_user_by_session(session_id: str):
     from datetime import datetime
+
     conn = get_db_connection()
     try:
         ensure_user_sessions_table(conn)
@@ -135,17 +167,21 @@ def get_user_by_session(session_id: str):
         ).fetchone()
         if not row:
             return None
-        expires_at = row['expires_at'] if 'expires_at' in row.keys() else row[7]
+        expires_at = row["expires_at"] if "expires_at" in row.keys() else row[7]
         try:
             if datetime.fromisoformat(expires_at) < datetime.now():
                 return None
         except Exception:
             pass
-        conn.execute("UPDATE user_sessions SET last_activity = ? WHERE session_id = ?", (datetime.now().isoformat(), session_id))
+        conn.execute(
+            "UPDATE user_sessions SET last_activity = ? WHERE session_id = ?",
+            (datetime.now().isoformat(), session_id),
+        )
         conn.commit()
         return dict(row)
     finally:
         conn.close()
+
 
 def delete_user_session(session_id: str):
     conn = get_db_connection()
@@ -157,7 +193,9 @@ def delete_user_session(session_id: str):
         conn.close()
 
 
-def ensure_monthly_coordinator_tasks_table(year: int = None, month: int = None, conn: sqlite3.Connection = None) -> str:
+def ensure_monthly_coordinator_tasks_table(
+    year: int = None, month: int = None, conn: sqlite3.Connection = None
+) -> str:
     """Ensure the monthly coordinator_tasks table for given year/month exists with required columns.
     - Creates the table if missing with full schema
     - Adds missing columns (source_system, imported_at) if absent
@@ -174,7 +212,10 @@ def ensure_monthly_coordinator_tasks_table(year: int = None, month: int = None, 
             month = int(month or now.month)
         table_name = f"coordinator_tasks_{year}_{str(month).zfill(2)}"
         # Check existence
-        exists = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table_name,)).fetchone()
+        exists = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+            (table_name,),
+        ).fetchone()
         if not exists:
             conn.execute(f"""
                 CREATE TABLE {table_name} (
@@ -196,16 +237,18 @@ def ensure_monthly_coordinator_tasks_table(year: int = None, month: int = None, 
             cols = conn.execute(f"PRAGMA table_info({table_name});").fetchall()
             # Using Row factory, access by name if available, else by index
             try:
-                col_names = {row['name'] for row in cols}
+                col_names = {row["name"] for row in cols}
             except Exception:
                 col_names = {row[1] for row in cols}
-            if 'source_system' not in col_names:
+            if "source_system" not in col_names:
                 conn.execute(f"ALTER TABLE {table_name} ADD COLUMN source_system TEXT;")
-            if 'imported_at' not in col_names:
+            if "imported_at" not in col_names:
                 conn.execute(f"ALTER TABLE {table_name} ADD COLUMN imported_at TEXT;")
             # Add submission_status column for Daily Task Log feature
-            if 'submission_status' not in col_names:
-                conn.execute(f"ALTER TABLE {table_name} ADD COLUMN submission_status TEXT DEFAULT 'pending';")
+            if "submission_status" not in col_names:
+                conn.execute(
+                    f"ALTER TABLE {table_name} ADD COLUMN submission_status TEXT DEFAULT 'pending';"
+                )
             conn.commit()
         return table_name
     finally:
@@ -213,7 +256,9 @@ def ensure_monthly_coordinator_tasks_table(year: int = None, month: int = None, 
             conn.close()
 
 
-def ensure_monthly_provider_tasks_table(year: int = None, month: int = None, conn: sqlite3.Connection = None) -> str:
+def ensure_monthly_provider_tasks_table(
+    year: int = None, month: int = None, conn: sqlite3.Connection = None
+) -> str:
     """Ensure the monthly provider_tasks table for given year/month exists with required columns.
     - Creates the table if missing with full schema
     - Adds missing columns (source_system, imported_at) if absent
@@ -230,7 +275,10 @@ def ensure_monthly_provider_tasks_table(year: int = None, month: int = None, con
             month = int(month or now.month)
         table_name = f"provider_tasks_{year}_{str(month).zfill(2)}"
         # Check existence
-        exists = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table_name,)).fetchone()
+        exists = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+            (table_name,),
+        ).fetchone()
         if not exists:
             conn.execute(f"""
                 CREATE TABLE {table_name} (
@@ -262,12 +310,12 @@ def ensure_monthly_provider_tasks_table(year: int = None, month: int = None, con
             # Verify required columns exist; add if missing
             cols = conn.execute(f"PRAGMA table_info({table_name});").fetchall()
             try:
-                col_names = {row['name'] for row in cols}
+                col_names = {row["name"] for row in cols}
             except Exception:
                 col_names = {row[1] for row in cols}
-            if 'source_system' not in col_names:
+            if "source_system" not in col_names:
                 conn.execute(f"ALTER TABLE {table_name} ADD COLUMN source_system TEXT;")
-            if 'imported_at' not in col_names:
+            if "imported_at" not in col_names:
                 conn.execute(f"ALTER TABLE {table_name} ADD COLUMN imported_at TEXT;")
             conn.commit()
         return table_name
@@ -283,8 +331,11 @@ def get_monthly_task_tables(prefix: str, conn: sqlite3.Connection = None) -> lis
         if conn is None:
             conn = get_db_connection()
             close_conn = True
-        rows = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE ? ORDER BY name", (f"{prefix}%",)).fetchall()
-        return [row['name'] if 'name' in row.keys() else row[0] for row in rows]
+        rows = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name LIKE ? ORDER BY name",
+            (f"{prefix}%",),
+        ).fetchall()
+        return [row["name"] if "name" in row.keys() else row[0] for row in rows]
     finally:
         if close_conn and conn:
             conn.close()
@@ -301,9 +352,12 @@ def count_completed_steps(instance_id: int, conn: sqlite3.Connection = None) -> 
         total = 0
         for tn in tables:
             try:
-                row = conn.execute(f"SELECT COUNT(1) as c FROM {tn} WHERE task_type LIKE ?", (f"WORKFLOW_STEP|{instance_id}|%",)).fetchone()
+                row = conn.execute(
+                    f"SELECT COUNT(1) as c FROM {tn} WHERE task_type LIKE ?",
+                    (f"WORKFLOW_STEP|{instance_id}|%",),
+                ).fetchone()
                 if row:
-                    c = row['c'] if 'c' in row.keys() else row[0]
+                    c = row["c"] if "c" in row.keys() else row[0]
                     total += int(c or 0)
             except Exception:
                 # If table missing or malformed, skip
@@ -332,24 +386,27 @@ def normalize_patient_id(patient_id, conn=None):
             pid_int = None
 
         if pid_int is not None:
-            row = conn.execute("SELECT last_name, first_name, date_of_birth FROM patients WHERE patient_id = ?", (pid_int,)).fetchone()
+            row = conn.execute(
+                "SELECT last_name, first_name, date_of_birth FROM patients WHERE patient_id = ?",
+                (pid_int,),
+            ).fetchone()
             if row:
-                last = (row['last_name'] or '').strip()
-                first = (row['first_name'] or '').strip()
-                dob = row['date_of_birth'] if 'date_of_birth' in row.keys() else None
+                last = (row["last_name"] or "").strip()
+                first = (row["first_name"] or "").strip()
+                dob = row["date_of_birth"] if "date_of_birth" in row.keys() else None
                 parts = []
                 if last:
-                    parts.append(last.replace(',', ''))
+                    parts.append(last.replace(",", ""))
                 if first:
-                    parts.append(first.replace(',', ''))
+                    parts.append(first.replace(",", ""))
                 if dob:
                     parts.append(str(dob))
-                return ' '.join(parts).strip()
+                return " ".join(parts).strip()
 
         # Otherwise normalize string: remove commas and collapse whitespace
-        s = str(patient_id or '')
-        s = s.replace(',', ' ').strip()
-        s = ' '.join(s.split())
+        s = str(patient_id or "")
+        s = s.replace(",", " ").strip()
+        s = " ".join(s.split())
         return s
     finally:
         if close_conn and conn:
@@ -358,28 +415,28 @@ def normalize_patient_id(patient_id, conn=None):
 
 def generate_patient_id(first_name, last_name, date_of_birth):
     """Generate a proper patient_id in the format: LASTNAME FIRSTNAME MM/DD/YYYY
-    
+
     Args:
         first_name (str): Patient's first name
-        last_name (str): Patient's last name  
+        last_name (str): Patient's last name
         date_of_birth (str): Patient's date of birth (YYYY-MM-DD format)
-    
+
     Returns:
         str: Patient ID in format "LASTNAME FIRSTNAME MM/DD/YYYY"
     """
     # Clean and normalize the components (uppercase to match existing patient IDs)
-    last = (last_name or '').strip().upper().replace(',', '').replace(' ', '')
-    first = (first_name or '').strip().upper().replace(',', '').replace(' ', '')
-    dob = str(date_of_birth or '').strip()
-    
+    last = (last_name or "").strip().upper().replace(",", "").replace(" ", "")
+    first = (first_name or "").strip().upper().replace(",", "").replace(" ", "")
+    dob = str(date_of_birth or "").strip()
+
     # Convert date from YYYY-MM-DD to MM/DD/YYYY format
-    if dob and len(dob) == 10 and dob.count('-') == 2:
+    if dob and len(dob) == 10 and dob.count("-") == 2:
         try:
-            year, month, day = dob.split('-')
+            year, month, day = dob.split("-")
             dob = f"{month}/{day}/{year}"
         except:
             pass  # Keep original format if conversion fails
-    
+
     # Build the patient_id
     parts = []
     if last:
@@ -388,41 +445,52 @@ def generate_patient_id(first_name, last_name, date_of_birth):
         parts.append(first)
     if dob:
         parts.append(dob)
-    
-    return ' '.join(parts)
+
+    return " ".join(parts)
 
 
 def get_all_users():
     conn = get_db_connection()
-    users = conn.execute('SELECT user_id, username, full_name, email, status, hire_date FROM users ORDER BY hire_date DESC').fetchall()
+    users = conn.execute(
+        "SELECT user_id, username, full_name, email, status, hire_date FROM users ORDER BY hire_date DESC"
+    ).fetchall()
     conn.close()
     return users
 
+
 def get_all_roles():
     conn = get_db_connection()
-    roles = conn.execute('SELECT role_id, role_name FROM roles').fetchall()
+    roles = conn.execute("SELECT role_id, role_name FROM roles").fetchall()
     conn.close()
     return roles
 
+
 def get_user_roles_by_user_id(user_id):
     conn = get_db_connection()
-    user_roles = conn.execute('SELECT r.role_name, r.role_id, ur.is_primary FROM roles r JOIN user_roles ur ON r.role_id = ur.role_id WHERE ur.user_id = ?', (user_id,)).fetchall()
+    user_roles = conn.execute(
+        "SELECT r.role_name, r.role_id, ur.is_primary FROM roles r JOIN user_roles ur ON r.role_id = ur.role_id WHERE ur.user_id = ?",
+        (user_id,),
+    ).fetchall()
     conn.close()
     return user_roles
+
 
 def deactivate_user(user_id):
     """
     Deactivate a user by setting their status to 'inactive'
-    
+
     Args:
         user_id: The user ID to deactivate
-        
+
     Returns:
         bool: True if successful, False otherwise
     """
     conn = get_db_connection()
     try:
-        cursor = conn.execute("UPDATE users SET status = 'inactive', updated_date = CURRENT_TIMESTAMP WHERE user_id = ?", (user_id,))
+        cursor = conn.execute(
+            "UPDATE users SET status = 'inactive', updated_date = CURRENT_TIMESTAMP WHERE user_id = ?",
+            (user_id,),
+        )
         conn.commit()
         return cursor.rowcount > 0
     except sqlite3.Error as e:
@@ -430,20 +498,24 @@ def deactivate_user(user_id):
         return False
     finally:
         conn.close()
+
 
 def reactivate_user(user_id):
     """
     Reactivate a user by setting their status to 'active'
-    
+
     Args:
         user_id: The user ID to reactivate
-        
+
     Returns:
         bool: True if successful, False otherwise
     """
     conn = get_db_connection()
     try:
-        cursor = conn.execute("UPDATE users SET status = 'active', updated_date = CURRENT_TIMESTAMP WHERE user_id = ?", (user_id,))
+        cursor = conn.execute(
+            "UPDATE users SET status = 'active', updated_date = CURRENT_TIMESTAMP WHERE user_id = ?",
+            (user_id,),
+        )
         conn.commit()
         return cursor.rowcount > 0
     except sqlite3.Error as e:
@@ -452,15 +524,16 @@ def reactivate_user(user_id):
     finally:
         conn.close()
 
+
 def delete_user(user_id):
     """
     Permanently delete a user from the database
-    
+
     WARNING: This is a permanent action that cannot be undone!
-    
+
     Args:
         user_id: The user ID to delete
-        
+
     Returns:
         bool: True if successful, False otherwise
     """
@@ -468,10 +541,10 @@ def delete_user(user_id):
     try:
         # First remove user from user_roles table
         conn.execute("DELETE FROM user_roles WHERE user_id = ?", (user_id,))
-        
+
         # Then remove the user from the users table
         cursor = conn.execute("DELETE FROM users WHERE user_id = ?", (user_id,))
-        
+
         conn.commit()
         return cursor.rowcount > 0
     except sqlite3.Error as e:
@@ -487,38 +560,43 @@ def get_onboarding_queue_stats():
     try:
         # Get stats from onboarding_patients table
         onboarding_stats = conn.execute("""
-            SELECT 
+            SELECT
                 COUNT(*) as total_onboarding,
                 SUM(CASE WHEN patient_id IS NULL THEN 1 ELSE 0 END) as pending_provider_assignment,
                 SUM(CASE WHEN stage1_complete = 0 THEN 1 ELSE 0 END) as pending_initial_contact,
                 SUM(CASE WHEN stage2_complete = 0 AND stage1_complete = 1 THEN 1 ELSE 0 END) as pending_tv_visit,
                 SUM(CASE WHEN stage3_complete = 0 AND stage2_complete = 1 THEN 1 ELSE 0 END) as pending_documentation,
                 SUM(CASE WHEN assigned_pot_user_id IS NULL THEN 1 ELSE 0 END) as unassigned_pot
-            FROM onboarding_patients 
+            FROM onboarding_patients
             WHERE patient_status = 'Active'
         """).fetchone()
-        
+
         # Get stats from regular patients who might be in onboarding
         patient_stats = conn.execute("""
-            SELECT 
+            SELECT
                 COUNT(CASE WHEN p.status LIKE 'Active%' AND upa.user_id IS NULL THEN 1 END) as unassigned_active_patients,
                 COUNT(CASE WHEN p.status = 'Active' AND p.created_date > date('now', '-30 days') THEN 1 END) as new_patients_30_days
             FROM patients p
             LEFT JOIN user_patient_assignments upa ON p.patient_id = upa.patient_id
         """).fetchone()
-        
+
         return {
-            'total_onboarding': onboarding_stats['total_onboarding'] or 0,
-            'pending_provider_assignment': onboarding_stats['pending_provider_assignment'] or 0,
-            'pending_initial_contact': onboarding_stats['pending_initial_contact'] or 0,
-            'pending_tv_visit': onboarding_stats['pending_tv_visit'] or 0,
-            'pending_documentation': onboarding_stats['pending_documentation'] or 0,
-            'unassigned_pot': onboarding_stats['unassigned_pot'] or 0,
-            'unassigned_active_patients': patient_stats['unassigned_active_patients'] or 0,
-            'new_patients_30_days': patient_stats['new_patients_30_days'] or 0
+            "total_onboarding": onboarding_stats["total_onboarding"] or 0,
+            "pending_provider_assignment": onboarding_stats[
+                "pending_provider_assignment"
+            ]
+            or 0,
+            "pending_initial_contact": onboarding_stats["pending_initial_contact"] or 0,
+            "pending_tv_visit": onboarding_stats["pending_tv_visit"] or 0,
+            "pending_documentation": onboarding_stats["pending_documentation"] or 0,
+            "unassigned_pot": onboarding_stats["unassigned_pot"] or 0,
+            "unassigned_active_patients": patient_stats["unassigned_active_patients"]
+            or 0,
+            "new_patients_30_days": patient_stats["new_patients_30_days"] or 0,
         }
     finally:
         conn.close()
+
 
 def ensure_audit_log_table(conn: sqlite3.Connection = None):
     close_conn = False
@@ -526,7 +604,10 @@ def ensure_audit_log_table(conn: sqlite3.Connection = None):
         if conn is None:
             conn = get_db_connection()
             close_conn = True
-        exists = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", ("audit_log",)).fetchone()
+        exists = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+            ("audit_log",),
+        ).fetchone()
         if not exists:
             conn.execute(
                 """
@@ -544,6 +625,7 @@ def ensure_audit_log_table(conn: sqlite3.Connection = None):
         if close_conn and conn:
             conn.close()
 
+
 def log_audit_action(user_id: int, action: str, details: str = None):
     conn = get_db_connection()
     try:
@@ -551,20 +633,28 @@ def log_audit_action(user_id: int, action: str, details: str = None):
         timestamp = datetime.now().isoformat()
         conn.execute(
             "INSERT INTO audit_log(timestamp, user_id, action, details) VALUES(?,?,?,?)",
-            (timestamp, user_id, action, details)
+            (timestamp, user_id, action, details),
         )
         conn.commit()
     finally:
         conn.close()
 
+
 def reassign_patient(patient_id: int, new_provider_id: int, admin_user_id: int) -> bool:
     conn = get_db_connection()
     try:
         # Get current provider for logging
-        current_patient_info = conn.execute("SELECT provider_id FROM patients WHERE patient_id = ?", (patient_id,)).fetchone()
-        old_provider_id = current_patient_info['provider_id'] if current_patient_info else None
+        current_patient_info = conn.execute(
+            "SELECT provider_id FROM patients WHERE patient_id = ?", (patient_id,)
+        ).fetchone()
+        old_provider_id = (
+            current_patient_info["provider_id"] if current_patient_info else None
+        )
 
-        cursor = conn.execute("UPDATE patients SET provider_id = ?, updated_date = CURRENT_TIMESTAMP WHERE patient_id = ?", (new_provider_id, patient_id))
+        cursor = conn.execute(
+            "UPDATE patients SET provider_id = ?, updated_date = CURRENT_TIMESTAMP WHERE patient_id = ?",
+            (new_provider_id, patient_id),
+        )
         conn.commit()
 
         if cursor.rowcount > 0:
@@ -578,17 +668,18 @@ def reassign_patient(patient_id: int, new_provider_id: int, admin_user_id: int) 
     finally:
         conn.close()
 
+
 def get_onboarding_tasks_by_role(role_id, user_id=None):
     """Get onboarding tasks for a specific role or user"""
     conn = get_db_connection()
     try:
         if role_id == 36:  # Care Coordinator
             query = """
-                SELECT 
+                SELECT
                     op.first_name,
                     op.last_name,
                     op.created_date,
-                    CASE 
+                    CASE
                         WHEN op.stage1_complete = 0 THEN 'Initial Contact Needed'
                         WHEN op.stage2_complete = 0 THEN 'TV Visit Scheduling'
                         WHEN op.stage3_complete = 0 THEN 'Documentation Review'
@@ -602,7 +693,7 @@ def get_onboarding_tasks_by_role(role_id, user_id=None):
             tasks = conn.execute(query, (user_id,)).fetchall()
         elif role_id == 33:  # Care Provider
             query = """
-                SELECT 
+                SELECT
                     op.first_name,
                     op.last_name,
                     op.created_date,
@@ -616,49 +707,61 @@ def get_onboarding_tasks_by_role(role_id, user_id=None):
             tasks = conn.execute(query).fetchall()
         else:
             tasks = []
-        
+
         return [dict(task) for task in tasks]
     finally:
         conn.close()
+
 
 def get_onboarding_patient_details(onboarding_id):
     """Get detailed onboarding patient information for stepper display"""
     conn = get_db_connection()
     try:
         # Get onboarding patient data
-        patient = conn.execute("""
-            SELECT * FROM onboarding_patients 
+        patient = conn.execute(
+            """
+            SELECT * FROM onboarding_patients
             WHERE onboarding_id = ?
-        """, (onboarding_id,)).fetchone()
-        
+        """,
+            (onboarding_id,),
+        ).fetchone()
+
         if patient:
             patient_dict = dict(patient)
-            
+
             # Check if patient exists in patients table and get actual initial_tv_completed status
-            if patient_dict.get('patient_id'):
-                patients_data = conn.execute("""
+            if patient_dict.get("patient_id"):
+                patients_data = conn.execute(
+                    """
                     SELECT initial_tv_completed, initial_tv_completed_date, initial_tv_notes
-                    FROM patients 
+                    FROM patients
                     WHERE patient_id = ?
-                """, (patient_dict['patient_id'],)).fetchone()
-                
+                """,
+                    (patient_dict["patient_id"],),
+                ).fetchone()
+
                 if patients_data:
                     # Override onboarding table values with actual patients table values
-                    patient_dict['initial_tv_completed'] = patients_data['initial_tv_completed'] or False
-                    patient_dict['initial_tv_completed_date'] = patients_data['initial_tv_completed_date']
-                    patient_dict['initial_tv_notes'] = patients_data['initial_tv_notes']
-            
+                    patient_dict["initial_tv_completed"] = (
+                        patients_data["initial_tv_completed"] or False
+                    )
+                    patient_dict["initial_tv_completed_date"] = patients_data[
+                        "initial_tv_completed_date"
+                    ]
+                    patient_dict["initial_tv_notes"] = patients_data["initial_tv_notes"]
+
             return patient_dict
         return None
     finally:
         conn.close()
+
 
 def get_onboarding_queue():
     """Get the current onboarding queue with patient status and TV completion info"""
     conn = get_db_connection()
     try:
         queue = conn.execute("""
-            SELECT 
+            SELECT
                 op.onboarding_id,
                 op.patient_id,
                 op.first_name || ' ' || op.last_name as patient_name,
@@ -669,7 +772,7 @@ def get_onboarding_queue():
                 op.stage5_complete,
                 op.created_date,
                 op.updated_date,
-                CASE 
+                CASE
                     WHEN NOT op.stage1_complete THEN 'Patient Registration'
                     WHEN NOT op.stage2_complete THEN 'Eligibility Verification'
                     WHEN NOT op.stage3_complete THEN 'Chart Creation'
@@ -677,7 +780,7 @@ def get_onboarding_queue():
                     WHEN NOT op.stage5_complete THEN 'TV Visit Scheduling'
                     ELSE 'Workflow Complete'
                 END as current_stage,
-                CASE 
+                CASE
                     WHEN op.created_date > datetime('now', '-1 day') THEN 'High'
                     WHEN op.created_date > datetime('now', '-3 days') THEN 'Medium'
                     ELSE 'Normal'
@@ -688,12 +791,12 @@ def get_onboarding_queue():
                 p.initial_tv_completed_date,
                 p.initial_tv_provider,
                 -- Check if ready for Stage 5 completion
-                CASE 
-                    WHEN op.stage4_complete = 1 
-                         AND op.stage5_complete = 0 
-                         AND COALESCE(p.initial_tv_completed, 0) = 1 
-                    THEN 1 
-                    ELSE 0 
+                CASE
+                    WHEN op.stage4_complete = 1
+                         AND op.stage5_complete = 0
+                         AND COALESCE(p.initial_tv_completed, 0) = 1
+                    THEN 1
+                    ELSE 0
                 END as ready_for_stage5_completion
             FROM onboarding_patients op
             LEFT JOIN users u ON op.assigned_pot_user_id = u.user_id
@@ -701,15 +804,19 @@ def get_onboarding_queue():
             WHERE op.patient_status = 'Active'
             ORDER BY op.created_date ASC
         """).fetchall()
-        
+
         return [dict(row) for row in queue]
     finally:
         conn.close()
 
+
 def add_user_role(user_id, role_id):
     conn = get_db_connection()
     try:
-        conn.execute("INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)", (user_id, role_id))
+        conn.execute(
+            "INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)",
+            (user_id, role_id),
+        )
         conn.commit()
     except sqlite3.IntegrityError:
         # User already has this role
@@ -717,38 +824,49 @@ def add_user_role(user_id, role_id):
     finally:
         conn.close()
 
+
 def remove_user_role(user_id, role_id):
     conn = get_db_connection()
-    conn.execute("DELETE FROM user_roles WHERE user_id = ? AND role_id = ?", (user_id, role_id))
+    conn.execute(
+        "DELETE FROM user_roles WHERE user_id = ? AND role_id = ?", (user_id, role_id)
+    )
     conn.commit()
     conn.close()
+
 
 def set_primary_role(user_id, role_id):
     conn = get_db_connection()
     # First, set all roles for the user to not be primary
     conn.execute("UPDATE user_roles SET is_primary = 0 WHERE user_id = ?", (user_id,))
     # Then, set the specified role to be primary
-    conn.execute("UPDATE user_roles SET is_primary = 1 WHERE user_id = ? AND role_id = ?", (user_id, role_id))
+    conn.execute(
+        "UPDATE user_roles SET is_primary = 1 WHERE user_id = ? AND role_id = ?",
+        (user_id, role_id),
+    )
     conn.commit()
     conn.close()
 
+
 def get_user_roles():
     conn = get_db_connection()
-    roles = conn.execute('SELECT * FROM roles').fetchall()
+    roles = conn.execute("SELECT * FROM roles").fetchall()
     conn.close()
     return roles
 
+
 def get_users():
     conn = get_db_connection()
-    users = conn.execute('SELECT * FROM users').fetchall()
+    users = conn.execute("SELECT * FROM users").fetchall()
     conn.close()
     return users
 
+
 def get_user_by_id(user_id):
     conn = get_db_connection()
-    user = conn.execute('SELECT * FROM users WHERE user_id = ?', (user_id,)).fetchone()
+    user = conn.execute("SELECT * FROM users WHERE user_id = ?", (user_id,)).fetchone()
     conn.close()
     return user
+
 
 def get_users_by_role(role_identifier):
     """Get all users with a specific role - works with role_id (int) or role_name (string)"""
@@ -756,22 +874,28 @@ def get_users_by_role(role_identifier):
     try:
         if isinstance(role_identifier, int):
             # Handle role_id
-            users = conn.execute("""
+            users = conn.execute(
+                """
                 SELECT u.user_id, u.username, u.full_name, r.role_name
                 FROM users u
                 JOIN user_roles ur ON u.user_id = ur.user_id
                 JOIN roles r ON ur.role_id = r.role_id
                 WHERE r.role_id = ?
-            """, (role_identifier,)).fetchall()
+            """,
+                (role_identifier,),
+            ).fetchall()
         else:
             # Handle role_name (string)
-            users = conn.execute("""
+            users = conn.execute(
+                """
                 SELECT u.user_id, u.username, u.full_name, r.role_name
                 FROM users u
                 JOIN user_roles ur ON u.user_id = ur.user_id
                 JOIN roles r ON ur.role_id = r.role_id
                 WHERE r.role_name = ?
-            """, (role_identifier,)).fetchall()
+            """,
+                (role_identifier,),
+            ).fetchall()
         return [dict(user) for user in users]
     except Exception as e:
         print(f"Error in get_users_by_role: {e}")
@@ -779,25 +903,30 @@ def get_users_by_role(role_identifier):
     finally:
         conn.close()
 
+
 def get_provider_onboarding_queue(provider_user_id):
     """Get onboarding patients assigned to a specific provider for initial TV visits"""
     conn = get_db_connection()
     try:
         # Get the provider's full name from user_id
-        provider_cursor = conn.execute("""
+        provider_cursor = conn.execute(
+            """
             SELECT full_name FROM users WHERE user_id = ?
-        """, (provider_user_id,))
+        """,
+            (provider_user_id,),
+        )
         provider_result = provider_cursor.fetchone()
-        
+
         if not provider_result:
             return []
-            
+
         provider_full_name = provider_result[0]
-        
+
         # Get onboarding patients assigned to this provider who need initial visit
         # Look for patients where initial_tv_provider matches provider's full name and initial_tv_completed = 0
-        onboarding_patients = conn.execute("""
-            SELECT 
+        onboarding_patients = conn.execute(
+            """
+            SELECT
                 op.onboarding_id,
                 op.patient_id,
                 op.first_name,
@@ -819,19 +948,22 @@ def get_provider_onboarding_queue(provider_user_id):
                 op.billing_code,
                 op.duration_minutes
             FROM onboarding_patients op
-            WHERE op.initial_tv_provider = ? 
+            WHERE op.initial_tv_provider = ?
             AND (op.initial_tv_completed = 0 OR op.initial_tv_completed IS NULL)
             AND op.patient_status IN ('Active', 'Active-Geri')
             ORDER BY op.tv_date ASC, op.created_date ASC
-        """, (provider_full_name,)).fetchall()
-        
+        """,
+            (provider_full_name,),
+        ).fetchall()
+
         return [dict(patient) for patient in onboarding_patients]
-        
+
     except Exception as e:
         print(f"Error getting provider onboarding queue: {e}")
         return []
     finally:
         conn.close()
+
 
 def save_onboarding_tv_scheduling_progress(onboarding_id, form_data):
     """Save partial progress for TV scheduling form without completing the stage"""
@@ -839,42 +971,63 @@ def save_onboarding_tv_scheduling_progress(onboarding_id, form_data):
     try:
         # Extract provider user_id from the selection format "Full Name (username)"
         provider_user_id = None
-        if form_data.get('assigned_provider') and form_data['assigned_provider'] != "Select Provider...":
+        if (
+            form_data.get("assigned_provider")
+            and form_data["assigned_provider"] != "Select Provider..."
+        ):
             # Get the username from the format "Full Name (username)"
-            username = form_data['assigned_provider'].split('(')[-1].replace(')', '').strip()
-            provider_cursor = conn.execute("SELECT user_id FROM users WHERE username = ?", (username,))
+            username = (
+                form_data["assigned_provider"].split("(")[-1].replace(")", "").strip()
+            )
+            provider_cursor = conn.execute(
+                "SELECT user_id FROM users WHERE username = ?", (username,)
+            )
             provider_result = provider_cursor.fetchone()
             if provider_result:
                 provider_user_id = provider_result[0]
-        
+
         # Extract coordinator user_id from the selection format "Full Name (username)"
         coordinator_user_id = None
-        if form_data.get('assigned_coordinator') and form_data['assigned_coordinator'] != "Select Coordinator...":
+        if (
+            form_data.get("assigned_coordinator")
+            and form_data["assigned_coordinator"] != "Select Coordinator..."
+        ):
             # Get the username from the format "Full Name (username)"
-            username = form_data['assigned_coordinator'].split('(')[-1].replace(')', '').strip()
-            coordinator_cursor = conn.execute("SELECT user_id FROM users WHERE username = ?", (username,))
+            username = (
+                form_data["assigned_coordinator"]
+                .split("(")[-1]
+                .replace(")", "")
+                .strip()
+            )
+            coordinator_cursor = conn.execute(
+                "SELECT user_id FROM users WHERE username = ?", (username,)
+            )
             coordinator_result = coordinator_cursor.fetchone()
             if coordinator_result:
                 coordinator_user_id = coordinator_result[0]
-        
+
         # Convert time object to string if needed
-        tv_time = form_data.get('tv_time')
-        if tv_time and hasattr(tv_time, 'strftime'):
-            tv_time = tv_time.strftime('%H:%M:%S')
-        
-        # Convert date object to string if needed  
-        tv_date = form_data.get('tv_date')
-        if tv_date and hasattr(tv_date, 'strftime'):
-            tv_date = tv_date.strftime('%Y-%m-%d')
-        
+        tv_time = form_data.get("tv_time")
+        if tv_time and hasattr(tv_time, "strftime"):
+            tv_time = tv_time.strftime("%H:%M:%S")
+
+        # Convert date object to string if needed
+        tv_date = form_data.get("tv_date")
+        if tv_date and hasattr(tv_date, "strftime"):
+            tv_date = tv_date.strftime("%Y-%m-%d")
+
         # Extract provider name for initial_tv_provider field
         initial_tv_provider = None
-        if form_data.get('assigned_provider') and form_data['assigned_provider'] != "Select Provider...":
+        if (
+            form_data.get("assigned_provider")
+            and form_data["assigned_provider"] != "Select Provider..."
+        ):
             # Extract the full name from the format "Full Name (username)"
-            initial_tv_provider = form_data['assigned_provider'].split('(')[0].strip()
+            initial_tv_provider = form_data["assigned_provider"].split("(")[0].strip()
 
         # Update onboarding patient record with partial progress
-        conn.execute("""
+        conn.execute(
+            """
             UPDATE onboarding_patients
             SET tv_date = ?,
                 tv_time = ?,
@@ -886,122 +1039,152 @@ def save_onboarding_tv_scheduling_progress(onboarding_id, form_data):
                 duration_minutes = ?,
                 updated_date = CURRENT_TIMESTAMP
             WHERE onboarding_id = ?
-        """, (
-            tv_date, 
-            tv_time,
-            provider_user_id,
-            coordinator_user_id,
-            initial_tv_provider,
-            form_data.get('visit_type', 'Home Visit'),
-            form_data.get('billing_code', '99345'),
-            form_data.get('duration_minutes', 45),
-            onboarding_id
-        ))
-        
+        """,
+            (
+                tv_date,
+                tv_time,
+                provider_user_id,
+                coordinator_user_id,
+                initial_tv_provider,
+                form_data.get("visit_type", "Home Visit"),
+                form_data.get("billing_code", "99345"),
+                form_data.get("duration_minutes", 45),
+                onboarding_id,
+            ),
+        )
+
         # Update checkbox fields if provided
         checkbox_data = {}
-        if 'tv_scheduled' in form_data:
-            checkbox_data['tv_scheduled'] = form_data['tv_scheduled']
-        if 'patient_notified' in form_data:
-            checkbox_data['patient_notified'] = form_data['patient_notified']
-        if 'initial_tv_completed' in form_data:
-            checkbox_data['initial_tv_completed'] = form_data['initial_tv_completed']
-        
+        if "tv_scheduled" in form_data:
+            checkbox_data["tv_scheduled"] = form_data["tv_scheduled"]
+        if "patient_notified" in form_data:
+            checkbox_data["patient_notified"] = form_data["patient_notified"]
+        if "initial_tv_completed" in form_data:
+            checkbox_data["initial_tv_completed"] = form_data["initial_tv_completed"]
+
         # Update checkbox fields within the same transaction to avoid multiple connections
         if checkbox_data:
             update_fields = []
             update_params = []
-            
+
             for field, value in checkbox_data.items():
                 update_fields.append(f"{field} = ?")
                 update_params.append(value)
-            
+
             if update_fields:
                 update_fields.append("updated_date = datetime('now')")
                 update_params.append(onboarding_id)
-                
+
                 checkbox_query = f"""
-                    UPDATE onboarding_patients 
+                    UPDATE onboarding_patients
                     SET {', '.join(update_fields)}
                     WHERE onboarding_id = ?
                 """
-                
+
                 conn.execute(checkbox_query, update_params)
-        
+
         # Create comprehensive patient records and assignments if provider or coordinator is assigned
         if provider_user_id or coordinator_user_id:
             # Get patient information to create text-based patient_id
-            patient_info = conn.execute("""
+            patient_info = conn.execute(
+                """
                 SELECT first_name, last_name, date_of_birth, patient_id, phone_primary, email, address_street, address_city, address_state, address_zip, insurance_provider, policy_number, emergency_contact_name, emergency_contact_phone
-                FROM onboarding_patients 
+                FROM onboarding_patients
                 WHERE onboarding_id = ?
-            """, (onboarding_id,)).fetchone()
-            
+            """,
+                (onboarding_id,),
+            ).fetchone()
+
             if patient_info:
                 # Generate text-based patient_id for consistency
                 text_patient_id = generate_patient_id(
-                    patient_info['first_name'] or '',
-                    patient_info['last_name'] or '',
-                    patient_info['date_of_birth'] or ''
+                    patient_info["first_name"] or "",
+                    patient_info["last_name"] or "",
+                    patient_info["date_of_birth"] or "",
                 )
-                
+
                 # Only update existing patient records - patient creation is handled by insert_patient_from_onboarding
                 # Check if patient already exists in patients table
-                existing_patient = conn.execute("""
+                existing_patient = conn.execute(
+                    """
                     SELECT patient_id FROM patients WHERE patient_id = ?
-                """, (text_patient_id,)).fetchone()
-                
+                """,
+                    (text_patient_id,),
+                ).fetchone()
+
                 if existing_patient:
                     # Patient exists - only update the initial_tv_provider and updated_date
                     # Preserve all other existing patient data
-                    conn.execute("""
-                        UPDATE patients 
+                    conn.execute(
+                        """
+                        UPDATE patients
                         SET initial_tv_provider = ?, updated_date = datetime('now')
                         WHERE patient_id = ?
-                    """, (initial_tv_provider, text_patient_id))
-                    
+                    """,
+                        (initial_tv_provider, text_patient_id),
+                    )
+
                     # Update patient assignment in patient_assignments table
                     # Check if assignment already exists for this patient
-                    existing = conn.execute("""
-                        SELECT assignment_id FROM patient_assignments 
+                    existing = conn.execute(
+                        """
+                        SELECT assignment_id FROM patient_assignments
                         WHERE patient_id = ? AND assignment_type = ? AND status = 'active'
-                    """, (text_patient_id, "onboarding")).fetchone()
-                    
+                    """,
+                        (text_patient_id, "onboarding"),
+                    ).fetchone()
+
                     if existing:
                         # Update existing assignment
-                        conn.execute("""
-                            UPDATE patient_assignments 
-                            SET provider_id = ?, coordinator_id = ?, priority_level = ?, 
+                        conn.execute(
+                            """
+                            UPDATE patient_assignments
+                            SET provider_id = ?, coordinator_id = ?, priority_level = ?,
                                 notes = ?, updated_date = datetime('now'), updated_by = ?
                             WHERE assignment_id = ?
-                        """, (provider_user_id, coordinator_user_id, "medium", 
-                              "Assignment updated from onboarding TV scheduling progress", None, existing['assignment_id']))
-                    
+                        """,
+                            (
+                                provider_user_id,
+                                coordinator_user_id,
+                                "medium",
+                                "Assignment updated from onboarding TV scheduling progress",
+                                None,
+                                existing["assignment_id"],
+                            ),
+                        )
+
                     # Update assignments in patient_panel table
                     if provider_user_id:
-                        conn.execute("""
+                        conn.execute(
+                            """
                             INSERT OR REPLACE INTO patient_panel (
                                 patient_id, provider_id, status, created_date, updated_date
                             ) VALUES (?, ?, 'active', datetime('now'), datetime('now'))
-                        """, (text_patient_id, provider_user_id))
-                    
+                        """,
+                            (text_patient_id, provider_user_id),
+                        )
+
                     if coordinator_user_id:
-                        conn.execute("""
+                        conn.execute(
+                            """
                             INSERT OR REPLACE INTO patient_panel (
                                 patient_id, coordinator_id, status, created_date, updated_date
                             ) VALUES (?, ?, 'active', datetime('now'), datetime('now'))
-                        """, (text_patient_id, coordinator_user_id))
+                        """,
+                            (text_patient_id, coordinator_user_id),
+                        )
                 else:
                     # Patient doesn't exist yet - this is expected for revisions before Stage 5 completion
                     # Just update the onboarding record with provider/coordinator assignments
                     # Patient creation will be handled by insert_patient_from_onboarding during Stage 5 completion
                     pass
-        
+
         conn.commit()
         return True
-        
+
     except Exception as e:
         import traceback
+
         print(f"Error saving TV scheduling progress: {e}")
         print(f"Error type: {type(e).__name__}")
         print(f"Traceback: {traceback.format_exc()}")
@@ -1011,59 +1194,90 @@ def save_onboarding_tv_scheduling_progress(onboarding_id, form_data):
     finally:
         conn.close()
 
-def update_onboarding_stage5_completion(onboarding_id, tv_date, tv_time, assigned_initial_tv_provider, assigned_regional_provider, assigned_coordinator):
+
+def update_onboarding_stage5_completion(
+    onboarding_id,
+    tv_date,
+    tv_time,
+    assigned_initial_tv_provider,
+    assigned_regional_provider,
+    assigned_coordinator,
+):
     """Update Stage 5 completion with provider assignment and TV scheduling details"""
     conn = get_db_connection()
     try:
         # Extract initial TV provider user_id from the selection format "Full Name (username)"
         initial_tv_provider_user_id = None
-        if assigned_initial_tv_provider and assigned_initial_tv_provider != "Select Provider...":
+        if (
+            assigned_initial_tv_provider
+            and assigned_initial_tv_provider != "Select Provider..."
+        ):
             # Get the username from the format "Full Name (username)"
-            username = assigned_initial_tv_provider.split('(')[-1].replace(')', '').strip()
-            provider_cursor = conn.execute("SELECT user_id FROM users WHERE username = ?", (username,))
+            username = (
+                assigned_initial_tv_provider.split("(")[-1].replace(")", "").strip()
+            )
+            provider_cursor = conn.execute(
+                "SELECT user_id FROM users WHERE username = ?", (username,)
+            )
             provider_result = provider_cursor.fetchone()
             if provider_result:
                 initial_tv_provider_user_id = provider_result[0]
-        
+
         # Extract regional provider user_id from the selection format "Full Name (username)"
         regional_provider_user_id = None
-        if assigned_regional_provider and assigned_regional_provider != "Select Regional Provider...":
+        if (
+            assigned_regional_provider
+            and assigned_regional_provider != "Select Regional Provider..."
+        ):
             # Get the username from the format "Full Name (username)"
-            username = assigned_regional_provider.split('(')[-1].replace(')', '').strip()
-            provider_cursor = conn.execute("SELECT user_id FROM users WHERE username = ?", (username,))
+            username = (
+                assigned_regional_provider.split("(")[-1].replace(")", "").strip()
+            )
+            provider_cursor = conn.execute(
+                "SELECT user_id FROM users WHERE username = ?", (username,)
+            )
             provider_result = provider_cursor.fetchone()
             if provider_result:
                 regional_provider_user_id = provider_result[0]
-        
+
         # Extract coordinator user_id from the selection format "Full Name (username)"
         coordinator_user_id = None
         if assigned_coordinator and assigned_coordinator != "Select Coordinator...":
             # Get the username from the format "Full Name (username)"
-            username = assigned_coordinator.split('(')[-1].replace(')', '').strip()
-            coordinator_cursor = conn.execute("SELECT user_id FROM users WHERE username = ?", (username,))
+            username = assigned_coordinator.split("(")[-1].replace(")", "").strip()
+            coordinator_cursor = conn.execute(
+                "SELECT user_id FROM users WHERE username = ?", (username,)
+            )
             coordinator_result = coordinator_cursor.fetchone()
             if coordinator_result:
                 coordinator_user_id = coordinator_result[0]
-        
+
         # Convert time and date objects to strings if needed
-        if tv_time and hasattr(tv_time, 'strftime'):
-            tv_time = tv_time.strftime('%H:%M:%S')
-        if tv_date and hasattr(tv_date, 'strftime'):
-            tv_date = tv_date.strftime('%Y-%m-%d')
-        
+        if tv_time and hasattr(tv_time, "strftime"):
+            tv_time = tv_time.strftime("%H:%M:%S")
+        if tv_date and hasattr(tv_date, "strftime"):
+            tv_date = tv_date.strftime("%Y-%m-%d")
+
         # Extract provider name for initial_tv_provider field
         initial_tv_provider = None
-        if assigned_initial_tv_provider and assigned_initial_tv_provider != "Select Provider...":
+        if (
+            assigned_initial_tv_provider
+            and assigned_initial_tv_provider != "Select Provider..."
+        ):
             # Extract the full name from the format "Full Name (username)"
-            initial_tv_provider = assigned_initial_tv_provider.split('(')[0].strip()
-        
+            initial_tv_provider = assigned_initial_tv_provider.split("(")[0].strip()
+
         # Get patient_id from onboarding record to create patient assignment
-        patient_cursor = conn.execute("SELECT patient_id FROM onboarding_patients WHERE onboarding_id = ?", (onboarding_id,))
+        patient_cursor = conn.execute(
+            "SELECT patient_id FROM onboarding_patients WHERE onboarding_id = ?",
+            (onboarding_id,),
+        )
         patient_result = patient_cursor.fetchone()
         patient_id = patient_result[0] if patient_result else None
-        
+
         # Update onboarding patient record - use regional provider for assigned_provider_user_id
-        conn.execute("""
+        conn.execute(
+            """
             UPDATE onboarding_patients
             SET tv_date = ?,
                 tv_time = ?,
@@ -1072,56 +1286,80 @@ def update_onboarding_stage5_completion(onboarding_id, tv_date, tv_time, assigne
                 initial_tv_provider = ?,
                 updated_date = CURRENT_TIMESTAMP
             WHERE onboarding_id = ?
-        """, (tv_date, tv_time, regional_provider_user_id, coordinator_user_id, initial_tv_provider, onboarding_id))
-        
+        """,
+            (
+                tv_date,
+                tv_time,
+                regional_provider_user_id,
+                coordinator_user_id,
+                initial_tv_provider,
+                onboarding_id,
+            ),
+        )
+
         # Create or update patient assignment record if we have a patient_id and assignments
         if patient_id and (regional_provider_user_id or coordinator_user_id):
             # Check if assignment already exists for this patient
-            existing = conn.execute("""
-                SELECT assignment_id FROM patient_assignments 
+            existing = conn.execute(
+                """
+                SELECT assignment_id FROM patient_assignments
                 WHERE patient_id = ? AND assignment_type = 'onboarding' AND status = 'active'
-            """, (patient_id,)).fetchone()
-            
+            """,
+                (patient_id,),
+            ).fetchone()
+
             if existing:
                 # Update existing assignment
-                conn.execute("""
-                    UPDATE patient_assignments 
-                    SET provider_id = ?, coordinator_id = ?, 
-                        notes = 'Updated from onboarding Stage 5 completion', 
+                conn.execute(
+                    """
+                    UPDATE patient_assignments
+                    SET provider_id = ?, coordinator_id = ?,
+                        notes = 'Updated from onboarding Stage 5 completion',
                         updated_date = datetime('now')
                     WHERE assignment_id = ?
-                """, (regional_provider_user_id, coordinator_user_id, existing['assignment_id']))
+                """,
+                    (
+                        regional_provider_user_id,
+                        coordinator_user_id,
+                        existing["assignment_id"],
+                    ),
+                )
             else:
                 # Create new assignment
-                conn.execute("""
+                conn.execute(
+                    """
                     INSERT INTO patient_assignments (
-                        patient_id, provider_id, coordinator_id, assignment_date, 
-                        assignment_type, status, priority_level, notes, 
+                        patient_id, provider_id, coordinator_id, assignment_date,
+                        assignment_type, status, priority_level, notes,
                         created_date, updated_date
-                    ) VALUES (?, ?, ?, datetime('now'), 'onboarding', 'active', 'medium', 
-                             'Assignment created from onboarding Stage 5 completion', 
+                    ) VALUES (?, ?, ?, datetime('now'), 'onboarding', 'active', 'medium',
+                             'Assignment created from onboarding Stage 5 completion',
                              datetime('now'), datetime('now'))
-                """, (patient_id, regional_provider_user_id, coordinator_user_id))
-        
+                """,
+                    (patient_id, regional_provider_user_id, coordinator_user_id),
+                )
+
         conn.commit()
         return True
-        
+
     except Exception as e:
         print(f"Error updating Stage 5 completion: {e}")
         return False
     finally:
         conn.close()
 
+
 def get_tasks_by_user(user_id):
     conn = get_db_connection()
-    tasks = conn.execute('SELECT * FROM tasks WHERE user_id = ?', (user_id,)).fetchall()
+    tasks = conn.execute("SELECT * FROM tasks WHERE user_id = ?", (user_id,)).fetchall()
     conn.close()
     return tasks
+
 
 def add_user(username, password, first_name, last_name, email, role_name):
     """
     Add a new user with plain text password (will be hashed)
-    
+
     Args:
         username: User's username
         password: Plain text password (will be hashed)
@@ -1131,20 +1369,33 @@ def add_user(username, password, first_name, last_name, email, role_name):
         role_name: Role name to assign
     """
     import hashlib
-    
+
     # Hash the password before storing
     hashed_password = hashlib.sha256(password.encode()).hexdigest()
-    
+
     conn = get_db_connection()
     try:
-        role = conn.execute('SELECT role_id FROM roles WHERE role_name = ?', (role_name,)).fetchone()
+        role = conn.execute(
+            "SELECT role_id FROM roles WHERE role_name = ?", (role_name,)
+        ).fetchone()
         if role:
-            role_id = role['role_id']
-            cursor = conn.execute("INSERT INTO users (username, password, first_name, last_name, email, full_name, status, hire_date) VALUES (?, ?, ?, ?, ?, ?, 'active', CURRENT_DATE)",
-                                  (username, hashed_password, first_name, last_name, email, f"{first_name} {last_name}"))
+            role_id = role["role_id"]
+            cursor = conn.execute(
+                "INSERT INTO users (username, password, first_name, last_name, email, full_name, status, hire_date) VALUES (?, ?, ?, ?, ?, ?, 'active', CURRENT_DATE)",
+                (
+                    username,
+                    hashed_password,
+                    first_name,
+                    last_name,
+                    email,
+                    f"{first_name} {last_name}",
+                ),
+            )
             user_id = cursor.lastrowid
-            conn.execute("INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)",
-                         (user_id, role_id))
+            conn.execute(
+                "INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)",
+                (user_id, role_id),
+            )
             conn.commit()
             return user_id
         return None
@@ -1154,10 +1405,13 @@ def add_user(username, password, first_name, last_name, email, role_name):
     finally:
         conn.close()
 
-def add_user_with_hashed_password(username, hashed_password, first_name, last_name, email, role_name):
+
+def add_user_with_hashed_password(
+    username, hashed_password, first_name, last_name, email, role_name
+):
     """
     Add a new user with pre-hashed password
-    
+
     Args:
         username: User's username
         hashed_password: Already hashed password
@@ -1168,14 +1422,27 @@ def add_user_with_hashed_password(username, hashed_password, first_name, last_na
     """
     conn = get_db_connection()
     try:
-        role = conn.execute('SELECT role_id FROM roles WHERE role_name = ?', (role_name,)).fetchone()
+        role = conn.execute(
+            "SELECT role_id FROM roles WHERE role_name = ?", (role_name,)
+        ).fetchone()
         if role:
-            role_id = role['role_id']
-            cursor = conn.execute("INSERT INTO users (username, password, first_name, last_name, email, full_name, status, hire_date) VALUES (?, ?, ?, ?, ?, ?, 'active', CURRENT_DATE)",
-                                  (username, hashed_password, first_name, last_name, email, f"{first_name} {last_name}"))
+            role_id = role["role_id"]
+            cursor = conn.execute(
+                "INSERT INTO users (username, password, first_name, last_name, email, full_name, status, hire_date) VALUES (?, ?, ?, ?, ?, ?, 'active', CURRENT_DATE)",
+                (
+                    username,
+                    hashed_password,
+                    first_name,
+                    last_name,
+                    email,
+                    f"{first_name} {last_name}",
+                ),
+            )
             user_id = cursor.lastrowid
-            conn.execute("INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)",
-                         (user_id, role_id))
+            conn.execute(
+                "INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)",
+                (user_id, role_id),
+            )
             conn.commit()
             return user_id
         return None
@@ -1185,10 +1452,12 @@ def add_user_with_hashed_password(username, hashed_password, first_name, last_na
     finally:
         conn.close()
 
+
 def get_user_patient_assignments(user_id):
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("""
+    cursor.execute(
+        """
         SELECT
             upa.patient_id,
             p.first_name || ' ' || p.last_name AS patient_name,
@@ -1207,10 +1476,13 @@ def get_user_patient_assignments(user_id):
             patients p ON upa.patient_id = p.patient_id
         WHERE
             upa.user_id = ?;
-    """, (user_id,))
+    """,
+        (user_id,),
+    )
     assignments = cursor.fetchall()
     conn.close()
     return assignments
+
 
 def get_coordinator_performance_metrics(user_id):
     conn = get_db_connection()
@@ -1233,19 +1505,25 @@ def get_coordinator_performance_metrics(user_id):
     finally:
         conn.close()
 
+
 def get_care_plan(patient_name):
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT plan_details FROM care_plans WHERE patient_name = ?", (patient_name,))
+    cursor.execute(
+        "SELECT plan_details FROM care_plans WHERE patient_name = ?", (patient_name,)
+    )
     result = cursor.fetchone()
     conn.close()
     return result[0] if result else ""
 
+
 def update_care_plan(patient_name, plan_details, updated_by):
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("INSERT OR REPLACE INTO care_plans (patient_name, plan_details, updated_by, last_updated) VALUES (?, ?, ?, CURRENT_TIMESTAMP)",
-                   (patient_name, plan_details, updated_by))
+    cursor.execute(
+        "INSERT OR REPLACE INTO care_plans (patient_name, plan_details, updated_by, last_updated) VALUES (?, ?, ?, CURRENT_TIMESTAMP)",
+        (patient_name, plan_details, updated_by),
+    )
     conn.commit()
     conn.close()
 
@@ -1254,29 +1532,34 @@ def get_provider_performance_metrics(start_date: datetime, end_date: datetime):
     conn = get_db_connection()
     try:
         all_task_tables = get_monthly_task_tables(prefix="provider_tasks_", conn=conn)
-        
+
         # Filter tables that fall within the date range
         tables_to_query = []
         for table_name in all_task_tables:
             try:
-                parts = table_name.split('_')
+                parts = table_name.split("_")
                 year = int(parts[2])
                 month = int(parts[3])
-                
+
                 table_date = datetime(year, month, 1).date()
-                
+
                 # Check if the table's month/year range overlaps with the query date range
                 # A table is relevant if its month starts before or on end_date, and ends after or on start_date
-                table_month_end = datetime(year, month, calendar.monthrange(year, month)[1]).date()
-                
-                if table_date <= end_date.date() and table_month_end >= start_date.date():
+                table_month_end = datetime(
+                    year, month, calendar.monthrange(year, month)[1]
+                ).date()
+
+                if (
+                    table_date <= end_date.date()
+                    and table_month_end >= start_date.date()
+                ):
                     tables_to_query.append(table_name)
             except Exception as e:
                 print(f"Skipping malformed table name {table_name}: {e}")
                 continue
 
         if not tables_to_query:
-            return [] # No relevant tables found
+            return []  # No relevant tables found
 
         # Build UNION ALL query for all relevant tables
         union_queries = []
@@ -1290,7 +1573,7 @@ def get_provider_performance_metrics(start_date: datetime, end_date: datetime):
                 FROM {table_name}
                 WHERE task_date BETWEEN ? AND ?
             """)
-        
+
         full_query = " UNION ALL ".join(union_queries)
 
         query = f"""
@@ -1307,85 +1590,98 @@ def get_provider_performance_metrics(start_date: datetime, end_date: datetime):
             WHERE r.role_id IN (33, 38)  -- CP and CPM roles
             GROUP BY u.full_name;
         """
-        
+
         # Prepare parameters for the BETWEEN clause (start_date and end_date for each unioned query)
         params = []
         for _ in tables_to_query:
-            params.extend([start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d')])
+            params.extend(
+                [start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d")]
+            )
 
         metrics = conn.execute(query, params).fetchall()
-        
+
         # Process visit_type_breakdown_raw to get counts per type
         processed_metrics = []
         for row in metrics:
             row_dict = dict(row)
             visit_type_counts = {}
-            if row_dict['visit_type_breakdown_raw']:
+            if row_dict["visit_type_breakdown_raw"]:
                 # Split the raw string into individual "task_type:patient_id" entries
-                entries = row_dict['visit_type_breakdown_raw'].split(',')
-                
+                entries = row_dict["visit_type_breakdown_raw"].split(",")
+
                 # Use a set to count unique patients per task type
                 unique_patients_per_type = {}
                 for entry in entries:
                     try:
-                        task_type, patient_id = entry.split(':', 1)
+                        task_type, patient_id = entry.split(":", 1)
                         if task_type not in unique_patients_per_type:
                             unique_patients_per_type[task_type] = set()
                         unique_patients_per_type[task_type].add(patient_id)
                     except ValueError:
                         # Handle cases where entry might not split correctly
                         continue
-                
+
                 # Count unique patients for each task type
                 for task_type, patient_ids in unique_patients_per_type.items():
                     visit_type_counts[task_type] = len(patient_ids)
 
-            row_dict['visit_type_breakdown'] = visit_type_counts
-            del row_dict['visit_type_breakdown_raw'] # Remove raw data
+            row_dict["visit_type_breakdown"] = visit_type_counts
+            del row_dict["visit_type_breakdown_raw"]  # Remove raw data
             processed_metrics.append(row_dict)
 
         return processed_metrics
     finally:
         conn.close()
 
+
 def get_tasks_billing_codes():
     conn = get_db_connection()
     try:
-        codes = conn.execute("SELECT code, description FROM task_billing_codes").fetchall()
+        codes = conn.execute(
+            "SELECT code, description FROM task_billing_codes"
+        ).fetchall()
         return [dict(row) for row in codes]
     finally:
         conn.close()
+
 
 def get_tasks_billing_codes_by_service_type(service_type):
     """Get task billing codes filtered by service type"""
     conn = get_db_connection()
     try:
-        codes = conn.execute("""
-            SELECT code_id, task_description, billing_code, description 
-            FROM task_billing_codes 
-            WHERE service_type = ? 
+        codes = conn.execute(
+            """
+            SELECT code_id, task_description, billing_code, description
+            FROM task_billing_codes
+            WHERE service_type = ?
             ORDER BY task_description
-        """, (service_type,)).fetchall()
+        """,
+            (service_type,),
+        ).fetchall()
         return [dict(row) for row in codes]
     finally:
         conn.close()
+
 
 def get_daily_tasks_for_coordinator():
     conn = get_db_connection()
     try:
         # Get all task descriptions for coordinator tasks from coordinator_task_definitions table
-        tasks = conn.execute("SELECT task_description FROM coordinator_task_definitions WHERE task_description IS NOT NULL GROUP BY task_description").fetchall()
+        tasks = conn.execute(
+            "SELECT task_description FROM coordinator_task_definitions WHERE task_description IS NOT NULL GROUP BY task_description"
+        ).fetchall()
         return [dict(row) for row in tasks]
     finally:
         conn.close()
+
 
 def get_coordinator_task_definitions():
     """Get coordinator task definitions for task dropdown"""
     conn = get_db_connection()
     try:
         tasks = conn.execute("""
-            SELECT task_definition_id, task_category, task_description 
-            FROM coordinator_task_definitions 
+            SELECT task_definition_id, task_category, task_description
+            FROM coordinator_task_definitions
             ORDER BY task_description
         """).fetchall()
         return [dict(row) for row in tasks]
@@ -1403,6 +1699,7 @@ def get_provider_id_from_user_id(user_id: int):
         return result[0]
     return None
 
+
 def get_patient_details_by_id(patient_id: int):
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -1411,77 +1708,94 @@ def get_patient_details_by_id(patient_id: int):
     conn.close()
     return result
 
+
 def get_provider_counties(provider_id):
     """Get counties for a provider using the new dashboard mapping table"""
     conn = get_db_connection()
     try:
-        cursor = conn.execute("""
-            SELECT DISTINCT 
-                dpc.county, 
+        cursor = conn.execute(
+            """
+            SELECT DISTINCT
+                dpc.county,
                 dpc.state,
                 dpc.patient_count
             FROM dashboard_provider_county_map dpc
             WHERE dpc.provider_id = ? AND dpc.county IS NOT NULL AND dpc.county != ''
             ORDER BY dpc.county
-        """, (provider_id,))
+        """,
+            (provider_id,),
+        )
         counties = cursor.fetchall()
         return [(c[0], f"{c[0]}, {c[1]} [{c[2]}]") for c in counties]
     finally:
         conn.close()
 
+
 def get_provider_zip_codes(provider_id):
     """Get zip codes for a provider using the new dashboard mapping table"""
     conn = get_db_connection()
     try:
-        cursor = conn.execute("""
-            SELECT DISTINCT 
-                dpz.zip_code, 
-                dpz.city, 
+        cursor = conn.execute(
+            """
+            SELECT DISTINCT
+                dpz.zip_code,
+                dpz.city,
                 dpz.state,
                 dpz.patient_count
             FROM dashboard_provider_zip_map dpz
             WHERE dpz.provider_id = ? AND dpz.zip_code IS NOT NULL AND dpz.zip_code != ''
             ORDER BY dpz.zip_code
-        """, (provider_id,))
+        """,
+            (provider_id,),
+        )
         zip_codes = cursor.fetchall()
         return [(z[0], f"{z[0]} - {z[1]}, {z[2]} [{z[3]}]") for z in zip_codes]
     finally:
         conn.close()
 
+
 def get_patient_counties(patient_id):
     """Get counties for a patient using the new dashboard mapping table"""
     conn = get_db_connection()
     try:
-        cursor = conn.execute("""
-            SELECT DISTINCT 
-                dpc.county, 
+        cursor = conn.execute(
+            """
+            SELECT DISTINCT
+                dpc.county,
                 dpc.state
             FROM dashboard_patient_county_map dpc
             WHERE dpc.patient_id = ? AND dpc.county IS NOT NULL AND dpc.county != ''
             ORDER BY dpc.county
-        """, (patient_id,))
+        """,
+            (patient_id,),
+        )
         counties = cursor.fetchall()
         return [(c[0], f"{c[0]}, {c[1]}") for c in counties]
     finally:
         conn.close()
 
+
 def get_patient_zip_codes(patient_id):
     """Get zip codes for a patient using the new dashboard mapping table"""
     conn = get_db_connection()
     try:
-        cursor = conn.execute("""
-            SELECT DISTINCT 
-                dpz.zip_code, 
-                dpz.city, 
+        cursor = conn.execute(
+            """
+            SELECT DISTINCT
+                dpz.zip_code,
+                dpz.city,
                 dpz.state
             FROM dashboard_patient_zip_map dpz
             WHERE dpz.patient_id = ? AND dpz.zip_code IS NOT NULL AND dpz.zip_code != ''
             ORDER BY dpz.zip_code
-        """, (patient_id,))
+        """,
+            (patient_id,),
+        )
         zip_codes = cursor.fetchall()
         return [(z[0], f"{z[0]} - {z[1]}, {z[2]}") for z in zip_codes]
     finally:
         conn.close()
+
 
 def get_billing_codes(service_type=None, location_type=None, patient_type=None):
     """Return billing code rows filtered by service_type, location_type and patient_type.
@@ -1492,13 +1806,13 @@ def get_billing_codes(service_type=None, location_type=None, patient_type=None):
         # Check if is_default column exists in the table
         cursor = conn.execute("PRAGMA table_info(task_billing_codes)")
         columns = [column[1] for column in cursor.fetchall()]
-        
+
         # Build query based on whether is_default column exists
-        if 'is_default' in columns:
+        if "is_default" in columns:
             query = "SELECT code_id, task_description, service_type, location_type, patient_type, min_minutes, max_minutes, billing_code, description, rate, COALESCE(is_default, 0) as is_default FROM task_billing_codes"
         else:
             query = "SELECT code_id, task_description, service_type, location_type, patient_type, min_minutes, max_minutes, billing_code, description, rate, 0 as is_default FROM task_billing_codes"
-        
+
         conditions = []
         params = []
         if service_type:
@@ -1534,7 +1848,10 @@ def set_default_billing_codes(billing_codes):
             # Ensure billing_codes is iterable
             codes = list(billing_codes)
             for code in codes:
-                conn.execute("UPDATE task_billing_codes SET is_default = 1 WHERE billing_code = ?", (code,))
+                conn.execute(
+                    "UPDATE task_billing_codes SET is_default = 1 WHERE billing_code = ?",
+                    (code,),
+                )
 
         conn.commit()
         return True
@@ -1545,7 +1862,9 @@ def set_default_billing_codes(billing_codes):
         conn.close()
 
 
-def save_daily_task(provider_id, patient_id, task_date, task_description, notes, billing_code=None):
+def save_daily_task(
+    provider_id, patient_id, task_date, task_description, notes, billing_code=None
+):
     """Save a daily task for a provider to the provider_tasks table.
     If `billing_code` is provided, use it to look up duration and description. Otherwise fallback to lookup by task_description.
     """
@@ -1553,22 +1872,28 @@ def save_daily_task(provider_id, patient_id, task_date, task_description, notes,
     try:
         billing_data = None
         if billing_code:
-            billing_cursor = conn.execute("""
+            billing_cursor = conn.execute(
+                """
                 SELECT min_minutes, billing_code, rate, description
                 FROM task_billing_codes
                 WHERE billing_code = ?
                 LIMIT 1
-            """, (billing_code,))
+            """,
+                (billing_code,),
+            )
             billing_data = billing_cursor.fetchone()
 
         if not billing_data:
             # Fallback to previous behavior: lookup by task_description
-            billing_cursor = conn.execute("""
+            billing_cursor = conn.execute(
+                """
                 SELECT min_minutes, billing_code, rate, description
-                FROM task_billing_codes 
+                FROM task_billing_codes
                 WHERE task_description = ?
                 LIMIT 1
-            """, (task_description,))
+            """,
+                (task_description,),
+            )
             billing_data = billing_cursor.fetchone()
 
         if billing_data:
@@ -1596,11 +1921,13 @@ def save_daily_task(provider_id, patient_id, task_date, task_description, notes,
             task_year = now.year
             task_month = now.month
 
-
         # Get patient name for denormalization
         patient_name = ""
         try:
-            p_cursor = conn.execute("SELECT first_name, last_name FROM patients WHERE patient_id = ?", (pid,))
+            p_cursor = conn.execute(
+                "SELECT first_name, last_name FROM patients WHERE patient_id = ?",
+                (pid,),
+            )
             p_row = p_cursor.fetchone()
             if p_row:
                 fn = p_row[0] if p_row[0] else ""
@@ -1610,30 +1937,48 @@ def save_daily_task(provider_id, patient_id, task_date, task_description, notes,
             print(f"Error fetching patient name: {e}")
 
         # Insert into monthly provider_tasks table dynamically
-        table_name = ensure_monthly_provider_tasks_table(year=task_year, month=task_month, conn=conn)
-        cursor = conn.execute(f"""
+        table_name = ensure_monthly_provider_tasks_table(
+            year=task_year, month=task_month, conn=conn
+        )
+        cursor = conn.execute(
+            f"""
             INSERT INTO {table_name}
             (provider_id, patient_id, patient_name, task_date, notes, minutes_of_service, task_description, billing_code, billing_code_description, source_system, imported_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'DATA_ENTRY', CURRENT_TIMESTAMP)
-        """, (provider_id, pid, patient_name, task_date, notes, duration_minutes, task_description, billing_code_val, billing_code_description))
-        
+        """,
+            (
+                provider_id,
+                pid,
+                patient_name,
+                task_date,
+                notes,
+                duration_minutes,
+                task_description,
+                billing_code_val,
+                billing_code_description,
+            ),
+        )
+
         # Get the newly created provider_task_id
         new_provider_task_id = cursor.lastrowid
-        
+
         # Also create billing status record for Medicare/insurance workflow tracking (if billable)
-        if billing_code_val and billing_code_val != 'Not_Billable':
+        if billing_code_val and billing_code_val != "Not_Billable":
             try:
                 # Calculate billing week
                 task_dt_obj = pd.to_datetime(task_date)
                 billing_week = task_dt_obj.isocalendar()[1]
                 week_start = task_dt_obj - pd.Timedelta(days=task_dt_obj.weekday())
                 week_end = week_start + pd.Timedelta(days=6)
-                
+
                 # Get provider name
-                provider_name_result = conn.execute("SELECT full_name FROM users WHERE user_id = ?", (provider_id,)).fetchone()
+                provider_name_result = conn.execute(
+                    "SELECT full_name FROM users WHERE user_id = ?", (provider_id,)
+                ).fetchone()
                 provider_name = provider_name_result[0] if provider_name_result else ""
-                
-                conn.execute("""
+
+                conn.execute(
+                    """
                     INSERT INTO provider_task_billing_status (
                         provider_task_id, provider_id, provider_name, patient_name, task_date,
                         billing_week, week_start_date, week_end_date, task_description,
@@ -1641,44 +1986,87 @@ def save_daily_task(provider_id, patient_id, task_date, task_description, notes,
                         billing_status, is_billed, is_invoiced, is_claim_submitted,
                         is_insurance_processed, is_approved_to_pay, is_paid, is_carried_over
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    new_provider_task_id, provider_id, provider_name, patient_name, task_date,
-                    billing_week, week_start.strftime('%Y-%m-%d'), week_end.strftime('%Y-%m-%d'),
-                    task_description, duration_minutes, billing_code_val, billing_code_description,
-                    'Pending', False, False, False, False, False, False, False
-                ))
+                """,
+                    (
+                        new_provider_task_id,
+                        provider_id,
+                        provider_name,
+                        patient_name,
+                        task_date,
+                        billing_week,
+                        week_start.strftime("%Y-%m-%d"),
+                        week_end.strftime("%Y-%m-%d"),
+                        task_description,
+                        duration_minutes,
+                        billing_code_val,
+                        billing_code_description,
+                        "Pending",
+                        False,
+                        False,
+                        False,
+                        False,
+                        False,
+                        False,
+                        False,
+                    ),
+                )
             except Exception as e:
                 print(f"Warning: Could not create billing status record: {e}")
                 # Don't fail the whole task if billing status creation fails
 
         # Also insert into tasks table for compatibility
-        conn.execute("""
-            INSERT INTO tasks 
+        conn.execute(
+            """
+            INSERT INTO tasks
             (patient_name, patient_id, user_id, full_name, staff_code, role_id, task_date, task_type, duration_minutes, service_code, notes, task_state)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, ("", pid, provider_id, "", "", 33, task_date, task_description, duration_minutes, billing_code_val, notes, "completed"))
+        """,
+            (
+                "",
+                pid,
+                provider_id,
+                "",
+                "",
+                33,
+                task_date,
+                task_description,
+                duration_minutes,
+                billing_code_val,
+                notes,
+                "completed",
+            ),
+        )
 
         # If onboarding-specific task, handle onboarding workflow (legacy)
         if task_description == "PCP-Visit Telehealth (TE) (NEW pt)":
-            onboarding_cursor = conn.execute("""
-                SELECT onboarding_id 
-                FROM onboarding_patients 
+            onboarding_cursor = conn.execute(
+                """
+                SELECT onboarding_id
+                FROM onboarding_patients
                 WHERE patient_id = ? AND stage5_complete = 1 AND completed_date IS NULL
-            """, (pid,))
+            """,
+                (pid,),
+            )
             onboarding_match = onboarding_cursor.fetchone()
             if onboarding_match:
-                conn.execute("""
-                    UPDATE onboarding_patients 
+                conn.execute(
+                    """
+                    UPDATE onboarding_patients
                     SET initial_tv_completed = 1, initial_tv_completed_date = ?
                     WHERE onboarding_id = ?
-                """, (task_date, onboarding_match[0]))
+                """,
+                    (task_date, onboarding_match[0]),
+                )
 
             # Get provider name for initial TV provider field
             provider_name = ""
             try:
-                provider_cursor = conn.execute("""
+                provider_cursor = conn.execute(
+                    """
                     SELECT full_name FROM users WHERE user_id = ?
-                """, (provider_id,))
+                """,
+                    (provider_id,),
+                )
                 provider_result = provider_cursor.fetchone()
                 if provider_result:
                     provider_name = provider_result[0]
@@ -1686,19 +2074,23 @@ def save_daily_task(provider_id, patient_id, task_date, task_description, notes,
                 provider_name = f"Provider ID {provider_id}"
 
             # Update initial TV fields in patients table
-            conn.execute("""
-                UPDATE patients 
+            conn.execute(
+                """
+                UPDATE patients
                 SET last_visit_date = ?,
                     initial_tv_completed_date = ?,
                     initial_tv_notes = ?,
                     initial_tv_provider = ?,
                     service_type = ?
                 WHERE patient_id = ?
-            """, (task_date, task_date, notes, provider_name, task_description, pid))
+            """,
+                (task_date, task_date, notes, provider_name, task_description, pid),
+            )
 
             # Update initial TV fields in patient_panel table
-            conn.execute("""
-                UPDATE patient_panel 
+            conn.execute(
+                """
+                UPDATE patient_panel
                 SET last_visit_date = ?,
                     initial_tv_completed = 1,
                     initial_tv_completed_date = ?,
@@ -1706,24 +2098,32 @@ def save_daily_task(provider_id, patient_id, task_date, task_description, notes,
                     initial_tv_provider = ?,
                     last_visit_service_type = ?
                 WHERE patient_id = ?
-            """, (task_date, task_date, notes, provider_name, task_description, pid))
+            """,
+                (task_date, task_date, notes, provider_name, task_description, pid),
+            )
         else:
             # For non-initial TV tasks, update last_visit_date and service_type
             # Update last_visit_date and service_type in patients table
-            conn.execute("""
-                UPDATE patients 
+            conn.execute(
+                """
+                UPDATE patients
                 SET last_visit_date = ?,
                     service_type = ?
                 WHERE patient_id = ?
-            """, (task_date, task_description, pid))
+            """,
+                (task_date, task_description, pid),
+            )
 
             # Update last_visit_date and service_type in patient_panel table
-            conn.execute("""
-                UPDATE patient_panel 
+            conn.execute(
+                """
+                UPDATE patient_panel
                 SET last_visit_date = ?,
                     last_visit_service_type = ?
                 WHERE patient_id = ?
-            """, (task_date, task_description, pid))
+            """,
+                (task_date, task_description, pid),
+            )
 
         conn.commit()
         return True
@@ -1733,13 +2133,16 @@ def save_daily_task(provider_id, patient_id, task_date, task_description, notes,
     finally:
         conn.close()
 
-def save_coordinator_task(coordinator_id, patient_id, task_date, task_description, duration_minutes, notes):
+
+def save_coordinator_task(
+    coordinator_id, patient_id, task_date, task_description, duration_minutes, notes
+):
     """Save a daily task for a coordinator to the coordinator_tasks table"""
     conn = get_db_connection()
     try:
         # Normalize patient_id to the canonical string format before inserting
         pid = normalize_patient_id(patient_id, conn=conn)
-        
+
         # Extract year and month from task_date to ensure we insert into the correct monthly table
         try:
             task_dt = pd.to_datetime(task_date)
@@ -1750,15 +2153,20 @@ def save_coordinator_task(coordinator_id, patient_id, task_date, task_descriptio
             now = pd.Timestamp.now()
             task_year = now.year
             task_month = now.month
-        
+
         # Insert into monthly coordinator_tasks table dynamically
-        table_name = ensure_monthly_coordinator_tasks_table(year=task_year, month=task_month, conn=conn)
-        conn.execute(f"""
+        table_name = ensure_monthly_coordinator_tasks_table(
+            year=task_year, month=task_month, conn=conn
+        )
+        conn.execute(
+            f"""
             INSERT INTO {table_name}
             (patient_id, coordinator_id, task_date, duration_minutes, task_type, notes, source_system, imported_at)
             VALUES (?, ?, ?, ?, ?, ?, 'DATA_ENTRY', CURRENT_TIMESTAMP)
-        """, (pid, coordinator_id, task_date, duration_minutes, task_description, notes))
-        
+        """,
+            (pid, coordinator_id, task_date, duration_minutes, task_description, notes),
+        )
+
         conn.commit()
         print(f"Coordinator task saved successfully for coordinator {coordinator_id}")
         return True
@@ -1767,6 +2175,7 @@ def save_coordinator_task(coordinator_id, patient_id, task_date, task_descriptio
         return False
     finally:
         conn.close()
+
 
 def get_all_patients():
     """Get all patients from the database with their status type"""
@@ -1781,28 +2190,33 @@ def get_all_patients():
     finally:
         conn.close()
 
+
 def get_all_patient_status_types():
     """Get all available patient status types"""
     conn = get_db_connection()
     try:
         status_types = conn.execute("""
-            SELECT status_id, status_name, description 
-            FROM patient_status_types 
+            SELECT status_id, status_name, description
+            FROM patient_status_types
             ORDER BY status_name
         """).fetchall()
         return [dict(row) for row in status_types]
     finally:
         conn.close()
 
+
 def update_patient_status(patient_id, status):
     """Update the status of a patient"""
     conn = get_db_connection()
     try:
-        conn.execute("""
-            UPDATE patients 
-            SET status = ?, updated_date = CURRENT_TIMESTAMP 
+        conn.execute(
+            """
+            UPDATE patients
+            SET status = ?, updated_date = CURRENT_TIMESTAMP
             WHERE patient_id = ?
-        """, (status, patient_id))
+        """,
+            (status, patient_id),
+        )
         conn.commit()
         return True
     except Exception as e:
@@ -1814,19 +2228,20 @@ def update_patient_status(patient_id, status):
 
 # Onboarding Workflow Functions
 
+
 def get_onboarding_queue():
     """Get all active onboarding patients with their current status"""
     conn = get_db_connection()
     try:
         query = """
-        SELECT 
+        SELECT
             op.onboarding_id,
             op.first_name || ' ' || op.last_name AS patient_name,
             op.patient_status,
             op.assigned_pot_user_id,
             u.full_name AS assigned_pot_name,
             wi.workflow_status AS workflow_status,
-            CASE 
+            CASE
                 WHEN op.stage5_complete = 1 THEN 'Completed'
                 WHEN op.stage4_complete = 1 THEN 'Stage 5: TV Scheduling'
                 WHEN op.stage3_complete = 1 THEN 'Stage 4: Intake Processing'
@@ -1882,15 +2297,15 @@ def get_onboarding_queue():
         LEFT JOIN workflow_instances wi ON op.workflow_instance_id = wi.instance_id
         LEFT JOIN users u ON op.assigned_pot_user_id = u.user_id
         LEFT JOIN users prov ON op.assigned_provider_user_id = prov.user_id
-        LEFT JOIN patient_assignments pa_provider ON op.patient_id = pa_provider.patient_id 
+        LEFT JOIN patient_assignments pa_provider ON op.patient_id = pa_provider.patient_id
             AND pa_provider.provider_id IS NOT NULL AND pa_provider.status = 'active'
-        LEFT JOIN patient_assignments pa_coordinator ON op.patient_id = pa_coordinator.patient_id 
+        LEFT JOIN patient_assignments pa_coordinator ON op.patient_id = pa_coordinator.patient_id
             AND pa_coordinator.coordinator_id IS NOT NULL AND pa_coordinator.status = 'active'
         LEFT JOIN users reg_prov ON pa_provider.provider_id = reg_prov.user_id
         LEFT JOIN users coord ON pa_coordinator.coordinator_id = coord.user_id
         WHERE op.completed_date IS NULL
-        ORDER BY 
-            CASE 
+        ORDER BY
+            CASE
                 WHEN op.stage5_complete = 1 THEN 1  -- Completed (highest priority)
                 WHEN op.stage4_complete = 1 THEN 2  -- Almost done
                 WHEN op.stage3_complete = 1 THEN 3
@@ -1905,12 +2320,14 @@ def get_onboarding_queue():
     finally:
         conn.close()
 
+
 def create_onboarding_workflow_instance(patient_data, pot_user_id):
     """Create a new workflow instance and onboarding patient record"""
     conn = get_db_connection()
     try:
         # Create onboarding patient record directly (no workflow_instances linkage)
-        cursor = conn.execute("""
+        cursor = conn.execute(
+            """
             INSERT INTO onboarding_patients (
                 first_name, last_name, date_of_birth,
                 phone_primary, email, gender, emergency_contact_name, emergency_contact_phone,
@@ -1919,142 +2336,185 @@ def create_onboarding_workflow_instance(patient_data, pot_user_id):
                 referral_source, referring_provider, referral_date,
                 patient_status, facility_assignment, assigned_pot_user_id
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            patient_data['first_name'], patient_data['last_name'], patient_data['date_of_birth'],
-            patient_data.get('phone_primary'), patient_data.get('email'), patient_data.get('gender'),
-            patient_data.get('emergency_contact_name'), patient_data.get('emergency_contact_phone'),
-            patient_data.get('address_street'), patient_data.get('address_city'), 
-            patient_data.get('address_state'), patient_data.get('address_zip'),
-            patient_data.get('insurance_provider'), patient_data.get('policy_number'), 
-            patient_data.get('group_number'),
-            patient_data.get('referral_source'), patient_data.get('referring_provider'), 
-            patient_data.get('referral_date'),
-            patient_data.get('patient_status', 'Active'), 
-            patient_data.get('facility_assignment'), pot_user_id
-        ))
+        """,
+            (
+                patient_data["first_name"],
+                patient_data["last_name"],
+                patient_data["date_of_birth"],
+                patient_data.get("phone_primary"),
+                patient_data.get("email"),
+                patient_data.get("gender"),
+                patient_data.get("emergency_contact_name"),
+                patient_data.get("emergency_contact_phone"),
+                patient_data.get("address_street"),
+                patient_data.get("address_city"),
+                patient_data.get("address_state"),
+                patient_data.get("address_zip"),
+                patient_data.get("insurance_provider"),
+                patient_data.get("policy_number"),
+                patient_data.get("group_number"),
+                patient_data.get("referral_source"),
+                patient_data.get("referring_provider"),
+                patient_data.get("referral_date"),
+                patient_data.get("patient_status", "Active"),
+                patient_data.get("facility_assignment"),
+                pot_user_id,
+            ),
+        )
 
         onboarding_id = cursor.lastrowid
-        
+
         # Create initial tasks for all workflow steps
         workflow_steps = conn.execute("""
-            SELECT step_id, step_order, task_name FROM workflow_steps 
+            SELECT step_id, step_order, task_name FROM workflow_steps
             WHERE template_id = 14 ORDER BY step_order
         """).fetchall()
-        
+
         for step in workflow_steps:
-            stage = ((step['step_order'] - 1) // 3) + 1  # Group steps into stages (3 steps per stage roughly)
-            if step['step_order'] > 15:  # Handle stage 5 which has more steps
+            stage = (
+                (step["step_order"] - 1) // 3
+            ) + 1  # Group steps into stages (3 steps per stage roughly)
+            if step["step_order"] > 15:  # Handle stage 5 which has more steps
                 stage = 5
-            
-            conn.execute("""
+
+            conn.execute(
+                """
                 INSERT INTO onboarding_tasks (
-                    onboarding_id, workflow_step_id, task_name, task_stage, 
+                    onboarding_id, workflow_step_id, task_name, task_stage,
                     task_order, status, created_date, updated_date
                 ) VALUES (?, ?, ?, ?, ?, 'Pending', datetime('now'), datetime('now'))
-            """, (onboarding_id, step['step_id'], step['task_name'], stage, step['step_order']))
-        
+            """,
+                (
+                    onboarding_id,
+                    step["step_id"],
+                    step["task_name"],
+                    stage,
+                    step["step_order"],
+                ),
+            )
+
         conn.commit()
         return onboarding_id
-        
+
     except Exception as e:
         conn.rollback()
         raise e
     finally:
         conn.close()
 
+
 def get_onboarding_patient_details(onboarding_id):
     """Get detailed information for a specific onboarding patient"""
     conn = get_db_connection()
     try:
         # Get patient details
-        patient = conn.execute("""
+        patient = conn.execute(
+            """
             SELECT * FROM onboarding_patients WHERE onboarding_id = ?
-        """, (onboarding_id,)).fetchone()
-        
+        """,
+            (onboarding_id,),
+        ).fetchone()
+
         if not patient:
             return None
-            
+
         patient_dict = dict(patient)
-        
+
         # Get tasks for this patient
-        tasks = conn.execute("""
-            SELECT ot.*, ws.deliverable 
+        tasks = conn.execute(
+            """
+            SELECT ot.*, ws.deliverable
             FROM onboarding_tasks ot
             JOIN workflow_steps ws ON ot.workflow_step_id = ws.step_id
             WHERE ot.onboarding_id = ?
             ORDER BY ot.task_order
-        """, (onboarding_id,)).fetchall()
-        
-        patient_dict['tasks'] = [dict(task) for task in tasks]
+        """,
+            (onboarding_id,),
+        ).fetchall()
+
+        patient_dict["tasks"] = [dict(task) for task in tasks]
         return patient_dict
-        
+
     finally:
         conn.close()
+
 
 def update_onboarding_stage_completion(onboarding_id, stage_number, completed=True):
     """Update stage completion status"""
     conn = get_db_connection()
     try:
         stage_field = f"stage{stage_number}_complete"
-        
+
         # If completing stage 5, also set completed_date to mark patient as fully completed
         if stage_number == 5 and completed:
-            conn.execute(f"""
-                UPDATE onboarding_patients 
+            conn.execute(
+                f"""
+                UPDATE onboarding_patients
                 SET {stage_field} = ?, completed_date = datetime('now'), updated_date = datetime('now')
                 WHERE onboarding_id = ?
-            """, (completed, onboarding_id))
+            """,
+                (completed, onboarding_id),
+            )
         else:
-            conn.execute(f"""
-                UPDATE onboarding_patients 
+            conn.execute(
+                f"""
+                UPDATE onboarding_patients
                 SET {stage_field} = ?, updated_date = datetime('now')
                 WHERE onboarding_id = ?
-            """, (completed, onboarding_id))
-        
+            """,
+                (completed, onboarding_id),
+            )
+
         conn.commit()
     finally:
         conn.close()
+
 
 def update_onboarding_task_status(task_id, status, user_id, checkbox_data=None):
     """Update individual task status and checkbox data"""
     conn = get_db_connection()
     try:
         query = """
-            UPDATE onboarding_tasks 
+            UPDATE onboarding_tasks
             SET status = ?, completed_by_user_id = ?, updated_date = datetime('now')
         """
         params = [status, user_id]
-        
-        if status == 'Complete':
+
+        if status == "Complete":
             query += ", completed_date = datetime('now')"
-        
+
         # Update checkbox fields if provided
         if checkbox_data:
             for field, value in checkbox_data.items():
                 if hasattr(checkbox_data, field):
                     query += f", {field} = ?"
                     params.append(value)
-        
+
         query += " WHERE task_id = ?"
         params.append(task_id)
-        
+
         conn.execute(query, params)
         conn.commit()
     finally:
         conn.close()
 
+
 def update_onboarding_patient_assignment(onboarding_id, pot_user_id):
     """Assign an onboarding patient to a POT user"""
     conn = get_db_connection()
     try:
-        conn.execute("""
-            UPDATE onboarding_patients 
+        conn.execute(
+            """
+            UPDATE onboarding_patients
             SET assigned_pot_user_id = ?, updated_date = datetime('now')
             WHERE onboarding_id = ?
-        """, (pot_user_id, onboarding_id))
+        """,
+            (pot_user_id, onboarding_id),
+        )
         conn.commit()
     finally:
         conn.close()
+
 
 def update_onboarding_checkbox_data(onboarding_id, checkbox_data):
     """Update checkbox data for an onboarding patient and sync to patients/patient_panel tables"""
@@ -2063,100 +2523,115 @@ def update_onboarding_checkbox_data(onboarding_id, checkbox_data):
         # Build dynamic query based on provided checkbox data
         update_fields = []
         params = []
-        
+
         for field, value in checkbox_data.items():
             update_fields.append(f"{field} = ?")
             params.append(value)
-        
+
         if update_fields:
             update_fields.append("updated_date = datetime('now')")
             params.append(onboarding_id)
-            
+
             query = f"""
-                UPDATE onboarding_patients 
+                UPDATE onboarding_patients
                 SET {', '.join(update_fields)}
                 WHERE onboarding_id = ?
             """
-            
+
             conn.execute(query, params)
-            
+
             # Get the patient_id from onboarding record to sync data
-            patient_result = conn.execute("""
+            patient_result = conn.execute(
+                """
                 SELECT patient_id FROM onboarding_patients WHERE onboarding_id = ?
-            """, (onboarding_id,)).fetchone()
-            
+            """,
+                (onboarding_id,),
+            ).fetchone()
+
             if patient_result and patient_result[0]:
                 patient_id = patient_result[0]
-                
+
                 # Sync the same data to patients table if columns exist
                 patients_update_fields = []
                 patients_params = []
-                
+
                 for field, value in checkbox_data.items():
                     # Check if column exists in patients table
-                    col_check = conn.execute("""
+                    col_check = conn.execute(
+                        """
                         SELECT COUNT(*) FROM pragma_table_info('patients') WHERE name = ?
-                    """, (field,)).fetchone()
-                    
+                    """,
+                        (field,),
+                    ).fetchone()
+
                     if col_check and col_check[0] > 0:
                         patients_update_fields.append(f"{field} = ?")
                         patients_params.append(value)
-                
+
                 if patients_update_fields:
                     patients_update_fields.append("updated_date = datetime('now')")
                     patients_params.append(patient_id)
-                    
+
                     patients_query = f"""
-                        UPDATE patients 
+                        UPDATE patients
                         SET {', '.join(patients_update_fields)}
                         WHERE patient_id = ?
                     """
                     conn.execute(patients_query, patients_params)
-                
+
                 # Sync the same data to patient_panel table if columns exist
                 panel_update_fields = []
                 panel_params = []
-                
+
                 for field, value in checkbox_data.items():
                     # Check if column exists in patient_panel table
-                    col_check = conn.execute("""
+                    col_check = conn.execute(
+                        """
                         SELECT COUNT(*) FROM pragma_table_info('patient_panel') WHERE name = ?
-                    """, (field,)).fetchone()
-                    
+                    """,
+                        (field,),
+                    ).fetchone()
+
                     if col_check and col_check[0] > 0:
                         panel_update_fields.append(f"{field} = ?")
                         panel_params.append(value)
-                
+
                 if panel_update_fields:
                     panel_update_fields.append("updated_date = datetime('now')")
                     panel_params.append(patient_id)
-                    
+
                     panel_query = f"""
-                        UPDATE patient_panel 
+                        UPDATE patient_panel
                         SET {', '.join(panel_update_fields)}
                         WHERE patient_id = ?
                     """
                     conn.execute(panel_query, panel_params)
-            
+
             conn.commit()
     finally:
         conn.close()
 
+
 def transfer_onboarding_to_patient_table(onboarding_id):
     """Transfer completed onboarding data to the main patients table"""
-    print(f"DEBUG: Starting transfer_onboarding_to_patient_table with onboarding_id={onboarding_id}")
+    print(
+        f"DEBUG: Starting transfer_onboarding_to_patient_table with onboarding_id={onboarding_id}"
+    )
     conn = get_db_connection()
     try:
         # Get onboarding data
-        onboarding = conn.execute("""
+        onboarding = conn.execute(
+            """
             SELECT * FROM onboarding_patients WHERE onboarding_id = ?
-        """, (onboarding_id,)).fetchone()
-        
+        """,
+            (onboarding_id,),
+        ).fetchone()
+
         print(f"DEBUG: Retrieved onboarding record: {onboarding is not None}")
         if not onboarding:
             print(f"DEBUG: No onboarding record found for ID {onboarding_id}")
             return None
-            
+
         onboarding_dict = dict(onboarding)
 
         # helper: get existing patients table columns
@@ -2166,100 +2641,141 @@ def transfer_onboarding_to_patient_table(onboarding_id):
 
         # mapping of candidate patient columns to onboarding values
         candidate = {
-            'first_name': onboarding_dict.get('first_name'),
-            'last_name': onboarding_dict.get('last_name'),
-            'date_of_birth': onboarding_dict.get('date_of_birth'),
-            'gender': onboarding_dict.get('gender'),
-            'phone_primary': onboarding_dict.get('phone_primary'),
-            'email': onboarding_dict.get('email'),
-            'address_street': onboarding_dict.get('address_street'),
-            'address_city': onboarding_dict.get('address_city'),
-            'address_state': onboarding_dict.get('address_state'),
-            'address_zip': onboarding_dict.get('address_zip'),
-            'emergency_contact_name': onboarding_dict.get('emergency_contact_name'),
-            'emergency_contact_phone': onboarding_dict.get('emergency_contact_phone'),
-            'insurance_primary': onboarding_dict.get('insurance_provider'),
-            'insurance_policy_number': onboarding_dict.get('policy_number'),
-            'medical_records_requested': onboarding_dict.get('medical_records_requested', False),
-            'referral_documents_received': onboarding_dict.get('referral_documents_received', False),
-            'insurance_cards_received': onboarding_dict.get('insurance_cards_received', False),
-            'emed_signature_received': onboarding_dict.get('emed_signature_received', False),
-            'hypertension': onboarding_dict.get('hypertension', False),
-            'mental_health_concerns': onboarding_dict.get('mental_health_concerns', False),
-            'dementia': onboarding_dict.get('dementia', False),
-            'appointment_contact_name': onboarding_dict.get('appointment_contact_name'),
-            'appointment_contact_phone': onboarding_dict.get('appointment_contact_phone'),
-            'appointment_contact_email': onboarding_dict.get('appointment_contact_email'),
-            'medical_contact_name': onboarding_dict.get('medical_contact_name'),
-            'medical_contact_phone': onboarding_dict.get('medical_contact_phone'),
-            'medical_contact_email': onboarding_dict.get('medical_contact_email'),
-            'primary_care_provider': onboarding_dict.get('primary_care_provider'),
-            'pcp_last_seen': onboarding_dict.get('pcp_last_seen'),
-            'active_specialists': onboarding_dict.get('active_specialist'),
-            'chronic_conditions_provider': onboarding_dict.get('chronic_conditions_onboarding'),
-            'clinical_biometric': onboarding_dict.get('clinical_biometric'),
-            'provider_mh_schizophrenia': onboarding_dict.get('mh_schizophrenia', False),
-            'provider_mh_depression': onboarding_dict.get('mh_depression', False),
-            'provider_mh_anxiety': onboarding_dict.get('mh_anxiety', False),
-            'provider_mh_stress': onboarding_dict.get('mh_stress', False),
-            'provider_mh_adhd': onboarding_dict.get('mh_adhd', False),
-            'provider_mh_bipolar': onboarding_dict.get('mh_bipolar', False),
-            'provider_mh_suicidal': onboarding_dict.get('mh_suicidal', False),
-            'annual_well_visit': onboarding_dict.get('annual_well_visit', False),
+            "first_name": onboarding_dict.get("first_name"),
+            "last_name": onboarding_dict.get("last_name"),
+            "date_of_birth": onboarding_dict.get("date_of_birth"),
+            "gender": onboarding_dict.get("gender"),
+            "phone_primary": onboarding_dict.get("phone_primary"),
+            "email": onboarding_dict.get("email"),
+            "address_street": onboarding_dict.get("address_street"),
+            "address_city": onboarding_dict.get("address_city"),
+            "address_state": onboarding_dict.get("address_state"),
+            "address_zip": onboarding_dict.get("address_zip"),
+            "emergency_contact_name": onboarding_dict.get("emergency_contact_name"),
+            "emergency_contact_phone": onboarding_dict.get("emergency_contact_phone"),
+            "insurance_primary": onboarding_dict.get("insurance_provider"),
+            "insurance_policy_number": onboarding_dict.get("policy_number"),
+            "medical_records_requested": onboarding_dict.get(
+                "medical_records_requested", False
+            ),
+            "referral_documents_received": onboarding_dict.get(
+                "referral_documents_received", False
+            ),
+            "insurance_cards_received": onboarding_dict.get(
+                "insurance_cards_received", False
+            ),
+            "emed_signature_received": onboarding_dict.get(
+                "emed_signature_received", False
+            ),
+            "hypertension": onboarding_dict.get("hypertension", False),
+            "mental_health_concerns": onboarding_dict.get(
+                "mental_health_concerns", False
+            ),
+            "dementia": onboarding_dict.get("dementia", False),
+            "appointment_contact_name": onboarding_dict.get("appointment_contact_name"),
+            "appointment_contact_phone": onboarding_dict.get(
+                "appointment_contact_phone"
+            ),
+            "appointment_contact_email": onboarding_dict.get(
+                "appointment_contact_email"
+            ),
+            "medical_contact_name": onboarding_dict.get("medical_contact_name"),
+            "medical_contact_phone": onboarding_dict.get("medical_contact_phone"),
+            "medical_contact_email": onboarding_dict.get("medical_contact_email"),
+            "primary_care_provider": onboarding_dict.get("primary_care_provider"),
+            "pcp_last_seen": onboarding_dict.get("pcp_last_seen"),
+            "active_specialists": onboarding_dict.get("active_specialist"),
+            "chronic_conditions_provider": onboarding_dict.get(
+                "chronic_conditions_onboarding"
+            ),
+            "clinical_biometric": onboarding_dict.get("clinical_biometric"),
+            "provider_mh_schizophrenia": onboarding_dict.get("mh_schizophrenia", False),
+            "provider_mh_depression": onboarding_dict.get("mh_depression", False),
+            "provider_mh_anxiety": onboarding_dict.get("mh_anxiety", False),
+            "provider_mh_stress": onboarding_dict.get("mh_stress", False),
+            "provider_mh_adhd": onboarding_dict.get("mh_adhd", False),
+            "provider_mh_bipolar": onboarding_dict.get("mh_bipolar", False),
+            "provider_mh_suicidal": onboarding_dict.get("mh_suicidal", False),
+            "annual_well_visit": onboarding_dict.get("annual_well_visit", False),
             # CRITICAL MISSING FIELDS - Adding these now
-            'facility': onboarding_dict.get('facility_assignment'),  # Map facility_assignment to facility
-            'tv_date': onboarding_dict.get('tv_date'),
-            'tv_time': onboarding_dict.get('tv_time'),
-            'initial_tv_provider': onboarding_dict.get('initial_tv_provider'),
-            'assigned_coordinator_id': onboarding_dict.get('assigned_coordinator_user_id'),  # Map coordinator
+            "facility": onboarding_dict.get(
+                "facility_assignment"
+            ),  # Map facility_assignment to facility
+            "tv_date": onboarding_dict.get("tv_date"),
+            "tv_time": onboarding_dict.get("tv_time"),
+            "initial_tv_provider": onboarding_dict.get("initial_tv_provider"),
+            "assigned_coordinator_id": onboarding_dict.get(
+                "assigned_coordinator_user_id"
+            ),  # Map coordinator
             # New onboarding columns
-            'eligibility_status': onboarding_dict.get('eligibility_status'),
-            'eligibility_notes': onboarding_dict.get('eligibility_notes'),
-            'eligibility_verified': onboarding_dict.get('eligibility_verified', False),
-            'emed_chart_created': onboarding_dict.get('emed_chart_created', False),
-            'chart_id': onboarding_dict.get('chart_id'),
-            'facility_confirmed': onboarding_dict.get('facility_confirmed', False),
-            'chart_notes': onboarding_dict.get('chart_notes'),
-            'intake_call_completed': onboarding_dict.get('intake_call_completed', False),
-            'intake_notes': onboarding_dict.get('intake_notes'),
+            "eligibility_status": onboarding_dict.get("eligibility_status"),
+            "eligibility_notes": onboarding_dict.get("eligibility_notes"),
+            "eligibility_verified": onboarding_dict.get("eligibility_verified", False),
+            "emed_chart_created": onboarding_dict.get("emed_chart_created", False),
+            "chart_id": onboarding_dict.get("chart_id"),
+            "facility_confirmed": onboarding_dict.get("facility_confirmed", False),
+            "chart_notes": onboarding_dict.get("chart_notes"),
+            "intake_call_completed": onboarding_dict.get(
+                "intake_call_completed", False
+            ),
+            "intake_notes": onboarding_dict.get("intake_notes"),
         }
 
         patient_id = None
         existing_patient = None
-        
+
         # First check if onboarding already has a valid patient_id
-        if onboarding_dict.get('patient_id'):
-            existing_patient = conn.execute("SELECT patient_id FROM patients WHERE patient_id = ?", (onboarding_dict['patient_id'],)).fetchone()
+        if onboarding_dict.get("patient_id"):
+            existing_patient = conn.execute(
+                "SELECT patient_id FROM patients WHERE patient_id = ?",
+                (onboarding_dict["patient_id"],),
+            ).fetchone()
             if existing_patient:
                 # Use the existing patient_id immediately and sync onboarding record
                 patient_id = existing_patient[0]
-                conn.execute("UPDATE onboarding_patients SET patient_id = ? WHERE onboarding_id = ?", (patient_id, onboarding_id))
-        
+                conn.execute(
+                    "UPDATE onboarding_patients SET patient_id = ? WHERE onboarding_id = ?",
+                    (patient_id, onboarding_id),
+                )
+
         # If no existing patient found by patient_id, check for duplicates by name and DOB
         if not existing_patient:
-            first_name = onboarding_dict.get('first_name', '').strip()
-            last_name = onboarding_dict.get('last_name', '').strip()
-            date_of_birth = onboarding_dict.get('date_of_birth')
-            
+            first_name = onboarding_dict.get("first_name", "").strip()
+            last_name = onboarding_dict.get("last_name", "").strip()
+            date_of_birth = onboarding_dict.get("date_of_birth")
+
             if first_name and last_name and date_of_birth:
                 # Generate the expected text-based patient_id for this patient
-                expected_patient_id = generate_patient_id(first_name, last_name, date_of_birth)
-                
+                expected_patient_id = generate_patient_id(
+                    first_name, last_name, date_of_birth
+                )
+
                 # Check for existing patient with same text-based patient_id OR same name and DOB
-                existing_patient = conn.execute("""
-                    SELECT patient_id FROM patients 
-                    WHERE (patient_id = ? OR 
-                           (LOWER(TRIM(first_name)) = LOWER(?) 
-                            AND LOWER(TRIM(last_name)) = LOWER(?) 
+                existing_patient = conn.execute(
+                    """
+                    SELECT patient_id FROM patients
+                    WHERE (patient_id = ? OR
+                           (LOWER(TRIM(first_name)) = LOWER(?)
+                            AND LOWER(TRIM(last_name)) = LOWER(?)
                             AND date_of_birth = ?))
                     AND patient_id IS NOT NULL
                     LIMIT 1
-                """, (expected_patient_id, first_name.lower(), last_name.lower(), date_of_birth)).fetchone()
-                
+                """,
+                    (
+                        expected_patient_id,
+                        first_name.lower(),
+                        last_name.lower(),
+                        date_of_birth,
+                    ),
+                ).fetchone()
+
                 if existing_patient:
                     # Update onboarding record with found patient_id
                     patient_id = existing_patient[0]
-                    conn.execute("UPDATE onboarding_patients SET patient_id = ? WHERE onboarding_id = ?", (patient_id, onboarding_id))
+                    conn.execute(
+                        "UPDATE onboarding_patients SET patient_id = ? WHERE onboarding_id = ?",
+                        (patient_id, onboarding_id),
+                    )
 
         if existing_patient:
             # Build dynamic UPDATE clauses for columns that exist in patients table
@@ -2268,7 +2784,19 @@ def transfer_onboarding_to_patient_table(onboarding_id):
             for col, val in candidate.items():
                 if col in patients_cols:
                     # preserve existing richer provider data using COALESCE for clinical/provider fields
-                    if col.startswith('appointment_contact_') or col.startswith('medical_contact_') or col in ('primary_care_provider','pcp_last_seen','active_specialists','chronic_conditions_provider','clinical_biometric') or col.startswith('provider_mh_'):
+                    if (
+                        col.startswith("appointment_contact_")
+                        or col.startswith("medical_contact_")
+                        or col
+                        in (
+                            "primary_care_provider",
+                            "pcp_last_seen",
+                            "active_specialists",
+                            "chronic_conditions_provider",
+                            "clinical_biometric",
+                        )
+                        or col.startswith("provider_mh_")
+                    ):
                         set_clauses.append(f"{col} = COALESCE(?, {col})")
                         params.append(val)
                     else:
@@ -2279,7 +2807,9 @@ def transfer_onboarding_to_patient_table(onboarding_id):
             params.append(patient_id)
 
             if len(set_clauses) > 1:
-                query = f"UPDATE patients SET {', '.join(set_clauses)} WHERE patient_id = ?"
+                query = (
+                    f"UPDATE patients SET {', '.join(set_clauses)} WHERE patient_id = ?"
+                )
                 conn.execute(query, params)
         else:
             # Build dynamic INSERT columns/values based on existing patients columns
@@ -2291,136 +2821,173 @@ def transfer_onboarding_to_patient_table(onboarding_id):
                     insert_vals.append(val)
 
             # Ensure status/enrollment_date/created_date if available
-            if 'enrollment_date' in patients_cols:
-                insert_cols.append('enrollment_date')
-                insert_vals.append(datetime.now().strftime('%Y-%m-%d'))
-            if 'created_date' in patients_cols:
-                insert_cols.append('created_date')
-                insert_vals.append(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-            if 'status' in patients_cols and 'status' not in insert_cols:
-                insert_cols.append('status')
-                insert_vals.append('Active')
+            if "enrollment_date" in patients_cols:
+                insert_cols.append("enrollment_date")
+                insert_vals.append(datetime.now().strftime("%Y-%m-%d"))
+            if "created_date" in patients_cols:
+                insert_cols.append("created_date")
+                insert_vals.append(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+            if "status" in patients_cols and "status" not in insert_cols:
+                insert_cols.append("status")
+                insert_vals.append("Active")
 
             if not insert_cols:
-                raise Exception('No matching patient columns found to insert')
+                raise Exception("No matching patient columns found to insert")
 
             # Generate proper text-based patient_id
             patient_id = generate_patient_id(
-                onboarding_dict.get('first_name', ''),
-                onboarding_dict.get('last_name', ''),
-                onboarding_dict.get('date_of_birth', '')
+                onboarding_dict.get("first_name", ""),
+                onboarding_dict.get("last_name", ""),
+                onboarding_dict.get("date_of_birth", ""),
             )
-            
+
             # Add patient_id to the insert if the column exists
-            if 'patient_id' in patients_cols:
-                insert_cols.append('patient_id')
+            if "patient_id" in patients_cols:
+                insert_cols.append("patient_id")
                 insert_vals.append(patient_id)
-            
-            placeholders = ','.join(['?'] * len(insert_cols))
-            cols_sql = ','.join(insert_cols)
-            cursor = conn.execute(f"INSERT INTO patients ({cols_sql}) VALUES ({placeholders})", tuple(insert_vals))
-            
+
+            placeholders = ",".join(["?"] * len(insert_cols))
+            cols_sql = ",".join(insert_cols)
+            cursor = conn.execute(
+                f"INSERT INTO patients ({cols_sql}) VALUES ({placeholders})",
+                tuple(insert_vals),
+            )
+
             # If patient_id column didn't exist in the original insert, update it now
-            if 'patient_id' not in insert_cols:
-                conn.execute("UPDATE patients SET patient_id = ? WHERE rowid = ?", (patient_id, cursor.lastrowid))
-            
+            if "patient_id" not in insert_cols:
+                conn.execute(
+                    "UPDATE patients SET patient_id = ? WHERE rowid = ?",
+                    (patient_id, cursor.lastrowid),
+                )
+
             # Update onboarding record with patient_id if column exists
-            conn.execute("UPDATE onboarding_patients SET patient_id = ? WHERE onboarding_id = ?", (patient_id, onboarding_id))
+            conn.execute(
+                "UPDATE onboarding_patients SET patient_id = ? WHERE onboarding_id = ?",
+                (patient_id, onboarding_id),
+            )
 
         # Mark onboarding as complete
-        conn.execute("""
-            UPDATE onboarding_patients 
+        conn.execute(
+            """
+            UPDATE onboarding_patients
             SET completed_date = datetime('now'), updated_date = datetime('now')
             WHERE onboarding_id = ?
-        """, (onboarding_id,))
+        """,
+            (onboarding_id,),
+        )
 
         # Create patient assignments if provider or coordinator are assigned
-        provider_id = onboarding_dict.get('assigned_provider_user_id')
-        coordinator_id = onboarding_dict.get('assigned_coordinator_user_id')
-        
+        provider_id = onboarding_dict.get("assigned_provider_user_id")
+        coordinator_id = onboarding_dict.get("assigned_coordinator_user_id")
+
         print(f"DEBUG: provider_id={provider_id}, coordinator_id={coordinator_id}")
         print(f"DEBUG: patient_id={patient_id}")
-        
+
         if provider_id or coordinator_id:
             print(f"DEBUG: Creating patient assignment")
             # Check if assignment already exists
-            existing_assignment = conn.execute("""
-                SELECT assignment_id FROM patient_assignments 
+            existing_assignment = conn.execute(
+                """
+                SELECT assignment_id FROM patient_assignments
                 WHERE patient_id = ? AND assignment_type = 'onboarding' AND status = 'active'
-            """, (patient_id,)).fetchone()
-            
+            """,
+                (patient_id,),
+            ).fetchone()
+
             if existing_assignment:
                 print(f"DEBUG: Updating existing assignment {existing_assignment[0]}")
                 # Update existing assignment
-                conn.execute("""
-                    UPDATE patient_assignments 
-                    SET provider_id = ?, coordinator_id = ?, 
+                conn.execute(
+                    """
+                    UPDATE patient_assignments
+                    SET provider_id = ?, coordinator_id = ?,
                         updated_date = datetime('now')
                     WHERE assignment_id = ?
-                """, (provider_id, coordinator_id, existing_assignment[0]))
+                """,
+                    (provider_id, coordinator_id, existing_assignment[0]),
+                )
             else:
                 print(f"DEBUG: Creating new assignment")
                 # Create new assignment
-                conn.execute("""
+                conn.execute(
+                    """
                     INSERT INTO patient_assignments (
-                        patient_id, provider_id, coordinator_id, assignment_date, 
-                        assignment_type, status, priority_level, notes, 
+                        patient_id, provider_id, coordinator_id, assignment_date,
+                        assignment_type, status, priority_level, notes,
                         created_date, updated_date
-                    ) VALUES (?, ?, ?, datetime('now'), 'onboarding', 'active', 'medium', 
-                             'Assignment created from onboarding completion', 
+                    ) VALUES (?, ?, ?, datetime('now'), 'onboarding', 'active', 'medium',
+                             'Assignment created from onboarding completion',
                              datetime('now'), datetime('now'))
-                """, (patient_id, provider_id, coordinator_id))
+                """,
+                    (patient_id, provider_id, coordinator_id),
+                )
                 print(f"DEBUG: Assignment created successfully")
 
         conn.commit()
-        
+
         return patient_id
 
     finally:
         conn.close()
 
+
 def get_users_by_role_name(role_name):
     """Get all users with a specific role by role name"""
     conn = get_db_connection()
     try:
-        users = conn.execute("""
-            SELECT u.user_id, u.username, u.full_name 
+        users = conn.execute(
+            """
+            SELECT u.user_id, u.username, u.full_name
             FROM users u
             JOIN user_roles ur ON u.user_id = ur.user_id
             JOIN roles r ON ur.role_id = r.role_id
             WHERE r.role_name = ?
-        """, (role_name,)).fetchall()
+        """,
+            (role_name,),
+        ).fetchall()
         return [dict(user) for user in users]
     finally:
         conn.close()
+
 
 def insert_patient_from_onboarding(onboarding_id):
     """Insert patient data into patients table from onboarding data while keeping onboarding record"""
     conn = get_db_connection()
     try:
         # Get onboarding data
-        onboarding = conn.execute("""
+        onboarding = conn.execute(
+            """
             SELECT * FROM onboarding_patients WHERE onboarding_id = ?
-        """, (onboarding_id,)).fetchone()
-        
+        """,
+            (onboarding_id,),
+        ).fetchone()
+
         if not onboarding:
             raise Exception(f"No onboarding patient found with ID {onboarding_id}")
-            
+
         onboarding_dict = dict(onboarding)
-        
+
         # Check if patient already exists in main table by name and DOB first
-        existing_patient = conn.execute("""
-            SELECT patient_id FROM patients 
+        existing_patient = conn.execute(
+            """
+            SELECT patient_id FROM patients
             WHERE first_name = ? AND last_name = ? AND date_of_birth = ?
             AND patient_id IS NOT NULL
             ORDER BY patient_id
             LIMIT 1
-        """, (onboarding_dict['first_name'], onboarding_dict['last_name'], onboarding_dict['date_of_birth'])).fetchone()
-        
+        """,
+            (
+                onboarding_dict["first_name"],
+                onboarding_dict["last_name"],
+                onboarding_dict["date_of_birth"],
+            ),
+        ).fetchone()
+
         if existing_patient:
             # Use existing patient - update with latest onboarding data
-            text_patient_id = existing_patient['patient_id']
-            conn.execute("""
+            text_patient_id = existing_patient["patient_id"]
+            conn.execute(
+                """
                 UPDATE patients SET
                     first_name = ?, last_name = ?, date_of_birth = ?, gender = ?,
                     phone_primary = ?, email = ?,
@@ -2443,41 +3010,53 @@ def insert_patient_from_onboarding(onboarding_id):
                     updated_date = CURRENT_TIMESTAMP
                 WHERE patient_id = ?
             """,
-            (
-                onboarding_dict['first_name'], onboarding_dict['last_name'],
-                onboarding_dict['date_of_birth'], onboarding_dict.get('gender'),
-                onboarding_dict.get('phone_primary'), onboarding_dict.get('email'),
-                onboarding_dict.get('address_street'), onboarding_dict.get('address_city'),
-                onboarding_dict.get('address_state'), onboarding_dict.get('address_zip'),
-                onboarding_dict.get('emergency_contact_name'), onboarding_dict.get('emergency_contact_phone'),
-                onboarding_dict.get('insurance_provider'), onboarding_dict.get('policy_number'),
-                onboarding_dict.get('medical_records_requested', False),
-                    onboarding_dict.get('referral_documents_received', False),
-                    onboarding_dict.get('insurance_cards_received', False),
-                    onboarding_dict.get('emed_signature_received', False),
-                    onboarding_dict.get('hypertension', False),
-                    onboarding_dict.get('mental_health_concerns', False),
-                    onboarding_dict.get('dementia', False),
-                    onboarding_dict.get('appointment_contact_name'),
-                    onboarding_dict.get('appointment_contact_phone'),
-                    onboarding_dict.get('appointment_contact_email'),
-                    onboarding_dict.get('medical_contact_name'),
-                    onboarding_dict.get('medical_contact_phone'),
-                    onboarding_dict.get('medical_contact_email'),
-                    onboarding_dict.get('primary_care_provider'),
-                    onboarding_dict.get('pcp_last_seen'),
-                    onboarding_dict.get('annual_well_visit', False),
-                    onboarding_dict.get('assigned_coordinator_user_id'),
-                    text_patient_id
-                ))
-            
+                (
+                    onboarding_dict["first_name"],
+                    onboarding_dict["last_name"],
+                    onboarding_dict["date_of_birth"],
+                    onboarding_dict.get("gender"),
+                    onboarding_dict.get("phone_primary"),
+                    onboarding_dict.get("email"),
+                    onboarding_dict.get("address_street"),
+                    onboarding_dict.get("address_city"),
+                    onboarding_dict.get("address_state"),
+                    onboarding_dict.get("address_zip"),
+                    onboarding_dict.get("emergency_contact_name"),
+                    onboarding_dict.get("emergency_contact_phone"),
+                    onboarding_dict.get("insurance_provider"),
+                    onboarding_dict.get("policy_number"),
+                    onboarding_dict.get("medical_records_requested", False),
+                    onboarding_dict.get("referral_documents_received", False),
+                    onboarding_dict.get("insurance_cards_received", False),
+                    onboarding_dict.get("emed_signature_received", False),
+                    onboarding_dict.get("hypertension", False),
+                    onboarding_dict.get("mental_health_concerns", False),
+                    onboarding_dict.get("dementia", False),
+                    onboarding_dict.get("appointment_contact_name"),
+                    onboarding_dict.get("appointment_contact_phone"),
+                    onboarding_dict.get("appointment_contact_email"),
+                    onboarding_dict.get("medical_contact_name"),
+                    onboarding_dict.get("medical_contact_phone"),
+                    onboarding_dict.get("medical_contact_email"),
+                    onboarding_dict.get("primary_care_provider"),
+                    onboarding_dict.get("pcp_last_seen"),
+                    onboarding_dict.get("annual_well_visit", False),
+                    onboarding_dict.get("assigned_coordinator_user_id"),
+                    text_patient_id,
+                ),
+            )
+
             # Update onboarding record with the existing patient_id
-            conn.execute("""
+            conn.execute(
+                """
                 UPDATE onboarding_patients SET patient_id = ? WHERE onboarding_id = ?
-            """, (text_patient_id, onboarding_id))
+            """,
+                (text_patient_id, onboarding_id),
+            )
         else:
             # Create new patient record, including assigned_coordinator_id
-            cursor = conn.execute("""
+            cursor = conn.execute(
+                """
                 INSERT INTO patients (
                     first_name, last_name, date_of_birth, gender, phone_primary, email,
                     address_street, address_city, address_state, address_zip,
@@ -2494,99 +3073,125 @@ def insert_patient_from_onboarding(onboarding_id):
                     enrollment_date, created_date, status
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Active')
             """,
-            (
-                onboarding_dict['first_name'], onboarding_dict['last_name'],
-                onboarding_dict['date_of_birth'], onboarding_dict.get('gender'),
-                onboarding_dict.get('phone_primary'), onboarding_dict.get('email'),
-                onboarding_dict.get('address_street'), onboarding_dict.get('address_city'),
-                onboarding_dict.get('address_state'), onboarding_dict.get('address_zip'),
-                onboarding_dict.get('emergency_contact_name'), onboarding_dict.get('emergency_contact_phone'),
-                onboarding_dict.get('insurance_provider'), onboarding_dict.get('policy_number'),
-                onboarding_dict.get('medical_records_requested', False),
-                onboarding_dict.get('referral_documents_received', False),
-                onboarding_dict.get('insurance_cards_received', False),
-                onboarding_dict.get('emed_signature_received', False),
-                onboarding_dict.get('hypertension', False),
-                onboarding_dict.get('mental_health_concerns', False),
-                onboarding_dict.get('dementia', False),
-                onboarding_dict.get('appointment_contact_name'),
-                onboarding_dict.get('appointment_contact_phone'),
-                onboarding_dict.get('appointment_contact_email'),
-                onboarding_dict.get('medical_contact_name'),
-                onboarding_dict.get('medical_contact_phone'),
-                onboarding_dict.get('medical_contact_email'),
-                onboarding_dict.get('primary_care_provider'),
-                onboarding_dict.get('pcp_last_seen'),
-                onboarding_dict.get('annual_well_visit', False),
-                onboarding_dict.get('assigned_coordinator_user_id'),
-            ))
+                (
+                    onboarding_dict["first_name"],
+                    onboarding_dict["last_name"],
+                    onboarding_dict["date_of_birth"],
+                    onboarding_dict.get("gender"),
+                    onboarding_dict.get("phone_primary"),
+                    onboarding_dict.get("email"),
+                    onboarding_dict.get("address_street"),
+                    onboarding_dict.get("address_city"),
+                    onboarding_dict.get("address_state"),
+                    onboarding_dict.get("address_zip"),
+                    onboarding_dict.get("emergency_contact_name"),
+                    onboarding_dict.get("emergency_contact_phone"),
+                    onboarding_dict.get("insurance_provider"),
+                    onboarding_dict.get("policy_number"),
+                    onboarding_dict.get("medical_records_requested", False),
+                    onboarding_dict.get("referral_documents_received", False),
+                    onboarding_dict.get("insurance_cards_received", False),
+                    onboarding_dict.get("emed_signature_received", False),
+                    onboarding_dict.get("hypertension", False),
+                    onboarding_dict.get("mental_health_concerns", False),
+                    onboarding_dict.get("dementia", False),
+                    onboarding_dict.get("appointment_contact_name"),
+                    onboarding_dict.get("appointment_contact_phone"),
+                    onboarding_dict.get("appointment_contact_email"),
+                    onboarding_dict.get("medical_contact_name"),
+                    onboarding_dict.get("medical_contact_phone"),
+                    onboarding_dict.get("medical_contact_email"),
+                    onboarding_dict.get("primary_care_provider"),
+                    onboarding_dict.get("pcp_last_seen"),
+                    onboarding_dict.get("annual_well_visit", False),
+                    onboarding_dict.get("assigned_coordinator_user_id"),
+                ),
+            )
             integer_patient_id = cursor.lastrowid
-            
+
             # Generate the text-based patient_id using the same function
             text_patient_id = generate_patient_id(
-                onboarding_dict.get('first_name', ''),
-                onboarding_dict.get('last_name', ''),
-                onboarding_dict.get('date_of_birth', '')
+                onboarding_dict.get("first_name", ""),
+                onboarding_dict.get("last_name", ""),
+                onboarding_dict.get("date_of_birth", ""),
             )
-            
+
             # Update the patient record with the generated text-based patient_id
-            conn.execute("""
+            conn.execute(
+                """
                 UPDATE patients SET patient_id = ? WHERE ROWID = ?
-            """, (text_patient_id, integer_patient_id))
-            
+            """,
+                (text_patient_id, integer_patient_id),
+            )
+
             # Update onboarding record with the text-based patient_id
-            conn.execute("""
+            conn.execute(
+                """
                 UPDATE onboarding_patients SET patient_id = ? WHERE onboarding_id = ?
-            """, (text_patient_id, onboarding_id))
-        
+            """,
+                (text_patient_id, onboarding_id),
+            )
+
         # Create patient assignments in patient_assignments table using text-based patient_id
-        provider_id = onboarding_dict.get('assigned_provider_user_id')
-        coordinator_id = onboarding_dict.get('assigned_coordinator_user_id')
-        
+        provider_id = onboarding_dict.get("assigned_provider_user_id")
+        coordinator_id = onboarding_dict.get("assigned_coordinator_user_id")
+
         print(f"DEBUG: provider_id={provider_id}, coordinator_id={coordinator_id}")
         print(f"DEBUG: text_patient_id={text_patient_id}")
-        
+
         if provider_id or coordinator_id:
             print(f"DEBUG: Entering assignment creation logic")
             # Check if assignment already exists using text-based patient_id
-            existing_assignment = conn.execute("""
-                SELECT assignment_id FROM patient_assignments 
+            existing_assignment = conn.execute(
+                """
+                SELECT assignment_id FROM patient_assignments
                 WHERE patient_id = ? AND assignment_type = 'onboarding' AND status = 'active'
-            """, (text_patient_id,)).fetchone()
-            
+            """,
+                (text_patient_id,),
+            ).fetchone()
+
             if existing_assignment:
-                print(f"DEBUG: Updating existing assignment {existing_assignment['assignment_id']}")
+                print(
+                    f"DEBUG: Updating existing assignment {existing_assignment['assignment_id']}"
+                )
                 # Update existing assignment
-                conn.execute("""
-                    UPDATE patient_assignments 
-                    SET provider_id = ?, coordinator_id = ?, 
+                conn.execute(
+                    """
+                    UPDATE patient_assignments
+                    SET provider_id = ?, coordinator_id = ?,
                         updated_date = datetime('now')
                     WHERE assignment_id = ?
-                """, (provider_id, coordinator_id, existing_assignment['assignment_id']))
+                """,
+                    (provider_id, coordinator_id, existing_assignment["assignment_id"]),
+                )
             else:
                 print(f"DEBUG: Creating new assignment for {text_patient_id}")
                 # Create new assignment
-                conn.execute("""
+                conn.execute(
+                    """
                     INSERT INTO patient_assignments (
-                        patient_id, provider_id, coordinator_id, assignment_date, 
-                        assignment_type, status, priority_level, notes, 
+                        patient_id, provider_id, coordinator_id, assignment_date,
+                        assignment_type, status, priority_level, notes,
                         created_date, updated_date
-                    ) VALUES (?, ?, ?, datetime('now'), 'onboarding', 'active', 'medium', 
-                             'Assignment created from onboarding completion', 
+                    ) VALUES (?, ?, ?, datetime('now'), 'onboarding', 'active', 'medium',
+                             'Assignment created from onboarding completion',
                              datetime('now'), datetime('now'))
-                """, (text_patient_id, provider_id, coordinator_id))
+                """,
+                    (text_patient_id, provider_id, coordinator_id),
+                )
                 print(f"DEBUG: Assignment created successfully")
-        
+
         print(f"DEBUG: About to commit changes")
         conn.commit()
         print(f"DEBUG: Changes committed successfully")
         return text_patient_id
-        
+
     except Exception as e:
         conn.rollback()
         raise e
     finally:
         conn.close()
+
 
 def get_users_by_role(role_identifier):
     """Get all users with a specific role - works with role_id (int) or role_name (string)"""
@@ -2594,25 +3199,32 @@ def get_users_by_role(role_identifier):
     try:
         if isinstance(role_identifier, int):
             # Handle role_id
-            users = conn.execute("""
-                SELECT u.user_id, u.username, u.full_name 
+            users = conn.execute(
+                """
+                SELECT u.user_id, u.username, u.full_name
                 FROM users u
                 JOIN user_roles ur ON u.user_id = ur.user_id
                 JOIN roles r ON ur.role_id = r.role_id
                 WHERE r.role_id = ?
-            """, (role_identifier,)).fetchall()
+            """,
+                (role_identifier,),
+            ).fetchall()
         else:
             # Handle role_name (string)
-            users = conn.execute("""
-                SELECT u.user_id, u.username, u.full_name 
+            users = conn.execute(
+                """
+                SELECT u.user_id, u.username, u.full_name
                 FROM users u
                 JOIN user_roles ur ON u.user_id = ur.user_id
                 JOIN roles r ON ur.role_id = r.role_id
                 WHERE r.role_name = ?
-            """, (role_identifier,)).fetchall()
+            """,
+                (role_identifier,),
+            ).fetchall()
         return [dict(user) for user in users]
     finally:
         conn.close()
+
 
 def get_coordinator_weekly_patient_minutes(coordinator_id, weeks_back=4):
     """Get minutes logged per patient per week for coordinator (P0 Enhancement)"""
@@ -2636,16 +3248,17 @@ def get_coordinator_weekly_patient_minutes(coordinator_id, weeks_back=4):
             GROUP BY ct.patient_id, strftime('%Y-%W', ct.task_date)
             ORDER BY week DESC, patient_name
         """
-        
+
         days_back = weeks_back * 7
         result = conn.execute(query, (coordinator_id, days_back)).fetchall()
         return [dict(row) for row in result]
     finally:
         conn.close()
 
+
 def get_coordinator_tasks_by_date_range(coordinator_id, start_date, end_date):
     """Get all coordinator tasks within date range
-    
+
     Handles both numeric coordinator_ids and unmapped staff codes stored as coordinator_id.
     patient_id field may contain actual patient_id or "Last, First DOB" format for unmatched patients.
     """
@@ -2669,13 +3282,16 @@ def get_coordinator_tasks_by_date_range(coordinator_id, start_date, end_date):
             AND date(ct.task_date) <= date(?)
             ORDER BY ct.task_date DESC
         """
-        return conn.execute(query, (str(coordinator_id), start_date, end_date)).fetchall()
+        return conn.execute(
+            query, (str(coordinator_id), start_date, end_date)
+        ).fetchall()
     finally:
         conn.close()
 
+
 def get_coordinator_monthly_summary_current_month(coordinator_id):
     """Get current month summary for coordinator
-    
+
     Handles both numeric coordinator_ids and unmapped staff codes.
     For staff codes, coordinator_id in monthly summary table may not match since it uses INTEGER.
     """
@@ -2696,7 +3312,7 @@ def get_coordinator_monthly_summary_current_month(coordinator_id):
             AND cms.month = CAST(strftime('%m', 'now') AS INTEGER)
             ORDER BY cms.total_minutes DESC
         """
-        
+
         # Try to convert coordinator_id to integer for monthly summary lookup
         try:
             numeric_coordinator_id = int(coordinator_id)
@@ -2706,17 +3322,20 @@ def get_coordinator_monthly_summary_current_month(coordinator_id):
         except (ValueError, TypeError):
             # coordinator_id is not numeric (it's a staff code)
             pass
-        
+
         # If no results or coordinator_id is a staff code, try to find by coordinator name
         # Get coordinator name from users/staff mapping
         try:
-            staff_mapping = conn.execute("""
+            staff_mapping = conn.execute(
+                """
                 SELECT u.full_name
                 FROM staff_code_mapping scm
                 JOIN users u ON scm.user_id = u.user_id
                 WHERE scm.staff_code = ?
-            """, (str(coordinator_id),)).fetchone()
-            
+            """,
+                (str(coordinator_id),),
+            ).fetchone()
+
             if staff_mapping:
                 coordinator_name = staff_mapping[0]
                 query_by_name = """
@@ -2734,11 +3353,12 @@ def get_coordinator_monthly_summary_current_month(coordinator_id):
                 return conn.execute(query_by_name, (coordinator_name,)).fetchall()
         except:
             pass
-        
+
         # Return empty list if no matches found
         return []
     finally:
         conn.close()
+
 
 def get_coordinator_patient_service_analysis(coordinator_id=None, weeks_back=8):
     """Get detailed patient service analysis for coordinator with patient activity breakdown"""
@@ -2747,20 +3367,26 @@ def get_coordinator_patient_service_analysis(coordinator_id=None, weeks_back=8):
         # Build coordinator filter condition
         if coordinator_id:
             # Handle both numeric coordinator_id and staff codes
-            coordinator_filter = "WHERE CAST(ct.coordinator_id AS TEXT) = CAST(? AS TEXT)"
+            coordinator_filter = (
+                "WHERE CAST(ct.coordinator_id AS TEXT) = CAST(? AS TEXT)"
+            )
             params = [coordinator_id]
         else:
             coordinator_filter = ""
             params = []
-        
+
         # Add date filter if weeks_back is specified
         if weeks_back:
             if coordinator_filter:
-                coordinator_filter += " AND ct.task_date >= date('now', '-' || ? || ' days')"
+                coordinator_filter += (
+                    " AND ct.task_date >= date('now', '-' || ? || ' days')"
+                )
             else:
-                coordinator_filter = "WHERE ct.task_date >= date('now', '-' || ? || ' days')"
+                coordinator_filter = (
+                    "WHERE ct.task_date >= date('now', '-' || ? || ' days')"
+                )
             params.append(weeks_back * 7)
-        
+
         query = f"""
             SELECT
                 ct.patient_id,
@@ -2779,7 +3405,7 @@ def get_coordinator_patient_service_analysis(coordinator_id=None, weeks_back=8):
             GROUP BY ct.patient_id, ct.coordinator_id
             ORDER BY total_minutes DESC, total_tasks DESC
         """
-        
+
         result = conn.execute(query, params).fetchall()
         return [dict(row) for row in result]
     except Exception as e:
@@ -2787,6 +3413,7 @@ def get_coordinator_patient_service_analysis(coordinator_id=None, weeks_back=8):
         return []
     finally:
         conn.close()
+
 
 def add_coordinator_tasks_enhancements():
     """Add enhancements to coordinator_tasks table for differential imports"""
@@ -2797,35 +3424,39 @@ def add_coordinator_tasks_enhancements():
             conn.execute("ALTER TABLE coordinator_tasks ADD COLUMN source_hash TEXT;")
         except:
             pass  # Column might already exist
-            
+
         # Add user_id column if it doesn't exist
         try:
             conn.execute("ALTER TABLE coordinator_tasks ADD COLUMN user_id INTEGER;")
         except:
             pass  # Column might already exist
-            
+
         # Add coordinator_name column if it doesn't exist
         try:
-            conn.execute("ALTER TABLE coordinator_tasks ADD COLUMN coordinator_name TEXT;")
+            conn.execute(
+                "ALTER TABLE coordinator_tasks ADD COLUMN coordinator_name TEXT;"
+            )
         except:
             pass  # Column might already exist
-            
+
         conn.commit()
     except Exception as e:
         print(f"Error enhancing coordinator_tasks table: {e}")
     finally:
         conn.close()
 
+
 # ========================================
 # P0 ENHANCEMENT FUNCTIONS
 # ========================================
+
 
 def get_providers_list():
     """Get list of providers for phone review dropdown (P0 Enhancement)"""
     conn = get_db_connection()
     try:
         query = """
-            SELECT 
+            SELECT
                 u.user_id,
                 u.full_name,
                 u.email
@@ -2840,26 +3471,32 @@ def get_providers_list():
     finally:
         conn.close()
 
+
 def save_coordinator_phone_review(coordinator_id, form_data):
     """Save phone review task for coordinator (P0 Enhancement)"""
     conn = get_db_connection()
     try:
         # Insert phone review task
-        provider_as_pid = normalize_patient_id(form_data.get('provider_name', ''), conn=conn)
-        conn.execute("""
+        provider_as_pid = normalize_patient_id(
+            form_data.get("provider_name", ""), conn=conn
+        )
+        conn.execute(
+            """
             INSERT INTO coordinator_tasks_2025_09 (
                 coordinator_id, patient_id, task_date, task_type,
                 duration_minutes, notes, source_system, imported_at
             ) VALUES (?, ?, ?, ?, ?, ?, 'PHONE_REVIEW', CURRENT_TIMESTAMP)
-        """, (
-            coordinator_id,
-            provider_as_pid,
-            form_data['task_date'].strftime('%Y-%m-%d'),
-            "19|Communication|Communication: Phone",
-            form_data['duration_minutes'],
-            f"Phone review with {form_data.get('provider_name', '')}: {form_data.get('notes', '')}"
-        ))
-        
+        """,
+            (
+                coordinator_id,
+                provider_as_pid,
+                form_data["task_date"].strftime("%Y-%m-%d"),
+                "19|Communication|Communication: Phone",
+                form_data["duration_minutes"],
+                f"Phone review with {form_data.get('provider_name', '')}: {form_data.get('notes', '')}",
+            ),
+        )
+
         conn.commit()
         return True
     except Exception as e:
@@ -2868,15 +3505,17 @@ def save_coordinator_phone_review(coordinator_id, form_data):
     finally:
         conn.close()
 
+
 def get_available_workflows():
     """Get available workflow IDs for workflow management (P0 Enhancement)"""
     return [
         "Standard Onboarding",
-        "Expedited Onboarding", 
+        "Expedited Onboarding",
         "Complex Medical Case",
         "Insurance Verification",
-        "Provider Assignment"
+        "Provider Assignment",
     ]
+
 
 def get_coordinator_monthly_patient_service_minutes(coordinator_id, months_back=3):
     """Get patient service minutes per month for CM/LC roles (P0 Enhancement)"""
@@ -2896,11 +3535,12 @@ def get_coordinator_monthly_patient_service_minutes(coordinator_id, months_back=
             AND cms.year >= strftime('%Y', date('now', '-' || ? || ' months'))
             ORDER BY cms.year DESC, cms.month DESC
         """
-        
+
         result = conn.execute(query, (coordinator_id, months_back)).fetchall()
         return [dict(row) for row in result]
     finally:
         conn.close()
+
 
 def get_provider_patient_panel_enhanced(user_id):
     """Get enhanced provider patient panel with new columns (P0 Enhancement)"""
@@ -2996,8 +3636,12 @@ ORDER BY p.last_name, p.first_name
         patients = []
         for row in result:
             d = dict(row)
-            d['POC-A'] = f"{d.get('appointment_contact_name','') or ''} {d.get('appointment_contact_phone','') or ''}".strip()
-            d['POC-M'] = f"{d.get('medical_contact_name','') or ''} {d.get('medical_contact_phone','') or ''}".strip()
+            d["POC-A"] = (
+                f"{d.get('appointment_contact_name','') or ''} {d.get('appointment_contact_phone','') or ''}".strip()
+            )
+            d["POC-M"] = (
+                f"{d.get('medical_contact_name','') or ''} {d.get('medical_contact_phone','') or ''}".strip()
+            )
             patients.append(d)
         return patients
     except Exception as e:
@@ -3005,6 +3649,7 @@ ORDER BY p.last_name, p.first_name
         return []
     finally:
         conn.close()
+
 
 def get_all_facilities():
     """Get all facilities from the facilities table"""
@@ -3029,7 +3674,9 @@ def get_all_patients_simple():
     """Get all patients from the database - simple test function"""
     conn = get_db_connection()
     try:
-        query = "SELECT patient_id, first_name, last_name, status FROM patients LIMIT 10"
+        query = (
+            "SELECT patient_id, first_name, last_name, status FROM patients LIMIT 10"
+        )
         result = conn.execute(query).fetchall()
         return [dict(row) for row in result]
     finally:
@@ -3072,19 +3719,20 @@ def get_patient_facility_provider_info(patient_ids):
         patients = []
         for row in result:
             d = dict(row)
-            if 'last_visit_service_type' in d:
-                d['service_type'] = d['last_visit_service_type']
+            if "last_visit_service_type" in d:
+                d["service_type"] = d["last_visit_service_type"]
             patients.append(d)
         return patients
     finally:
         conn.close()
+
 
 def get_provider_panel_patients_by_month(provider_id, selected_month):
     """Get provider panel patients pre-loaded for specific month (P0 Enhancement)"""
     conn = get_db_connection()
     try:
         # Parse the selected month (format: "2025-09")
-        year, month = selected_month.split('-')
+        year, month = selected_month.split("-")
         # Use distinct patient assignments and map facility and last task date
         query = """
             SELECT
@@ -3114,13 +3762,14 @@ def get_provider_panel_patients_by_month(provider_id, selected_month):
     finally:
         conn.close()
 
+
 def get_cpm_current_month_summary(user_id):
     """Get CPM monthly summary for current month (P0 Enhancement)"""
     conn = get_db_connection()
     try:
-        current_month = datetime.now().strftime('%m')
-        current_year = datetime.now().strftime('%Y')
-        
+        current_month = datetime.now().strftime("%m")
+        current_year = datetime.now().strftime("%Y")
+
         query = """
             SELECT
                 pms.month,
@@ -3136,27 +3785,30 @@ def get_cpm_current_month_summary(user_id):
             AND pms.month = ?
             AND pms.year = ?
         """
-        
+
         result = conn.execute(query, (user_id, current_month, current_year)).fetchall()
         return dict(result[0]) if result else None
     finally:
         conn.close()
 
+
 def get_calendar_months():
     """Get calendar months for PSL subdivision (P0 Enhancement)"""
     from datetime import datetime, timedelta
-    
+
     months = []
     current_date = datetime.now()
-    
+
     # Generate last 12 months
     for i in range(12):
-        month_date = current_date - timedelta(days=i*30)
-        months.append({
-            'value': month_date.strftime('%Y-%m'),
-            'label': month_date.strftime('%B %Y')
-        })
-    
+        month_date = current_date - timedelta(days=i * 30)
+        months.append(
+            {
+                "value": month_date.strftime("%Y-%m"),
+                "label": month_date.strftime("%B %Y"),
+            }
+        )
+
     return months
 
 
@@ -3169,7 +3821,7 @@ def get_all_patient_panel():
     try:
         query = "SELECT * FROM patient_panel"
         df = pd.read_sql_query(query, conn)
-        return df.to_dict(orient='records')
+        return df.to_dict(orient="records")
     except Exception as e:
         print(f"Error in get_all_patient_panel: {e}")
         return []
@@ -3182,16 +3834,19 @@ def sync_onboarding_to_patient_panel(onboarding_id):
     conn = get_db_connection()
     try:
         # Get onboarding data
-        onboarding = conn.execute("""
+        onboarding = conn.execute(
+            """
             SELECT * FROM onboarding_patients WHERE onboarding_id = ?
-        """, (onboarding_id,)).fetchone()
-        
+        """,
+            (onboarding_id,),
+        ).fetchone()
+
         if not onboarding:
             return None
-            
+
         onboarding_dict = dict(onboarding)
-        patient_id = onboarding_dict.get('patient_id')
-        
+        patient_id = onboarding_dict.get("patient_id")
+
         # Always call transfer_onboarding_to_patient_table to ensure patients table is populated
         transferred_patient_id = transfer_onboarding_to_patient_table(onboarding_id)
         if transferred_patient_id:
@@ -3205,90 +3860,113 @@ def sync_onboarding_to_patient_panel(onboarding_id):
         panel_cols = [r[1] for r in cur.fetchall()]
 
         # Derive provider_name and coordinator_name from users table if IDs exist
-        provider_user_id = onboarding_dict.get('assigned_provider_user_id')
-        coordinator_user_id = onboarding_dict.get('assigned_coordinator_user_id')
+        provider_user_id = onboarding_dict.get("assigned_provider_user_id")
+        coordinator_user_id = onboarding_dict.get("assigned_coordinator_user_id")
         provider_name = None
         coordinator_name = None
         if provider_user_id:
-            row = conn.execute("SELECT full_name FROM users WHERE user_id = ?", (provider_user_id,)).fetchone()
+            row = conn.execute(
+                "SELECT full_name FROM users WHERE user_id = ?", (provider_user_id,)
+            ).fetchone()
             if row:
                 try:
-                    provider_name = row['full_name'] if isinstance(row, dict) else row[0]
+                    provider_name = (
+                        row["full_name"] if isinstance(row, dict) else row[0]
+                    )
                 except Exception:
                     provider_name = row[0]
         if coordinator_user_id:
-            row2 = conn.execute("SELECT full_name FROM users WHERE user_id = ?", (coordinator_user_id,)).fetchone()
+            row2 = conn.execute(
+                "SELECT full_name FROM users WHERE user_id = ?", (coordinator_user_id,)
+            ).fetchone()
             if row2:
                 try:
-                    coordinator_name = row2['full_name'] if isinstance(row2, dict) else row2[0]
+                    coordinator_name = (
+                        row2["full_name"] if isinstance(row2, dict) else row2[0]
+                    )
                 except Exception:
                     coordinator_name = row2[0]
 
         # Mapping of onboarding data to patient_panel columns
         panel_data = {
-            'patient_id': patient_id,
-            'first_name': onboarding_dict.get('first_name'),
-            'last_name': onboarding_dict.get('last_name'),
-            'date_of_birth': onboarding_dict.get('date_of_birth'),
-            'gender': onboarding_dict.get('gender'),
-            'phone_primary': onboarding_dict.get('phone_primary'),
-            'email': onboarding_dict.get('email'),
-            'address_street': onboarding_dict.get('address_street'),
-            'address_city': onboarding_dict.get('address_city'),
-            'address_state': onboarding_dict.get('address_state'),
-            'address_zip': onboarding_dict.get('address_zip'),
-            'emergency_contact_name': onboarding_dict.get('emergency_contact_name'),
-            'emergency_contact_phone': onboarding_dict.get('emergency_contact_phone'),
-            'insurance_primary': onboarding_dict.get('insurance_provider'),
-            'insurance_policy_number': onboarding_dict.get('policy_number'),
+            "patient_id": patient_id,
+            "first_name": onboarding_dict.get("first_name"),
+            "last_name": onboarding_dict.get("last_name"),
+            "date_of_birth": onboarding_dict.get("date_of_birth"),
+            "gender": onboarding_dict.get("gender"),
+            "phone_primary": onboarding_dict.get("phone_primary"),
+            "email": onboarding_dict.get("email"),
+            "address_street": onboarding_dict.get("address_street"),
+            "address_city": onboarding_dict.get("address_city"),
+            "address_state": onboarding_dict.get("address_state"),
+            "address_zip": onboarding_dict.get("address_zip"),
+            "emergency_contact_name": onboarding_dict.get("emergency_contact_name"),
+            "emergency_contact_phone": onboarding_dict.get("emergency_contact_phone"),
+            "insurance_primary": onboarding_dict.get("insurance_provider"),
+            "insurance_policy_number": onboarding_dict.get("policy_number"),
             # CRITICAL MISSING FIELDS - Adding these now
-            'facility': onboarding_dict.get('facility_assignment'),  # Map facility_assignment to facility
-            'current_facility_id': onboarding_dict.get('facility_assignment'),  # Also map to current_facility_id
-            'provider_id': provider_user_id,  # Map provider
-            'coordinator_id': coordinator_user_id,  # Map coordinator
-            'provider_name': provider_name,
-            'coordinator_name': coordinator_name,
-            'initial_tv_completed_date': onboarding_dict.get('tv_date'),  # Map TV date
-            'initial_tv_provider': onboarding_dict.get('initial_tv_provider'),
-            'assigned_coordinator_id': onboarding_dict.get('assigned_coordinator_user_id'),  # Legacy field
-            'assigned_provider_id': onboarding_dict.get('assigned_provider_user_id'),  # Legacy field
+            "facility": onboarding_dict.get(
+                "facility_assignment"
+            ),  # Map facility_assignment to facility
+            "current_facility_id": onboarding_dict.get(
+                "facility_assignment"
+            ),  # Also map to current_facility_id
+            "provider_id": provider_user_id,  # Map provider
+            "coordinator_id": coordinator_user_id,  # Map coordinator
+            "provider_name": provider_name,
+            "coordinator_name": coordinator_name,
+            "initial_tv_completed_date": onboarding_dict.get("tv_date"),  # Map TV date
+            "initial_tv_provider": onboarding_dict.get("initial_tv_provider"),
+            "assigned_coordinator_id": onboarding_dict.get(
+                "assigned_coordinator_user_id"
+            ),  # Legacy field
+            "assigned_provider_id": onboarding_dict.get(
+                "assigned_provider_user_id"
+            ),  # Legacy field
             # Medical conditions
-            'hypertension': onboarding_dict.get('hypertension', False),
-            'mental_health_concerns': onboarding_dict.get('mental_health_concerns', False),
-            'dementia': onboarding_dict.get('dementia', False),
+            "hypertension": onboarding_dict.get("hypertension", False),
+            "mental_health_concerns": onboarding_dict.get(
+                "mental_health_concerns", False
+            ),
+            "dementia": onboarding_dict.get("dementia", False),
             # New onboarding columns
-            'eligibility_status': onboarding_dict.get('eligibility_status'),
-            'eligibility_notes': onboarding_dict.get('eligibility_notes'),
-            'eligibility_verified': onboarding_dict.get('eligibility_verified', False),
-            'emed_chart_created': onboarding_dict.get('emed_chart_created', False),
-            'chart_id': onboarding_dict.get('chart_id'),
-            'facility_confirmed': onboarding_dict.get('facility_confirmed', False),
-            'chart_notes': onboarding_dict.get('chart_notes'),
-            'intake_call_completed': onboarding_dict.get('intake_call_completed', False),
-            'intake_notes': onboarding_dict.get('intake_notes'),
+            "eligibility_status": onboarding_dict.get("eligibility_status"),
+            "eligibility_notes": onboarding_dict.get("eligibility_notes"),
+            "eligibility_verified": onboarding_dict.get("eligibility_verified", False),
+            "emed_chart_created": onboarding_dict.get("emed_chart_created", False),
+            "chart_id": onboarding_dict.get("chart_id"),
+            "facility_confirmed": onboarding_dict.get("facility_confirmed", False),
+            "chart_notes": onboarding_dict.get("chart_notes"),
+            "intake_call_completed": onboarding_dict.get(
+                "intake_call_completed", False
+            ),
+            "intake_notes": onboarding_dict.get("intake_notes"),
         }
 
         # Check if patient already exists in patient_panel
-        existing_panel = conn.execute("""
+        existing_panel = conn.execute(
+            """
             SELECT patient_id FROM patient_panel WHERE patient_id = ?
-        """, (patient_id,)).fetchone()
+        """,
+            (patient_id,),
+        ).fetchone()
 
         if existing_panel:
             # Update existing record
             update_fields = []
             params = []
-            
+
             for col, val in panel_data.items():
-                if col in panel_cols and col != 'patient_id':
+                if col in panel_cols and col != "patient_id":
                     update_fields.append(f"{col} = ?")
                     params.append(val)
-            
+
             if update_fields:
                 update_fields.append("updated_date = datetime('now')")
                 params.append(patient_id)
-                
+
                 query = f"""
-                    UPDATE patient_panel 
+                    UPDATE patient_panel
                     SET {', '.join(update_fields)}
                     WHERE patient_id = ?
                 """
@@ -3297,21 +3975,24 @@ def sync_onboarding_to_patient_panel(onboarding_id):
             # Insert new record
             insert_cols = []
             insert_vals = []
-            
+
             for col, val in panel_data.items():
                 if col in panel_cols:
                     insert_cols.append(col)
                     insert_vals.append(val)
-            
+
             # Add created_date if column exists
-            if 'created_date' in panel_cols:
-                insert_cols.append('created_date')
-                insert_vals.append(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-            
+            if "created_date" in panel_cols:
+                insert_cols.append("created_date")
+                insert_vals.append(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+
             if insert_cols:
-                placeholders = ','.join(['?'] * len(insert_cols))
-                cols_sql = ','.join(insert_cols)
-                conn.execute(f"INSERT INTO patient_panel ({cols_sql}) VALUES ({placeholders})", tuple(insert_vals))
+                placeholders = ",".join(["?"] * len(insert_cols))
+                cols_sql = ",".join(insert_cols)
+                conn.execute(
+                    f"INSERT INTO patient_panel ({cols_sql}) VALUES ({placeholders})",
+                    tuple(insert_vals),
+                )
 
         conn.commit()
         return patient_id
@@ -3319,36 +4000,71 @@ def sync_onboarding_to_patient_panel(onboarding_id):
     finally:
         conn.close()
 
-def create_patient_assignment(patient_id, provider_id=None, coordinator_id=None, assignment_type="onboarding", status="active", priority_level="medium", notes=None, created_by=None):
+
+def create_patient_assignment(
+    patient_id,
+    provider_id=None,
+    coordinator_id=None,
+    assignment_type="onboarding",
+    status="active",
+    priority_level="medium",
+    notes=None,
+    created_by=None,
+):
     """Create a patient assignment in the patient_assignments table"""
     conn = get_db_connection()
     try:
         # Check if assignment already exists for this patient
-        existing = conn.execute("""
-            SELECT assignment_id FROM patient_assignments 
+        existing = conn.execute(
+            """
+            SELECT assignment_id FROM patient_assignments
             WHERE patient_id = ? AND assignment_type = ? AND status = 'active'
-        """, (patient_id, assignment_type)).fetchone()
-        
+        """,
+            (patient_id, assignment_type),
+        ).fetchone()
+
         if existing:
             # Update existing assignment
-            conn.execute("""
-                UPDATE patient_assignments 
-                SET provider_id = ?, coordinator_id = ?, priority_level = ?, 
+            conn.execute(
+                """
+                UPDATE patient_assignments
+                SET provider_id = ?, coordinator_id = ?, priority_level = ?,
                     notes = ?, updated_date = datetime('now'), updated_by = ?
                 WHERE assignment_id = ?
-            """, (provider_id, coordinator_id, priority_level, notes, created_by, existing['assignment_id']))
+            """,
+                (
+                    provider_id,
+                    coordinator_id,
+                    priority_level,
+                    notes,
+                    created_by,
+                    existing["assignment_id"],
+                ),
+            )
         else:
             # Create new assignment
-            conn.execute("""
+            conn.execute(
+                """
                 INSERT INTO patient_assignments (
-                    patient_id, provider_id, coordinator_id, assignment_date, 
-                    assignment_type, status, priority_level, notes, 
+                    patient_id, provider_id, coordinator_id, assignment_date,
+                    assignment_type, status, priority_level, notes,
                     created_date, updated_date, created_by, updated_by
-                ) VALUES (?, ?, ?, datetime('now'), ?, ?, ?, ?, 
+                ) VALUES (?, ?, ?, datetime('now'), ?, ?, ?, ?,
                          datetime('now'), datetime('now'), ?, ?)
-            """, (patient_id, provider_id, coordinator_id, assignment_type, 
-                  status, priority_level, notes, created_by, created_by))
-        
+            """,
+                (
+                    patient_id,
+                    provider_id,
+                    coordinator_id,
+                    assignment_type,
+                    status,
+                    priority_level,
+                    notes,
+                    created_by,
+                    created_by,
+                ),
+            )
+
         conn.commit()
         return True
     except Exception as e:
@@ -3363,7 +4079,7 @@ def get_provider_billing_summary(provider_id):
     conn = get_db_connection()
     try:
         query = """
-        SELECT 
+        SELECT
             provider_id,
             provider_name,
             week_start_date,
@@ -3382,7 +4098,7 @@ def get_provider_billing_summary(provider_id):
         WHERE provider_id = ?
         ORDER BY year DESC, week_number DESC
         """
-        
+
         df = pd.read_sql_query(query, conn, params=[provider_id])
         return df
     except Exception as e:
@@ -3397,7 +4113,7 @@ def get_provider_unbilled_tasks(provider_id):
     conn = get_db_connection()
     try:
         query = """
-        SELECT 
+        SELECT
             provider_task_id,
             provider_id,
             provider_name,
@@ -3415,13 +4131,13 @@ def get_provider_unbilled_tasks(provider_id):
         FROM provider_tasks
         WHERE provider_id = ?
         AND year >= 2024
-        AND (billing_code IS NULL 
-             OR billing_code = '' 
+        AND (billing_code IS NULL
+             OR billing_code = ''
              OR billing_code = 'Not_Billable'
              OR billing_code = 'PENDING')
         ORDER BY task_date DESC
         """
-        
+
         df = pd.read_sql_query(query, conn, params=[provider_id])
         return df
     except Exception as e:
@@ -3435,12 +4151,15 @@ def update_billing_status(provider_id, week_start_date, paid_status):
     """Update the billing status (paid field) for a provider's weekly summary"""
     conn = get_db_connection()
     try:
-        conn.execute("""
-            UPDATE provider_weekly_summary_with_billing 
+        conn.execute(
+            """
+            UPDATE provider_weekly_summary_with_billing
             SET paid = ?, updated_date = CURRENT_TIMESTAMP
             WHERE provider_id = ? AND week_start_date = ?
-        """, (paid_status, provider_id, week_start_date))
-        
+        """,
+            (paid_status, provider_id, week_start_date),
+        )
+
         conn.commit()
         return True
     except Exception as e:
@@ -3454,11 +4173,14 @@ def update_onboarding_patient_status(onboarding_id, status):
     """Update the patient_status of an onboarding patient"""
     conn = get_db_connection()
     try:
-        conn.execute("""
-            UPDATE onboarding_patients 
-            SET patient_status = ?, updated_date = CURRENT_TIMESTAMP 
+        conn.execute(
+            """
+            UPDATE onboarding_patients
+            SET patient_status = ?, updated_date = CURRENT_TIMESTAMP
             WHERE onboarding_id = ?
-        """, (status, onboarding_id))
+        """,
+            (status, onboarding_id),
+        )
         conn.commit()
         return True
     except Exception as e:
@@ -3471,7 +4193,7 @@ def update_onboarding_patient_status(onboarding_id, status):
 def calculate_billing_week(task_date_str):
     """Calculate billing week in YYYY-WW format from task date string"""
     try:
-        task_date = datetime.strptime(task_date_str, '%Y-%m-%d')
+        task_date = datetime.strptime(task_date_str, "%Y-%m-%d")
         year = task_date.year
         # Get the Monday of the week containing the task date
         monday = task_date - timedelta(days=task_date.weekday())
@@ -3485,35 +4207,38 @@ def calculate_billing_week(task_date_str):
 def get_raw_provider_tasks(start_date, end_date):
     """Get raw provider task data from provider_tasks tables for date range"""
     conn = get_db_connection()
-    
+
     # Get data from all provider_tasks tables that overlap with date range
     tables_to_query = []
-    
+
     # Determine which monthly tables to query
-    start_dt = datetime.strptime(start_date, '%Y-%m-%d')
-    end_dt = datetime.strptime(end_date, '%Y-%m-%d')
-    
+    start_dt = datetime.strptime(start_date, "%Y-%m-%d")
+    end_dt = datetime.strptime(end_date, "%Y-%m-%d")
+
     current_dt = start_dt.replace(day=1)  # Start of month
     while current_dt <= end_dt:
         table_name = f"provider_tasks_{current_dt.year}_{current_dt.month:02d}"
         # Check if table exists
-        table_exists = conn.execute("""
+        table_exists = conn.execute(
+            """
             SELECT name FROM sqlite_master WHERE type='table' AND name=?
-        """, (table_name,)).fetchone()
+        """,
+            (table_name,),
+        ).fetchone()
         if table_exists:
             tables_to_query.append(table_name)
-        
+
         # Move to next month
         if current_dt.month == 12:
             current_dt = current_dt.replace(year=current_dt.year + 1, month=1)
         else:
             current_dt = current_dt.replace(month=current_dt.month + 1)
-    
+
     all_data = []
     for table_name in tables_to_query:
         try:
             query = f"""
-                SELECT 
+                SELECT
                     provider_task_id,
                     provider_id,
                     provider_name,
@@ -3536,9 +4261,9 @@ def get_raw_provider_tasks(start_date, end_date):
         except Exception as e:
             print(f"Error querying {table_name}: {e}")
             continue
-    
+
     conn.close()
-    
+
     if all_data:
         combined_df = pd.concat(all_data, ignore_index=True)
         return combined_df
@@ -3550,79 +4275,79 @@ def transform_raw_tasks_to_billing_format(raw_tasks_df):
     """Transform raw provider task data into billing-ready format with default status"""
     if raw_tasks_df.empty:
         return raw_tasks_df
-    
+
     # Create billing-ready dataframe
     billing_df = raw_tasks_df.copy()
-    
+
     # Calculate billing week for each task
-    billing_df['billing_week'] = billing_df['task_date'].apply(calculate_billing_week)
-    
+    billing_df["billing_week"] = billing_df["task_date"].apply(calculate_billing_week)
+
     # Add billing week start and end dates
     def get_week_dates(billing_week):
         if not billing_week:
             return None, None
         try:
-            year, week = billing_week.split('-')
+            year, week = billing_week.split("-")
             # Get Monday of the week
             jan_1 = datetime(int(year), 1, 1)
             # Calculate Monday of the given week
             week_start = jan_1 + timedelta(days=(int(week) - 1) * 7)
             week_start = week_start - timedelta(days=week_start.weekday())
             week_end = week_start + timedelta(days=6)
-            return week_start.strftime('%Y-%m-%d'), week_end.strftime('%Y-%m-%d')
+            return week_start.strftime("%Y-%m-%d"), week_end.strftime("%Y-%m-%d")
         except:
             return None, None
-    
-    billing_df[['week_start_date', 'week_end_date']] = billing_df['billing_week'].apply(
+
+    billing_df[["week_start_date", "week_end_date"]] = billing_df["billing_week"].apply(
         lambda x: pd.Series(get_week_dates(x))
     )
-    
+
     # Add billing status columns with default values
-    billing_df['billing_status'] = 'Not Billed'
-    billing_df['is_billed'] = 0
-    billing_df['is_invoiced'] = 0
-    billing_df['is_claim_submitted'] = 0
-    billing_df['is_insurance_processed'] = 0
-    billing_df['is_approved_to_pay'] = 0
-    billing_df['is_paid'] = 0
-    billing_df['is_carried_over'] = 0
-    billing_df['provider_paid'] = 0
-    billing_df['original_billing_week'] = None
-    billing_df['carryover_reason'] = None
-    billing_df['billing_notes'] = None
-    billing_df['billed_date'] = None
-    billing_df['invoiced_date'] = None
-    billing_df['claim_submitted_date'] = None
-    billing_df['insurance_processed_date'] = None
-    billing_df['approved_to_pay_date'] = None
-    billing_df['paid_date'] = None
-    
+    billing_df["billing_status"] = "Not Billed"
+    billing_df["is_billed"] = 0
+    billing_df["is_invoiced"] = 0
+    billing_df["is_claim_submitted"] = 0
+    billing_df["is_insurance_processed"] = 0
+    billing_df["is_approved_to_pay"] = 0
+    billing_df["is_paid"] = 0
+    billing_df["is_carried_over"] = 0
+    billing_df["provider_paid"] = 0
+    billing_df["original_billing_week"] = None
+    billing_df["carryover_reason"] = None
+    billing_df["billing_notes"] = None
+    billing_df["billed_date"] = None
+    billing_df["invoiced_date"] = None
+    billing_df["claim_submitted_date"] = None
+    billing_df["insurance_processed_date"] = None
+    billing_df["approved_to_pay_date"] = None
+    billing_df["paid_date"] = None
+
     # Add billing_status_id as a unique identifier
-    billing_df['billing_status_id'] = range(1, len(billing_df) + 1)
-    
+    billing_df["billing_status_id"] = range(1, len(billing_df) + 1)
+
     # Add timestamps
-    billing_df['created_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    billing_df['updated_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    
+    billing_df["created_date"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    billing_df["updated_date"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
     return billing_df
 
 
 def generate_provider_billing_data_on_demand(start_date, end_date):
     """Generate billing-ready data on-demand from raw provider tasks"""
     print(f"Generating billing data for {start_date} to {end_date}")
-    
+
     # Get raw task data
     raw_tasks = get_raw_provider_tasks(start_date, end_date)
-    
+
     if raw_tasks.empty:
         print("No raw task data found for the specified date range")
         return pd.DataFrame()
-    
+
     print(f"Found {len(raw_tasks)} raw task records")
-    
+
     # Transform to billing format
     billing_data = transform_raw_tasks_to_billing_format(raw_tasks)
-    
+
     print(f"Transformed {len(billing_data)} records to billing format")
     return billing_data
 
@@ -3630,18 +4355,18 @@ def generate_provider_billing_data_on_demand(start_date, end_date):
 def get_provider_billing_status_realtime(start_date=None, end_date=None):
     """Get provider billing status with real-time data generation"""
     if not start_date:
-        start_date = (datetime.now() - timedelta(days=90)).strftime('%Y-%m-%d')
+        start_date = (datetime.now() - timedelta(days=90)).strftime("%Y-%m-%d")
     if not end_date:
-        end_date = datetime.now().strftime('%Y-%m-%d')
-    
+        end_date = datetime.now().strftime("%Y-%m-%d")
+
     # Generate fresh billing data on-demand
     billing_data = generate_provider_billing_data_on_demand(start_date, end_date)
-    
+
     # Try to get existing processed data and merge
     try:
         conn = get_db_connection()
         query = """
-            SELECT 
+            SELECT
                 billing_status_id,
                 provider_task_id,
                 provider_id,
@@ -3674,14 +4399,14 @@ def get_provider_billing_status_realtime(start_date=None, end_date=None):
         """
         existing_data = pd.read_sql_query(query, conn, params=(start_date, end_date))
         conn.close()
-        
+
         # If we have existing processed data, use it
         if not existing_data.empty:
             print(f"Using {len(existing_data)} existing processed billing records")
             return existing_data
     except Exception as e:
         print(f"Error getting existing billing data: {e}")
-    
+
     # Otherwise, use generated data
     print("Using generated real-time billing data")
     return billing_data
@@ -3694,41 +4419,48 @@ def get_weekly_billing_summary_realtime():
     start_date = end_date - timedelta(days=90)
 
     billing_data = get_provider_billing_status_realtime(
-        start_date.strftime('%Y-%m-%d'),
-        end_date.strftime('%Y-%m-%d')
+        start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d")
     )
 
     if billing_data.empty:
         return pd.DataFrame()
 
     # Aggregate by billing week
-    weekly_summary = billing_data.groupby('billing_week').agg({
-        'billing_status_id': 'count',
-        'week_start_date': 'first',
-        'week_end_date': 'first',
-        'is_billed': 'sum',
-        'billing_status': lambda x: len(x),
-        'created_date': 'first'
-    }).reset_index()
+    weekly_summary = (
+        billing_data.groupby("billing_week")
+        .agg(
+            {
+                "billing_status_id": "count",
+                "week_start_date": "first",
+                "week_end_date": "first",
+                "is_billed": "sum",
+                "billing_status": lambda x: len(x),
+                "created_date": "first",
+            }
+        )
+        .reset_index()
+    )
 
     weekly_summary.columns = [
-        'billing_week',
-        'total_tasks',
-        'week_start_date',
-        'week_end_date',
-        'total_billed_tasks',
-        'report_status',
-        'created_date'
+        "billing_week",
+        "total_tasks",
+        "week_start_date",
+        "week_end_date",
+        "total_billed_tasks",
+        "report_status",
+        "created_date",
     ]
 
     # Calculate unbilled tasks and percentage
-    weekly_summary['total_unbilled_tasks'] = weekly_summary['total_tasks'] - weekly_summary['total_billed_tasks']
-    weekly_summary['billing_percentage'] = (
-        weekly_summary['total_billed_tasks'] * 100.0 / weekly_summary['total_tasks']
+    weekly_summary["total_unbilled_tasks"] = (
+        weekly_summary["total_tasks"] - weekly_summary["total_billed_tasks"]
+    )
+    weekly_summary["billing_percentage"] = (
+        weekly_summary["total_billed_tasks"] * 100.0 / weekly_summary["total_tasks"]
     ).round(2)
 
     # Sort by billing week descending
-    weekly_summary = weekly_summary.sort_values('billing_week', ascending=False)
+    weekly_summary = weekly_summary.sort_values("billing_week", ascending=False)
 
     return weekly_summary.head(12)
 
@@ -3737,22 +4469,23 @@ def get_weekly_billing_summary_realtime():
 # DAILY TASK LOG FUNCTIONS
 # ========================================
 
+
 def get_todays_tasks(user_id: int, role: str) -> list[dict]:
     """
     Returns today's tasks for given user filtered by role
     Uses local timezone (America/Los_Angeles) for "today"
     Only returns tasks with submission_status = 'pending'
     """
-    from zoneinfo import ZoneInfo
     import pytz
+    from zoneinfo import ZoneInfo
 
     # Get today's date in local timezone
     try:
         # Try Python 3.9+ zoneinfo
-        local_tz = ZoneInfo('America/Los_Angeles')
+        local_tz = ZoneInfo("America/Los_Angeles")
     except ImportError:
         # Fallback to pytz
-        local_tz = pytz.timezone('America/Los_Angeles')
+        local_tz = pytz.timezone("America/Los_Angeles")
 
     today = datetime.now(local_tz).date()
     today_str = today.isoformat()
@@ -3760,12 +4493,12 @@ def get_todays_tasks(user_id: int, role: str) -> list[dict]:
     conn = get_db_connection()
     try:
         # Determine which table to query based on role
-        if role.lower() == 'provider':
+        if role.lower() == "provider":
             table_name = ensure_monthly_provider_tasks_table(conn=conn)
-            user_field = 'provider_id'
-        elif role.lower() == 'coordinator':
+            user_field = "provider_id"
+        elif role.lower() == "coordinator":
             table_name = ensure_monthly_coordinator_tasks_table(conn=conn)
-            user_field = 'coordinator_id'
+            user_field = "coordinator_id"
         else:
             return []
 
@@ -3794,23 +4527,28 @@ def get_todays_tasks(user_id: int, role: str) -> list[dict]:
             task_dict = dict(row)
 
             # Resolve patient name from patient_id
-            if task_dict.get('patient_id'):
+            if task_dict.get("patient_id"):
                 try:
-                    patient = conn.execute("""
+                    patient = conn.execute(
+                        """
                         SELECT first_name, last_name
                         FROM patients
                         WHERE patient_id = ?
                         LIMIT 1
-                    """, (task_dict['patient_id'],)).fetchone()
+                    """,
+                        (task_dict["patient_id"],),
+                    ).fetchone()
 
                     if patient:
-                        task_dict['patient_name'] = f"{patient['first_name'] or ''} {patient['last_name'] or ''}".strip()
+                        task_dict["patient_name"] = (
+                            f"{patient['first_name'] or ''} {patient['last_name'] or ''}".strip()
+                        )
                     else:
-                        task_dict['patient_name'] = str(task_dict['patient_id'])
+                        task_dict["patient_name"] = str(task_dict["patient_id"])
                 except Exception:
-                    task_dict['patient_name'] = str(task_dict['patient_id'])
+                    task_dict["patient_name"] = str(task_dict["patient_id"])
             else:
-                task_dict['patient_name'] = 'Unknown Patient'
+                task_dict["patient_name"] = "Unknown Patient"
 
             tasks.append(task_dict)
 
@@ -3825,16 +4563,16 @@ def submit_daily_tasks(user_id: int, role: str) -> bool:
     Updates all today's tasks for user to 'submitted' status
     Returns True if successful
     """
-    from zoneinfo import ZoneInfo
     import pytz
+    from zoneinfo import ZoneInfo
 
     # Get today's date in local timezone
     try:
         # Try Python 3.9+ zoneinfo
-        local_tz = ZoneInfo('America/Los_Angeles')
+        local_tz = ZoneInfo("America/Los_Angeles")
     except ImportError:
         # Fallback to pytz
-        local_tz = pytz.timezone('America/Los_Angeles')
+        local_tz = pytz.timezone("America/Los_Angeles")
 
     today = datetime.now(local_tz).date()
     today_str = today.isoformat()
@@ -3842,12 +4580,12 @@ def submit_daily_tasks(user_id: int, role: str) -> bool:
     conn = get_db_connection()
     try:
         # Determine which table to update based on role
-        if role.lower() == 'provider':
+        if role.lower() == "provider":
             table_name = ensure_monthly_provider_tasks_table(conn=conn)
-            user_field = 'provider_id'
-        elif role.lower() == 'coordinator':
+            user_field = "provider_id"
+        elif role.lower() == "coordinator":
             table_name = ensure_monthly_coordinator_tasks_table(conn=conn)
-            user_field = 'coordinator_id'
+            user_field = "coordinator_id"
         else:
             return False
 
@@ -3882,12 +4620,12 @@ def update_task_details(task_id: int, role: str, updates: dict) -> bool:
     conn = get_db_connection()
     try:
         # Determine which table to update based on role
-        if role.lower() == 'provider':
+        if role.lower() == "provider":
             table_name = ensure_monthly_provider_tasks_table(conn=conn)
-            id_field = 'provider_task_id'
-        elif role.lower() == 'coordinator':
+            id_field = "provider_task_id"
+        elif role.lower() == "coordinator":
             table_name = ensure_monthly_coordinator_tasks_table(conn=conn)
-            id_field = 'coordinator_task_id'
+            id_field = "coordinator_task_id"
         else:
             return False
 
@@ -3895,10 +4633,15 @@ def update_task_details(task_id: int, role: str, updates: dict) -> bool:
         update_fields = []
         params = []
 
-        allowed_fields = ['duration_minutes', 'task_type', 'notes', 'minutes_of_service']
+        allowed_fields = [
+            "duration_minutes",
+            "task_type",
+            "notes",
+            "minutes_of_service",
+        ]
         for field, value in updates.items():
             if field in allowed_fields:
-                if field == 'duration_minutes':
+                if field == "duration_minutes":
                     update_fields.append("duration_minutes = ?")
                     update_fields.append("minutes_of_service = ?")  # Update both fields
                     params.extend([value, value])
@@ -3929,5 +4672,256 @@ def update_task_details(task_id: int, role: str, updates: dict) -> bool:
         print(f"Error updating task details: {e}")
         conn.rollback()
         return False
+    finally:
+        conn.close()
+
+
+# ============================================================================
+# WORKFLOW STATE UPDATE FUNCTIONS - Phase 2
+# ============================================================================
+# These functions manage the state transitions for billing and payroll workflows
+# ============================================================================
+
+
+def mark_provider_tasks_as_billed(billing_status_ids, user_id):
+    """
+    Mark selected provider tasks as billed in the provider_task_billing_status table.
+
+    Args:
+        billing_status_ids: List of billing_status_id values to mark as billed
+        user_id: ID of user marking as billed (must be Harpreet/Admin or Justin)
+
+    Returns:
+        Tuple (success: bool, message: str, updated_count: int)
+
+    Updates:
+        - is_billed = TRUE
+        - billed_date = CURRENT_TIMESTAMP
+        - billed_by = user_id
+        - billing_status = 'Billed'
+        - updated_date = CURRENT_TIMESTAMP
+    """
+    if not billing_status_ids:
+        return (False, "No billing IDs provided", 0)
+
+    conn = get_db_connection()
+    try:
+        # Build placeholders for SQL IN clause
+        placeholders = ",".join("?" * len(billing_status_ids))
+        params = [user_id] + billing_status_ids
+
+        query = f"""
+            UPDATE provider_task_billing_status
+            SET
+                is_billed = TRUE,
+                billed_date = CURRENT_TIMESTAMP,
+                billed_by = ?,
+                billing_status = 'Billed',
+                updated_date = CURRENT_TIMESTAMP
+            WHERE billing_status_id IN ({placeholders})
+            AND is_billed = FALSE
+        """
+
+        cursor = conn.execute(query, params)
+        conn.commit()
+
+        updated_count = cursor.rowcount
+        message = f"Successfully marked {updated_count} provider tasks as billed"
+        return (True, message, updated_count)
+
+    except Exception as e:
+        conn.rollback()
+        message = f"Error marking provider tasks as billed: {str(e)}"
+        return (False, message, 0)
+    finally:
+        conn.close()
+
+
+def mark_coordinator_tasks_as_billed(summary_ids, user_id):
+    """
+    Mark selected coordinator tasks as billed in the coordinator_monthly_summary table.
+
+    Args:
+        summary_ids: List of summary_id values to mark as billed
+        user_id: ID of user marking as billed (must be Harpreet/Admin or Justin)
+
+    Returns:
+        Tuple (success: bool, message: str, updated_count: int)
+
+    Updates:
+        - is_billed = TRUE
+        - billed_date = CURRENT_TIMESTAMP
+        - billed_by = user_id
+        - billing_status = 'Billed'
+        - updated_date = CURRENT_TIMESTAMP
+    """
+    if not summary_ids:
+        return (False, "No summary IDs provided", 0)
+
+    conn = get_db_connection()
+    try:
+        # Build placeholders for SQL IN clause
+        placeholders = ",".join("?" * len(summary_ids))
+        params = [user_id] + summary_ids
+
+        query = f"""
+            UPDATE coordinator_monthly_summary
+            SET
+                is_billed = TRUE,
+                billed_date = CURRENT_TIMESTAMP,
+                billed_by = ?,
+                billing_status = 'Billed',
+                updated_date = CURRENT_TIMESTAMP
+            WHERE summary_id IN ({placeholders})
+            AND is_billed = FALSE
+        """
+
+        cursor = conn.execute(query, params)
+        conn.commit()
+
+        updated_count = cursor.rowcount
+        message = f"Successfully marked {updated_count} coordinator tasks as billed"
+        return (True, message, updated_count)
+
+    except Exception as e:
+        conn.rollback()
+        message = f"Error marking coordinator tasks as billed: {str(e)}"
+        return (False, message, 0)
+    finally:
+        conn.close()
+
+
+def approve_provider_payroll(payroll_ids, user_id):
+    """
+    Approve selected provider payroll records (Justin only).
+
+    Args:
+        payroll_ids: List of payroll_id values to approve
+        user_id: ID of user approving (must be Justin)
+
+    Returns:
+        Tuple (success: bool, message: str, updated_count: int)
+
+    Updates:
+        - is_approved = TRUE
+        - approved_date = CURRENT_TIMESTAMP
+        - approved_by = user_id
+        - payroll_status = 'Approved'
+        - updated_date = CURRENT_TIMESTAMP
+    """
+    if not payroll_ids:
+        return (False, "No payroll IDs provided", 0)
+
+    conn = get_db_connection()
+    try:
+        # Build placeholders for SQL IN clause
+        placeholders = ",".join("?" * len(payroll_ids))
+        params = [user_id] + payroll_ids
+
+        query = f"""
+            UPDATE provider_weekly_payroll_status
+            SET
+                is_approved = TRUE,
+                approved_date = CURRENT_TIMESTAMP,
+                approved_by = ?,
+                payroll_status = 'Approved',
+                updated_date = CURRENT_TIMESTAMP
+            WHERE payroll_id IN ({placeholders})
+            AND is_approved = FALSE
+        """
+
+        cursor = conn.execute(query, params)
+        conn.commit()
+
+        updated_count = cursor.rowcount
+        message = f"Successfully approved {updated_count} payroll records"
+        return (True, message, updated_count)
+
+    except Exception as e:
+        conn.rollback()
+        message = f"Error approving payroll: {str(e)}"
+        return (False, message, 0)
+    finally:
+        conn.close()
+
+
+def mark_provider_payroll_as_paid(
+    payroll_ids, user_id, payment_method=None, payment_reference=None
+):
+    """
+    Mark selected provider payroll records as paid (Justin only).
+
+    Args:
+        payroll_ids: List of payroll_id values to mark as paid
+        user_id: ID of user processing payment (must be Justin)
+        payment_method: Optional payment method (e.g., 'ACH', 'Check', 'Direct Deposit')
+        payment_reference: Optional reference info (e.g., Check #, ACH ID)
+
+    Returns:
+        Tuple (success: bool, message: str, updated_count: int)
+
+    Updates:
+        - is_paid = TRUE
+        - paid_date = CURRENT_TIMESTAMP
+        - paid_by = user_id
+        - payroll_status = 'Paid'
+        - payment_method = payment_method (if provided)
+        - payment_reference = payment_reference (if provided)
+        - updated_date = CURRENT_TIMESTAMP
+    """
+    if not payroll_ids:
+        return (False, "No payroll IDs provided", 0)
+
+    conn = get_db_connection()
+    try:
+        # Build placeholders for SQL IN clause
+        placeholders = ",".join("?" * len(payroll_ids))
+
+        # Build update clause based on whether optional fields are provided
+        update_parts = [
+            "is_paid = TRUE",
+            "paid_date = CURRENT_TIMESTAMP",
+            "paid_by = ?",
+            "payroll_status = 'Paid'",
+            "updated_date = CURRENT_TIMESTAMP",
+        ]
+
+        params = [user_id]
+
+        # Add optional fields if provided
+        if payment_method:
+            update_parts.append("payment_method = ?")
+            params.append(payment_method)
+
+        if payment_reference:
+            update_parts.append("payment_reference = ?")
+            params.append(payment_reference)
+
+        # Build placeholders for SQL IN clause
+        placeholders = ",".join("?" * len(payroll_ids))
+
+        # Add payroll IDs to params for WHERE clause
+        params.extend(payroll_ids)
+
+        update_clause = ", ".join(update_parts)
+
+        query = f"""
+            UPDATE provider_weekly_payroll_status
+            SET {update_clause}
+            WHERE payroll_id IN ({placeholders})
+            AND is_paid = FALSE
+        """
+
+        cursor = conn.execute(query, params)
+        conn.commit()
+
+        updated_count = cursor.rowcount
+        message = f"Successfully marked {updated_count} payroll records as paid"
+        return (True, message, updated_count)
+
+    except Exception as e:
+        conn.rollback()
+        message = f"Error marking payroll as paid: {str(e)}"
+        return (False, message, 0)
     finally:
         conn.close()

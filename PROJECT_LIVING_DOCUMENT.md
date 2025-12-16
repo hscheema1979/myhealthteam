@@ -3,7 +3,7 @@
 ## Project Overview
 Healthcare dashboard system for managing patient assignments, billing, and provider coordination.
 
-## Current Status: CRITICAL BILLING ISSUES INVESTIGATED & PARTIALLY RESOLVED
+## Current Status: ENHANCED TRANSFORM PROCESS - BILLING CODES & MINUTES NOW PROCESSED DURING IMPORT
 
 ### 🚨 CRITICAL FINDINGS - December 11, 2025
 
@@ -40,6 +40,17 @@ Healthcare dashboard system for managing patient assignments, billing, and provi
   - **Data Source:** Dynamically loads from `provider_tasks_YYYY_MM` tables.
 - **Status:** ✅ RESOLVED
 
+#### **ENHANCED TRANSFORM PROCESS - BILLING CODES & MINUTES** ✅
+**Problem:** Billing codes and minutes were not being properly processed during CSV import
+- **Root Cause:** Transform script was inserting raw CSV data without processing minute ranges or ensuring billing codes were captured
+- **Impact:** Dashboards showed 0 minutes and missing billing codes for provider tasks
+- **Solution:** Enhanced [`transform_production_data_v3_fixed.py`](transform_production_data_v3_fixed.py) with integrated billing processing:
+  - **Minutes Processing:** Extracts minimum value from ranges (e.g., "40-49" → 40, "60-69" → 60)
+  - **Billing Codes:** Directly captures from CSV "Coding" column during import
+  - **Integrated Billing Status:** Populates `provider_task_billing_status` table immediately after import
+  - **No Post-Processing Needed:** Eliminates separate `populate_billing_status.sql` step
+- **Status:** ✅ ENHANCED - Transform now processes billing codes and minutes during import
+
 ## Implementation Plan Status (from IMPLEMENTATION_PLAN_12_10.md)
 
 ### ✅ COMPLETED TASKS:
@@ -47,6 +58,7 @@ Healthcare dashboard system for managing patient assignments, billing, and provi
 2. **Task 2: Provider Assignment Sheets Import** - All sheets imported successfully, data validation complete
 3. **Task 3: Data Refresh & Testing (12/10 Latest Data)** - Production database updated with latest data, validation score: 96%
 4. **Task 4: Weekly Provider Payroll Tab** - Implemented Weekly Summary View in Admin Dashboard (Provider Tasks tab)
+5. **Task 5: Enhanced Transform Process** - Integrated billing status population into transform script, processes minutes ranges and billing codes during import
 6. **Task 6: Fix User ID References - Display User Names** - All user ID references now display actual names
 
 #### **WORKFLOW REASSIGNMENT TABLE DISPLAY - December 12, 2025** ✅
@@ -90,6 +102,58 @@ Healthcare dashboard system for managing patient assignments, billing, and provi
 **Note:** App restart required due to new module and import changes
 
 ---
+
+## Enhanced Transform Process (December 15, 2025)
+
+### **INTEGRATED BILLING STATUS POPULATION**
+The transform script now includes comprehensive billing processing during the initial import, eliminating the need for separate post-processing scripts.
+
+#### **New Processing Steps:**
+
+**STEP 1: Enhanced Data Processing During Import**
+- **Minutes Processing:** Function `process_minutes_range()` extracts minimum values from ranges (e.g., "40-49" → 40)
+- **Billing Codes:** Direct capture from CSV "Coding" column (e.g., "99204", "99350")
+- **Service Descriptions:** Cleaned and normalized task descriptions
+
+**STEP 2: Immediate Billing Status Population (NEW)**
+- **Function:** `populate_provider_billing_status(conn, year, month)` 
+- **Process:** Automatically creates billing workflow records after each month's provider tasks are imported
+- **Tables Populated:** `provider_task_billing_status` 
+- **Filtering:** Only includes billable tasks (excludes NULL, empty, "PENDING", "Not_Billable")
+- **Workflow Tracking:** Sets all billing status flags (is_billed, is_paid, etc.) to initial FALSE/Pending state
+
+#### **Technical Implementation:**
+```python
+# Enhanced minutes processing
+def process_minutes_range(minutes_str):
+    # Extracts minimum from ranges like "40-49" → 40
+    if "-" in str(minutes_str):
+        parts = str(minutes_str).split("-")
+        return int(parts[0])  # Use minimum value
+    return int(minutes_str) if minutes_str else 0
+
+# Integrated billing status population
+def populate_provider_billing_status(conn, year, month):
+    # Creates billing workflow records from provider_tasks
+    # Includes week calculations and billing code lookups
+    # Filters to only billable tasks
+```
+
+#### **Benefits:**
+- **Eliminates Post-Processing:** No need to run `populate_billing_status.sql` separately
+- **Immediate Availability:** Billing codes and minutes available immediately after transform
+- **Consistent Processing:** All months processed with same logic during import
+- **Better Error Handling:** Integrated validation and filtering during population
+
+#### **Data Flow:**
+```
+CSV Files → Transform Script → provider_tasks_YYYY_MM → Billing Status Population → provider_task_billing_status → Dashboards
+```
+
+#### **Verification:**
+- **Test Results:** Successfully processed test data with proper billing codes (99341, 99214, 99350) and minutes (40, 30, 60)
+- **Dashboard Integration:** Billing status table immediately available for dashboard queries
+- **No Data Loss:** All existing functionality preserved while adding new capabilities
 
 ## ✅ **COMPLETED WORKFLOW REASSIGNMENT & PROVIDER DASHBOARD FIXES - December 12, 2025**
 
@@ -226,7 +290,7 @@ All critical billing dashboard issues have been resolved
 3. ✅ **RESOLVED:** Provider Billing Dashboard month selection functionality  
 4. 🔍 **VALIDATE:** HHC View for facilities with patient panels
 5. 🐧 **CREATE:** Linux bash workflow script for automatic hourly/daily scheduling
-6. 📋 **INVESTIGATE:** Map remaining unmatched staff codes (ChaZu000, LopJu000, LumJa000, SanMa000, SanRa000, SobMa000)
+6. 📋 **INVESTIGATE:** Map remaining unmatched staff codes (ChaZu000, LopJu000, LumJa000, SanRa000, SanMa000, SobMa000)
 
 ## Feature Requests (Priority Order)
 
@@ -428,11 +492,14 @@ This provides a direct interface for administrators to make quick patient data c
 - **LOW RISK:** Historical unmatched staff codes (ChaZu000, LopJu000, etc.) preserved in name fields for future mapping
 
 ## Session Log
+- **December 15, 2025 (Part 3):** ✅ **DATABASE DEPLOYED TO VPS 2 PRODUCTION SERVER** - Successfully copied updated production.db (99MB, 656 patients) to VPS 2 production server at 178.16.140.23. Database deployed to /opt/myhealthteam/production.db and verified with patient count query (656 patients confirmed). Production environment now has latest database with all workflow reassignment, coordinator management, and billing dashboard fixes.
+- **December 15, 2025 (Part 2):** ✅ **COMMITTED CHANGES TO GIT** - Successfully committed and pushed all latest changes to the myhealthteam repository. Commit included workflow reassignment functionality, coordinator management dashboard, staff code preservation fixes, provider dashboard enhancements, and billing dashboard resolutions. Total: 233 files committed with comprehensive commit message detailing all major improvements.
 - **December 15, 2025:** ✅ **FIXED - Staff Code Preservation for Unmatched Coordinator/Provider Codes** - Identified 6 unmatched coordinator codes (CHAZU000, LOPJU000, LUMJA000, SANRA000, SANMA000, SOBMA000) and 4 placeholder codes in historical data. Modified [`transform_production_data_v3_fixed.py`](transform_production_data_v3_fixed.py) to preserve staff codes in `coordinator_name`/`provider_name` fields when `user_id` mapping fails. **Fix:** Changed `id_to_name.get(p_id, None)` to `id_to_name.get(p_id, p_code)` in both `process_psl()` and `process_rvz()` functions. This ensures unmatched codes appear as names in dashboards instead of NULL values. Successfully tested - imported 40,245 coordinator tasks with preserved codes. **Result:** All coordinator data now visible in dashboards; can be corrected later via `staff_code_mapping` table updates without data loss.
 - **December 12, 2025 (Part 3):** ✅ ENHANCED - Admin Dashboard (Provider Tasks Tab). Added **Week Selection** to the Weekly Summary View. Users can now filter by "All Weeks" (summary) or drill down into specific weeks (detailed tasks list).
 - **December 12, 2025 (Part 2):** ✅ ENHANCED - Admin Dashboard (Provider Tasks Tab). Implemented Monthly View (with month selection) and Weekly View (aggregated by week with charts). Fixed JSON serialization bug in weekly progress bar.
 - **December 12, 2025:** ✅ FIXED - Weekly Provider Billing Dashboard error "no such table: provider_tasks_2025_11" - Root cause was hardcoded table references in [`weekly_billing_dashboard.py`](src/dashboards/weekly_billing_dashboard.py). Solution: Dynamically detect existing provider_tasks tables and build queries accordingly. All functions now gracefully handle missing tables.
 - **December 11, 2025:** Critical billing issues investigation complete, CM_log data transformation failure identified and partially resolved, staff_code_mapping enhanced, Dianela added to coordinator mapping
 - **December 2025:** Staff code preservation fix implemented - unmatched staff codes now preserved in coordinator_name/provider_name fields instead of being lost (transform_production_data_v3_fixed.py lines 356, 456)
+- **December 15, 2025:** ✅ **ENHANCED TRANSFORM PROCESS** - Integrated billing status population into transform script. Now processes minute ranges ("40-49" → 40) and captures billing codes from CSV during import. Eliminates need for separate post-processing step.
 - **December 10, 2025:** Data refresh completed, production database updated
 - **December 9, 2025:** User login issues resolved, provider assignment sheets imported

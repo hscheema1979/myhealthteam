@@ -3212,8 +3212,12 @@ def show():
 
         if show_billing:
             # Create sub-tabs for different billing views
-            billing_tab1, billing_tab2 = st.tabs(
-                ["Monthly Billing (Coordinators)", "Weekly Billing (Providers)"]
+            billing_tab1, billing_tab2, billing_tab3 = st.tabs(
+                [
+                    "Monthly Billing (Coordinators)",
+                    "Weekly Billing (Providers)",
+                    "Provider Payroll",
+                ]
             )
 
             with billing_tab1:
@@ -3241,15 +3245,30 @@ def show():
                     "Track provider billing by week using provider tasks and billing status"
                 )
                 try:
-                    from src.dashboards.weekly_billing_dashboard import (
-                        display_weekly_billing_dashboard,
+                    from src.dashboards.weekly_provider_billing_dashboard import (
+                        display_weekly_provider_billing_dashboard,
                     )
 
-                    display_weekly_billing_dashboard()
+                    display_weekly_provider_billing_dashboard()
                 except Exception as e:
                     st.error(f"Error loading weekly provider billing dashboard: {e}")
                     st.info(
                         "Please ensure the weekly provider billing dashboard module is properly configured."
+                    )
+
+            with billing_tab3:
+                st.subheader("Weekly Provider Payroll")
+                st.markdown("Track provider payroll by week and mark providers as paid")
+                try:
+                    from src.dashboards.weekly_provider_payroll_dashboard import (
+                        display_weekly_provider_payroll_dashboard,
+                    )
+
+                    display_weekly_provider_payroll_dashboard()
+                except Exception as e:
+                    st.error(f"Error loading weekly provider payroll dashboard: {e}")
+                    st.info(
+                        "Please ensure the weekly provider payroll dashboard module is properly configured."
                     )
         else:
             st.warning("Billing Access Restricted")
@@ -3268,9 +3287,7 @@ def show():
 
     # --- TAB: ZMO ---
     with tab_test:
-        st.subheader(
-            "ZMO: Patient Data Management"
-        )
+        st.subheader("ZMO: Patient Data Management")
         import json
         import os
 
@@ -3286,7 +3303,7 @@ def show():
             else:
                 # Use cached merge function
                 merged = _cached_merge_patient_data(panel_df, patients_df)
-               
+
                 # --- Patient search feature ---
                 st.markdown("### Search & Filter")
                 search_col1, search_col2 = st.columns([3, 1])
