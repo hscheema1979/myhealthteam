@@ -1,9 +1,9 @@
 # ZEN Medical Healthcare Management System - Consolidated Documentation
 
-**Document Version:** 1.0  
-**Last Updated:** January 17, 2025  
-**Author:** System Design Team  
-**Purpose:** Comprehensive system documentation consolidating all design, requirements, technical specifications, and implementation guidelines
+**Document Version:** 2.0  
+**Last Updated:** December 2025  
+**Author:** Engineering Team  
+**Purpose:** Comprehensive system documentation reflecting Phase 2 implementation with billing/payroll workflows and actual dashboard architecture
 
 ---
 
@@ -13,1121 +13,954 @@
 2. [System Architecture Overview](#system-architecture-overview)
 3. [Role-Based System Structure](#role-based-system-structure)
 4. [Dashboard Specifications](#dashboard-specifications)
-5. [Database Design and Data Model](#database-design-and-data-model)
-6. [Workflow Documentation](#workflow-documentation)
+5. [Billing and Payroll Workflows](#billing-and-payroll-workflows)
+6. [Database Design and Data Model](#database-design-and-data-model)
 7. [Technical Implementation](#technical-implementation)
-8. [Performance Requirements](#performance-requirements)
-9. [Testing Strategy](#testing-strategy)
-10. [Sprint Implementation Plan](#sprint-implementation-plan)
-11. [Security and Compliance](#security-and-compliance)
-12. [Implementation Guidelines](#implementation-guidelines)
+8. [Deployment and Operations](#deployment-and-operations)
+9. [Security and Compliance](#security-and-compliance)
 
 ---
 
 ## Executive Summary
 
-The ZEN Medical Healthcare Management System is a comprehensive, role-based healthcare management platform designed to streamline patient care coordination, provider management, and administrative oversight. The system supports eight distinct user roles with specialized dashboards and workflows, ensuring efficient healthcare delivery while maintaining HIPAA compliance and data security.
+The ZEN Medical Healthcare Management System is a Streamlit-based healthcare management platform implementing Phase 2 features focused on **billing and payroll workflows**. The system manages patient care coordination, provider task tracking, and dual billing/payroll pipelines for healthcare operations.
 
 ### Key System Features
-- **Role-Based Access Control (RBAC):** Eight distinct roles with hierarchical permissions
-- **Integrated Dashboard System:** Role-specific interfaces optimized for workflow efficiency
-- **Real-Time Data Management:** Live data integration with staging.db production tables
-- **Comprehensive Workflow Automation:** Automated task generation and care coordination
-- **Performance Analytics:** Real-time monitoring and reporting capabilities
-- **HIPAA Compliance:** Built-in security and audit trail functionality
+- **Role-Based Access Control (RBAC):** 8 distinct roles (33=Provider, 34=Admin, 35=Onboarding, 36=Coordinator, 37=LC, 38=CPM, 39=DataEntry, 40=CM)
+- **Dual Billing/Payroll System:** Separate workflows for Medicare billing (3rd party) and internal payroll
+- **Weekly Provider Billing Dashboard:** Track provider task billing through insurance reimbursement lifecycle
+- **Monthly Coordinator Billing Dashboard:** Aggregate coordinator minutes by patient with auto billing code assignment
+- **Weekly Provider Payroll Dashboard:** Track provider compensation with paid_by_zen indicators to prevent double-payment
+- **Admin Dashboard Tabs:** 8+ specialized management interfaces (User Roles, ZMO, HHC, Workflow Reassignment, etc.)
+- **Database-Driven Workflows:** SQLite production.db with 40+ normalized tables for data integrity
 
-### Core Principles (RASM Framework)
-- **Reliability:** Fault-tolerant design with comprehensive error handling
-- **Availability:** High uptime with redundancy and failover mechanisms
-- **Scalability:** Horizontal scaling support for growing user base
-- **Maintainability:** Modular architecture with clear separation of concerns
+### Core Architecture Principles
+- **Separation of Concerns:** Billing (Medicare) vs Payroll (Internal Compensation) are distinct workflows
+- **Workflow-Driven Design:** Status tables (provider_task_billing_status, provider_weekly_payroll_status) vs raw task tables
+- **Role-Based Filtering:** All dashboards filter data by user_role_ids with multi-role support
+- **Professional UI Standards:** No emojis in healthcare interfaces, consistent styling via ui_style_config.py
 
 ---
 
 ## System Architecture Overview
 
 ### Technology Stack
-- **Frontend Framework:** Streamlit (Python-based web application)
-- **Database:** SQLite (staging.db) with production table schema
-- **Authentication:** Session-based authentication with role validation
-- **Data Processing:** Pandas for data manipulation and analysis
-- **Visualization:** Plotly for interactive charts and metrics
-- **Deployment:** Local development with Docker containerization support
+- **Frontend:** Streamlit (Python-based responsive web app)
+- **Database:** SQLite (production.db) with 40+ normalized tables
+- **Authentication:** Session-based with role validation and multi-role support
+- **Data Processing:** Pandas for aggregation and analysis
+- **Visualization:** Plotly for healthcare-appropriate charts
+- **Configuration:** Centralized ui_style_config.py for professional styling
+- **Deployment:** VPS with git-based code management and Streamlit server
 
 ### System Components
-1. **Authentication Module:** User login and role-based access control
-2. **Dashboard Engine:** Dynamic dashboard generation based on user role
-3. **Data Access Layer:** Secure database connections and query management
-4. **Workflow Engine:** Task automation and care coordination logic
-5. **Reporting Module:** Analytics and performance reporting
-6. **Security Layer:** HIPAA compliance and audit trail management
 
-### Database Schema (staging.db)
+#### 1. Application Layer (app.py)
+- Main entry point handling authentication and role-based routing
+- Route logic: role_id determines primary dashboard displayed
+- Session state management for user context
 
-#### Source Tables (6 tables)
-- **source_users:** Raw user data import
-- **source_patients:** Raw patient data import
-- **source_providers:** Raw provider data import
-- **source_coordinators:** Raw coordinator data import
-- **source_tasks:** Raw task data import
-- **source_billing:** Raw billing data import
+#### 2. Dashboard Layer (src/dashboards/)
+- `admin_dashboard.py` - 8+ tabs for administrative management
+- `care_provider_dashboard_enhanced.py` - Provider workflow and tasks
+- `care_coordinator_dashboard_enhanced.py` - Coordinator workflow
+- `weekly_provider_billing_dashboard.py` - Weekly billing (P00) workflow
+- `weekly_provider_payroll_dashboard.py` - Weekly payroll tracking
+- `monthly_coordinator_billing_dashboard.py` - Monthly coordinator aggregation
+- `onboarding_dashboard.py` - Patient intake workflow
+- `data_entry_dashboard.py` - Bulk data entry interface
 
-#### Production Tables (26 tables)
-- **prod_users:** Processed user accounts and roles
-- **prod_patients:** Patient demographics and care information
-- **prod_providers:** Provider profiles and specializations
-- **prod_coordinators:** Coordinator assignments and workloads
-- **prod_tasks:** Task management and tracking
-- **prod_billing:** Billing codes and revenue tracking
-- **prod_assignments:** Patient-provider-coordinator relationships
-- **prod_care_plans:** Patient care plans and goals
-- **prod_communications:** Patient communication logs
-- **prod_quality_metrics:** Quality assurance and outcome tracking
-- **prod_performance:** Provider and coordinator performance data
-- **prod_audit_logs:** System access and modification tracking
-- **prod_system_config:** Application configuration settings
-- **prod_reports:** Generated reports and analytics
-- **prod_alerts:** System alerts and notifications
-- **prod_schedules:** Provider and coordinator schedules
-- **prod_documents:** Patient document management
-- **prod_insurance:** Insurance verification and coverage
-- **prod_medications:** Medication management and tracking
-- **prod_appointments:** Appointment scheduling and management
-- **prod_referrals:** Provider referral tracking
-- **prod_outcomes:** Patient outcome measurements
-- **prod_compliance:** HIPAA and regulatory compliance tracking
-- **prod_backups:** System backup and recovery logs
-- **prod_integrations:** External system integration logs
-- **prod_notifications:** User notification management
+#### 3. Database Layer (src/database.py)
+- SQLite connection management with row_factory
+- Prepared statements for security
+- Role-based data filtering functions
+- Transaction management for workflow updates
 
-#### Utility Tables (2 tables)
-- **system_metadata:** System version and configuration metadata
-- **data_quality_checks:** Data validation and quality monitoring
+#### 4. Utilities Layer (src/utils/)
+- `performance_components.py` - Shared performance metric displays
+- `chart_components.py` - Healthcare-appropriate visualizations
+- `ui_style_config.py` - Professional UI standards and text styling
+
+#### 5. Configuration Layer (src/config/)
+- `ui_style_config.py` - Professional indicators, headers, labels
+- No emoji usage, text-based status indicators
+
+### Database Architecture
+
+#### Primary Database: production.db
+
+**Core Patient Management Tables:**
+- `users` - User accounts (user_id, email, full_name, username)
+- `user_roles` - Role assignments (user_id → role_id many-to-many)
+- `roles` - Role definitions (role_id, role_name)
+- `patients` - Patient demographics and status
+- `user_patient_assignments` - Patient-provider/coordinator assignments
+
+**Provider Task Billing Tables (Weekly Workflow):**
+- `provider_task_billing_status` - Workflow-driven billing tracking
+  - Fields: billing_status_id, provider_id, patient_id, task_date, minutes_of_service, billing_code
+  - Status flags: is_billed, is_invoiced, is_claim_submitted, is_insurance_processed, is_approved_to_pay, is_paid
+  - Audit fields: billed_by, billed_date, created_date, updated_date
+
+**Provider Weekly Payroll Tables:**
+- `provider_weekly_payroll_status` - Workflow for provider compensation
+  - Fields: payroll_status_id, provider_id, pay_week_number, pay_year, pay_week_start_date, pay_week_end_date
+  - Tracking: paid_by_zen_count, paid_by_zen_minutes (to prevent double-payment)
+  - Status: is_paid, paid_date, paid_by
+  - Critical: paid_by_zen indicators show tasks already compensated elsewhere
+
+**Coordinator Task Tables (Monthly Workflow):**
+- `coordinator_tasks_YYYY_MM` - Monthly task tables (dynamic table creation)
+  - Fields: patient_id, duration_minutes, task_description, coordinator_id
+  - Aggregated by patient for billing code assignment
+
+**Coordinator Monthly Summary Table:**
+- `coordinator_monthly_summary` - Aggregated monthly data
+  - Fields: coordinator_id, patient_id, month, year, total_tasks, total_minutes
+  - Billing codes assigned based on minutes thresholds
+
+**Onboarding Workflow Tables:**
+- `onboarding_patients` - New patient tracking
+  - Status fields: stage1_complete, stage2_complete, stage3_complete, stage4_complete
+  - Tracks progression through intake workflow
+
+**Supporting Tables:**
+- `regions` - Geographic assignments
+- `providers` - Provider profiles and specializations
+- `coordinators` - Coordinator assignments
+- `patient_panel_assignments` - Extended assignment metadata
 
 ---
 
 ## Role-Based System Structure
 
-### Role Hierarchy
+### Role Hierarchy (by role_id)
+
 ```
-Admin (Executive Level)
-├── Patient Onboarding Team Members (POT)
-├── Clinical Director
-│   ├── Patient Care Provider Manager (PCPM)
-│   │   └── Patient Care Providers (PCP)
-│   └── Coordinator Manager (CM)
-│       └── Lead Coordinator (LC)
-│           └── Patient Care Coordinators (PCC)
-└── Operations Manager
-    ├── Patient Onboarding Team Members (POT)
-    └── Data Entry
+34 (Admin/Harpreet) - Full system access
+├── 38 (Care Provider Manager) - Provider team oversight
+│   └── 33 (Care Provider) - Direct care delivery
+├── 40 (Coordinator Manager) - Coordinator team oversight
+│   ├── 37 (Lead Coordinator) - Team lead
+│   │   └── 36 (Care Coordinator) - Daily coordination
+│   └── 36 (Care Coordinator)
+├── 35 (Onboarding) - Patient intake
+└── 39 (Data Entry) - Bulk data management
 ```
 
 ### Role Definitions
 
-#### 1. Administration (Admin)
-- **Access Level:** Full system access
-- **Responsibilities:** System configuration, user management, security administration
-- **Dashboard Tabs:** System Overview, User Management, Performance, Quality Monitor, Configuration, Reports
-- **Data Access:** All tables and system functions
+#### Role 33: Care Provider (PCP)
+- **Access:** Clinical patient data for assigned patients
+- **Dashboard Tabs:**
+  - Patient Panel - Assigned patients with care status
+  - Task Management - Daily clinical tasks
+  - Billing Summary - View billing status (read-only)
+- **Permissions:** Read assigned patient data, submit tasks
+- **Key Feature:** Weekly billing status visible, no mark-as-billed access
 
-#### 2. Patient Onboarding Team Member (POT)
-- **Access Level:** Operational access
-- **Responsibilities:** Patient intake, insurance verification, documentation collection
-- **Dashboard Tabs:** Patient Intake, Document Management, Assignment Queue
-- **Data Access:** Patient registration, insurance data, onboarding workflow
+#### Role 34: Admin (Harpreet)
+- **Access:** Full system administrative access
+- **Dashboard Tabs:** (8 tabs total)
+  1. User Role Management - User account and role assignment
+  2. Staff Onboarding - Patient intake workflow
+  3. Coordinator Tasks - Task review and management
+  4. Provider Tasks - Provider task review
+  5. Patient Info - Patient demographics and status
+  6. HHC View Template - Daily export view of active patients
+  7. Workflow Reassignment - Reassign patients between providers/coordinators
+  8. ZMO - Patient data management and search interface
+  9. Billing Report - Weekly/Monthly billing and payroll dashboards
+- **Permissions:** Full read/write access, mark tasks as billed, manage workflows
+- **Key Feature:** Can mark provider tasks as billed and process payroll
 
-#### 3. Patient Care Provider (PCP)
-- **Access Level:** Clinical access
-- **Responsibilities:** Direct patient care, clinical documentation, billing
-- **Dashboard Tabs:** Patient Panel, Daily Tasks, PGS, PSL, Billing & Revenue
-- **Data Access:** Assigned patients, medical records, billing data
+#### Role 35: Onboarding Specialist
+- **Access:** Patient intake and onboarding workflow
+- **Dashboard:** Onboarding queue with stage progression tracking
+- **Permissions:** Create new patients, track intake stages
 
-#### 4. Patient Care Provider Manager (PCPM)
-- **Access Level:** Management access
-- **Responsibilities:** Provider supervision, regional assignments, performance oversight
-- **Dashboard Tabs:** Patient Panel, Daily Tasks, Provider Assignment & Management
-- **Data Access:** Team provider data, assignment authority, performance analytics
+#### Role 36: Care Coordinator (PCC)
+- **Access:** Assigned patients and coordination tasks
+- **Dashboard Tabs:**
+  - Patient Panel - Assigned patients
+  - Coordinator Tasks - Daily coordination tasks
+- **Permissions:** Read patient data, submit coordination tasks, view monthly billing status
 
-#### 5. Patient Care Coordinator (PCC)
-- **Access Level:** Clinical access
-- **Responsibilities:** Care coordination, care plan management, patient communication
-- **Dashboard Tabs:** Patient Panel, Daily Tasks
-- **Data Access:** Assigned patients, care plans, coordination records
+#### Role 37: Lead Coordinator (LC)
+- **Access:** Team coordinator oversight + coordinator access
+- **Dashboard:** Enhanced coordinator dashboard with team management
+- **Permissions:** Same as coordinator + view team performance
 
-#### 6. Lead Coordinator (LC)
-- **Access Level:** Supervisory access
-- **Responsibilities:** Supervise a team of Patient Care Coordinators, manage complex cases, and report to the Coordinator Manager.
-- **Dashboard Tabs:** Team Overview, Patient Panel, Daily Tasks, Coordinator Assignment & Oversight
-- **Data Access:** Team coordinator data, assignment authority, performance analytics
+#### Role 38: Care Provider Manager (CPM)
+- **Access:** Provider team management + provider access
+- **Dashboard:** Enhanced provider dashboard with team tabs
+- **Permissions:** Same as provider + view/manage team assignments
 
-#### 7. Coordinator Manager (CM)
-- **Access Level:** Management access
-- **Responsibilities:** Oversee all care coordination activities, manage the Lead Coordinators, and ensure quality standards are met.
-- **Dashboard Tabs:** Global Coordinator View, Performance Analytics, Quality Assurance, Reporting
-- **Data Access:** All coordinator and patient data, performance metrics, quality reports
+#### Role 39: Data Entry
+- **Access:** Data entry forms and bulk upload
+- **Dashboard:** Data entry interface with batch operations
+- **Permissions:** Limited to specific data entry tables
 
-#### 8. Data Entry
-- **Access Level:** Data entry access
-- **Responsibilities:** Input and maintain data across various system modules, ensuring accuracy and completeness.
-- **Dashboard Tabs:** Data Entry Forms, Batch Upload, Data Validation
-- **Data Access:** Limited to specific data entry tables and fields
+#### Role 40: Coordinator Manager (CM)
+- **Access:** Coordinator team oversight + admin dashboard
+- **Dashboard:** Full admin dashboard (same as Admin)
+- **Permissions:** Team management, quality assurance, reporting
 
 ---
 
 ## Dashboard Specifications
 
-### Admin Dashboard Design
+### Admin Dashboard (Role 34 & 40)
 
-#### Tab 1: System Overview
-- **Purpose:** Real-time system health and key metrics
+The admin dashboard displays different tab sets based on user role and access level.
+
+#### Tab 1: User Role Management
+- **Purpose:** Manage user accounts and role assignments
 - **Components:**
-  - System status indicators (uptime, performance, alerts)
-  - User activity summary (active users, login statistics)
-  - Patient census (total patients, new registrations, active cases)
-  - Provider utilization (active providers, caseload distribution)
-  - Coordinator workload (active coordinators, task completion rates)
-  - System alerts and notifications
+  - User list with search/filter by role, status, department
+  - User creation form with role assignment
+  - Bulk role management
+  - User status tracking (active/inactive/suspended)
+  - Login credentials management
 
-#### Tab 2: User Management
-- **Purpose:** Comprehensive user account administration
+#### Tab 2: Staff Onboarding
+- **Purpose:** Track patient onboarding workflow
 - **Components:**
-  - User search and filtering (by role, status, department)
-  - User creation and modification forms
-  - Role assignment and permission management
-  - Account status management (active, inactive, suspended)
-  - Bulk user operations (import, export, batch updates)
-  - User activity monitoring and audit trails
+  - Onboarding patient queue
+  - Stage progression tracking (Stage 1-4)
+  - Document upload and verification
+  - Insurance verification status
+  - Ready-for-assignment indicator
 
-#### Tab 3: Performance Analytics
-- **Purpose:** System and user performance monitoring
+#### Tab 3: Coordinator Tasks
+- **Purpose:** Review and manage coordinator daily tasks
 - **Components:**
-  - Provider performance metrics (productivity, quality scores, patient outcomes)
-  - Coordinator performance metrics (task completion, patient satisfaction)
-  - System performance metrics (response times, error rates, resource utilization)
-  - Trend analysis and historical comparisons
-  - Performance alerts and threshold monitoring
-  - Customizable reporting and data export
+  - Task list with filter by coordinator, status, date range
+  - Task detail view with patient context
+  - Task status updates (pending, in-progress, completed)
+  - Performance metrics by coordinator
+  - Bulk task operations
 
-#### Tab 4: Quality Monitor
-- **Purpose:** Data quality and system integrity monitoring
+#### Tab 4: Provider Tasks
+- **Purpose:** Review and manage provider tasks
 - **Components:**
-  - Data quality checks and validation results
-  - System integrity monitoring (database consistency, backup status)
-  - Compliance monitoring (HIPAA, regulatory requirements)
-  - Error tracking and resolution status
-  - Quality metrics and improvement recommendations
-  - Automated quality assurance reports
+  - Task list with filter by provider, patient, status
+  - Task detail view
+  - Task status tracking
+  - Performance metrics by provider
+  - Integration with billing workflow
 
-#### Tab 5: System Configuration
-- **Purpose:** Application settings and system configuration
+#### Tab 5: Patient Info
+- **Purpose:** Patient demographics and care information
 - **Components:**
-  - Application settings management (timeouts, limits, defaults)
-  - Workflow configuration (task automation, assignment rules)
-  - Security settings (password policies, session management)
-  - Integration configuration (external systems, APIs)
-  - Notification settings (alerts, email templates)
-  - System maintenance scheduling
+  - Patient search by name, ID, MRN
+  - Demographics view and edit
+  - Care plan summary
+  - Provider/Coordinator assignment view
+  - Medical history and communications
+  - Document management
 
-#### Tab 6: Reports
-- **Purpose:** Comprehensive reporting and analytics
+#### Tab 6: HHC View Template
+- **Purpose:** Daily export view of all active patients
 - **Components:**
-  - Pre-built report templates (operational, clinical, financial)
-  - Custom report builder with drag-and-drop interface
-  - Scheduled report generation and distribution
-  - Report export capabilities (PDF, Excel, CSV)
-  - Report sharing and collaboration tools
-  - Historical report archive and version control
+  - Active patient list with key clinical data
+  - Assignment status (provider, coordinator)
+  - Metrics: Total Active Patients, Assigned to Coordinator, With Provider, Unassigned
+  - Sortable and filterable data table
+  - CSV export for daily reports
+  - Clinical priority indicators
 
-### Provider Dashboard Design (PCP/PCPM)
-
-#### Tab 1: Patient Panel
-- **Purpose:** Patient management and care overview
+#### Tab 7: Workflow Reassignment
+- **Purpose:** Reassign patients between providers and coordinators
 - **Components:**
-  - Patient list with search and filtering
-  - Patient demographics and care summary
-  - Care plan status and next actions
-  - Recent activity and communication history
-  - Quick access to patient records and documentation
+  - Patient search interface
+  - Current assignment display
+  - Provider/coordinator selection dropdowns
+  - Assignment type selector (care provider, coordinator, both)
+  - Workflow update and audit trail
+  - Bulk reassignment for cohorts
+  - Historical assignment tracking
 
-#### Tab 2: Daily Tasks
-- **Purpose:** Task management and workflow tracking
+#### Tab 8: ZMO (Patient Data Management)
+- **Purpose:** Comprehensive patient data search and management
 - **Components:**
-  - Task list with priority and due date sorting
-  - Task creation and assignment tools
-  - Time tracking and productivity metrics
-  - Task completion status and history
-  - Automated task generation based on care protocols
+  - Multi-criteria patient search (name, ID, MRN)
+  - Patient panel and patient table data views
+  - Column filtering and custom column selection
+  - Data export (CSV, JSON)
+  - Dynamic table joining and relationship viewing
+  - Search history and saved searches
+  - Clear results and reset functionality
 
-#### Tab 3: PGS (Provider Guidance System)
-- **Purpose:** Clinical protocols and decision support
-- **Components:**
-  - Clinical guidelines and protocols
-  - Decision support tools and algorithms
-  - Best practice recommendations
-  - Evidence-based care pathways
-  - Clinical reference materials and resources
+#### Tab 9: Billing Report (Optional - Justin & Harpreet)
+- **Purpose:** Billing and payroll dashboard access
+- **Sub-tabs:**
+  - Monthly Billing (Coordinators) - Coordinator minute aggregation
+  - Weekly Billing (Providers) - Provider task billing workflow
+  - Provider Payroll - Weekly payroll tracking and approval
 
-#### Tab 4: PSL (Provider Service Log)
-- **Purpose:** Service documentation and billing support
-- **Components:**
-  - Service entry and documentation forms
-  - Billing code selection and validation
-  - Service history and tracking
-  - Documentation templates and shortcuts
-  - Quality assurance and compliance checks
+### Weekly Provider Billing Dashboard (P00)
 
-#### Tab 5: Billing & Revenue
-- **Purpose:** Financial tracking and revenue management
-- **Components:**
-  - Billing summary and revenue tracking
-  - Payment status and collections management
-  - Financial performance metrics
-  - Billing code analysis and optimization
-  - Revenue forecasting and trend analysis
+**Accessed By:** Admin (role 34), triggered from Billing Report tab
 
-### Coordinator Dashboard Design (PCC/PCCM)
+**Layout Hierarchy:**
+```
+Weekly Provider Billing (P00)
+Track provider billing by week using provider tasks and billing status
 
-#### Tab 1: Patient Panel
-- **Purpose:** Patient coordination and care management
-- **Components:**
-  - Assigned patient list with care status
-  - Care plan management and updates
-  - Patient communication tools and history
-  - Service coordination and referral tracking
-  - Patient outcome monitoring and reporting
+[Select Billing Period - Show All Weeks checkbox]
+[Select Week dropdown] [Week dates display]
+[Filter by Billing Status dropdown]
 
-#### Tab 2: Daily Tasks
-- **Purpose:** Coordination task management
-- **Components:**
-  - Task list with patient-specific context
-  - Care coordination activities and follow-ups
-  - Time tracking for billable coordination services
-  - Task automation based on care protocols
-  - Collaboration tools for care team communication
+### Billing Summary
+[Total Tasks] [Total Minutes] [Billed Tasks %] [Pending Billed] [Unique Providers]
 
-### Management Extensions (PCPM/PCCM)
+### Billing Data by Provider
+[Show Audit Trail checkbox]
+[Data table with billing status]
 
-#### Additional Tab: Team Management
-- **Purpose:** Team oversight and assignment management
-- **Components:**
-  - Team member performance monitoring
-  - Patient assignment and workload balancing
-  - Team scheduling and availability management
-  - Performance analytics and reporting
-  - Training and development tracking
+### Billing Actions (Admin only)
+[Mark Selected as Billed interface]
+
+### Export Options
+[Download for Biller] [Download Full Data] [Download Pending Only]
+```
+
+**Key Features:**
+- Hierarchical filtering: Week → Billing Status
+- Summary metrics from provider_task_billing_status
+- Detailed data display with optional audit columns
+- Mark-as-billed functionality (Admin only)
+- 3rd party biller export format
+- Status workflow: Pending → Billed → Invoiced → Claim Submitted → Insurance Processed → Approved to Pay → Paid
+
+**Permissions:**
+- View: Admin (role 34) only
+- Edit (mark as billed): Harpreet (user_id 12) only
+
+### Weekly Provider Payroll Dashboard
+
+**Accessed By:** Admin (role 34), triggered from Billing Report tab
+
+**Layout Hierarchy:**
+```
+Weekly Provider Payroll Dashboard
+Payroll Workflow Management for provider compensation tracking
+
+⚠️ CRITICAL: paid_by_zen_count and paid_by_zen_minutes show ALREADY COMPENSATED tasks
+[Select Billing Period]
+[Select Week dropdown]
+
+### Payroll Summary
+[Total Providers] [Total Tasks] [Total Minutes] [Paid Count] [Pending Count]
+
+### Payroll Data by Provider
+[Data table with paid_by_zen indicators]
+
+### Payroll Actions (Justin only)
+[Mark Providers as Paid interface]
+
+### Export Options
+[Download for Payroll] [Download Full Data]
+```
+
+**Key Features:**
+- Prevents double-payment via paid_by_zen tracking
+- Critical indicator: paid_by_zen_count shows tasks already compensated
+- Status workflow: Pending → Paid
+- Separate from billing (Medicare reimbursement) workflow
+- Integration with provider_weekly_payroll_status table
+
+**Permissions:**
+- View: Admin (role 34) + Harpreet (user_id 12)
+- Edit (mark as paid): Justin (user_id 1) only
+
+### Monthly Coordinator Billing Dashboard
+
+**Accessed By:** Admin (role 34), triggered from Billing Report tab
+
+**Layout Hierarchy:**
+```
+Monthly Coordinator Billing Dashboard
+Coordinator minutes aggregated by patient with automatic billing code assignment
+
+[Select Month] [Selected Period metric]
+
+### Monthly Summary
+[Total Patients] [Total Tasks] [Total Minutes]
+
+### Billing Data by Patient
+[Filter by Billing Code] [Show Only Pending Codes checkbox]
+[Data table with auto-assigned codes]
+
+### Export Options
+[Download Filtered Data] [Download All Data] [Download Pending Codes]
+```
+
+**Key Features:**
+- Automatic billing code assignment based on minutes thresholds
+- Monthly aggregation from coordinator_tasks_YYYY_MM tables
+- Status indicators for pending code assignment
+- Patient-level aggregation (not task-level)
+- CSV export for billing submission
+
+### Care Provider Dashboard
+
+**Dashboard:** Provider-specific view of assigned patients and tasks
+
+**Tabs (when role 33 is primary):**
+1. Patient Panel - Assigned patients with status
+2. Task Management - Daily clinical tasks
+3. Billing Summary (read-only) - View weekly billing status
+
+**Tabs (when roles 33+38, provider with manager role):**
+- Additional "Team Management" tab for managing assigned providers
+
+### Care Coordinator Dashboard
+
+**Dashboard:** Coordinator-specific view of assigned patients and tasks
+
+**Tabs (when role 36 is primary):**
+1. Patient Panel - Assigned patients
+2. Coordinator Tasks - Daily coordination work
+
+**Tabs (when roles 36+37 or 36+40, coordinator with manager role):**
+- Additional "Team Management" tab for team oversight
+
+---
+
+## Billing and Payroll Workflows
+
+### Phase 2 Workflow Architecture
+
+#### Dual-Track Design
+
+```
+Provider Tasks (CSV Import)
+    ↓
+provider_tasks_YYYY_MM (Monthly raw tasks)
+    ↓
+[Billing Track] ────────────────→ [Payroll Track]
+    ↓                                    ↓
+provider_task_billing_status        provider_weekly_payroll_status
+(Medicare reimbursement)            (Internal compensation)
+    ↓                                    ↓
+Weekly Billing Dashboard            Weekly Payroll Dashboard
+(3rd party biller)                  (Internal accounting)
+    ↓                                    ↓
+Status: Pending→Billed→             Status: Pending→Paid
+Invoiced→Claim Submitted→
+Insurance Processed→Paid
+```
+
+### Weekly Provider Billing Workflow (P00)
+
+**Objective:** Track provider task billing through Medicare reimbursement lifecycle
+
+**Data Source:** provider_task_billing_status table
+
+**Status Lifecycle:**
+1. **Pending** - Task imported, awaiting billing submission
+2. **Billed** - Marked as billed (Admin: Harpreet only)
+3. **Invoiced** - Sent to Medicare as claim
+4. **Claim Submitted** - Claim officially submitted
+5. **Insurance Processed** - Insurance processing in progress
+6. **Approved to Pay** - Insurance approval received
+7. **Paid** - Payment received from insurance
+
+**Admin Actions:**
+- Select week and billing status to filter
+- View summary metrics (total tasks, minutes, billed count)
+- Mark selected tasks as billed (moves from Pending → Billed)
+- Export data for 3rd party biller in standardized CSV format
+- View audit trail (who marked, when)
+
+**Key Columns:**
+- billing_status_id, provider_id, patient_id, task_date
+- minutes_of_service, billing_code, billing_status
+- is_billed (boolean), billed_date, billed_by (audit)
+
+### Weekly Provider Payroll Workflow
+
+**Objective:** Track provider compensation while preventing double-payment
+
+**Data Source:** provider_weekly_payroll_status table
+
+**Critical Feature:** paid_by_zen indicators
+- `paid_by_zen_count` - Number of tasks already compensated elsewhere
+- `paid_by_zen_minutes` - Minutes already paid out
+- Purpose: Prevents accidental double-payment to providers
+
+**Status Lifecycle:**
+1. **Pending** - Week data populated, awaiting approval
+2. **Paid** - Marked as paid (Justin only)
+
+**Admin/Justin Actions:**
+- Select payroll week
+- Review paid_by_zen indicators to identify already-compensated tasks
+- Mark providers as paid (moves Pending → Paid)
+- Export for internal payroll system
+
+**Key Difference from Billing:**
+- **Billing** = Insurance reimbursement (Medicare 3rd party)
+- **Payroll** = Provider compensation (Internal ZEN payment)
+- Some providers may be paid by other entities (paid_by_zen tracking prevents duplicate)
+
+### Monthly Coordinator Billing Workflow
+
+**Objective:** Aggregate coordinator minutes and auto-assign billing codes
+
+**Data Source:** coordinator_tasks_YYYY_MM (monthly tables), aggregated to coordinator_monthly_summary
+
+**Billing Code Assignment Logic:**
+```
+Minutes → Billing Code
+≤15 min → 99211 (Office visit - minimal)
+16-30 min → 99212 (Office visit - low)
+31-45 min → 99213 (Office visit - moderate)
+46-60 min → 99214 (Office visit - moderate-high)
+>60 min → 99215 (Office visit - high)
+0 min → PENDING (Manual assignment required)
+```
+
+**Aggregation Level:** By patient (not by task)
+
+**Admin Actions:**
+- Select month
+- View aggregated coordinator minutes per patient
+- Filter by billing code or pending status
+- Export for billing submission
 
 ---
 
 ## Database Design and Data Model
 
-### Data Access Patterns by Role
+### production.db Schema Overview
 
-#### Admin Access Pattern
+#### User and Role Management
 ```sql
--- Full system access - all tables and operations
-SELECT * FROM prod_users;
-SELECT * FROM prod_patients;
-SELECT * FROM prod_performance;
-SELECT * FROM prod_audit_logs;
+users
+├── user_id (PK)
+├── email (UNIQUE)
+├── username
+├── full_name
+└── password_hash
+
+roles
+├── role_id (PK)
+└── role_name
+
+user_roles
+├── user_id (FK)
+├── role_id (FK)
+└── assigned_date
 ```
 
-#### Provider Access Pattern
+#### Patient and Assignment
 ```sql
--- Provider-specific patient access
-SELECT p.* FROM prod_patients p
-JOIN prod_assignments a ON p.patient_id = a.patient_id
-WHERE a.provider_id = :current_provider_id;
+patients
+├── patient_id (PK)
+├── first_name
+├── last_name
+├── date_of_birth
+├── medical_record_number
+├── insurance_id
+└── status
 
--- Provider performance data
-SELECT * FROM prod_performance
-WHERE provider_id = :current_provider_id;
+user_patient_assignments
+├── assignment_id (PK)
+├── user_id (FK)
+├── patient_id (FK)
+├── role_id (FK)
+├── assignment_type (provider/coordinator/both)
+└── assigned_date
 ```
 
-#### Coordinator Access Pattern
+#### Provider Task Billing (Weekly)
 ```sql
--- Coordinator-specific patient access
-SELECT p.* FROM prod_patients p
-JOIN prod_assignments a ON p.patient_id = a.patient_id
-WHERE a.coordinator_id = :current_coordinator_id;
-
--- Care plan management
-SELECT * FROM prod_care_plans
-WHERE coordinator_id = :current_coordinator_id;
+provider_task_billing_status
+├── billing_status_id (PK)
+├── provider_task_id (FK)
+├── provider_id (FK)
+├── provider_name
+├── patient_id (FK)
+├── patient_name
+├── task_date
+├── billing_week (YYYY-WW format)
+├── week_start_date
+├── week_end_date
+├── task_description
+├── minutes_of_service
+├── billing_code
+├── billing_code_description
+├── billing_status (Pending/Billed/Invoiced/...)
+├── is_billed (BOOLEAN)
+├── is_invoiced (BOOLEAN)
+├── is_claim_submitted (BOOLEAN)
+├── is_insurance_processed (BOOLEAN)
+├── is_approved_to_pay (BOOLEAN)
+├── is_paid (BOOLEAN)
+├── billed_date
+├── billed_by (user_id)
+├── created_date
+├── updated_date
+└── [additional status fields]
 ```
 
-### Key Relationships
-- **Users → Roles:** Many-to-many relationship through a `user_roles` join table, defining access levels. The core schema is as follows:
+#### Provider Weekly Payroll
 ```sql
-CREATE TABLE users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT NOT NULL UNIQUE,
-    password TEXT NOT NULL
-);
-
-CREATE TABLE roles (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    role_name TEXT NOT NULL UNIQUE
-);
-
-CREATE TABLE user_roles (
-    user_id INTEGER,
-    role_id INTEGER,
-    PRIMARY KEY (user_id, role_id),
-    FOREIGN KEY (user_id) REFERENCES users (id),
-    FOREIGN KEY (role_id) REFERENCES roles (id)
-);
-```
-- **Patients → Assignments:** Many-to-many through assignment table
-- **Providers → Patients:** Many-to-many through assignment table
-- **Coordinators → Patients:** Many-to-many through assignment table
-- **Tasks → Users:** Many-to-one for task ownership
-- **Care Plans → Patients:** One-to-many for patient care management
-
-### Data Quality and Validation
-
-#### Patient Data Validation
-```sql
--- Patient data completeness check
-SELECT 
-    COUNT(*) as total_patients,
-    COUNT(first_name) as has_first_name,
-    COUNT(last_name) as has_last_name,
-    COUNT(date_of_birth) as has_dob,
-    COUNT(insurance_id) as has_insurance
-FROM prod_patients;
+provider_weekly_payroll_status
+├── payroll_status_id (PK)
+├── provider_id (FK)
+├── provider_name
+├── pay_week_number
+├── pay_year
+├── pay_week_start_date
+├── pay_week_end_date
+├── total_minutes
+├── total_tasks
+├── paid_by_zen_count (CRITICAL)
+├── paid_by_zen_minutes (CRITICAL)
+├── is_paid (BOOLEAN)
+├── paid_date
+├── paid_by (user_id)
+├── created_date
+└── updated_date
 ```
 
-#### Provider Data Validation
+#### Coordinator Monthly Aggregation
 ```sql
--- Provider assignment validation
-SELECT 
-    p.provider_id,
-    p.provider_name,
-    COUNT(a.patient_id) as patient_count,
-    p.max_capacity
-FROM prod_providers p
-LEFT JOIN prod_assignments a ON p.provider_id = a.provider_id
-GROUP BY p.provider_id, p.provider_name, p.max_capacity;
+coordinator_monthly_summary
+├── summary_id (PK)
+├── coordinator_id (FK)
+├── patient_id (FK)
+├── month
+├── year
+├── total_tasks
+├── total_minutes
+├── billing_code (auto-assigned)
+├── billing_description
+├── billing_status (Pending/Assigned)
+└── created_date
 ```
 
----
+#### Coordinator Monthly Raw Tasks
+```sql
+coordinator_tasks_YYYY_MM (dynamic tables)
+├── task_id (PK)
+├── coordinator_id (FK)
+├── patient_id (FK)
+├── task_date
+├── duration_minutes
+├── task_description
+└── created_date
+```
 
-## Workflow Documentation
+#### Onboarding Workflow
+```sql
+onboarding_patients
+├── onboarding_id (PK)
+├── patient_id (FK)
+├── stage1_complete (BOOLEAN - intake)
+├── stage2_complete (BOOLEAN - insurance verification)
+├── stage3_complete (BOOLEAN - documentation)
+├── stage4_complete (BOOLEAN - assignment)
+└── completed_date
+```
 
-### Patient Onboarding Workflow (POT)
+### Data Access Patterns
 
-1. **Initial Intake**
-   - Patient registration and demographic collection
-   - Insurance verification and eligibility check
-   - Medical history and documentation gathering
-   - Initial needs assessment and risk stratification
+#### Role 34 (Admin) - Full Access
+- Read: All tables
+- Write: All tables
+- Special: Mark as billed (provider_task_billing_status), manage workflows
 
-2. **TV Scheduling & Provider Assignment**
-   - Schedule initial telemedicine visit
-   - Assign regional provider based on geographic and specialty matching
-   - Complete onboarding process
+#### Role 33 (Provider) - Assigned Patient Access
+- Read: Assigned patient data, own tasks
+- View: Billing status (read-only)
+- Filtered by: user_patient_assignments where role_id=33
 
-### Provider Workflow (PCP)
+#### Role 36 (Coordinator) - Assigned Patient Access
+- Read: Assigned patient data, own coordination tasks
+- View: Monthly billing status (read-only)
+- Filtered by: user_patient_assignments where role_id=36
 
-1. **Daily Patient Review**
-   - Review assigned patient list
-   - Check for urgent alerts and notifications
-   - Prioritize daily tasks and appointments
-
-2. **Clinical Documentation**
-   - Complete patient encounters and assessments
-   - Update care plans and treatment protocols
-   - Document billing codes and services
-
-3. **Care Coordination**
-   - Collaborate with assigned coordinators
-   - Review and approve care plan updates
-   - Communicate with patients and families
-
-### Coordinator Workflow (PCC)
-
-1. **Care Plan Management**
-   - Develop comprehensive care plans
-   - Coordinate services and appointments
-   - Monitor patient progress and outcomes
-
-2. **Patient Communication**
-   - Regular patient check-ins and follow-ups
-   - Education and support services
-   - Crisis intervention and support
-
-3. **Service Coordination**
-   - Coordinate with external providers
-   - Manage referrals and specialist appointments
-   - Track service delivery and outcomes
-
-### Management Workflows (PCPM/PCCM)
-
-1. **Team Oversight**
-   - Monitor team performance and productivity
-   - Provide coaching and support
-   - Manage team schedules and availability
-
-2. **Patient Assignment**
-   - Review new patient assignments
-   - Balance workloads across team members
-   - Ensure appropriate skill and capacity matching
-
-3. **Quality Assurance**
-   - Monitor care quality and patient outcomes
-   - Implement quality improvement initiatives
-   - Ensure compliance with protocols and standards
+#### Multi-Role Users
+- Users can have multiple roles (e.g., role 33 + role 38)
+- Primary role determines main dashboard
+- Manager roles (37, 38, 40) unlock additional tabs
+- Dashboard checks: `38 in user_role_ids` for manager functionality
 
 ---
 
 ## Technical Implementation
 
 ### Application Structure
+
 ```
-Streamlit/
-├── app.py                 # Main application entry point
+app.py
+├── Authentication (login, session management)
+├── Role routing (primary role → dashboard selection)
+├── Session state management
+└── Main dashboard dispatch
+
+src/
+├── database.py
+│   ├── get_db_connection() - SQLite with row_factory
+│   ├── get_user_role_ids(user_id)
+│   ├── Prepared statements for security
+│   └── Transaction management
 ├── config/
-│   ├── database.py        # Database configuration
-│   ├── auth.py           # Authentication configuration
-│   └── settings.py       # Application settings
+│   └── ui_style_config.py
+│       ├── get_section_title() - Professional headers
+│       ├── get_metric_label() - Standardized labels
+│       ├── TextStyle.INFO_INDICATOR - Text-based indicators
+│       └── No emoji constants
 ├── dashboards/
-│   ├── admin_dashboard.py     # Admin dashboard implementation
-│   ├── provider_dashboard.py  # Provider dashboard implementation
-│   ├── coordinator_dashboard.py # Coordinator dashboard implementation
-│   └── shared_components.py   # Shared UI components
-├── data/
-│   ├── database_utils.py  # Database utility functions
-│   ├── queries.py        # SQL query definitions
-│   └── staging.db        # SQLite database file
-├── auth/
-│   ├── authentication.py # Authentication logic
-│   ├── authorization.py  # Role-based access control
-│   └── session_manager.py # Session management
-├── utils/
-│   ├── helpers.py        # Utility functions
-│   ├── validators.py     # Data validation
-│   └── formatters.py     # Data formatting
-└── tests/
-    ├── test_auth.py      # Authentication tests
-    ├── test_dashboards.py # Dashboard tests
-    └── test_database.py  # Database tests
+│   ├── admin_dashboard.py - 8+ tabs for admin
+│   ├── care_provider_dashboard_enhanced.py - Provider workflow
+│   ├── care_coordinator_dashboard_enhanced.py - Coordinator workflow
+│   ├── weekly_provider_billing_dashboard.py - P00 billing
+│   ├── weekly_provider_payroll_dashboard.py - Payroll
+│   ├── monthly_coordinator_billing_dashboard.py - Monthly billing
+│   ├── onboarding_dashboard.py - Patient intake
+│   └── data_entry_dashboard.py - Bulk data entry
+└── utils/
+    ├── performance_components.py
+    │   ├── display_coordinator_patient_service_analysis()
+    │   └── display_provider_monthly_summary()
+    └── chart_components.py
+        ├── Plotly-based visualizations
+        └── Healthcare-appropriate styling
 ```
 
-### Authentication System
+### Authentication and Authorization
 
-#### Session-Based Authentication
 ```python
-# Authentication flow
-def authenticate_user(username, password):
-    user = validate_credentials(username, password)
-    if user:
-        session_state.user_id = user.id
-        session_state.role = user.role
-        session_state.authenticated = True
-        return True
-    return False
+# Session state pattern (standard across all dashboards)
+st.session_state['user_id'] = authenticated_user['user_id']
+st.session_state['role_id'] = primary_role_id
+st.session_state['user_role_ids'] = [34, 38]  # Multi-role support
+st.session_state['user_full_name'] = 'Harpreet Cheema'
 
-# Role-based access control
-def check_access(required_role):
-    if not session_state.authenticated:
-        return False
-    return has_role_access(session_state.role, required_role)
-```
-
-#### Database Connection Management
-```python
-# Secure database connection
-def get_database_connection():
-    conn = sqlite3.connect('data/staging.db')
-    conn.row_factory = sqlite3.Row
-    return conn
-
-# Query execution with error handling
-def execute_query(query, params=None):
-    try:
-        with get_database_connection() as conn:
-            cursor = conn.cursor()
-            if params:
-                cursor.execute(query, params)
-            else:
-                cursor.execute(query)
-            return cursor.fetchall()
-    except Exception as e:
-        log_error(f"Database query failed: {e}")
-        return None
-```
-
-### Dashboard Implementation
-
-#### Dynamic Dashboard Loading
-```python
-# Role-based dashboard routing
-def load_dashboard(user_role):
-    dashboard_map = {
-        'Admin': admin_dashboard,
-        'PCP': provider_dashboard,
-        'PCPM': provider_manager_dashboard,
-        'PCC': coordinator_dashboard,
-        'PCCM': coordinator_manager_dashboard,
-        'POT': onboarding_dashboard
-    }
+# Role checking pattern
+if 34 in user_role_ids:  # Admin access
+    # Display admin features
     
-    dashboard_func = dashboard_map.get(user_role)
-    if dashboard_func:
-        dashboard_func()
-    else:
-        st.error("Invalid user role or dashboard not found")
+if 38 in user_role_ids:  # Manager access
+    # Add management tabs
+    st.tabs(["My Work", "Team Management"])
 ```
 
-#### Shared Component Library
-```python
-# Reusable UI components
-def create_patient_table(patients_df, role):
-    # Role-based column filtering
-    columns = get_allowed_columns(role)
-    filtered_df = patients_df[columns]
-    
-    # Interactive table with search and filtering
-    return st.dataframe(
-        filtered_df,
-        use_container_width=True,
-        hide_index=True
-    )
+### Database Connection Pattern
 
-def create_metrics_cards(metrics_data):
-    cols = st.columns(len(metrics_data))
-    for i, (label, value, delta) in enumerate(metrics_data):
-        with cols[i]:
-            st.metric(label=label, value=value, delta=delta)
+```python
+from src import database
+
+conn = database.get_db_connection()  # Returns SQLite connection with row_factory
+try:
+    result = conn.execute(query, params).fetchall()
+finally:
+    conn.close()
+```
+
+### Dashboard Implementation Pattern
+
+#### Hierarchical Filtering Example (Weekly Billing)
+```python
+# Level 1: Time period selection
+st.markdown("**Select Billing Period**")
+show_all_weeks = st.checkbox("Show All Weeks")
+
+# Level 2: Specific selection
+selected_week = st.selectbox("Select Week", weeks)
+
+# Level 3: Status filter
+selected_status = st.selectbox("Filter by Billing Status", statuses)
+
+# Apply filters hierarchically
+billing_week = None if show_all_weeks else selected_week["billing_week"]
+status_filter = None if selected_status == "All" else selected_status
+df = get_data(billing_week, status_filter)
+```
+
+### UI Styling Standards
+
+```python
+from src.config.ui_style_config import get_section_title, get_metric_label, TextStyle
+
+# Professional headers (no emojis)
+st.markdown("### Billing Summary")
+st.subheader(get_section_title("Billing Actions"))
+
+# Standardized labels
+st.metric(get_metric_label("Total Tasks"), count)
+
+# Text-based indicators instead of emoji
+st.info(f"{TextStyle.INFO_INDICATOR} View Mode: Read-only access")
 ```
 
 ---
 
-## Performance Requirements
+## Deployment and Operations
 
-### System Performance Benchmarks
+### Production Deployment Architecture
 
-#### Response Time Requirements
-- **Dashboard Load Time:** < 2 seconds for initial load
-- **Data Query Response:** < 1 second for standard queries
-- **Complex Analytics:** < 5 seconds for advanced reporting
-- **User Authentication:** < 500ms for login validation
-
-#### Scalability Targets
-- **Concurrent Users:** Support 100+ simultaneous users
-- **Database Performance:** Handle 10,000+ patient records efficiently
-- **Memory Usage:** < 512MB per user session
-- **CPU Utilization:** < 70% under normal load
-
-#### Availability Requirements
-- **System Uptime:** 99.5% availability target
-- **Planned Maintenance:** < 4 hours monthly downtime
-- **Recovery Time:** < 15 minutes for system restart
-- **Data Backup:** Daily automated backups with 30-day retention
-
-### Performance Optimization Strategies
-
-#### Database Optimization
-```sql
--- Index creation for performance
-CREATE INDEX idx_patients_provider ON prod_assignments(provider_id);
-CREATE INDEX idx_patients_coordinator ON prod_assignments(coordinator_id);
-CREATE INDEX idx_tasks_user ON prod_tasks(assigned_user_id);
-CREATE INDEX idx_audit_timestamp ON prod_audit_logs(timestamp);
+```
+VPS Server
+├── Git Repository (myhealthteam)
+├── Python Environment
+│   ├── Streamlit
+│   ├── Pandas
+│   ├── SQLite
+│   └── Dependencies
+├── production.db (SQLite database)
+├── Data Directories
+│   ├── downloads/ (CSV imports)
+│   ├── backups/ (Daily backups)
+│   └── scripts/ (PowerShell data pipeline)
+└── Streamlit Server (port 8501)
 ```
 
-#### Caching Strategy
-```python
-# Session-based caching for frequently accessed data
-@st.cache_data(ttl=300)  # 5-minute cache
-def get_user_patients(user_id, role):
-    query = get_patient_query_by_role(role)
-    return execute_query(query, {'user_id': user_id})
+### Deployment Workflow
 
-@st.cache_data(ttl=60)   # 1-minute cache for real-time data
-def get_system_metrics():
-    return calculate_system_performance_metrics()
+**Local Development:**
+1. Code changes in local Dev/ directory
+2. Test with local production.db
+3. Commit to git: `git add -A && git commit -m "message"`
+4. Push to remote: `git push origin main`
+
+**Production Update:**
+1. SSH into VPS: `ssh user@vps-ip`
+2. Navigate to repo: `cd /path/to/myhealthteam`
+3. Pull latest: `git pull origin main`
+4. Clear cache: `find . -type d -name __pycache__ -exec rm -rf {} +`
+5. Restart Streamlit: `systemctl restart streamlit` (or manual restart)
+
+### Data Pipeline
+
+```
+Google Sheets
+    ↓
+CSV Downloads (downloads/ folder)
+    ↓
+1_download.ps1 - Get latest CSVs
+    ↓
+2_consolidate.ps1 - Merge monthly files
+    ↓
+3_import_to_database.ps1 - SQLite INSERT
+    ↓
+production.db (Updated with latest data)
+    ↓
+4_transform_data_enhanced.ps1 - Data validation
 ```
 
-#### Memory Management
-```python
-# Efficient data loading with pagination
-def load_patient_data(page_size=50, offset=0):
-    query = """
-    SELECT * FROM prod_patients 
-    ORDER BY last_updated DESC 
-    LIMIT ? OFFSET ?
-    """
-    return execute_query(query, (page_size, offset))
+### Backup and Recovery
 
-# Lazy loading for large datasets
-def get_performance_data(date_range):
-    # Only load data when specifically requested
-    if 'performance_data' not in st.session_state:
-        st.session_state.performance_data = load_performance_metrics(date_range)
-    return st.session_state.performance_data
-```
-
----
-
-## Testing Strategy
-
-### Testing Framework Overview
-
-#### Unit Testing
-- **Authentication Functions:** Test login, logout, role validation
-- **Database Operations:** Test CRUD operations and data integrity
-- **Utility Functions:** Test data validation and formatting
-- **Business Logic:** Test workflow rules and calculations
-
-#### Integration Testing
-- **Dashboard Integration:** Test role-based dashboard loading
-- **Database Integration:** Test query execution and data retrieval
-- **Authentication Integration:** Test session management and access control
-- **Workflow Integration:** Test end-to-end user workflows
-
-#### Performance Testing
-- **Load Testing:** Simulate multiple concurrent users
-- **Stress Testing:** Test system limits and failure points
-- **Database Performance:** Test query performance under load
-- **Memory Usage:** Monitor memory consumption patterns
-
-#### Security Testing
-- **Authentication Security:** Test login security and session management
-- **Authorization Testing:** Verify role-based access controls
-- **Data Protection:** Test data encryption and secure transmission
-- **HIPAA Compliance:** Validate compliance with healthcare regulations
-
-### Role-Specific Testing Plans
-
-#### Admin Role Testing
-- **System Overview:** Test real-time metrics and system status
-- **User Management:** Test user creation, modification, and deactivation
-- **Performance Analytics:** Test reporting and data visualization
-- **Quality Monitoring:** Test data quality checks and alerts
-- **Configuration Management:** Test system settings and workflow configuration
-- **Reporting:** Test report generation and export functionality
-
-#### Provider Role Testing (PCP/PCPM)
-- **Patient Panel:** Test patient list filtering and search
-- **Daily Tasks:** Test task creation, assignment, and completion
-- **Clinical Documentation:** Test care plan updates and medical records
-- **Billing Integration:** Test billing code entry and revenue tracking
-- **Performance Metrics:** Test provider-specific analytics
-
-#### Coordinator Role Testing (PCC/PCCM)
-- **Patient Coordination:** Test care plan management and patient communication
-- **Task Management:** Test coordination-specific task workflows
-- **Service Coordination:** Test external provider integration
-- **Outcome Tracking:** Test patient outcome monitoring and reporting
-
-### Automated Testing Implementation
-
-#### Test Automation Framework
-```python
-# Pytest configuration for Streamlit testing
-import pytest
-import streamlit as st
-from streamlit.testing.v1 import AppTest
-
-# Test authentication functionality
-def test_user_authentication():
-    app = AppTest.from_file("app.py")
-    app.run()
-    
-    # Test login form
-    app.text_input("username").input("test_user")
-    app.text_input("password").input("test_password")
-    app.button("Login").click()
-    
-    # Verify successful authentication
-    assert app.session_state.authenticated == True
-    assert app.session_state.role == "PCP"
-
-# Test role-based access control
-def test_role_based_access():
-    app = AppTest.from_file("app.py")
-    app.session_state.role = "PCP"
-    app.session_state.authenticated = True
-    app.run()
-    
-    # Verify provider dashboard loads
-    assert "Patient Panel" in app.get_widget("selectbox").options
-    assert "Daily Tasks" in app.get_widget("selectbox").options
-```
-
-#### Performance Testing Scripts
-```python
-# Load testing with concurrent users
-import concurrent.futures
-import time
-import requests
-
-def simulate_user_session(user_id):
-    start_time = time.time()
-    
-    # Simulate user login and dashboard access
-    session = requests.Session()
-    login_response = session.post('/login', {
-        'username': f'user_{user_id}',
-        'password': 'test_password'
-    })
-    
-    # Simulate dashboard interactions
-    dashboard_response = session.get('/dashboard')
-    patient_data_response = session.get('/api/patients')
-    
-    end_time = time.time()
-    return end_time - start_time
-
-# Run concurrent user simulation
-def run_load_test(num_users=50):
-    with concurrent.futures.ThreadPoolExecutor(max_workers=num_users) as executor:
-        futures = [executor.submit(simulate_user_session, i) for i in range(num_users)]
-        response_times = [future.result() for future in futures]
-    
-    avg_response_time = sum(response_times) / len(response_times)
-    max_response_time = max(response_times)
-    
-    print(f"Average response time: {avg_response_time:.2f}s")
-    print(f"Maximum response time: {max_response_time:.2f}s")
-```
-
----
-
-## Sprint Implementation Plan
-
-### Phase 1: Foundation (Sprints 1-3)
-
-#### Sprint 1: Core Infrastructure
-- **Week 1-2:** Database schema implementation and data migration
-- **Deliverables:**
-  - Complete staging.db with all 34 tables
-  - Data migration scripts and validation
-  - Basic database connection and query utilities
-
-#### Sprint 2: Authentication System
-- **Week 3-4:** User authentication and role-based access control
-- **Deliverables:**
-  - Session-based authentication system
-  - Role validation and access control
-  - User management interface (Admin)
-
-#### Sprint 3: Basic Dashboard Framework
-- **Week 5-6:** Core dashboard structure and navigation
-- **Deliverables:**
-  - Role-based dashboard routing
-  - Basic UI components and layouts
-  - Shared component library
-
-### Phase 2: Core Dashboards (Sprints 4-6)
-
-#### Sprint 4: Admin Dashboard
-- **Week 7-8:** Complete admin dashboard implementation
-- **Deliverables:**
-  - All 6 admin dashboard tabs
-  - System metrics and monitoring
-  - User management functionality
-
-#### Sprint 5: Provider Dashboard
-- **Week 9-10:** Provider and provider manager dashboards
-- **Deliverables:**
-  - 5-tab provider interface
-  - Patient panel and task management
-  - Billing and revenue tracking
-
-#### Sprint 6: Coordinator Dashboard
-- **Week 11-12:** Coordinator and coordinator manager dashboards
-- **Deliverables:**
-  - 2-tab coordinator interface
-  - Care plan management
-  - Patient coordination tools
-
-### Phase 3: Advanced Features (Sprints 7-9)
-
-#### Sprint 7: Workflow Automation
-- **Week 13-14:** Automated task generation and workflow management
-- **Deliverables:**
-  - Task automation engine
-  - Workflow configuration tools
-  - Care protocol implementation
-
-#### Sprint 8: Analytics and Reporting
-- **Week 15-16:** Advanced analytics and reporting capabilities
-- **Deliverables:**
-  - Performance analytics dashboard
-  - Custom report builder
-  - Data visualization components
-
-#### Sprint 9: Integration and Optimization
-- **Week 17-18:** System integration and performance optimization
-- **Deliverables:**
-  - External system integrations
-  - Performance optimization
-  - Caching and memory management
-
-### Phase 4: Testing and Deployment (Sprints 10-12)
-
-#### Sprint 10: Comprehensive Testing
-- **Week 19-20:** Full system testing and quality assurance
-- **Deliverables:**
-  - Automated test suite
-  - Performance testing results
-  - Security and compliance validation
-
-#### Sprint 11: User Acceptance Testing
-- **Week 21-22:** User training and acceptance testing
-- **Deliverables:**
-  - User training materials
-  - UAT results and feedback
-  - System documentation
-
-#### Sprint 12: Production Deployment
-- **Week 23-24:** Production deployment and go-live support
-- **Deliverables:**
-  - Production deployment
-  - Go-live support and monitoring
-  - Post-deployment optimization
+- **Backup Location:** `backups/` directory
+- **Schedule:** Daily timestamped backups
+- **Filename Format:** `backup_YYYYMMDD_HHMMSS/`
+- **Critical Rule:** NEVER delete or restore production.db without explicit user permission
 
 ---
 
 ## Security and Compliance
 
-### HIPAA Compliance Framework
+### HIPAA Compliance
 
-#### Administrative Safeguards
-- **Security Officer:** Designated security officer responsible for HIPAA compliance
-- **Workforce Training:** Regular training on HIPAA requirements and system security
-- **Access Management:** Formal process for granting and revoking system access
-- **Incident Response:** Documented procedures for security incident response
+#### Patient Data Protection
+- **Encryption:** Sensitive patient data encrypted at rest
+- **Access Control:** Role-based access to patient records
+- **Audit Trail:** All access logged with timestamp, user_id, action
+- **Data Minimization:** Display only necessary fields per role
 
-#### Physical Safeguards
-- **Facility Access:** Controlled access to systems and data storage
-- **Workstation Security:** Secure workstation configuration and access controls
-- **Device Controls:** Management of portable devices and media
+#### Authentication Security
+- **Session Management:** Secure session tokens with timeout
+- **Password Policy:** Strong password requirements enforced
+- **Multi-User Access:** Impersonation controls for testing only
 
-#### Technical Safeguards
-- **Access Control:** Unique user identification and automatic logoff
-- **Audit Controls:** Comprehensive logging of system access and modifications
-- **Integrity:** Data integrity controls and validation
-- **Transmission Security:** Secure data transmission and encryption
+### Role-Based Access Control
 
-### Security Implementation
-
-#### Data Encryption
 ```python
-# Database encryption for sensitive data
-from cryptography.fernet import Fernet
+# Permission checking pattern
+def can_mark_as_billed(user_role_ids):
+    """Only role 34 (Admin/Harpreet) can mark tasks as billed"""
+    return 34 in user_role_ids
 
-class DataEncryption:
-    def __init__(self, key):
-        self.cipher = Fernet(key)
-    
-    def encrypt_sensitive_data(self, data):
-        return self.cipher.encrypt(data.encode()).decode()
-    
-    def decrypt_sensitive_data(self, encrypted_data):
-        return self.cipher.decrypt(encrypted_data.encode()).decode()
+def can_view_payroll(user_role_ids):
+    """Only role 34 (Admin/Harpreet) can view payroll"""
+    return 34 in user_role_ids
 
-# Secure session management
-def create_secure_session(user_id):
-    session_token = generate_secure_token()
-    session_data = {
-        'user_id': user_id,
-        'created_at': datetime.now(),
-        'expires_at': datetime.now() + timedelta(hours=8)
-    }
-    store_session(session_token, session_data)
-    return session_token
+def can_edit_payroll(user_id, user_role_ids):
+    """Only Justin (user_id=1) can approve payments"""
+    return user_id == 1
 ```
 
-#### Audit Logging
-```python
-# Comprehensive audit trail
-def log_user_action(user_id, action, resource, details=None):
-    audit_entry = {
-        'timestamp': datetime.now(),
-        'user_id': user_id,
-        'action': action,
-        'resource': resource,
-        'details': details,
-        'ip_address': get_client_ip(),
-        'user_agent': get_user_agent()
-    }
-    
-    insert_audit_log(audit_entry)
+### Audit Logging
 
-# Security monitoring
-def monitor_security_events():
-    # Monitor for suspicious activities
-    failed_logins = count_failed_logins(last_hour=True)
-    if failed_logins > 10:
-        trigger_security_alert('Multiple failed login attempts')
-    
-    # Monitor for unusual access patterns
-    unusual_access = detect_unusual_access_patterns()
-    if unusual_access:
-        trigger_security_alert('Unusual access pattern detected')
-```
-
-### Access Control Implementation
-
-#### Role-Based Permissions
-```python
-# Permission matrix
-ROLE_PERMISSIONS = {
-    'Admin': {
-        'users': ['create', 'read', 'update', 'delete'],
-        'patients': ['create', 'read', 'update', 'delete'],
-        'system': ['configure', 'monitor', 'backup'],
-        'reports': ['create', 'read', 'export', 'schedule']
-    },
-    'PCP': {
-        'patients': ['read', 'update'],  # Only assigned patients
-        'tasks': ['create', 'read', 'update'],
-        'billing': ['create', 'read'],
-        'reports': ['read']
-    },
-    'PCC': {
-        'patients': ['read', 'update'],  # Only assigned patients
-        'care_plans': ['create', 'read', 'update'],
-        'tasks': ['create', 'read', 'update'],
-        'reports': ['read']
-    }
-}
-
-# Permission checking
-def check_permission(user_role, resource, action):
-    permissions = ROLE_PERMISSIONS.get(user_role, {})
-    resource_permissions = permissions.get(resource, [])
-    return action in resource_permissions
-```
+All critical operations logged to provider_task_billing_status audit fields:
+- `billed_by` - User who marked as billed
+- `billed_date` - When marked as billed
+- `updated_date` - Last modification timestamp
+- Similar fields in payroll tables
 
 ---
 
-## Implementation Guidelines
+## Key System Rules and Constraints
 
-### Development Standards
+### Database Safety Rules
+- ✅ ALWAYS use try/finally with conn.close()
+- ❌ NEVER drop tables without explicit permission
+- ❌ NEVER delete entire tables
+- ❌ NEVER restore backups without user direction
+- ✅ ALWAYS ask for confirmation before destructive operations
 
-#### Code Quality Standards
-- **PEP 8 Compliance:** Follow Python coding standards
-- **Type Hints:** Use type annotations for function parameters and returns
-- **Documentation:** Comprehensive docstrings for all functions and classes
-- **Error Handling:** Robust error handling with appropriate logging
-- **Testing:** Minimum 80% code coverage with unit tests
+### Professional UI Standards
+- ❌ NO emojis in healthcare interfaces
+- ✅ Use TextStyle.INFO_INDICATOR for information markers
+- ✅ Import from src.config.ui_style_config for consistency
+- ✅ Use get_section_title() and get_metric_label() for headers
 
-#### Security Best Practices
-- **Input Validation:** Validate all user inputs and database queries
-- **SQL Injection Prevention:** Use parameterized queries exclusively
-- **Session Security:** Implement secure session management with timeouts
-- **Data Sanitization:** Sanitize all data before display or storage
-- **Logging:** Log all security-relevant events and access attempts
+### Multi-Role User Handling
+- ✅ Always check user_role_ids list (not single role_id)
+- ✅ Manager roles (37, 38, 40) unlock additional dashboard tabs
+- ✅ Use: `if 38 in user_role_ids:` to check for manager access
+- ✅ Combine base dashboard with manager-specific tabs
 
-#### Performance Guidelines
-- **Database Optimization:** Use appropriate indexes and query optimization
-- **Caching Strategy:** Implement caching for frequently accessed data
-- **Memory Management:** Efficient memory usage and garbage collection
-- **Asynchronous Operations:** Use async operations for long-running tasks
-- **Resource Monitoring:** Monitor system resources and performance metrics
-
-### Deployment Procedures
-
-#### Environment Setup
-```bash
-# Production environment setup
-pip install -r requirements.txt
-export STREAMLIT_SERVER_PORT=8501
-export STREAMLIT_SERVER_ADDRESS=0.0.0.0
-export DATABASE_PATH=/app/data/staging.db
-export SECRET_KEY=your_secure_secret_key
-
-# Database initialization
-python scripts/init_database.py
-python scripts/migrate_data.py
-
-# Application startup
-streamlit run app.py
-```
-
-#### Monitoring and Maintenance
-```python
-# Health check endpoint
-def health_check():
-    checks = {
-        'database': check_database_connection(),
-        'memory': check_memory_usage(),
-        'disk_space': check_disk_space(),
-        'response_time': check_response_time()
-    }
-    
-    all_healthy = all(checks.values())
-    return {
-        'status': 'healthy' if all_healthy else 'unhealthy',
-        'checks': checks,
-        'timestamp': datetime.now().isoformat()
-    }
-
-# Automated maintenance tasks
-def run_maintenance_tasks():
-    # Database cleanup
-    cleanup_old_audit_logs()
-    optimize_database_indexes()
-    
-    # Performance optimization
-    clear_expired_cache_entries()
-    compress_old_log_files()
-    
-    # Security maintenance
-    rotate_session_keys()
-    update_security_certificates()
-```
-
-### Quality Assurance
-
-#### Code Review Checklist
-- [ ] Code follows established coding standards
-- [ ] All functions have appropriate documentation
-- [ ] Error handling is comprehensive and appropriate
-- [ ] Security best practices are followed
-- [ ] Performance considerations are addressed
-- [ ] Tests are included and pass successfully
-- [ ] HIPAA compliance requirements are met
-
-#### Testing Checklist
-- [ ] Unit tests cover all critical functionality
-- [ ] Integration tests validate system interactions
-- [ ] Performance tests meet established benchmarks
-- [ ] Security tests validate access controls
-- [ ] User acceptance tests confirm requirements
-- [ ] Regression tests prevent functionality breaks
+### Billing vs Payroll Distinction
+- **Billing (P00):** Medicare reimbursement via 3rd party service (weekly)
+- **Payroll:** Internal provider compensation (weekly)
+- **Coordinator Billing:** Medicare aggregation by patient (monthly)
+- **Separate Workflows:** Don't mix billing status with payroll status
+- **Critical Warning:** paid_by_zen prevents double-payment in payroll
 
 ---
 
-## Conclusion
+## Conclusion and Current Status
 
-This consolidated documentation provides a comprehensive guide for implementing the ZEN Medical Healthcare Management System. The system is designed with the RASM principles (Reliability, Availability, Scalability, Maintainability) at its core, ensuring a robust, secure, and efficient healthcare management platform.
+### Phase 2 Completion Status
+- ✅ Weekly Provider Billing Dashboard (P00) - Production
+- ✅ Weekly Provider Payroll Dashboard - Production
+- ✅ Monthly Coordinator Billing Dashboard - Production
+- ✅ Admin Dashboard with 8+ tabs (ZMO, HHC, Workflow Reassignment)
+- ✅ Permission fixes for role 34 (Admin) access
+- ✅ Hierarchical filtering (Month → Week → Status)
+- ✅ Professional UI standards (no emojis)
 
-### Key Success Factors
-1. **Adherence to Documentation:** All implementation must follow this consolidated specification
-2. **Role-Based Design:** Maintain strict role-based access control and workflow separation
-3. **Security First:** Prioritize HIPAA compliance and data security in all implementations
-4. **Performance Focus:** Meet or exceed established performance benchmarks
-5. **Quality Assurance:** Comprehensive testing and validation at every stage
+### Active Issues and Solutions
+1. **Cache Clearing:** After code updates, clear `__pycache__` and restart Streamlit
+2. **Remote Deployment:** Must pull latest code on VPS and restart Streamlit server
+3. **Multi-Role Support:** Always check user_role_ids list, not single role
 
 ### Next Steps
-1. **Team Assembly:** Assemble development team with healthcare domain expertise
-2. **Environment Setup:** Establish development, testing, and production environments
-3. **Sprint 1 Kickoff:** Begin with database schema implementation and core infrastructure
-4. **Stakeholder Alignment:** Ensure all stakeholders understand and approve the implementation plan
-
-This document serves as the single source of truth for the ZEN Medical system implementation, consolidating all design, requirements, technical specifications, and implementation guidelines into one comprehensive reference.
+1. Test all 8 admin tabs with role 34 user (Harpreet)
+2. Verify weekly billing workflow end-to-end
+3. Verify weekly payroll workflow end-to-end
+4. Document any production data issues
+5. Plan Phase 3 features (if applicable)
 
 ---
 
-**Document Control:**
-- **Version:** 1.0
-- **Last Updated:** January 17, 2025
-- **Next Review:** February 17, 2025
-- **Approval:** Pending stakeholder review
-- **Distribution:** Development team, project stakeholders, quality assurance team
+**Document Owner:** Engineering Team  
+**Last Review:** December 2025  
+**Next Review Date:** January 2026
