@@ -35,7 +35,7 @@ def _has_admin_role(user_id):
         return False
 
 
-def render_provider_help_examples():
+def render_provider_help_examples(key_prefix: str = ""):
     st.markdown("### Interactive Examples (Live Streamlit widgets, read-only)")
 
     # My Patients panel example (Annotated, side-by-side)
@@ -113,61 +113,64 @@ def render_provider_help_examples():
             ["Home Visit", "Telehealth Visit"],
             index=0,
             disabled=True,
-            key="help_visit_type",
+            key=f"{key_prefix}help_visit_type",
         )
         st.date_input(
             "Date",
             value=pd.to_datetime("today").date(),
             disabled=True,
-            key="help_onboarding_date",
+            key=f"{key_prefix}help_onboarding_date",
         )
         st.text_area(
             "Visit Notes",
             placeholder="Document visit details, response, concerns...",
             disabled=True,
+            key=f"{key_prefix}help_visit_notes",
         )
         st.multiselect(
             "Mental Health Concerns",
             ["Anxiety", "Depression", "PTSD", "Substance Use"],
             default=["Anxiety"],
             disabled=True,
+            key=f"{key_prefix}help_mental_health_concerns",
         )
         st.selectbox(
             "Code Status",
             ["Full Code", "DNR"],
             index=0,
             disabled=True,
-            key="help_code_status",
+            key=f"{key_prefix}help_code_status",
         )
         st.selectbox(
             "Cognitive Function",
             ["Intact", "Mild Impairment", "Moderate", "Severe"],
             index=0,
             disabled=True,
-            key="help_cognitive_function",
+            key=f"{key_prefix}help_cognitive_function",
         )
         st.selectbox(
             "Functional Status",
             ["Independent", "Needs Assistance", "Dependent"],
             index=0,
             disabled=True,
-            key="help_functional_status",
+            key=f"{key_prefix}help_functional_status",
         )
         st.selectbox(
-            "GOC", ["Rev/Confirm", "Discuss"], index=0, disabled=True, key="help_goc"
+            "GOC", ["Rev/Confirm", "Discuss"], index=0, disabled=True, key=f"{key_prefix}help_goc"
         )
         st.text_area(
-            "Goals of Care", placeholder="Patient-centered goals...", disabled=True
+            "Goals of Care", placeholder="Patient-centered goals...", disabled=True, key=f"{key_prefix}help_goals_of_care"
         )
         st.text_area(
-            "Active Concerns", placeholder="Primary issues to address...", disabled=True
+            "Active Concerns", placeholder="Primary issues to address...", disabled=True, key=f"{key_prefix}help_active_concerns"
         )
         st.text_area(
             "Active Specialists",
             placeholder="Cardiology, Endocrinology, etc.",
             disabled=True,
+            key=f"{key_prefix}help_active_specialists",
         )
-        st.button("Complete Initial Visit (disabled)", disabled=True)
+        st.button("Complete Initial Visit (disabled)", disabled=True, key=f"{key_prefix}help_complete_visit")
     with right:
         st.markdown("- Visit Type: Home vs Telehealth visit.")
         st.markdown("- Date: when the initial visit occurred.")
@@ -193,20 +196,21 @@ def render_provider_help_examples():
             ["Phone Review", "Follow-up Call"],
             index=0,
             disabled=True,
-            key="help_task_type",
+            key=f"{key_prefix}help_task_type",
         )
         st.date_input(
             "Date",
             pd.to_datetime("today").date(),
             disabled=True,
-            key="help_phone_review_date",
+            key=f"{key_prefix}help_phone_review_date",
         )
         st.text_area(
             "Notes",
             placeholder="Call summary, clinical updates, next steps...",
             disabled=True,
+            key=f"{key_prefix}help_phone_notes",
         )
-        st.button("Log Task (disabled)", disabled=True)
+        st.button("Log Task (disabled)", disabled=True, key=f"{key_prefix}help_log_task")
     with right:
         st.markdown("- Task Type: choose appropriate call/review type.")
         st.markdown("- Date: when the call took place.")
@@ -241,22 +245,23 @@ def render_provider_help_examples():
             "Filter: Date Range (disabled)",
             value=pd.to_datetime("today").date(),
             disabled=True,
-            key="help_task_review_date",
+            key=f"{key_prefix}help_task_review_date",
         )
         st.multiselect(
             "Filter: Task (disabled)",
             ["Phone Review", "PCP-Visit Home Visit (HV)"],
             default=["Phone Review"],
             disabled=True,
+            key=f"{key_prefix}help_filter_task",
         )
         st.selectbox(
             "Filter: Status (disabled)",
             ["Queued", "Completed"],
             index=0,
             disabled=True,
-            key="help_filter_status",
+            key=f"{key_prefix}help_filter_status",
         )
-        st.button("Export CSV (disabled)", disabled=True)
+        st.button("Export CSV (disabled)", disabled=True, key=f"{key_prefix}help_export_csv")
     with right:
         st.markdown("- Columns: Task, Date, Minutes, Status, Notes.")
         st.markdown("- Filters: date/task/status to focus on subsets.")
@@ -276,10 +281,7 @@ def show(user_id, user_role_ids=None):
     onboarding_queue = database.get_provider_onboarding_queue(user_id)
 
     if has_cpm_role:
-        st.info(
-            f"{TextStyle.INFO_INDICATOR}: Manager Access - You have additional management tabs available"
-        )
-
+        
         # Create tabs with management functionality for CPM
         if onboarding_queue and len(onboarding_queue) > 0:
             tab1, tab2, tab3, tab4, tab5, tab6, tab_patient_info, tab_help = st.tabs(
@@ -364,7 +366,7 @@ def show(user_id, user_role_ids=None):
                 st.markdown(
                     "- Columns: Task, Date, Minutes, Status, Notes; Filters by date/task/status; CSV export"
                 )
-                render_provider_help_examples()
+                render_provider_help_examples(key_prefix="cpm_queue_")
         else:
             tab1, tab2, tab3, tab4, tab_patient_info, tab_help = st.tabs(
                 [
@@ -419,7 +421,7 @@ def show(user_id, user_role_ids=None):
                 st.markdown(
                     "  • Columns: Task, Date, Minutes, Status, Notes; CSV export"
                 )
-                render_provider_help_examples()
+                render_provider_help_examples(key_prefix="cpm_noqueue_")
             with tab_help:
                 st.header("Help")
                 st.subheader("Color Legend (Patient Activity)")
@@ -445,7 +447,7 @@ def show(user_id, user_role_ids=None):
                 st.markdown(
                     "  • Columns: Task, Date, Minutes, Status, Notes; CSV export"
                 )
-                render_provider_help_examples()
+                render_provider_help_examples(key_prefix="cp_noqueue_")
     else:
         # Regular care provider tabs - include onboarding queue if they have assigned patients
         if onboarding_queue and len(onboarding_queue) > 0:
@@ -525,7 +527,7 @@ def show(user_id, user_role_ids=None):
                 st.markdown(
                     "- Columns: Task, Date, Minutes, Status, Notes; Filters by date/task/status; CSV export"
                 )
-                render_provider_help_examples()
+                render_provider_help_examples(key_prefix="cp_queue_")
         else:
             tab1, tab2, tab3, tab_patient_info, tab_help = st.tabs(
                 ["My Patients", "Phone Reviews", "Task Review", "Patient Info", "Help"]
@@ -1025,48 +1027,40 @@ def show_patient_list_section(user_id, section_id=None, has_cpm_role=False):
                 "Select Patient", patient_options, key=f"{key_prefix}_patient"
             )
         with col_task:
-            # Auto-select billing code for established patients per priority rules
-            # Use sanitized task_location_val for billing lookup
-            if task_location_val == "Home Visit":
-                location_lookup = "Home"
-            elif task_location_val == "Telehealth Visit":
-                location_lookup = "Telehealth"
-            elif task_location_val == "Office Visit":
-                location_lookup = "Office"
+            # Auto-assign billing code based on visit location and type
+            selected_billing_code = None
+            selected_billing_desc = ""
+
+            if task_location_val == "Home":
+                selected_billing_code = "99345"  # NEW HOME VISIT: 75min-99345 - default biller
+                selected_billing_desc = "Home Visit (75 min)"
+            elif task_location_val == "Tele":
+                selected_billing_code = "99024"  # NEW TELEVISIT VISIT: 45min-99024 - default biller
+                selected_billing_desc = "Telehealth Visit (45 min)"
+            elif task_location_val == "Office":
+                selected_billing_code = "99024"  # NEW OFFICE VISIT: 45min-99024 - default biller
+                selected_billing_desc = "Office Visit (45 min)"
             else:
-                location_lookup = task_location_val
-            billing_options = database.get_billing_codes(
-                service_type="Primary Care Visit",
-                location_type=location_lookup,
-                patient_type="Established Patient",
-            )
-            # Default selection priority: 99024, then 99214, then any with is_default, then first
-            selected_billing = None
-            if billing_options:
-                # Prefer explicit codes
-                codes = [b.get("billing_code") for b in billing_options]
-                if "99024" in codes:
-                    selected_billing = next(
-                        b for b in billing_options if b.get("billing_code") == "99024"
-                    )
-                elif "99214" in codes:
-                    selected_billing = next(
-                        b for b in billing_options if b.get("billing_code") == "99214"
-                    )
+                # Fallback to first available billing code if location unknown
+                billing_options = database.get_billing_codes(
+                    service_type="Primary Care Visit",
+                    location_type=task_location_val,
+                    patient_type="Established Patient",
+                )
+                if billing_options:
+                    selected_billing_code = billing_options[0].get("billing_code", "Unknown")
+                    selected_billing_desc = billing_options[0].get("description", "")
                 else:
-                    # Try is_default flag
-                    default_candidates = [
-                        b for b in billing_options if b.get("is_default")
-                    ]
-                    if default_candidates:
-                        selected_billing = default_candidates[0]
-                    else:
-                        selected_billing = billing_options[0]
+                    selected_billing_code = None
+
+            # Store the selected billing code (invisible to provider)
+            if selected_billing_code:
+                selected_billing = selected_billing_code
             else:
+                selected_billing = None
                 st.warning(
                     "No billing codes configured for Primary Care Visit - please contact admin"
                 )
-                selected_billing = None
 
         st.markdown("#### Patient Risk & Clinical Fields (Optional)")
         col1, col2 = st.columns(2)
@@ -1164,11 +1158,7 @@ def show_patient_list_section(user_id, section_id=None, has_cpm_role=False):
             else:
                 try:
                     # Append notes to patient and save a provider task record using selected billing code
-                    billing_code_to_use = (
-                        selected_billing.get("billing_code")
-                        if selected_billing
-                        else None
-                    )
+                    billing_code_to_use = selected_billing
 
                     database.save_daily_task(
                         provider_id=user_id,
@@ -1179,75 +1169,9 @@ def show_patient_list_section(user_id, section_id=None, has_cpm_role=False):
                         billing_code=billing_code_to_use,
                     )
 
-                    # Attempt to persist risk/clinical fields into patients table if columns exist
+                    # Directly persist clinical fields without schema validation
                     try:
                         conn = database.get_db_connection()
-
-                        # Validate that required columns exist in both tables
-                        cursor = conn.cursor()
-
-                        # Check patients table columns
-                        cursor.execute("PRAGMA table_info(patients)")
-                        patients_columns = [row[1] for row in cursor.fetchall()]
-
-                        # Check patient_panel table columns
-                        cursor.execute("PRAGMA table_info(patient_panel)")
-                        panel_columns = [row[1] for row in cursor.fetchall()]
-
-                        # Required clinical fields
-                        required_fields = [
-                            "er_count_1yr",
-                            "hospitalization_count_1yr",
-                            "subjective_risk_level",
-                            "mental_health_concerns",
-                            "provider_mh_schizophrenia",
-                            "provider_mh_depression",
-                            "provider_mh_anxiety",
-                            "provider_mh_stress",
-                            "provider_mh_adhd",
-                            "provider_mh_bipolar",
-                            "provider_mh_suicidal",
-                            "active_specialists",
-                            "code_status",
-                            "cognitive_function",
-                            "functional_status",
-                            "goals_of_care",
-                            "chronic_conditions_provider",
-                            "goc_value",
-                            "last_visit_date",
-                        ]
-
-                        # Check for missing columns
-                        missing_patients = [
-                            field
-                            for field in required_fields
-                            if field not in patients_columns
-                        ]
-                        missing_panel = [
-                            field
-                            for field in required_fields
-                            if field not in panel_columns
-                        ]
-
-                        if missing_patients or missing_panel:
-                            error_details = []
-                            if missing_patients:
-                                error_details.append(
-                                    f"Missing in patients table: {', '.join(missing_patients)}"
-                                )
-                            if missing_panel:
-                                error_details.append(
-                                    f"Missing in patient_panel table: {', '.join(missing_panel)}"
-                                )
-
-                            st.warning(
-                                "Task saved. Clinical fields were not persisted due to missing columns."
-                            )
-                            st.error("**Schema validation failed:**")
-                            for detail in error_details:
-                                st.write(f"- {detail}")
-                            conn.close()
-                            return
 
                         # Prepare base params for clinical fields
                         # Store subjective_risk as string value only
@@ -3271,7 +3195,7 @@ def show_task_review_section(user_id):
                     minutes_of_service,
                     task_description
                 FROM {selected_table}
-                WHERE user_id = ?
+                WHERE provider_id = ?
                 ORDER BY task_date DESC
                 """
 
@@ -3337,7 +3261,7 @@ def show_task_review_section(user_id):
                         billing_code,
                         billing_code_description
                     FROM {summary_table}
-                    WHERE user_id = ?
+                    WHERE provider_id = ?
                     GROUP BY task_description, billing_code, billing_code_description
                     ORDER BY total_minutes DESC, task_count DESC
                     """

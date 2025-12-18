@@ -2084,29 +2084,7 @@ def save_daily_task(
                 print(f"Warning: Could not create billing status record: {e}")
                 # Don't fail the whole task if billing status creation fails
 
-        # Also insert into tasks table for compatibility
-        conn.execute(
-            """
-            INSERT INTO tasks
-            (patient_name, patient_id, user_id, full_name, staff_code, role_id, task_date, task_type, duration_minutes, service_code, notes, task_state)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """,
-            (
-                "",
-                pid,
-                provider_id,
-                "",
-                "",
-                33,
-                task_date,
-                task_description,
-                duration_minutes,
-                billing_code_val,
-                notes,
-                "completed",
-            ),
-        )
-
+        
         # If onboarding-specific task, handle onboarding workflow (legacy)
         if task_description == "PCP-Visit Telehealth (TE) (NEW pt)":
             onboarding_cursor = conn.execute(
