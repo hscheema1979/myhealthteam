@@ -48,8 +48,16 @@ def show_workflow_reassignment_table(
             search_query = st.text_input("Search patients", placeholder="Enter patient name or ID...", key=f"{table_key}_search")
         
         with col_filter2:
-            # Coordinator filter
-            coordinator_names = ['All Coordinators'] + sorted(workflows_df['coordinator_name'].unique().tolist())
+            # Coordinator filter - filter out None values to avoid sorting errors
+            coord_list = [x for x in workflows_df['coordinator_name'].unique().tolist() if x is not None]
+            coordinator_names = ['All Coordinators'] + sorted(coord_list)
+            
+            # Debug log for None values
+            if debug_mode:
+                none_count = workflows_df['coordinator_name'].isna().sum()
+                if none_count > 0:
+                    st.warning(f"DEBUG: {none_count} workflows have no coordinator assigned")
+            
             selected_coordinator = st.selectbox("Filter by coordinator", coordinator_names, key=f"{table_key}_filter")
         
         # Apply filters
