@@ -19,64 +19,75 @@ from src.config.ui_style_config import (
 )
 
 
-def get_available_months():
-    """Get list of available months from provider_task_billing_status table"""
+def get_available_years():
+    """Get list of available years from provider_task_billing_status table based on week_start_date"""
     conn = database.get_db_connection()
     try:
         query = """
         SELECT DISTINCT
-            week_start_date
+            STRFTIME('%Y', week_start_date) as year
         FROM provider_task_billing_status
         WHERE week_start_date IS NOT NULL
-        ORDER BY week_start_date DESC
-        LIMIT 24
+        ORDER BY year DESC
         """
         rows = conn.execute(query).fetchall()
 
-        # Use a set to avoid duplicate months
-        months_set = set()
-        months = []
-        
-        # Add "All Months" option first
-        months.append(
-            {"year": None, "month": None, "year_month": "all", "display": "All Months"}
-        )
+        years = []
+        years_set = set()
         
         for row in rows:
             try:
-                date_str = row[0]
-                
-                # Parse the date string and format it properly
-                if date_str and isinstance(date_str, str):
-                    date_obj = datetime.strptime(date_str, '%Y-%m-%d')
-                    month = date_obj.strftime('%m')
-                    year = date_obj.strftime('%Y')
-                    year_month = date_obj.strftime('%Y-%m')
-                    display = date_obj.strftime('%B %Y')
-                    
-                    # Only add if we haven't seen this year_month before
-                    if year_month not in months_set:
-                        months_set.add(year_month)
-                        months.append(
-                            {
-                                "year": year,
-                                "month": month,
-                                "year_month": year_month,
-                                "display": display,
-                            }
-                        )
-            except (ValueError, IndexError, TypeError) as e:
-                # Skip problematic rows but continue processing
+                year_str = row[0]
+                if year_str and isinstance(year_str, str):
+                    if year_str not in years_set:
+                        years_set.add(year_str)
+                        years.append({"year": year_str, "display": year_str})
+            except (ValueError, IndexError, TypeError):
                 continue
 
-        # Sort months in descending order (most recent first), keeping "All Months" at top
-        all_months = months[:1]
-        other_months = sorted(months[1:], key=lambda x: x['year_month'], reverse=True)
-        months = all_months + other_months
-
-        return months
+        return years if years else []
     except Exception as e:
-        st.error(f"Error getting available months: {e}")
+        st.error(f"Error getting available years: {e}")
+        return []
+    finally:
+        conn.close()
+
+
+def get_weeks_for_year(year):
+    """Get actual week numbers (01-52) for a given year from the database"""
+    conn = database.get_db_connection()
+    try:
+        query = """
+        SELECT DISTINCT
+            billing_week,
+            week_start_date,
+            week_end_date
+        FROM provider_task_billing_status
+        WHERE STRFTIME('%Y', week_start_date) = ?
+        ORDER BY billing_week ASC
+        """
+        rows = conn.execute(query, (year,)).fetchall()
+
+        weeks = []
+        for row in rows:
+            try:
+                week_num = row[0]
+                week_start = row[1]
+                week_end = row[2]
+                weeks.append(
+                    {
+                        "billing_week": week_num,  # Just the week number (01-52)
+                        "week_start_date": week_start,
+                        "week_end_date": week_end,
+                        "display": f"Week {week_num:02d} - {week_start}",
+                    }
+                )
+            except (ValueError, IndexError, TypeError):
+                continue
+
+        return weeks
+    except Exception as e:
+        st.error(f"Error getting weeks for year {year}: {e}")
         return []
     finally:
         conn.close()
@@ -366,57 +377,40 @@ def display_weekly_provider_billing_dashboard(user_id=None, user_role_ids=None):
         )
         return
 
-    # Month and week selectors - hierarchical filtering
-    # Filter controls
-    # Row 1: [Select Monthly][Show All Weeks] + [Select Week]
-    col1, col2 = st.columns(2)
+    # Filter controls - All in one row: Year | Week | Provider | Status
+    col1, col2, col3, col4 = st.columns(4)
 
     with col1:
-        st.markdown("**Select Monthly**")
-        months = get_available_months()
-        selected_month = st.selectbox(
-            "Select Month",
-            options=months,
-            format_func=lambda x: x["display"],
-            key="provider_billing_month",
-        )
-        show_all_weeks = st.checkbox(
-            "Show All Weeks", value=False, key="billing_show_all_weeks"
-        )
+        st.markdown("**Year**")
+        years = get_available_years()
+        if years:
+            selected_year = st.selectbox(
+                "Select Year",
+                options=years,
+                format_func=lambda x: x["display"],
+                key="provider_billing_year",
+            )
+        else:
+            st.info("No years available")
+            selected_year = None
 
     with col2:
-        st.markdown("**Select Week**")
-        if selected_month:
-            # Filter weeks by selected month
-            if selected_month["year_month"] == "all":
-                filtered_weeks = weeks
-            else:
-                filtered_weeks = [
-                    week
-                    for week in weeks
-                    if week["billing_week"].startswith(
-                        f"{selected_month['year']}-{selected_month['month']:02d}"
-                    )
-                ]
-            if filtered_weeks:
-                selected_week = st.selectbox(
-                    "Select Week",
-                    options=filtered_weeks,
-                    format_func=lambda x: x["display"],
-                    key="provider_billing_week",
-                )
-            else:
-                st.info("No weeks available for selected month")
-                selected_week = None
+        st.markdown("**Week**")
+        if selected_year:
+            # Get simple week numbers (01-52) for selected year
+            available_weeks = get_weeks_for_year(selected_year["year"])
+            selected_week = st.selectbox(
+                "Select Week",
+                options=available_weeks,
+                format_func=lambda x: x["display"],
+                key="provider_billing_week",
+            )
         else:
-            st.info("Select a month first")
+            st.info("Select year first")
             selected_week = None
 
-    # Row 2: [Select Provider]
-    col1, col2 = st.columns(2)
-
-    with col1:
-        st.markdown("**Select Provider**")
+    with col3:
+        st.markdown("**Provider**")
         providers = get_billing_providers()
         if providers:
             selected_provider = st.selectbox(
@@ -429,21 +423,17 @@ def display_weekly_provider_billing_dashboard(user_id=None, user_role_ids=None):
             st.info("No providers available")
             selected_provider = None
 
-    with col2:
-        st.markdown("")  # Empty space for alignment
-
-    # Status filter (optional)
-    billing_status_options = get_billing_status_options()
-    selected_status = st.selectbox(
-        "Filter by Billing Status",
-        options=billing_status_options,
-        key="provider_billing_status",
-    )
+    with col4:
+        st.markdown("**Status**")
+        billing_status_options = get_billing_status_options()
+        selected_status = st.selectbox(
+            "Filter by Billing Status",
+            options=billing_status_options,
+            key="provider_billing_status",
+        )
 
     # Main content - handle the filter logic
-    if show_all_weeks:
-        billing_week = None
-    elif selected_week:
+    if selected_week:
         billing_week = selected_week["billing_week"]
     else:
         billing_week = None
