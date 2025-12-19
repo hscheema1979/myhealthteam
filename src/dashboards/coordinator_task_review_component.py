@@ -229,13 +229,13 @@ def show(user_id):
                         conn_update = database.get_db_connection()
                         updates_made = 0
                         
-                        for idx, row in edited_df.iterrows():
-                            orig_row = st.session_state.original_coord_tasks_df[['Patient Name', 'DOS', 'Duration', 'Service Type', 'Notes']].iloc[idx]
-                            task_id = tasks_df.iloc[idx]['Task ID']  # Get the unique task ID
+                        for i, (idx, row) in enumerate(edited_df.iterrows()):
+                            orig_row = st.session_state.original_coord_tasks_df[['Patient Name', 'DOS', 'Duration', 'Service Type', 'Notes']].iloc[i]
+                            task_id = tasks_df.iloc[i]['Task ID']  # Get the unique task ID using position
                             
                             # Check if any editable fields changed
-                            if (row['Duration'] != orig_row['Duration'] or 
-                                row['Service Type'] != orig_row['Service Type'] or 
+                            if (row['Duration'] != orig_row['Duration'] or
+                                row['Service Type'] != orig_row['Service Type'] or
                                 row['Notes'] != orig_row['Notes']):
                                 
                                 # Update the database using unique task ID
