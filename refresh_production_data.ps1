@@ -4,7 +4,8 @@
 param(
     [switch]$SkipDownload,
     [switch]$SkipBackup,
-    [switch]$SkipVerification
+    [switch]$SkipVerification,
+    [switch]$SyncToProduction  # Sync CSV data to VPS2 after import
 )
 
 $ErrorActionPreference = "Stop"
@@ -80,6 +81,35 @@ else {
     Write-Host "  [OK] Views created, patient data updated, summaries populated`n" -ForegroundColor Green
 }
 
+# Step 5: Sync to production (optional)
+if ($SyncToProduction) {
+    Write-Host "[5/5] Syncing CSV data to production (VPS2)..." -ForegroundColor Yellow
+    Write-Host "  Using smart sync (preserves manual entries on VPS2)" -ForegroundColor Gray
+
+    $syncScript = "db-sync\bin\sync_csv_data.ps1"
+    if (Test-Path $syncScript) {
+        & $syncScript
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "  [OK] CSV data synced to production`n" -ForegroundColor Green
+        } else {
+            Write-Host "  [WARN] Sync had issues - check db-sync/logs/`n" -ForegroundColor Yellow
+        }
+    } else {
+        Write-Host "  [WARN] Sync script not found: $syncScript" -ForegroundColor Yellow
+        Write-Host "  Creating trigger file for manual sync...`n" -ForegroundColor Gray
+
+        # Create trigger file for next sync cycle
+        $triggerDir = "db-sync\flags"
+        if (-not (Test-Path $triggerDir)) {
+            New-Item -ItemType Directory -Path $triggerDir -Force | Out-Null
+        }
+        New-Item -ItemType File -Path "$triggerDir\bulk_import_complete.flag" -Force | Out-Null
+        Write-Host "  [OK] Trigger file created - sync will run on next scheduled cycle`n" -ForegroundColor Green
+    }
+} else {
+    Write-Host "[5/5] Skipping production sync (use -SyncToProduction to enable)`n" -ForegroundColor Gray
+}
+
 # Summary
 $duration = (Get-Date) - $startTime
 Write-Host "========================================" -ForegroundColor Cyan
@@ -90,4 +120,8 @@ Write-Host "========================================`n" -ForegroundColor Cyan
 Write-Host "Next steps:" -ForegroundColor White
 Write-Host "  1. Launch Streamlit: .\run_and_monitor.ps1" -ForegroundColor Gray
 Write-Host "  2. Check dashboards for fresh data" -ForegroundColor Gray
-Write-Host "  3. If issues, rollback: Copy-Item '$backupPath' 'production.db' -Force`n" -ForegroundColor Gray
+Write-Host "  3. If issues, rollback: Copy-Item '$backupPath' 'production.db' -Force" -ForegroundColor Gray
+if (-not $SyncToProduction) {
+    Write-Host "  4. To sync to production: .\db-sync\bin\sync_csv_data.ps1" -ForegroundColor Gray
+}
+Write-Host "" -ForegroundColor White

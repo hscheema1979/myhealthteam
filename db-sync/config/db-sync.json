@@ -1,0 +1,31 @@
+{
+  "schedule": {
+    "daily_refresh_time": "05:00",
+    "daily_sync_time": "06:30",
+    "timezone": "America/Los_Angeles",
+    "description": "Daily refresh at 5 AM, sync to production at 6:30 AM"
+  },
+  "sync": {
+    "master_host": "server2",
+    "master_user": "",
+    "master_db_path": "/opt/myhealthteam/production.db",
+    "slave_db_path": "D:\\Git\\myhealthteam2\\Dev\\production.db",
+    "slave_backup_dir": "D:\\Git\\myhealthteam2\\Dev\\db-sync\\backups",
+    "slave_log_dir": "D:\\Git\\myhealthteam2\\Dev\\db-sync\\logs",
+    "slave_temp_dir": "D:\\Git\\myhealthteam2\\Dev\\db-sync\\temp",
+    "sync_interval_minutes": 1440,
+    "max_backup_age_days": 7,
+    "timeout_seconds": 300,
+    "bulk_import_trigger_file": "D:\\Git\\myhealthteam2\\Dev\\db-sync\\flags\\bulk_import_complete.flag"
+  },
+  "tables": {
+    "task_tables_prefix": ["provider_tasks_", "coordinator_tasks_"],
+    "reference_tables": ["users", "staff_mapping", "regions", "facilities"],
+    "preserve_source_systems": ["MANUAL", "DASHBOARD", "WORKFLOW"]
+  },
+  "monitoring": {
+    "health_check_url": "http://100.103.208.24:8501/health",
+    "alert_email": "admin@company.com",
+    "log_level": "INFO"
+  }
+}

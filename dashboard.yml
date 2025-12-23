@@ -1,0 +1,505 @@
+# Healthcare Metrics Dashboard Configuration
+# This file defines dashboards for Datasette
+
+dashboard:
+  metrics_overview:
+    title: "Healthcare Metrics Overview"
+    description: "Key performance indicators and trends"
+    layout: [[0, 1, 2], [3, 4, 5], [6, 7, 8]]
+    charts:
+      - title: "Total Minutes by Facility"
+        db: production
+        query: |
+          SELECT
+            facility_name,
+            SUM(total_minutes) as total_minutes,
+            SUM(total_tasks) as total_tasks
+          FROM facility_summary
+          GROUP BY facility_name
+          ORDER BY total_minutes DESC
+          LIMIT 10
+        display: bar
+        display_options:
+          x: facility_name
+          y: total_minutes
+          color: facility_name
+          title: "Top 10 Facilities by Total Minutes"
+
+      - title: "Coordinator Minutes per Month"
+        db: production
+        query: |
+          SELECT
+            month,
+            facility_name,
+            SUM(total_minutes) as total_minutes
+          FROM minutes_per_staff_per_month_per_facility
+          WHERE task_type = 'coordinator'
+          GROUP BY month, facility_name
+          ORDER BY month, total_minutes DESC
+        display: line
+        display_options:
+          x: month
+          y: total_minutes
+          color: facility_name
+          title: "Coordinator Minutes Trend"
+
+      - title: "Provider Minutes per Month"
+        db: production
+        query: |
+          SELECT
+            month,
+            facility_name,
+            SUM(total_minutes) as total_minutes
+          FROM minutes_per_staff_per_month_per_facility
+          WHERE task_type = 'provider'
+          GROUP BY month, facility_name
+          ORDER BY month, total_minutes DESC
+        display: line
+        display_options:
+          x: month
+          y: total_minutes
+          color: facility_name
+          title: "Provider Minutes Trend"
+
+      - title: "Tasks Distribution by Type"
+        db: production
+        query: |
+          SELECT
+            task_type,
+            COUNT(*) as task_count,
+            SUM(total_minutes) as total_minutes
+          FROM minutes_per_staff_per_month_per_facility
+          GROUP BY task_type
+        display: pie
+        display_options:
+          label: task_type
+          value: task_count
+          title: "Tasks by Type (Coordinator vs Provider)"
+
+      - title: "Top Coordinators by Minutes"
+        db: production
+        query: |
+          SELECT
+            staff_name,
+            SUM(total_minutes) as total_minutes,
+            SUM(task_count) as total_tasks,
+            AVG(avg_minutes_per_task) as avg_minutes_per_task
+          FROM minutes_per_staff_per_month_per_facility
+          WHERE task_type = 'coordinator'
+          GROUP BY staff_name
+          ORDER BY total_minutes DESC
+          LIMIT 10
+        display: bar
+        display_options:
+          x: staff_name
+          y: total_minutes
+          color: staff_name
+          title: "Top 10 Coordinators"
+
+      - title: "Top Providers by Tasks"
+        db: production
+        query: |
+          SELECT
+            staff_name,
+            SUM(task_count) as total_tasks,
+            SUM(total_minutes) as total_minutes,
+            COUNT(DISTINCT facility_name) as facilities
+          FROM minutes_per_staff_per_month_per_facility
+          WHERE task_type = 'provider'
+          GROUP BY staff_name
+          ORDER BY total_tasks DESC
+          LIMIT 10
+        display: bar
+        display_options:
+          x: staff_name
+          y: total_tasks
+          color: staff_name
+          title: "Top 10 Providers by Task Count"
+
+      - title: "Monthly Trends"
+        db: production
+        query: |
+          SELECT
+            month,
+            task_type,
+            SUM(task_count) as total_tasks,
+            SUM(total_minutes) as total_minutes
+          FROM tasks_per_month_per_facility
+          GROUP BY month, task_type
+          ORDER BY month
+        display: line
+        display_options:
+          x: month
+          y: total_tasks
+          color: task_type
+          title: "Monthly Task Trends"
+
+      - title: "Facility Activity Heatmap"
+        db: production
+        query: |
+          SELECT
+            facility_name,
+            month,
+            SUM(total_minutes) as total_minutes
+          FROM minutes_per_staff_per_month_per_facility
+          GROUP BY facility_name, month
+          ORDER BY facility_name, month
+        display: heatmap
+        display_options:
+          x: month
+          y: facility_name
+          value: total_minutes
+          title: "Facility Activity Over Time"
+
+      - title: "Patient Engagement by Facility"
+        db: production
+        query: |
+          SELECT
+            facility_name,
+            SUM(unique_patients) as total_patients,
+            SUM(total_tasks) as total_tasks,
+            ROUND(CAST(SUM(total_tasks) as FLOAT) / SUM(unique_patients), 2) as tasks_per_patient
+          FROM facility_summary
+          GROUP BY facility_name
+          ORDER BY total_patients DESC
+          LIMIT 15
+        display: bar
+        display_options:
+          x: facility_name
+          y: total_patients
+          color: tasks_per_patient
+          title: "Patient Engagement"
+
+  coordinator_dashboard:
+    title: "Coordinator Performance Dashboard"
+    description: "Coordinator-specific metrics and analysis"
+    layout: [[0, 1], [2, 3], [4]]
+    charts:
+      - title: "Minutes per Coordinator per Month per Facility"
+        db: production
+        query: |
+          SELECT
+            facility_name,
+            staff_name as coordinator_name,
+            month,
+            total_minutes,
+            task_count,
+            unique_patients,
+            avg_minutes_per_task
+          FROM minutes_per_staff_per_month_per_facility
+          WHERE task_type = 'coordinator'
+          ORDER BY facility_name, coordinator_name, month DESC
+        display: table
+        display_options:
+          page_size: 20
+          search: true
+
+      - title: "Coordinator Productivity"
+        db: production
+        query: |
+          SELECT
+            staff_name as coordinator_name,
+            SUM(total_minutes) as total_minutes,
+            SUM(task_count) as total_tasks,
+            AVG(avg_minutes_per_task) as avg_minutes_per_task,
+            COUNT(DISTINCT facility_name) as facilities_served,
+            COUNT(DISTINCT month) as months_active
+          FROM minutes_per_staff_per_month_per_facility
+          WHERE task_type = 'coordinator'
+          GROUP BY staff_name
+          ORDER BY total_minutes DESC
+        display: bar
+        display_options:
+          x: coordinator_name
+          y: total_minutes
+          color: facilities_served
+          title: "Coordinator Productivity Ranking"
+
+      - title: "Monthly Coordinator Trends"
+        db: production
+        query: |
+          SELECT
+            month,
+            COUNT(DISTINCT staff_name) as active_coordinators,
+            SUM(total_minutes) as total_minutes,
+            SUM(task_count) as total_tasks,
+            AVG(avg_minutes_per_task) as avg_minutes_per_task
+          FROM minutes_per_staff_per_month_per_facility
+          WHERE task_type = 'coordinator'
+          GROUP BY month
+          ORDER BY month
+        display: line
+        display_options:
+          x: month
+          y: total_minutes
+          second_y: active_coordinators
+          title: "Coordinator Activity Over Time"
+
+      - title: "Facility Coordinator Coverage"
+        db: production
+        query: |
+          SELECT
+            facility_name,
+            COUNT(DISTINCT staff_name) as coordinator_count,
+            SUM(total_minutes) as total_minutes,
+            SUM(task_count) as total_tasks
+          FROM minutes_per_staff_per_month_per_facility
+          WHERE task_type = 'coordinator'
+          GROUP BY facility_name
+          ORDER BY coordinator_count DESC
+        display: bar
+        display_options:
+          x: facility_name
+          y: coordinator_count
+          color: total_minutes
+          title: "Coordinator Coverage by Facility"
+
+      - title: "Coordinator Task Distribution"
+        db: production
+        query: |
+          SELECT
+            staff_name as coordinator_name,
+            facility_name,
+            month,
+            task_count,
+            total_minutes,
+            unique_patients
+          FROM minutes_per_staff_per_month_per_facility
+          WHERE task_type = 'coordinator'
+          ORDER BY total_minutes DESC
+        display: scatter
+        display_options:
+          x: task_count
+          y: total_minutes
+          color: coordinator_name
+          size: unique_patients
+          title: "Tasks vs Minutes vs Patients"
+
+  provider_dashboard:
+    title: "Provider Performance Dashboard"
+    description: "Provider-specific metrics and analysis"
+    layout: [[0, 1], [2, 3], [4]]
+    charts:
+      - title: "Tasks per Provider per Month per Facility"
+        db: production
+        query: |
+          SELECT
+            facility_name,
+            staff_name as provider_name,
+            month,
+            task_count,
+            total_minutes,
+            unique_patients,
+            avg_minutes_per_task
+          FROM minutes_per_staff_per_month_per_facility
+          WHERE task_type = 'provider'
+          ORDER BY facility_name, provider_name, month DESC
+        display: table
+        display_options:
+          page_size: 20
+          search: true
+
+      - title: "Provider Efficiency"
+        db: production
+        query: |
+          SELECT
+            staff_name as provider_name,
+            SUM(task_count) as total_tasks,
+            SUM(total_minutes) as total_minutes,
+            AVG(avg_minutes_per_task) as avg_minutes_per_task,
+            COUNT(DISTINCT facility_name) as facilities_served,
+            COUNT(DISTINCT month) as months_active
+          FROM minutes_per_staff_per_month_per_facility
+          WHERE task_type = 'provider'
+          GROUP BY staff_name
+          ORDER BY total_tasks DESC
+        display: bar
+        display_options:
+          x: provider_name
+          y: total_tasks
+          color: avg_minutes_per_task
+          title: "Provider Task Volume"
+
+      - title: "Monthly Provider Trends"
+        db: production
+        query: |
+          SELECT
+            month,
+            COUNT(DISTINCT staff_name) as active_providers,
+            SUM(total_minutes) as total_minutes,
+            SUM(task_count) as total_tasks,
+            AVG(avg_minutes_per_task) as avg_minutes_per_task
+          FROM minutes_per_staff_per_month_per_facility
+          WHERE task_type = 'provider'
+          GROUP BY month
+          ORDER BY month
+        display: line
+        display_options:
+          x: month
+          y: total_tasks
+          second_y: active_providers
+          title: "Provider Activity Over Time"
+
+      - title: "Facility Provider Coverage"
+        db: production
+        query: |
+          SELECT
+            facility_name,
+            COUNT(DISTINCT staff_name) as provider_count,
+            SUM(total_minutes) as total_minutes,
+            SUM(task_count) as total_tasks
+          FROM minutes_per_staff_per_month_per_facility
+          WHERE task_type = 'provider'
+          GROUP BY facility_name
+          ORDER BY provider_count DESC
+        display: bar
+        display_options:
+          x: facility_name
+          y: provider_count
+          color: total_minutes
+          title: "Provider Coverage by Facility"
+
+      - title: "Provider Workload Analysis"
+        db: production
+        query: |
+          SELECT
+            staff_name as provider_name,
+            facility_name,
+            month,
+            task_count,
+            total_minutes,
+            unique_patients,
+            ROUND(CAST(total_minutes as FLOAT) / task_count, 2) as minutes_per_task
+          FROM minutes_per_staff_per_month_per_facility
+          WHERE task_type = 'provider'
+          ORDER BY minutes_per_task DESC
+        display: scatter
+        display_options:
+          x: task_count
+          y: total_minutes
+          color: provider_name
+          size: minutes_per_task
+          title: "Provider Workload Analysis"
+
+  facility_dashboard:
+    title: "Facility Metrics Dashboard"
+    description: "Facility-level performance metrics"
+    layout: [[0, 1, 2], [3, 4, 5]]
+    charts:
+      - title: "Facility Summary"
+        db: production
+        query: |
+          SELECT
+            facility_name,
+            total_tasks,
+            total_minutes,
+            unique_patients,
+            coordinator_count,
+            provider_count,
+            ROUND(CAST(total_minutes as FLOAT) / total_tasks, 2) as avg_minutes_per_task,
+            ROUND(CAST(total_tasks as FLOAT) / unique_patients, 2) as tasks_per_patient
+          FROM facility_summary
+          ORDER BY total_minutes DESC
+        display: table
+        display_options:
+          page_size: 15
+          search: true
+
+      - title: "Facility Comparison"
+        db: production
+        query: |
+          SELECT
+            facility_name,
+            coordinator_minutes,
+            provider_minutes,
+            total_minutes,
+            ROUND(100.0 * coordinator_minutes / total_minutes, 2) as coordinator_pct,
+            ROUND(100.0 * provider_minutes / total_minutes, 2) as provider_pct
+          FROM facility_summary
+          WHERE total_minutes > 0
+          ORDER BY total_minutes DESC
+          LIMIT 15
+        display: bar
+        display_options:
+          x: facility_name
+          y: total_minutes
+          color: facility_name
+          title: "Total Minutes by Facility"
+
+      - title: "Coordinator vs Provider Mix"
+        db: production
+        query: |
+          SELECT
+            facility_name,
+            coordinator_minutes,
+            provider_minutes,
+            total_minutes
+          FROM facility_summary
+          WHERE total_minutes > 0
+          ORDER BY total_minutes DESC
+          LIMIT 10
+        display: stacked_bar
+        display_options:
+          x: facility_name
+          y: coordinator_minutes
+          y2: provider_minutes
+          title: "Coordinator vs Provider Minutes"
+
+      - title: "Patient Engagement"
+        db: production
+        query: |
+          SELECT
+            facility_name,
+            unique_patients,
+            total_tasks,
+            ROUND(CAST(total_tasks as FLOAT) / unique_patients, 2) as tasks_per_patient,
+            ROUND(CAST(total_minutes as FLOAT) / unique_patients, 2) as minutes_per_patient
+          FROM facility_summary
+          ORDER BY unique_patients DESC
+          LIMIT 15
+        display: bar
+        display_options:
+          x: facility_name
+          y: unique_patients
+          color: tasks_per_patient
+          title: "Patient Count vs Engagement"
+
+      - title: "Staff Distribution"
+        db: production
+        query: |
+          SELECT
+            facility_name,
+            coordinator_count,
+            provider_count,
+            coordinator_count + provider_count as total_staff,
+            ROUND(CAST(coordinator_count as FLOAT) / (coordinator_count + provider_count), 2) as coordinator_ratio
+          FROM facility_summary
+          WHERE coordinator_count + provider_count > 0
+          ORDER BY total_staff DESC
+          LIMIT 15
+        display: bar
+        display_options:
+          x: facility_name
+          y: total_staff
+          color: coordinator_ratio
+          title: "Staff Distribution by Facility"
+
+      - title: "Efficiency Metrics"
+        db: production
+        query: |
+          SELECT
+            facility_name,
+            ROUND(CAST(total_minutes as FLOAT) / total_tasks, 2) as avg_minutes_per_task,
+            ROUND(CAST(total_tasks as FLOAT) / (coordinator_count + provider_count), 2) as tasks_per_staff,
+            ROUND(CAST(total_minutes as FLOAT) / (coordinator_count + provider_count), 2) as minutes_per_staff
+          FROM facility_summary
+          WHERE coordinator_count + provider_count > 0 AND total_tasks > 0
+          ORDER BY avg_minutes_per_task DESC
+          LIMIT 15
+        display: scatter
+        display_options:
+          x: tasks_per_staff
+          y: minutes_per_staff
+          color: facility_name
+          size: avg_minutes_per_task
+          title: "Staff Efficiency Analysis"

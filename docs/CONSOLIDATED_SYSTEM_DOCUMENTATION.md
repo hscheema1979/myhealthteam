@@ -1,6 +1,6 @@
 # ZEN Medical Healthcare Management System - Consolidated Documentation
 
-**Document Version:** 2.2  
+**Document Version:** 2.3
 **Last Updated:** December 17, 2025
 **Author:** Engineering Team  
 **Purpose:** Comprehensive system documentation reflecting Phase 2 implementation with billing/payroll workflows and actual dashboard architecture
@@ -19,7 +19,8 @@
 8. [Deployment and Operations](#deployment-and-operations)
 9. [Security and Compliance](#security-and-compliance)
 10. [Patient Visit Tracking System](#patient-visit-tracking-system)
-11. [December 2025 System Improvements](#december-2025-system-improvements)
+11. [Database Synchronization (DB-Sync)](#database-synchronization-db-sync)
+12. [December 2025 System Improvements](#december-2025-system-improvements)
 
 ---
 
@@ -1098,12 +1099,205 @@ Service types come from `task_description` field recorded during visit:
 
 ### Key Implementation Rules
 
-✅ **ALWAYS use `sync_patient_last_visit_all_tables()`** when updating visit information  
-✅ **ALWAYS call within same transaction** as visit record creation  
-✅ **ALWAYS include BOTH `last_visit_date` AND `service_type`** in updates  
-✅ **ALWAYS commit after sync function** completes  
-✅ **NEVER update patient_panel directly** - let sync function handle it  
-✅ **NEVER update hhc_patients_export directly** - it's materialized from view  
+✅ **ALWAYS use `sync_patient_last_visit_all_tables()`** when updating visit information
+✅ **ALWAYS call within same transaction** as visit record creation
+✅ **ALWAYS include BOTH `last_visit_date` AND `service_type`** in updates
+✅ **ALWAYS commit after sync function** completes
+✅ **NEVER update patient_panel directly** - let sync function handle it
+✅ **NEVER update hhc_patients_export directly** - it's materialized from view
+
+---
+
+## Database Synchronization (DB-Sync)
+
+### Overview
+
+The DB-Sync system enables bidirectional synchronization of `production.db` between the development server (SRVR - Windows) and production server (VPS2/Server2 - Linux). It uses a **smart sync** approach that preserves manual entries on production while allowing bulk CSV imports from the development server.
+
+### Architecture
+
+```
+SRVR (Windows Dev)                      VPS2 (Linux Production)
+─────────────────                       ─────────────────────
+     │                                          │
+     │  ┌───────────────────────────────────┐   │
+     │  │ Smart CSV Sync                    │   │
+     │  │ - Syncs only CSV_IMPORT rows      │   │
+     │  │ - Preserves MANUAL/DASHBOARD rows │   │
+     │  └───────────────────────────────────┘   │
+     │                                          │
+     ├──────── SSH over Tailscale VPN ─────────►│
+     │         (uses ssh alias 'server2')       │
+     │                                          │
+production.db                           production.db
+(development copy)                      (master/production)
+```
+
+### Key Concepts
+
+#### Source System Tracking
+Each task row has a `source_system` column that identifies its origin:
+- **CSV_IMPORT** - Data imported from Google Sheets CSVs (bulk imports)
+- **MANUAL** - Data entered manually via dashboards
+- **DASHBOARD** - Data created through dashboard workflows
+- **WORKFLOW** - Data from automated workflow processes
+
+#### Smart Sync Logic
+The sync only replaces `CSV_IMPORT` rows on production, preserving all manual entries:
+```sql
+-- On production server (VPS2):
+BEGIN TRANSACTION;
+DELETE FROM provider_tasks_2025_12 WHERE source_system = 'CSV_IMPORT';
+-- INSERT fresh CSV_IMPORT rows from SRVR...
+COMMIT;
+```
+
+### Directory Structure
+
+```
+D:\Git\myhealthteam2\Dev\db-sync\
+├── bin\                          # Sync scripts
+│   ├── sync_csv_data.ps1         # Smart CSV sync (recommended)
+│   ├── sync_production_db.ps1    # Full DB sync (use with caution)
+│   ├── test_connection.ps1       # Connection test utility
+│   └── setup_scheduled_task.ps1  # Windows Task Scheduler setup
+├── config\
+│   └── db-sync.json              # Configuration file
+├── logs\                         # Sync operation logs (git-ignored)
+├── backups\                      # Pre-sync backups (git-ignored)
+├── temp\                         # Temporary export files (git-ignored)
+└── flags\                        # Trigger files (git-ignored)
+```
+
+### Configuration
+
+**File:** `db-sync/config/db-sync.json`
+
+```json
+{
+  "sync": {
+    "master_host": "server2",
+    "master_user": "",
+    "master_db_path": "/opt/myhealthteam/production.db",
+    "slave_db_path": "D:\\Git\\myhealthteam2\\Dev\\production.db",
+    "slave_backup_dir": "D:\\Git\\myhealthteam2\\Dev\\db-sync\\backups",
+    "slave_log_dir": "D:\\Git\\myhealthteam2\\Dev\\db-sync\\logs",
+    "slave_temp_dir": "D:\\Git\\myhealthteam2\\Dev\\db-sync\\temp",
+    "sync_interval_minutes": 15,
+    "bulk_import_trigger_file": "D:\\Git\\myhealthteam2\\Dev\\db-sync\\flags\\bulk_import_complete.flag"
+  },
+  "tables": {
+    "task_tables_prefix": ["provider_tasks_", "coordinator_tasks_"],
+    "preserve_source_systems": ["MANUAL", "DASHBOARD", "WORKFLOW"]
+  }
+}
+```
+
+**Note:** Uses SSH alias `server2` from `~/.ssh/config` - no additional SSH key setup required.
+
+### Usage
+
+#### Test Connection
+```powershell
+.\db-sync\bin\test_connection.ps1
+```
+Verifies: SSH connection, database exists, SQLite accessible, task tables present.
+
+#### Dry Run (Preview Changes)
+```powershell
+.\db-sync\bin\sync_csv_data.ps1 -DryRun
+```
+Shows what would be synced without making changes.
+
+#### Execute Sync
+```powershell
+.\db-sync\bin\sync_csv_data.ps1
+```
+Syncs current month's CSV_IMPORT rows to production.
+
+#### Sync Specific Month
+```powershell
+.\db-sync\bin\sync_csv_data.ps1 -Month "2025_11"
+```
+
+#### Integration with Data Refresh
+```powershell
+.\refresh_production_data.ps1 -SyncToProduction
+```
+Downloads fresh CSVs, imports to local DB, then syncs to production.
+
+### Scheduled Task Setup
+
+To enable automatic 15-minute syncs (requires Administrator):
+```powershell
+# Run PowerShell as Administrator
+.\db-sync\bin\setup_scheduled_task.ps1
+```
+
+**Task Name:** `DB-Sync-Production`
+
+**Management Commands:**
+```powershell
+Get-ScheduledTask -TaskName 'DB-Sync-Production'      # View status
+Start-ScheduledTask -TaskName 'DB-Sync-Production'    # Run now
+Disable-ScheduledTask -TaskName 'DB-Sync-Production'  # Disable
+.\db-sync\bin\setup_scheduled_task.ps1 -Remove        # Remove task
+```
+
+### Sync Process Flow
+
+```
+1. Test SSH Connection (server2 alias)
+   ↓
+2. Find Task Tables (provider_tasks_YYYY_MM, coordinator_tasks_YYYY_MM)
+   ↓
+3. For Each Table:
+   ├── Count CSV_IMPORT rows locally
+   ├── Export using SQLite .mode insert (handles special characters)
+   ├── Create SQL file: BEGIN; DELETE WHERE source_system='CSV_IMPORT'; INSERT...; COMMIT;
+   ├── SCP upload to /tmp/ on server2
+   ├── SSH execute: sqlite3 production.db < import.sql
+   └── Cleanup temp files
+   ↓
+4. Log Results
+```
+
+### Safety Features
+
+- **Pre-sync backup** - Local database backed up before any operation
+- **Integrity checks** - SQLite PRAGMA integrity_check before and after
+- **Atomic transactions** - All changes wrapped in BEGIN/COMMIT
+- **Source system preservation** - Never deletes MANUAL/DASHBOARD rows
+- **Proper escaping** - SQLite `.mode insert` handles special characters (newlines, quotes)
+
+### Troubleshooting
+
+**SSH Connection Failed:**
+- Verify SSH alias: `ssh server2 "echo OK"`
+- Check `~/.ssh/config` has `server2` entry
+
+**No Task Tables Found:**
+- Check month format: `YYYY_MM` (e.g., `2025_12`)
+- Verify tables exist locally: `sqlite3 production.db ".tables"`
+
+**Sync Failed with Parse Errors:**
+- Usually caused by special characters in data
+- Solution: Script uses SQLite `.mode insert` for proper escaping
+
+**Permission Denied (Scheduled Task):**
+- Must run PowerShell as Administrator to create scheduled tasks
+
+### Git Ignore
+
+The following directories are excluded from version control:
+```
+db-sync/logs/      # Sync operation logs
+db-sync/backups/   # Pre-sync database backups
+db-sync/temp/      # Temporary export files
+db-sync/flags/     # Trigger files for sync operations
+```
+
+Scripts and config remain in version control: `db-sync/bin/`, `db-sync/config/`
 
 ---
 

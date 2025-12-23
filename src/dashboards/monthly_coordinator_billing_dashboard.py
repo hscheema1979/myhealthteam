@@ -54,19 +54,32 @@ def get_available_months():
 
 
 def get_billing_codes_for_minutes(minutes):
-    """Determine billing code based on minutes of service"""
+    """Determine billing code based on minutes of service using coordinator_billing_codes table"""
     if minutes is None or minutes == 0:
-        return "PENDING", "Pending Billing Code Assignment"
-    elif minutes <= 15:
-        return "99211", "Office visit - established patient, minimal"
-    elif minutes <= 30:
-        return "99212", "Office visit - established patient, low"
-    elif minutes <= 45:
-        return "99213", "Office visit - established patient, moderate"
-    elif minutes <= 60:
-        return "99214", "Office visit - established patient, moderate-high"
-    else:
-        return "99215", "Office visit - established patient, high"
+        return "NOT_BILLABLE", "Less than 20 minutes"
+
+    conn = get_db_connection()
+    try:
+        # Query the coordinator_billing_codes table to find the appropriate code
+        query = """
+        SELECT billing_code, description
+        FROM coordinator_billing_codes
+        WHERE min_minutes <= ? AND max_minutes > ?
+        ORDER BY min_minutes DESC
+        LIMIT 1
+        """
+        result = conn.execute(query, (minutes, minutes)).fetchone()
+
+        if result:
+            return result[0], result[1]
+        else:
+            return "NOT_BILLABLE", "No matching billing code found"
+
+    except Exception as e:
+        st.error(f"Error getting billing code: {e}")
+        return "ERROR", "Error determining billing code"
+    finally:
+        conn.close()
 
 
 def get_coordinator_billing_data(year, month):
@@ -89,12 +102,17 @@ def get_coordinator_billing_data(year, month):
 
         query = f"""
         SELECT
-            patient_id,
-            COUNT(*) as task_count,
-            SUM(duration_minutes) as total_minutes
-        FROM {table_name}
-        WHERE patient_id IS NOT NULL
-        GROUP BY patient_id
+            ct.patient_id,
+            COUNT(DISTINCT ct.coordinator_id || '_' || ct.task_date || '_' || ct.task_type) as task_count,
+            SUM(ct.duration_minutes) as total_minutes,
+            COALESCE(p.facility, '') as facility
+        FROM (
+            SELECT DISTINCT coordinator_id, patient_id, task_date, task_type, duration_minutes
+            FROM {table_name}
+            WHERE patient_id IS NOT NULL
+        ) ct
+        LEFT JOIN patients p ON ct.patient_id = p.patient_id
+        GROUP BY ct.patient_id
         ORDER BY total_minutes DESC
         """
 
@@ -141,8 +159,11 @@ def get_coordinator_summary(year, month):
             COUNT(DISTINCT patient_id) as total_patients,
             COUNT(*) as total_tasks,
             SUM(duration_minutes) as total_minutes
-        FROM {table_name}
-        WHERE patient_id IS NOT NULL
+        FROM (
+            SELECT DISTINCT coordinator_id, patient_id, task_date, task_type, duration_minutes
+            FROM {table_name}
+            WHERE patient_id IS NOT NULL
+        )
         """
 
         result = conn.execute(query).fetchone()
@@ -231,23 +252,81 @@ def display_monthly_coordinator_billing_dashboard():
             if show_pending:
                 filtered_df = filtered_df[filtered_df["billing_code"] == "PENDING"]
 
-            # Display table
-            st.dataframe(
-                filtered_df[
-                    [
-                        "patient_id",
-                        "task_count",
-                        "total_minutes",
-                        "billing_code",
-                        "billing_description",
-                        "billing_status",
-                    ]
-                ],
+            # Display table with selection capability
+            st.markdown("### Select Rows for Actions")
+            
+            # Initialize session state for editable dataframe
+            if "coordinator_billing_editable_df" not in st.session_state:
+                display_cols = [
+                    "patient_id",
+                    "facility",
+                    "task_count",
+                    "total_minutes",
+                    "billing_code",
+                    "billing_description",
+                    "billing_status",
+                ]
+                editable_df = filtered_df[display_cols].copy()
+                editable_df.insert(0, "☐ Select", False)
+                st.session_state.coordinator_billing_editable_df = editable_df
+            
+            # Display editable dataframe with selection column
+            st.markdown("**Check rows below to select them for actions:**")
+            edited_df = st.data_editor(
+                st.session_state.coordinator_billing_editable_df,
                 use_container_width=True,
                 hide_index=True,
+                key="coordinator_billing_editor",
             )
+            
+            # Update session state with edited dataframe
+            st.session_state.coordinator_billing_editable_df = edited_df
+            
+            # Get selected rows
+            selected_rows = edited_df[edited_df["☐ Select"] == True]
+            
+            if not selected_rows.empty:
+                st.markdown("---")
+                st.success(f"✓ {len(selected_rows)} row(s) selected")
+                
+                # Action buttons
+                st.markdown("### Actions")
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.markdown("#### Update Billing Code")
+                    new_billing_code = st.text_input(
+                        "New Billing Code",
+                        placeholder="e.g., 99211, 99212",
+                        key="coordinator_new_code",
+                    )
+                    
+                    if st.button("Update Billing Code", key="update_code_btn"):
+                        if not new_billing_code or new_billing_code.strip() == "":
+                            st.error("Please enter a billing code.")
+                        else:
+                            st.info(f"Would update {len(selected_rows)} row(s) with code: {new_billing_code}")
+                            st.session_state.coordinator_billing_editable_df = None
+                            # TODO: Implement actual update function
+                
+                with col2:
+                    st.markdown("#### Export Selected")
+                    if st.button("Export Selected Rows", key="export_selected_btn"):
+                        display_cols = [col for col in edited_df.columns if col != "☐ Select"]
+                        selected_data = selected_rows[display_cols]
+                        csv_data = export_to_csv(selected_data, "coordinator_billing_selected")
+                        st.download_button(
+                            label="Download Selected (CSV)",
+                            data=csv_data,
+                            file_name=f"coordinator_billing_selected_{year}_{month:02d}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                            mime="text/csv",
+                            key="download_selected",
+                        )
+            else:
+                st.info("👆 Check the '☐ Select' column to select rows for actions")
 
-            # Export buttons
+            # Export buttons for all/filtered data
+            st.markdown("---")
             st.subheader("Export Options")
             col1, col2, col3 = st.columns(3)
 

@@ -3881,8 +3881,8 @@ def get_all_patient_panel():
             coordinator_id,
             provider_name,
             coordinator_name,
-            care_provider_name,
-            care_coordinator_name,
+            COALESCE(provider_name, '') as care_provider_name,
+            COALESCE(coordinator_name, '') as care_coordinator_name,
             goals_of_care,
             goc_value,
             code_status,
@@ -5012,3 +5012,54 @@ def mark_provider_payroll_as_paid(
         return (False, message, 0)
     finally:
         conn.close()
+
+
+def update_billing_company(billing_status_ids, billing_company, user_id):
+   """
+   Update billing company for selected provider tasks in provider_task_billing_status table.
+
+   Args:
+       billing_status_ids: List of billing_status_id values to update
+       billing_company: Name of the Medicare billing company
+       user_id: ID of user making the change (must be Harpreet/Admin or Justin)
+
+   Returns:
+       Tuple (success: bool, message: str, updated_count: int)
+
+   Updates:
+       - billing_company = billing_company
+       - updated_date = CURRENT_TIMESTAMP
+   """
+   if not billing_status_ids:
+       return (False, "No billing IDs provided", 0)
+   
+   if not billing_company or not billing_company.strip():
+       return (False, "Billing company name cannot be empty", 0)
+
+   conn = get_db_connection()
+   try:
+       # Build placeholders for SQL IN clause
+       placeholders = ",".join("?" * len(billing_status_ids))
+       params = [billing_company] + billing_status_ids
+       
+       query = f"""
+           UPDATE provider_task_billing_status
+           SET
+               billing_company = ?,
+               updated_date = CURRENT_TIMESTAMP
+           WHERE billing_status_id IN ({placeholders})
+       """
+       
+       cursor = conn.execute(query, params)
+       conn.commit()
+       
+       updated_count = cursor.rowcount
+       message = f"Successfully updated billing company for {updated_count} tasks to '{billing_company}'"
+       return (True, message, updated_count)
+       
+   except Exception as e:
+       conn.rollback()
+       message = f"Error updating billing company: {str(e)}"
+       return (False, message, 0)
+   finally:
+       conn.close()

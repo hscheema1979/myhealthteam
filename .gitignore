@@ -32,6 +32,7 @@ MANIFEST
 *.manifest
 *.spec
 
+
 # Installer logs
 pip-log.txt
 pip-delete-this-directory.txt
@@ -204,6 +205,14 @@ cm_log_links.txt
 ps_log_links.txt
 rendered_html.txt
 
+# AI-related directories
+.claude/
+.github/
+.scripts/
+.serena/
+.trae/
+
+
 # Development Artifacts (moved to development_docs/)
 development_docs/
 # ADMIN_DASHBOARD_ENHANCEMENT_PLAN.md
@@ -220,3 +229,13 @@ development_docs/
 # "This is a much cleaner and more structur.md"
 # outputs/ (entire directory)
 # src/test_environment_setup.py
+
+
+# DB-Sync runtime files (keep scripts and config in version control)
+db-sync/logs/
+db-sync/backups/
+db-sync/temp/
+db-sync/flags/
+
+#All the docs
+docs/

@@ -947,6 +947,29 @@ def populate_patient_panel(conn):
                 subjective_risk_level TEXT,
                 service_type TEXT,
 
+                -- Healthcare utilization
+                er_count_1yr INTEGER,
+                hospitalization_count_1yr INTEGER,
+
+                -- Mental health conditions (provider assessment)
+                mental_health_concerns INTEGER,
+                provider_mh_schizophrenia INTEGER,
+                provider_mh_depression INTEGER,
+                provider_mh_anxiety INTEGER,
+                provider_mh_stress INTEGER,
+                provider_mh_adhd INTEGER,
+                provider_mh_bipolar INTEGER,
+                provider_mh_suicidal INTEGER,
+
+                -- Functional and cognitive status
+                cognitive_function TEXT,
+                functional_status TEXT,
+
+                -- Care coordination fields
+                active_specialists TEXT,
+                active_concerns TEXT,
+                chronic_conditions_provider TEXT,
+
                 -- Contact information for care coordination
                 appointment_contact_name TEXT,
                 appointment_contact_phone TEXT,
@@ -997,7 +1020,7 @@ def populate_patient_panel(conn):
             p.status,
             p.created_date,
 
-            -- Provider/Coordinator assignment from patient_assignments
+            -- Provider/Coordinator assignment from patient_assignments table (FIXED: use correct source)
             COALESCE(pa.provider_id, 0) as provider_id,
             COALESCE(pa.coordinator_id, 0) as coordinator_id,
             CASE WHEN pa.provider_id > 0 THEN u_prov.full_name ELSE NULL END as provider_name,
@@ -1012,15 +1035,38 @@ def populate_patient_panel(conn):
             p.subjective_risk_level,
             p.service_type,
 
+            -- Healthcare utilization
+            p.er_count_1yr,
+            p.hospitalization_count_1yr,
+
+            -- Mental health conditions (provider assessment)
+            p.mental_health_concerns,
+            p.provider_mh_schizophrenia,
+            p.provider_mh_depression,
+            p.provider_mh_anxiety,
+            p.provider_mh_stress,
+            p.provider_mh_adhd,
+            p.provider_mh_bipolar,
+            p.provider_mh_suicidal,
+
+            -- Functional and cognitive status
+            p.cognitive_function,
+            p.functional_status,
+
+            -- Care coordination fields
+            p.active_specialists,
+            p.active_concerns,
+            p.chronic_conditions_provider,
+
             -- Contact information
             p.appointment_contact_name,
             p.appointment_contact_phone,
             p.medical_contact_name,
             p.medical_contact_phone,
 
-            -- Care team member names (same as above but for backward compatibility)
-            COALESCE(u_prov.full_name, NULL) as care_provider_name,
-            COALESCE(u_coord.full_name, NULL) as care_coordinator_name,
+            -- Care team member names (FIXED: use correct fields from patient_assignments table)
+            CASE WHEN pa.provider_id > 0 THEN u_prov.full_name ELSE NULL END as care_provider_name,
+            CASE WHEN pa.coordinator_id > 0 THEN u_coord.full_name ELSE NULL END as care_coordinator_name,
 
             -- Updated date
             datetime('now') as updated_date
@@ -1223,15 +1269,15 @@ def process_zmo(file_path, conn, provider_map):
             else:
                 seen_patient_ids[patient_id] = 0
 
-            # Map provider/coordinator (FIXED: column names have line breaks!)
+            # Map provider/coordinator (FIXED: column names have spaces, not line breaks!)
             assigned_prov = (
-                str(row.get("Assigned \nReg Prov", "")).strip().upper()
-                if pd.notna(row.get("Assigned \nReg Prov"))
+                str(row.get("Assigned  Reg Prov", "")).strip().upper()
+                if pd.notna(row.get("Assigned  Reg Prov"))
                 else None
             )
             assigned_cm = (
-                str(row.get("Assigned\nCM", "")).strip().upper()
-                if pd.notna(row.get("Assigned\nCM"))
+                str(row.get("Assigned CM", "")).strip().upper()
+                if pd.notna(row.get("Assigned CM"))
                 else None
             )
 

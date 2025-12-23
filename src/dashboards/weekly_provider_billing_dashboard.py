@@ -19,6 +19,109 @@ from src.config.ui_style_config import (
 )
 
 
+def ensure_billing_data_populated():
+    """Ensure provider_task_billing_status table is populated from all provider_tasks monthly tables"""
+    conn = database.get_db_connection()
+    try:
+        # Get all provider_tasks_YYYY_MM tables
+        cursor = conn.execute("""
+            SELECT name FROM sqlite_master
+            WHERE type='table' AND name LIKE 'provider_tasks_%'
+            ORDER BY name
+        """)
+        tables = [row[0] for row in cursor.fetchall()]
+        
+        # Process each monthly table
+        for table_name in tables:
+            insert_query = f"""
+            INSERT OR IGNORE INTO provider_task_billing_status (
+                provider_task_id,
+                provider_id,
+                provider_name,
+                patient_name,
+                task_date,
+                billing_week,
+                week_start_date,
+                week_end_date,
+                task_description,
+                minutes_of_service,
+                billing_code,
+                billing_code_description,
+                billing_status,
+                is_billed,
+                billed_date,
+                billed_by,
+                is_invoiced,
+                invoiced_date,
+                is_claim_submitted,
+                claim_submitted_date,
+                is_insurance_processed,
+                insurance_processed_date,
+                is_approved_to_pay,
+                approved_to_pay_date,
+                is_paid,
+                paid_date,
+                is_carried_over,
+                original_billing_week,
+                carryover_reason,
+                billing_notes,
+                billing_company,
+                created_date,
+                updated_date
+            )
+            SELECT
+                pt.provider_task_id,
+                pt.provider_id,
+                COALESCE(u.full_name, 'Unknown Provider') as provider_name,
+                COALESCE(pt.patient_name, pt.patient_id) as patient_name,
+                pt.task_date,
+                strftime('%Y-%W', pt.task_date) as billing_week,
+                strftime('%Y-%m-%d', pt.task_date, '-6 days', 'weekday 1') as week_start_date,
+                strftime('%Y-%m-%d', pt.task_date, '+0 days', 'weekday 0') as week_end_date,
+                pt.task_description,
+                pt.minutes_of_service,
+                COALESCE(pt.billing_code, 'Not_Billable') as billing_code,
+                COALESCE(
+                    pt.billing_code_description,
+                    pt.task_description || ' - Default'
+                ) as billing_code_description,
+                'Pending' as billing_status,
+                0 as is_billed,
+                NULL as billed_date,
+                NULL as billed_by,
+                0 as is_invoiced,
+                NULL as invoiced_date,
+                0 as is_claim_submitted,
+                NULL as claim_submitted_date,
+                0 as is_insurance_processed,
+                NULL as insurance_processed_date,
+                0 as is_approved_to_pay,
+                NULL as approved_to_pay_date,
+                0 as is_paid,
+                NULL as paid_date,
+                0 as is_carried_over,
+                NULL as original_billing_week,
+                NULL as carryover_reason,
+                NULL as billing_notes,
+                NULL as billing_company,
+                CURRENT_TIMESTAMP as created_date,
+                CURRENT_TIMESTAMP as updated_date
+            FROM {table_name} pt
+                LEFT JOIN users u ON pt.provider_id = u.user_id
+            WHERE pt.billing_code IS NOT NULL
+                AND pt.billing_code != 'Not_Billable'
+                AND pt.task_date IS NOT NULL
+                AND pt.provider_id IS NOT NULL
+            """
+            conn.execute(insert_query)
+        
+        conn.commit()
+    except Exception as e:
+        st.warning(f"Note: Could not auto-populate billing data: {e}")
+    finally:
+        conn.close()
+
+
 def get_available_years():
     """Get list of available years from provider_task_billing_status table based on week_start_date"""
     conn = database.get_db_connection()
@@ -54,43 +157,55 @@ def get_available_years():
 
 
 def get_weeks_for_year(year):
-    """Get actual week numbers (01-52) for a given year from the database"""
-    conn = database.get_db_connection()
-    try:
-        query = """
-        SELECT DISTINCT
-            billing_week,
-            week_start_date,
-            week_end_date
-        FROM provider_task_billing_status
-        WHERE STRFTIME('%Y', week_start_date) = ?
-        ORDER BY billing_week ASC
-        """
-        rows = conn.execute(query, (year,)).fetchall()
+     """Get actual week numbers (01-52) for a given year from the database"""
+     conn = database.get_db_connection()
+     try:
+         query = """
+         SELECT DISTINCT
+             billing_week,
+             week_start_date,
+             week_end_date
+         FROM provider_task_billing_status
+         WHERE STRFTIME('%Y', week_start_date) = ?
+         ORDER BY billing_week ASC
+         """
+         rows = conn.execute(query, (year,)).fetchall()
 
-        weeks = []
-        for row in rows:
-            try:
-                week_num = row[0]
-                week_start = row[1]
-                week_end = row[2]
-                weeks.append(
-                    {
-                        "billing_week": week_num,  # Just the week number (01-52)
-                        "week_start_date": week_start,
-                        "week_end_date": week_end,
-                        "display": f"Week {week_num:02d} - {week_start}",
-                    }
-                )
-            except (ValueError, IndexError, TypeError):
-                continue
+         weeks = []
+         # Add default "Select a Week" option
+         weeks.append(
+             {
+                 "billing_week": None,
+                 "week_start_date": None,
+                 "week_end_date": None,
+                 "display": "Select a Week",
+             }
+         )
+         
+         for row in rows:
+             try:
+                 week_num = row[0]  # e.g., "2025-01"
+                 week_start = row[1]
+                 week_end = row[2]
+                 # Extract just the week number from YYYY-WW format
+                 week_part = week_num.split('-')[1] if '-' in week_num else week_num
+                 weeks.append(
+                     {
+                         "billing_week": week_num,
+                         "week_start_date": week_start,
+                         "week_end_date": week_end,
+                         "display": f"Week {week_part} - {week_start}",
+                     }
+                 )
+             except (ValueError, IndexError, TypeError):
+                 continue
 
-        return weeks
-    except Exception as e:
-        st.error(f"Error getting weeks for year {year}: {e}")
-        return []
-    finally:
-        conn.close()
+         return weeks
+     except Exception as e:
+         st.error(f"Error getting weeks for year {year}: {e}")
+         return []
+     finally:
+         conn.close()
 
 
 def get_billing_providers():
@@ -192,49 +307,51 @@ def get_provider_billing_data(
     try:
         query = """
         SELECT
-            billing_status_id,
-            provider_id,
-            provider_name,
-            patient_name,
-            patient_id,
-            task_date,
-            task_description,
-            minutes_of_service,
-            billing_code,
-            billing_code_description,
-            billing_week,
-            week_start_date,
-            week_end_date,
-            billing_status,
-            is_billed,
-            billed_date,
-            billed_by,
-            is_invoiced,
-            is_claim_submitted,
-            is_insurance_processed,
-            is_approved_to_pay,
-            is_paid,
-            created_date,
-            updated_date
-        FROM provider_task_billing_status
+            ptbs.billing_status_id,
+            ptbs.provider_id,
+            ptbs.provider_name,
+            ptbs.patient_name,
+            ptbs.patient_name as patient_id,
+            ptbs.task_date,
+            ptbs.task_description,
+            ptbs.minutes_of_service,
+            ptbs.billing_code,
+            ptbs.billing_code_description,
+            ptbs.billing_week,
+            ptbs.week_start_date,
+            ptbs.week_end_date,
+            ptbs.billing_status,
+            ptbs.is_billed,
+            ptbs.billed_date,
+            ptbs.billed_by,
+            ptbs.billing_company,
+            ptbs.is_invoiced,
+            ptbs.is_claim_submitted,
+            ptbs.is_insurance_processed,
+            ptbs.is_approved_to_pay,
+            ptbs.is_paid,
+            ptbs.created_date,
+            ptbs.updated_date,
+            '' as facility
+        FROM provider_task_billing_status ptbs
         WHERE 1=1
         """
 
         params = []
 
         if billing_week:
-            query += " AND billing_week = ?"
+            query += " AND ptbs.billing_week = ?"
             params.append(billing_week)
 
         if billing_status:
-            query += " AND billing_status = ?"
+            query += " AND ptbs.billing_status = ?"
             params.append(billing_status)
 
         if provider_filter:
-            query += " AND provider_name = ?"
+            query += " AND ptbs.provider_name = ?"
             params.append(provider_filter)
 
-        query += " ORDER BY task_date DESC, provider_name, patient_name"
+        query += " ORDER BY ptbs.task_date DESC, ptbs.provider_name, ptbs.patient_name"
 
         df = pd.read_sql_query(query, conn, params=params)
         return df
@@ -250,39 +367,62 @@ def get_billing_summary(billing_week=None, provider_filter=None):
     """Get summary statistics for billing week"""
     conn = database.get_db_connection()
     try:
-        query = """
-        SELECT
-            COUNT(*) as total_tasks,
-            SUM(minutes_of_service) as total_minutes,
-            COUNT(CASE WHEN is_billed = TRUE THEN 1 END) as billed_tasks,
-            COUNT(CASE WHEN is_billed = FALSE THEN 1 END) as pending_tasks,
-            COUNT(CASE WHEN is_invoiced = TRUE THEN 1 END) as invoiced_tasks,
-            COUNT(DISTINCT provider_id) as unique_providers,
-            COUNT(DISTINCT patient_id) as unique_patients
-        FROM provider_task_billing_status
-        WHERE 1=1
-        """
-
-        params = []
-        if billing_week:
-            query += " AND billing_week = ?"
-            params.append(billing_week)
-
-        if provider_filter:
-            query += " AND provider_name = ?"
-            params.append(provider_filter)
-
-        result = conn.execute(query, params).fetchone()
-        if result:
+        # Import the processor to use its enhanced summary method
+        from src.billing.weekly_billing_processor import WeeklyBillingProcessor
+        processor = WeeklyBillingProcessor()
+        
+        # Use the processor's enhanced method which supports year filtering
+        # For dashboard summary, we'll get the overall summary without provider/year filters
+        # but we can pass the billing_week for specific week filtering
+        summary = processor.get_billing_summary(billing_week, conn, provider_filter, None, None)
+        
+        # Extract the overall summary data
+        overall = summary.get('overall', {})
+        if overall:
             return {
-                "total_tasks": result[0] or 0,
-                "total_minutes": result[1] or 0,
-                "billed_tasks": result[2] or 0,
-                "pending_tasks": result[3] or 0,
-                "invoiced_tasks": result[4] or 0,
-                "unique_providers": result[5] or 0,
-                "unique_patients": result[6] or 0,
+                "total_tasks": overall.get('total_tasks', 0),
+                "total_minutes": overall.get('total_minutes', 0),
+                "billed_tasks": overall.get('total_billed_tasks', 0),
+                "pending_tasks": overall.get('total_tasks', 0) - overall.get('total_billed_tasks', 0),
+                "invoiced_tasks": 0,  # Not in weekly billing reports table
+                "unique_providers": 0,  # Not in weekly billing reports table
+                "unique_patients": 0,  # Not in weekly billing reports table
             }
+        else:
+            # Fallback to basic query if no summary found
+            query = """
+            SELECT
+                COUNT(*) as total_tasks,
+                SUM(minutes_of_service) as total_minutes,
+                COUNT(CASE WHEN is_billed = TRUE THEN 1 END) as billed_tasks,
+                COUNT(CASE WHEN is_billed = FALSE THEN 1 END) as pending_tasks,
+                COUNT(CASE WHEN is_invoiced = TRUE THEN 1 END) as invoiced_tasks,
+                COUNT(DISTINCT provider_id) as unique_providers,
+                COUNT(DISTINCT patient_name) as unique_patients
+            FROM provider_task_billing_status
+            WHERE 1=1
+            """
+            
+            params = []
+            if billing_week:
+                query += " AND billing_week = ?"
+                params.append(billing_week)
+            
+            if provider_filter:
+                query += " AND provider_name = ?"
+                params.append(provider_filter)
+            
+            result = conn.execute(query, params).fetchone()
+            if result:
+                return {
+                    "total_tasks": result[0] or 0,
+                    "total_minutes": result[1] or 0,
+                    "billed_tasks": result[2] or 0,
+                    "pending_tasks": result[3] or 0,
+                    "invoiced_tasks": result[4] or 0,
+                    "unique_providers": result[5] or 0,
+                    "unique_patients": result[6] or 0,
+                }
         return None
     except Exception as e:
         st.error(f"Error getting summary: {e}")
@@ -323,6 +463,7 @@ def export_for_3rd_party_biller(df):
         "provider_name",
         "patient_id",
         "patient_name",
+        "facility",
         "task_date",
         "task_description",
         "minutes_of_service",
@@ -339,6 +480,43 @@ def export_for_3rd_party_biller(df):
 
 
 def display_weekly_provider_billing_dashboard(user_id=None, user_role_ids=None):
+    # Auto-populate billing data from provider_tasks if empty
+    ensure_billing_data_populated()
+    
+    # Process weekly billing reports on dashboard load if needed
+    # Only process if we're on a new week or if there's no existing report
+    try:
+        from src.billing.weekly_billing_processor import WeeklyBillingProcessor
+        from datetime import datetime
+        processor = WeeklyBillingProcessor()
+        
+        # Check if we have a recent weekly report for current week
+        current_week, _, _ = processor.get_current_billing_week()
+        
+        # Try to get existing data for this week from provider_task_billing_status
+        conn = database.get_db_connection()
+        try:
+            existing_data = conn.execute(
+                "SELECT COUNT(*) FROM provider_task_billing_status WHERE billing_week = ?",
+                (current_week,)
+            ).fetchone()
+            
+            # Only process if we don't have data for this week
+            if not existing_data or existing_data[0] == 0:
+                # Process current week's billing reports
+                processor.process_weekly_billing()
+        except Exception as e:
+            # If there's an issue checking existing reports, still try to process
+            processor.process_weekly_billing()
+        finally:
+            conn.close()
+            
+    except Exception as e:
+        # Log and show warning but don't break the dashboard
+        st.warning(f"Warning: Could not process weekly billing reports: {e}")
+        import logging
+        logging.getLogger(__name__).warning(f"Weekly billing processing failed: {e}")
+    
     # Custom CSS for better dropdown width control
     st.markdown("""
     <style>
@@ -495,8 +673,6 @@ def display_weekly_provider_billing_dashboard(user_id=None, user_role_ids=None):
     )
 
     if not billing_df.empty:
-        st.markdown("### Billing Data by Provider")
-
         show_audit_trail = st.checkbox("Show Audit Trail", value=False)
 
         # Display filtered data (already filtered at top level by Billing Status)
@@ -505,15 +681,16 @@ def display_weekly_provider_billing_dashboard(user_id=None, user_role_ids=None):
         # Display columns based on audit trail toggle
         if show_audit_trail:
             display_cols = [
-                "billing_status_id",
                 "provider_name",
                 "patient_name",
                 "patient_id",
+                "facility",
                 "task_date",
                 "task_description",
                 "minutes_of_service",
                 "billing_code",
                 "billing_status",
+                "billing_company",
                 "is_billed",
                 "billed_date",
                 "billed_by",
@@ -521,93 +698,109 @@ def display_weekly_provider_billing_dashboard(user_id=None, user_role_ids=None):
             ]
         else:
             display_cols = [
-                "billing_status_id",
                 "provider_name",
                 "patient_name",
                 "patient_id",
+                "facility",
                 "task_date",
                 "task_description",
                 "minutes_of_service",
                 "billing_code",
                 "billing_status",
+                "billing_company",
             ]
 
         available_cols = [col for col in display_cols if col in display_df.columns]
 
-        # Display with selection
-        st.dataframe(
-            display_df[available_cols],
-            use_container_width=True,
-            hide_index=True,
-            key="provider_billing_data",
-        )
-
-        # Mark as billed functionality
+        # Row selection and actions functionality
         if can_edit and not display_df.empty:
             st.markdown("### Billing Actions")
-
-            col1, col2 = st.columns([3, 1])
-
-            with col1:
-                st.markdown("Select task IDs (comma-separated) to mark as billed:")
-                task_ids_input = st.text_input(
-                    "Billing Status IDs",
-                    placeholder="e.g., 1,5,10,23",
-                    key="provider_billing_ids",
-                )
-
-            with col2:
-                st.empty()
-
-            if task_ids_input:
-                try:
-                    # Parse input
-                    task_ids = [int(x.strip()) for x in task_ids_input.split(",")]
-
-                    # Validate that IDs exist in current data
-                    valid_ids = set(display_df["billing_status_id"].tolist())
-                    invalid_ids = [id for id in task_ids if id not in valid_ids]
-
-                    if invalid_ids:
-                        st.error(
-                            f"Invalid billing status IDs: {invalid_ids}. Please check your input."
+            
+            # Create fresh editable dataframe with current filtered data
+            editable_df = display_df[available_cols].copy()
+            editable_df.insert(0, "☐ Select", False)
+            
+            # Display editable dataframe with selection column
+            st.markdown("**Check rows below to select them for billing actions:**")
+            edited_df = st.data_editor(
+                editable_df,
+                use_container_width=True,
+                hide_index=True,
+                key="provider_billing_editor",
+            )
+            
+            # Get selected rows
+            selected_rows = edited_df[edited_df["☐ Select"] == True]
+            
+            if not selected_rows.empty:
+                # Get the billing_status_ids of selected rows
+                selected_cols = [col for col in selected_rows.columns if col != "☐ Select"]
+                billing_status_col_idx = available_cols.index("billing_status_id") if "billing_status_id" in available_cols else 0
+                
+                # Match selected rows back to original dataframe to get billing_status_ids
+                task_ids = []
+                for idx, sel_row in selected_rows.iterrows():
+                    # Find matching row in original dataframe
+                    for orig_idx, orig_row in display_df.iterrows():
+                        match = True
+                        for col in available_cols:
+                            if col in sel_row.index and col in orig_row.index:
+                                if str(sel_row[col]) != str(orig_row[col]):
+                                    match = False
+                                    break
+                        if match:
+                            task_ids.append(int(orig_row["billing_status_id"]))
+                            break
+                
+                if task_ids:
+                    st.markdown("---")
+                    st.success(f"✓ {len(task_ids)} row(s) selected for action")
+                    
+                    # Action buttons in two columns
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        st.markdown("#### Assign Billing Company")
+                        billing_company_input = st.text_input(
+                            "Medicare Billing Company Name",
+                            placeholder="e.g., Acme Healthcare Billing",
+                            key="billing_company_name",
                         )
-                    else:
-                        # Show confirmation
-                        selected_tasks = display_df[
-                            display_df["billing_status_id"].isin(task_ids)
-                        ]
-                        st.info(
-                            f"Ready to mark {len(selected_tasks)} task(s) as billed"
-                        )
-
-                        # Display selected tasks
-                        st.dataframe(
-                            selected_tasks[available_cols],
-                            use_container_width=True,
-                            hide_index=True,
-                        )
-
-                        # Mark as billed button
-                        if st.button("Mark Selected as Billed", type="primary"):
+                        
+                        if st.button("Assign Billing Company", key="assign_company_btn"):
+                            if not billing_company_input or billing_company_input.strip() == "":
+                                st.error("Please enter a billing company name.")
+                            else:
+                                success, message, updated_count = (
+                                    database.update_billing_company(
+                                        task_ids, billing_company_input.strip(), user_id
+                                    )
+                                )
+                                
+                                if success:
+                                    st.success(message)
+                                    st.rerun()
+                                else:
+                                    st.error(message)
+                    
+                    with col2:
+                        st.markdown("#### Mark as Billed")
+                        st.markdown("")  # Spacer
+                        if st.button("Mark Selected as Billed", type="primary", key="mark_billed_btn"):
                             success, message, updated_count = (
                                 database.mark_provider_tasks_as_billed(
                                     task_ids, user_id
                                 )
                             )
-
+                            
                             if success:
                                 st.success(message)
                                 st.balloons()
-                                # Rerun to refresh data
                                 st.rerun()
                             else:
                                 st.error(message)
-
-                except ValueError:
-                    st.error(
-                        "Invalid input format. Please enter comma-separated numbers."
-                    )
+            else:
+                st.info("👆 Check the '☐ Select' column to select rows for billing actions")
 
         # Export options
         st.markdown("### Export Options")

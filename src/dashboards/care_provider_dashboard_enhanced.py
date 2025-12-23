@@ -768,17 +768,6 @@ def show_patient_list_section(user_id, section_id=None, has_cpm_role=False):
     col2.metric("Active-Geri Patients", count_geri)
     col3.metric("Active-PCP Patients", count_pcp)
 
-    # Map assigned coordinator using robust logic (as in coordinator dashboard)
-    coordinator_users = database.get_users_by_role(36)  # 36 = Care Coordinator
-    coordinator_map = {u["user_id"]: u["full_name"] for u in coordinator_users}
-    for p in filtered_patients:
-        coord_id = p.get("assigned_coordinator_id")
-        if coord_id is not None and coord_id in coordinator_map:
-            p["assigned_coordinator"] = coordinator_map[coord_id]
-        elif coord_id is not None and str(coord_id) in coordinator_map:
-            p["assigned_coordinator"] = coordinator_map[str(coord_id)]
-        else:
-            p["assigned_coordinator"] = "Unassigned"
 
     st.divider()
     st.subheader("Patients")

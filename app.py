@@ -504,26 +504,25 @@ def main():
                     ]
                     role_options.sort(key=lambda x: x[0])  # Sort by role ID
 
-                    # Role switcher dropdown
-                    selected_role_id = st.sidebar.selectbox(
+                    # Role switcher dropdown with on_change callback
+                    def on_role_change():
+                        new_role = st.session_state.role_switcher
+                        if new_role != st.session_state.get("preferred_dashboard_role"):
+                            st.session_state["preferred_dashboard_role"] = new_role
+
+                    current_index = next(
+                        (i for i, (rid, _) in enumerate(role_options) if rid == current_view),
+                        0,
+                    )
+
+                    st.sidebar.selectbox(
                         "Switch to View:",
                         options=[role_id for role_id, name in role_options],
                         format_func=lambda x: role_names.get(x, f"Role {x}"),
                         key="role_switcher",
-                        index=next(
-                            (
-                                i
-                                for i, (rid, _) in enumerate(role_options)
-                                if rid == current_view
-                            ),
-                            0,
-                        ),
+                        index=current_index,
+                        on_change=on_role_change,
                     )
-
-                    # Update preference if changed
-                    if selected_role_id != st.session_state["preferred_dashboard_role"]:
-                        st.session_state["preferred_dashboard_role"] = selected_role_id
-                        st.rerun()
 
     # Display dashboard based on user and their roles
     if auth_manager.is_authenticated():
