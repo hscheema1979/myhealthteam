@@ -17,7 +17,7 @@ Write-Host "========================================`n" -ForegroundColor Cyan
 
 # Step 1: Backup production.db
 if (-not $SkipBackup) {
-    Write-Host "[1/4] Creating backup..." -ForegroundColor Yellow
+    Write-Host "[1/5] Creating backup..." -ForegroundColor Yellow
     $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
     $backupPath = "backups/production_backup_$timestamp.db"
 
@@ -30,12 +30,12 @@ if (-not $SkipBackup) {
     Write-Host ("  [OK] Backup created: $backupPath ($([math]::Round($backupSize, 2)) MB)`n") -ForegroundColor Green
 }
 else {
-    Write-Host "[1/4] Skipping backup (as requested)`n" -ForegroundColor Gray
+    Write-Host "[1/5] Skipping backup (as requested)`n" -ForegroundColor Gray
 }
 
 # Step 2: Backup old CSV files and download fresh data
 if (-not $SkipDownload) {
-    Write-Host "[2/4] Backing up old CSV files..." -ForegroundColor Yellow
+    Write-Host "[2/5] Backing up old CSV files..." -ForegroundColor Yellow
     $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
     $csvBackupPath = "old_data/backup_$timestamp"
 
@@ -49,20 +49,28 @@ if (-not $SkipDownload) {
         Write-Host "  [OK] CSV files backed up to $csvBackupPath`n" -ForegroundColor Green
     }
 
-    Write-Host "[2/4] Downloading fresh data from Google Sheets..." -ForegroundColor Yellow
+    Write-Host "[2/5] Downloading fresh data from Google Sheets..." -ForegroundColor Yellow
     & scripts/1_download_files_complete.ps1
     if ($LASTEXITCODE -ne 0) {
         Write-Host "  [FAIL] Download failed!" -ForegroundColor Red
         exit 1
     }
     Write-Host "  [OK] Downloaded to downloads/`n" -ForegroundColor Green
+
+    Write-Host "[2/5] Consolidating CSV files..." -ForegroundColor Yellow
+    & scripts/2_consolidate_files.ps1
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "  [FAIL] Consolidation failed!" -ForegroundColor Red
+        exit 1
+    }
+    Write-Host "  [OK] Files consolidated in downloads/`n" -ForegroundColor Green
 }
 else {
-    Write-Host "[2/4] Skipping download (using existing files)`n" -ForegroundColor Gray
+    Write-Host "[2/5] Skipping download (using existing files)`n" -ForegroundColor Gray
 }
 
 # Step 3: Transform and import data
-Write-Host "[3/4] Transforming and importing data..." -ForegroundColor Yellow
+Write-Host "[3/5] Transforming and importing data..." -ForegroundColor Yellow
 python transform_production_data_v3_fixed.py
 if ($LASTEXITCODE -ne 0) {
     Write-Host "  [FAIL] Import failed!" -ForegroundColor Red
@@ -72,7 +80,7 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host "  [OK] Import complete`n" -ForegroundColor Green
 
 # Step 4: Post-import processing (views, patient updates, summaries)
-Write-Host "[4/4] Running post-import processing..." -ForegroundColor Yellow
+Write-Host "[4/5] Running post-import processing..." -ForegroundColor Yellow
 Get-Content "src/sql/post_import_processing.sql" | sqlite3 production.db
 if ($LASTEXITCODE -ne 0) {
     Write-Host "  [WARN] Post-import processing had errors" -ForegroundColor Yellow
@@ -91,10 +99,12 @@ if ($SyncToProduction) {
         & $syncScript
         if ($LASTEXITCODE -eq 0) {
             Write-Host "  [OK] CSV data synced to production`n" -ForegroundColor Green
-        } else {
+        }
+        else {
             Write-Host "  [WARN] Sync had issues - check db-sync/logs/`n" -ForegroundColor Yellow
         }
-    } else {
+    }
+    else {
         Write-Host "  [WARN] Sync script not found: $syncScript" -ForegroundColor Yellow
         Write-Host "  Creating trigger file for manual sync...`n" -ForegroundColor Gray
 
@@ -106,7 +116,8 @@ if ($SyncToProduction) {
         New-Item -ItemType File -Path "$triggerDir\bulk_import_complete.flag" -Force | Out-Null
         Write-Host "  [OK] Trigger file created - sync will run on next scheduled cycle`n" -ForegroundColor Green
     }
-} else {
+}
+else {
     Write-Host "[5/5] Skipping production sync (use -SyncToProduction to enable)`n" -ForegroundColor Gray
 }
 

@@ -75,7 +75,7 @@ def create_coordinator_table(conn, year, month):
     conn.execute(f"""
         CREATE TABLE IF NOT EXISTS {table_name} (
             coordinator_task_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            coordinator_id INTEGER,
+            coordinator_id TEXT,
             coordinator_name TEXT,
             patient_id TEXT, -- Acts as Patient Name for now based on Dashboard usage
             task_date DATE,
@@ -934,7 +934,7 @@ def populate_patient_panel(conn):
 
                 -- Provider/Coordinator assignment
                 provider_id INTEGER,
-                coordinator_id INTEGER,
+                coordinator_id TEXT,
                 provider_name TEXT,
                 coordinator_name TEXT,
                 last_visit_date TEXT,

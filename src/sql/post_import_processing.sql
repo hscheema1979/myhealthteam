@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS provider_weekly_summary_with_billing (
 -- Coordinator Monthly Summary
 CREATE TABLE IF NOT EXISTS coordinator_monthly_summary (
     summary_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    coordinator_id INTEGER,
+    coordinator_id TEXT,
     coordinator_name TEXT,
     year INTEGER,
     month INTEGER,
@@ -333,19 +333,6 @@ SET last_visit_date = (
         SELECT MAX(task_date)
         FROM provider_tasks pt
         WHERE pt.patient_id = patient_panel.patient_id
-    ),
-    last_visit_provider_id = (
-        SELECT provider_id
-        FROM provider_tasks pt
-        WHERE pt.patient_id = patient_panel.patient_id
-        ORDER BY task_date DESC
-        LIMIT 1
-    ), last_visit_service_type = (
-        SELECT task_description
-        FROM provider_tasks pt
-        WHERE pt.patient_id = patient_panel.patient_id
-        ORDER BY task_date DESC
-        LIMIT 1
     )
 WHERE EXISTS (
         SELECT 1
@@ -704,6 +691,9 @@ SELECT DISTINCT p.patient_id,
     -- Will be populated from patient_assignments
     NULL as provider_name,
     NULL as coordinator_name,
+    -- CRITICAL: Add care team fields needed by dashboard
+    NULL as care_provider_name,
+    NULL as care_coordinator_name,
     p.last_visit_date
 FROM patients p;
 -- Update provider/coordinator from assignments
@@ -726,6 +716,17 @@ SET provider_name = (
         WHERE u.user_id = patient_panel.provider_id
     ),
     coordinator_name = (
+        SELECT full_name
+        FROM users u
+        WHERE u.user_id = patient_panel.coordinator_id
+    ),
+    -- CRITICAL: Update care team fields needed by dashboard
+    care_provider_name = (
+        SELECT full_name
+        FROM users u
+        WHERE u.user_id = patient_panel.provider_id
+    ),
+    care_coordinator_name = (
         SELECT full_name
         FROM users u
         WHERE u.user_id = patient_panel.coordinator_id
