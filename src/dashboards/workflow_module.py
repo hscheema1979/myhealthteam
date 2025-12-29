@@ -71,8 +71,9 @@ def create_workflow_instance(template_id, patient_id, coordinator_id, notes=None
 
         coord_name = None
         try:
+            # Query users table for coordinator info (coordinators table doesn't exist)
             coord_row = conn.execute(
-                "SELECT first_name, last_name FROM coordinators WHERE coordinator_id = ?",
+                "SELECT first_name, last_name FROM users WHERE user_id = ?",
                 (coordinator_id,),
             ).fetchone()
             if coord_row:
