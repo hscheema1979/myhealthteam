@@ -148,30 +148,18 @@ def show(user_id, user_role_ids=None):
 
             show_phone_review_entry(mode="cm", user_id=user_id)
         with tab3:
-            # --- Coordinator Tasks: Total Minutes This Month Header ---
-            # We'll calculate the total from the Coordinator Monthly Summary DataFrame (df_summary)
-            # This is more robust and avoids local variable errors
-            summary_rows = database.get_coordinator_monthly_minutes_live()
-            total_minutes = None
-            if summary_rows:
-                try:
-                    import pandas as pd
-
-                    df_summary = pd.DataFrame(summary_rows)
-                    if not df_summary.empty and "total_minutes" in df_summary.columns:
-                        total_minutes = (
-                            pd.to_numeric(df_summary["total_minutes"], errors="coerce")
-                            .fillna(0)
-                            .sum()
-                        )
-                except Exception as e:
-                    st.markdown(
-                        f"### Total Minutes This Month: _Error loading summary ({e})_"
-                    )
-            if total_minutes is not None:
-                st.markdown(f"### Total Minutes This Month: **{int(total_minutes):,}**")
-            else:
-                st.markdown("### Total Minutes This Month: _No data available_")
+            # --- Coordinator Tasks: Use unified coordinator tasks module ---
+            # Import the unified coordinator tasks module
+            from src.dashboards.coordinator_tasks_module import show_coordinator_tasks_tab
+            
+            # Show coordinator tasks tab
+            # For CM users, show all coordinators (same as admin view)
+            show_coordinator_tasks_tab(
+                user_id=user_id,
+                user_role_ids=user_role_ids,
+                show_all_coordinators=True,  # CM role - show all coordinators
+                filter_by_coordinator=False
+            )
 
             # --- Patient and Coordinator Monthly Summary Tables Side-by-Side ---
             st.divider()
@@ -185,12 +173,8 @@ def show(user_id, user_role_ids=None):
                     import pandas as pd
 
                     conn = database.get_db_connection()
-                    now = pd.Timestamp.now()
-                    year = int(now.year)
-                    month = int(now.month)
-                    table_name = (
-                        f"coordinator_monthly_summary_{year}_{str(month).zfill(2)}"
-                    )
+                    # Query the coordinator_monthly_summary table (no year/month suffix)
+                    table_name = "coordinator_monthly_summary"
                     table_exists = conn.execute(
                         "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
                         (table_name,),

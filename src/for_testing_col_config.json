@@ -1,16 +1,16 @@
 {
   "visible_cols": [
-    "status_name",
-    "first_name",
+    "last_annual_wellness_visit",
     "functional_status",
-    "code_status",
+    "last_name",
+    "first_name",
     "last_visit_date",
     "eligibility_status",
-    "last_annual_wellness_visit",
-    "status_description",
     "patient_id",
     "status",
-    "last_name"
+    "status_description",
+    "code_status",
+    "status_name"
   ],
   "col_order": [
     "last_annual_wellness_visit",
