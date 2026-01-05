@@ -1389,7 +1389,7 @@ def process_zmo(file_path, conn, provider_map):
                     f"    Added assignment: {patient_id} -> Provider: {provider_id_for_assignment}, Coordinator: {coordinator_id_for_assignment}"
                 )
 
-            # Onboarding
+            # Onboarding - Include all workflow tracking columns
             onboarding_data.append(
                 (
                     patient_id,
@@ -1403,15 +1403,25 @@ def process_zmo(file_path, conn, provider_map):
                     str(row.get("Initial TV\nProv", "")).strip()
                     if pd.notna(row.get("Initial TV\nProv"))
                     else None,
+                    'Active',  # patient_status default
+                    None,  # assigned_pot_user_id (no data in ZMO)
+                    0,  # stage1_complete
+                    0,  # stage2_complete
+                    0,  # stage3_complete
+                    0,  # stage4_complete
+                    0,  # stage5_complete
+                    None,  # completed_date
+                    datetime.now().strftime('%Y-%m-%d %H:%M:%S'),  # updated_date
                 )
             )
 
-        # Step 3: Insert data (DELETE first)
+        # Step 3: Insert data using INSERT OR REPLACE to preserve existing data
+        # This preserves onboarding workflow data (patient_status, stages, etc.)
         conn.execute("DELETE FROM patients")
         # NOTE: patient_assignments is now handled by process_provider_assignments_from_zmo
         conn.execute("DELETE FROM patient_assignments")
-        conn.execute("DELETE FROM onboarding_patients")
-        # NOTE: patient_panel is NOT deleted here - it will be rebuilt by post_import_processing.sql
+        # NOTE: onboarding_patients uses INSERT OR REPLACE to preserve workflow data
+        # This prevents loss of patient_status, stage tracking, etc. when importing new CSV data
 
         # Insert patients (simplified - expand columns as needed)
         conn.executemany(
@@ -1435,12 +1445,16 @@ def process_zmo(file_path, conn, provider_map):
                 assignments_data,
             )
 
-        # Onboarding
+        # Onboarding - INSERT OR REPLACE to preserve workflow data (patient_status, stages, etc.)
+        # Only updates fields from ZMO, preserves existing workflow tracking data
         conn.executemany(
-            """INSERT INTO onboarding_patients (
-            patient_id, first_name, last_name, date_of_birth, phone_primary,
-            assigned_provider_user_id, assigned_coordinator_user_id, tv_date, initial_tv_provider
-        ) VALUES (?,?,?,?,?,?,?,?,?)""",
+            """INSERT OR REPLACE INTO onboarding_patients (
+                patient_id, first_name, last_name, date_of_birth, phone_primary,
+                assigned_provider_user_id, assigned_coordinator_user_id, tv_date, initial_tv_provider,
+                patient_status, assigned_pot_user_id,
+                stage1_complete, stage2_complete, stage3_complete, stage4_complete, stage5_complete,
+                completed_date, updated_date
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             onboarding_data,
         )
 

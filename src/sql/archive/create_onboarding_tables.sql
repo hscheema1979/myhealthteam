@@ -78,6 +78,7 @@ CREATE TABLE IF NOT EXISTS onboarding_tasks (
     FOREIGN KEY (completed_by_user_id) REFERENCES users(user_id)
 );
 -- Create indexes for performance
+CREATE UNIQUE INDEX IF NOT EXISTS idx_onboarding_patients_patient_id_unique ON onboarding_patients(patient_id);
 CREATE INDEX IF NOT EXISTS idx_onboarding_patients_workflow ON onboarding_patients(workflow_instance_id);
 CREATE INDEX IF NOT EXISTS idx_onboarding_patients_pot_user ON onboarding_patients(assigned_pot_user_id);
 CREATE INDEX IF NOT EXISTS idx_onboarding_patients_status ON onboarding_patients(patient_status);
