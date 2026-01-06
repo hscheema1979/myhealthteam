@@ -1888,6 +1888,14 @@ def show_daily_task_log(user_id, role="coordinator"):
 
         display_df = tasks_df.rename(columns=column_mapping)
 
+        # Add task_id column for tracking edits
+        if "coordinator_task_id" in display_df.columns:
+            display_df["_task_id"] = display_df["coordinator_task_id"]
+        elif "provider_task_id" in display_df.columns:
+            display_df["_task_id"] = display_df["provider_task_id"]
+        else:
+            display_df["_task_id"] = None
+
         # Format time column
         if "Time" in display_df.columns:
             display_df["Time"] = pd.to_datetime(display_df["Time"]).dt.strftime("%H:%M")
@@ -1910,20 +1918,163 @@ def show_daily_task_log(user_id, role="coordinator"):
                 display_df[display_columns], use_container_width=True, hide_index=True
             )
         else:
-            # Show editable table
+            # Show editable table with hidden _task_id column for tracking
+            editable_columns = display_columns + ["_task_id"]
             edited_df = st.data_editor(
-                display_df[display_columns],
+                display_df[editable_columns],
                 use_container_width=True,
                 hide_index=True,
                 key=f"daily_tasks_{user_id}_{role}",
                 num_rows="fixed",
+                disabled=True,  # Hide the _task_id column from user editing
             )
 
-            # Handle edits
+            # Handle edits using database.update_task_details function
             if edited_df is not None and not edited_df.equals(
-                display_df[display_columns]
+                display_df[editable_columns]
             ):
-                st.info("💾 Changes saved automatically.")
+                # Save each changed row using update_task_details function
+                updates_count = 0
+                for idx, edited_row in edited_df.iterrows():
+                    original_row = display_df[editable_columns].iloc[idx]
+                    
+                    # Get task_id from the hidden column
+                    task_id = original_row["_task_id"]
+                    
+                    # Skip if no task_id or it's NaN
+                    if pd.isna(task_id):
+                        continue
+                    
+                    # Build updates dict with changed fields
+                    updates = {}
+                    
+                    # Check minutes_spent
+                    if "Minutes Spent" in edited_df.columns:
+                        orig_min = original_row["Minutes Spent"]
+                        edited_min = edited_row["Minutes Spent"]
+                        if pd.notna(edited_min) and str(edited_min) != str(orig_min):
+                            updates["duration_minutes"] = edited_min
+                    
+                    # Check task_type
+                    if "Task Type" in edited_df.columns:
+                        orig_type = original_row["Task Type"]
+                        edited_type = edited_row["Task Type"]
+                        if pd.notna(edited_type) and str(edited_type) != str(orig_type):
+                            updates["task_type"] = edited_type
+                    
+                    # Check notes
+                    if "Notes" in edited_df.columns:
+                        orig_notes = original_row["Notes"]
+                        edited_notes = edited_row["Notes"]
+                        if pd.notna(edited_notes) and str(edited_notes) != str(orig_notes):
+                            updates["notes"] = edited_notes
+                    
+                    # Apply update if there are changes
+                    if updates:
+                        success = database.update_task_details(task_id, role, updates)
+                        if success:
+                            updates_count += 1
+                
+                if updates_count > 0:
+                    st.success(f"✅ Saved {updates_count} task updates to database!")
+                else:
+                    st.info("💾 No changes detected.")
+                # Save changes to database
+                try:
+                    import pandas as pd
+                    
+                    # Get the table name for this role
+                    from src.database import get_db_connection, ensure_monthly_coordinator_tasks_table
+                    
+                    conn = get_db_connection()
+                    table_name = ensure_monthly_coordinator_tasks_table(conn=conn)
+                    
+                    # Get row ID field for this table
+                    id_field = "coordinator_task_id" if role == "coordinator" else "provider_task_id"
+                    
+                    # Find changed rows and update them
+                    updates_count = 0
+                    for idx, edited_row in edited_df.iterrows():
+                        # Try to match original row by key fields
+                        # Use task_date, patient_id, task_type as composite key
+                        original_row = display_df[display_columns].iloc[idx]
+                        
+                        # Check if anything actually changed
+                        changed = False
+                        update_fields = []
+                        update_params = []
+                        
+                        # Check duration_minutes
+                        if "Minutes Spent" in edited_df.columns and "Minutes Spent" in display_df.columns:
+                            orig_min = original_row["Minutes Spent"]
+                            edited_min = edited_row["Minutes Spent"]
+                            if pd.notna(edited_min) and str(edited_min) != str(orig_min):
+                                update_fields.append("duration_minutes = ?")
+                                update_params.append(edited_min)
+                                changed = True
+                        
+                        # Check task_type
+                        if "Task Type" in edited_df.columns and "Task Type" in display_df.columns:
+                            orig_type = original_row["Task Type"]
+                            edited_type = edited_row["Task Type"]
+                            if pd.notna(edited_type) and str(edited_type) != str(orig_type):
+                                update_fields.append("task_type = ?")
+                                update_params.append(edited_type)
+                                changed = True
+                        
+                        # Check notes
+                        if "Notes" in edited_df.columns and "Notes" in display_df.columns:
+                            orig_notes = original_row["Notes"]
+                            edited_notes = edited_row["Notes"]
+                            if pd.notna(edited_notes) and str(edited_notes) != str(orig_notes):
+                                update_fields.append("notes = ?")
+                                update_params.append(edited_notes)
+                                changed = True
+                        
+                        if changed:
+                            # Build WHERE clause from original values
+                            where_conditions = []
+                            where_params = []
+                            
+                            if "Time" in original_row and pd.notna(original_row["Time"]):
+                                where_conditions.append("task_date = ?")
+                                where_params.append(original_row["Time"])
+                            
+                            if "Patient ID / Name" in original_row and pd.notna(original_row["Patient ID / Name"]):
+                                where_conditions.append("patient_id = ?")
+                                where_params.append(str(original_row["Patient ID / Name"]))
+                            
+                            # Use original task_type if present
+                            if "Task Type" in original_row and pd.notna(original_row["Task Type"]):
+                                where_conditions.append("task_type = ?")
+                                where_params.append(original_row["Task Type"])
+                            
+                            if where_conditions:
+                                # Add coordinator_id to WHERE clause
+                                where_conditions.append(f"{user_field} = ?")
+                                where_params.append(user_id)
+                                
+                                # Build and execute UPDATE query
+                                all_params = update_params + where_params
+                                query = f"""
+                                    UPDATE {table_name}
+                                    SET {', '.join(update_fields)}, imported_at = CURRENT_TIMESTAMP
+                                    WHERE {' AND '.join(where_conditions)}
+                                """
+                                conn.execute(query, tuple(all_params))
+                                updates_count += 1
+                    
+                    if updates_count > 0:
+                        conn.commit()
+                        st.success(f"✅ Saved {updates_count} task updates to database!")
+                    else:
+                        st.info("💾 No changes detected.")
+                        
+                    conn.close()
+                    
+                except Exception as e:
+                    st.error(f"❌ Error saving changes: {e}")
+                    print(f"Error saving task edits: {e}")
 
             # Submit button
             st.markdown("---")
