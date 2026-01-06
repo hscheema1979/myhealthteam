@@ -31,64 +31,135 @@ def _apply_patient_info_edits(edited_df, original_df):
     """Apply edits to patient information in database"""
     import pandas as pd
 
+    # Robust input validation
     if edited_df is None or original_df is None:
+        print("DEBUG: edited_df or original_df is None")
         return
+    
+    if edited_df.empty or original_df.empty:
+        print("DEBUG: edited_df or original_df is empty")
+        return
+    
     if "patient_id" not in edited_df.columns:
+        print("DEBUG: patient_id column not in edited_df")
         return
-    original_by_id = {
-        str(r["patient_id"]): r
-        for _, r in original_df.iterrows()
-        if pd.notna(r.get("patient_id"))
-    }
-    conn = database.get_db_connection()
+    
+    if "patient_id" not in original_df.columns:
+        print("DEBUG: patient_id column not in original_df")
+        return
+    
     try:
-        for _, row in edited_df.iterrows():
-            pid = str(row.get("patient_id"))
-            if not pid or pid not in original_by_id:
+        # Build mapping with proper error handling
+        original_by_id = {}
+        for idx, row in original_df.iterrows():
+            pid = row.get("patient_id")
+            # Handle various patient_id formats: string, int, float with NaN
+            if pd.isna(pid):
                 continue
-            orig = original_by_id[pid]
-            changed = {}
-            for col in edited_df.columns:
-                if col == "patient_id":
+            try:
+                # Convert to string for consistent comparison
+                pid_str = str(pid).strip()
+                if pid_str:
+                    original_by_id[pid_str] = row
+            except Exception as e:
+                print(f"DEBUG: Error processing patient_id at index {idx}: {e}")
+                continue
+        
+        if not original_by_id:
+            print("DEBUG: No valid patient_ids found in original_df")
+            return
+        
+        print(f"DEBUG: Built original_by_id with {len(original_by_id)} entries")
+        
+        conn = database.get_db_connection()
+        updates_count = 0
+        
+        try:
+            for idx, row in edited_df.iterrows():
+                try:
+                    pid = row.get("patient_id")
+                    if pd.isna(pid):
+                        continue
+                    
+                    pid_str = str(pid).strip()
+                    if not pid_str or pid_str not in original_by_id:
+                        continue
+                    
+                    orig = original_by_id[pid_str]
+                    changed = {}
+                    
+                    # Compare values safely
+                    for col in edited_df.columns:
+                        if col == "patient_id":
+                            continue
+                        
+                        # Get values with safe defaults
+                        edited_val = row.get(col)
+                        orig_val = orig.get(col)
+                        
+                        # Handle NaN values consistently
+                        if pd.isna(edited_val) and pd.isna(orig_val):
+                            continue
+                        
+                        # Convert both to strings for comparison
+                        if str(edited_val) != str(orig_val):
+                            changed[col] = edited_val
+                    
+                    if not changed:
+                        continue
+                    
+                    # Update patients table
+                    patient_cols = [c[1] for c in conn.execute("PRAGMA table_info('patients')").fetchall()]
+                    set_parts = []
+                    params = []
+                    
+                    for k, v in changed.items():
+                        if k in patient_cols:
+                            set_parts.append(f"{k} = ?")
+                            params.append(v)
+                    
+                    if set_parts:
+                        params.append(pid)
+                        conn.execute(
+                            f"UPDATE patients SET {', '.join(set_parts)}, updated_date = CURRENT_TIMESTAMP WHERE patient_id = ?",
+                            tuple(params),
+                        )
+                        updates_count += 1
+                    
+                    # Update patient_panel table
+                    panel_cols = [c[1] for c in conn.execute("PRAGMA table_info('patient_panel')").fetchall()]
+                    set_parts = []
+                    params = []
+                    
+                    for k, v in changed.items():
+                        if k in panel_cols:
+                            set_parts.append(f"{k} = ?")
+                            params.append(v)
+                    
+                    if set_parts:
+                        params.append(pid)
+                        conn.execute(
+                            f"UPDATE patient_panel SET {', '.join(set_parts)}, updated_date = CURRENT_TIMESTAMP WHERE patient_id = ?",
+                            tuple(params),
+                        )
+                
+                except Exception as e:
+                    print(f"DEBUG: Error processing row {idx}: {e}")
                     continue
-                if str(row.get(col)) != str(orig.get(col)):
-                    changed[col] = row.get(col)
-            if not changed:
-                continue
-            patient_cols = [
-                c[1] for c in conn.execute("PRAGMA table_info('patients')").fetchall()
-            ]
-            set_parts = []
-            params = []
-            for k, v in changed.items():
-                if k in patient_cols:
-                    set_parts.append(f"{k} = ?")
-                    params.append(v)
-            if set_parts:
-                params.append(pid)
-                conn.execute(
-                    f"UPDATE patients SET {', '.join(set_parts)}, updated_date = CURRENT_TIMESTAMP WHERE patient_id = ?",
-                    tuple(params),
-                )
-            panel_cols = [
-                c[1]
-                for c in conn.execute("PRAGMA table_info('patient_panel')").fetchall()
-            ]
-            set_parts = []
-            params = []
-            for k, v in changed.items():
-                if k in panel_cols:
-                    set_parts.append(f"{k} = ?")
-                    params.append(v)
-            if set_parts:
-                params.append(pid)
-                conn.execute(
-                    f"UPDATE patient_panel SET {', '.join(set_parts)}, updated_date = CURRENT_TIMESTAMP WHERE patient_id = ?",
-                    tuple(params),
-                )
-        conn.commit()
-    finally:
-        conn.close()
+            
+            if updates_count > 0:
+                conn.commit()
+                print(f"DEBUG: Successfully updated {updates_count} patient records")
+            else:
+                print("DEBUG: No changes detected")
+        
+        finally:
+            conn.close()
+    
+    except Exception as e:
+        print(f"ERROR in _apply_patient_info_edits: {e}")
+        import traceback
+        traceback.print_exc()
 
 
 def show(user_id, user_role_ids=None):
