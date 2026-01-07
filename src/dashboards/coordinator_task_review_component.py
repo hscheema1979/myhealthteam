@@ -202,24 +202,19 @@ def show(user_id):
             # --- Daily View: Editable ---
             if view_type == "Daily":
                 st.markdown("**Edit tasks below and click Save Changes to update**")
-                
+
                 # Store original for comparison
                 if 'original_coord_tasks_df' not in st.session_state or st.session_state.get('last_coord_date') != selected_date:
                     st.session_state.original_coord_tasks_df = tasks_df.copy()
                     st.session_state.last_coord_date = selected_date
-                
+
+                # Use simple column config without disabled - let data_editor handle editability
                 edited_df = st.data_editor(
-                    tasks_df[['Patient Name', 'DOS', 'Duration', 'Service Type', 'Notes']],  # Hide Task ID from display
+                    tasks_df[['Patient Name', 'DOS', 'Duration', 'Service Type', 'Notes']],
                     use_container_width=True,
                     hide_index=True,
-                    column_config={
-                        "Patient Name": st.column_config.TextColumn("Patient Name", width="medium", disabled=True),
-                        "DOS": st.column_config.TextColumn("Date", width="small", disabled=True),
-                        "Duration": st.column_config.NumberColumn("Mins", width="small", min_value=0),
-                        "Service Type": st.column_config.TextColumn("Task/Service", width="large"),
-                        "Notes": st.column_config.TextColumn("Notes", width="large"),
-                    },
-                    key=f"coordinator_task_editor_{user_id}_{display_period}"
+                    key=f"coordinator_task_editor_{user_id}_{display_period}",
+                    num_rows="fixed"
                 )
                 
                 # Save button
@@ -271,14 +266,7 @@ def show(user_id):
                 st.dataframe(
                     tasks_df,
                     use_container_width=True,
-                    hide_index=True,
-                    column_config={
-                        "Patient Name": st.column_config.TextColumn("Patient Name", width="medium"),
-                        "DOS": st.column_config.TextColumn("Date", width="small"),
-                        "Duration": st.column_config.NumberColumn("Mins", width="small"),
-                        "Service Type": st.column_config.TextColumn("Task/Service", width="large"),
-                        "Notes": st.column_config.TextColumn("Notes", width="large"),
-                    }
+                    hide_index=True
                 )
 
             csv = tasks_df.to_csv(index=False)
