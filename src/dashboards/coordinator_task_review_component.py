@@ -203,10 +203,13 @@ def show(user_id):
             if view_type == "Daily":
                 st.markdown("**Edit tasks below and click Save Changes to update**")
 
-                # Store original for comparison
-                if 'original_coord_tasks_df' not in st.session_state or st.session_state.get('last_coord_date') != selected_date:
-                    st.session_state.original_coord_tasks_df = tasks_df.copy()
-                    st.session_state.last_coord_date = selected_date
+                # Store original values BEFORE data_editor for comparison
+                # Use a key that includes date but NOT any session-specific parts
+                original_key = f"original_coord_data_{user_id}_{display_period}"
+
+                if original_key not in st.session_state:
+                    # First time loading this date - store the original data from DB
+                    st.session_state[original_key] = tasks_df[['Task ID', 'Patient Name', 'DOS', 'Duration', 'Service Type', 'Notes']].copy()
 
                 # Use simple column config without disabled - let data_editor handle editability
                 edited_df = st.data_editor(
@@ -223,16 +226,17 @@ def show(user_id):
                         # Update database with edited values
                         conn_update = database.get_db_connection()
                         updates_made = 0
-                        
+
                         for i, (idx, row) in enumerate(edited_df.iterrows()):
-                            orig_row = st.session_state.original_coord_tasks_df[['Patient Name', 'DOS', 'Duration', 'Service Type', 'Notes']].iloc[i]
-                            task_id = tasks_df.iloc[i]['Task ID']  # Get the unique task ID using position
-                            
-                            # Check if any editable fields changed
-                            if (row['Duration'] != orig_row['Duration'] or
-                                row['Service Type'] != orig_row['Service Type'] or
-                                row['Notes'] != orig_row['Notes']):
-                                
+                            orig_row = st.session_state[original_key].iloc[i]
+                            task_id = orig_row['Task ID']  # Get the unique task ID
+
+                            # Check if any editable fields changed - use safer comparison
+                            duration_changed = pd.notna(row['Duration']) and pd.notna(orig_row['Duration']) and int(row['Duration']) != int(orig_row['Duration'])
+                            type_changed = str(row['Service Type']) != str(orig_row['Service Type'])
+                            notes_changed = str(row['Notes']) != str(orig_row['Notes'])
+
+                            if duration_changed or type_changed or notes_changed:
                                 # Update the database using unique task ID
                                 conn_update.execute(f"""
                                     UPDATE {table_name}
@@ -241,25 +245,27 @@ def show(user_id):
                                         notes = ?
                                     WHERE coordinator_task_id = ?
                                 """, (
-                                    row['Duration'],
-                                    row['Service Type'],
-                                    row['Notes'],
+                                    int(row['Duration']) if pd.notna(row['Duration']) else 0,
+                                    str(row['Service Type']),
+                                    str(row['Notes']),
                                     task_id
                                 ))
                                 updates_made += 1
-                        
+
                         conn_update.commit()
                         conn_update.close()
-                        
+
                         if updates_made > 0:
                             st.success(f"✅ Saved {updates_made} task update(s)!")
-                            # Update original to reflect saved state
-                            st.session_state.original_coord_tasks_df = edited_df.copy()
+                            # Clear original state so it gets reloaded from DB on next rerun
+                            del st.session_state[original_key]
                             st.rerun()
                         else:
                             st.info("No changes detected.")
                     except Exception as e:
                         st.error(f"Error saving changes: {e}")
+                        import traceback
+                        st.error(traceback.format_exc())
             
             # --- Weekly/Monthly Views: Read-only ---
             else:
