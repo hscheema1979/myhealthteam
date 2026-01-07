@@ -196,173 +196,228 @@ def display_monthly_coordinator_billing_dashboard():
         st.warning("No coordinator billing data available")
         return
 
-    # Month selector
-    col1, col2 = st.columns(2)
+    # Add tabs for Single Month View and Bulk Download
+    tab1, tab2 = st.tabs(["📅 Single Month View", "📦 Bulk Download"])
 
-    with col1:
-        selected_month = st.selectbox(
-            "Select Month", options=months, format_func=lambda x: x["display"]
-        )
+    with tab1:
+        # Month selector
+        col1, col2 = st.columns(2)
 
-    if selected_month:
-        year = selected_month["year"]
-        month = selected_month["month"]
-
-        with col2:
-            st.metric("Selected Period", f"{calendar.month_name[month]} {year}")
-
-        # Get summary data
-        summary = get_coordinator_summary(year, month)
-
-        if summary:
-            st.subheader("Monthly Summary")
-            col1, col2, col3 = st.columns(3)
-
-            with col1:
-                st.metric("Total Patients", summary["total_patients"])
-            with col2:
-                st.metric("Total Tasks", summary["total_tasks"])
-            with col3:
-                st.metric("Total Minutes", f"{summary['total_minutes']:,.0f}")
-
-        # Get detailed data
-        billing_df = get_coordinator_billing_data(year, month)
-
-        if not billing_df.empty:
-            st.subheader("Billing Data by Patient")
-
-            # Filters
-            col1, col2 = st.columns(2)
-
-            with col1:
-                billing_codes = ["All"] + sorted(
-                    billing_df["billing_code"].unique().tolist()
-                )
-                selected_code = st.selectbox("Filter by Billing Code", billing_codes)
-
-            with col2:
-                show_pending = st.checkbox("Show Only Pending Codes", value=False)
-
-            # Apply filters
-            filtered_df = billing_df.copy()
-
-            if selected_code != "All":
-                filtered_df = filtered_df[filtered_df["billing_code"] == selected_code]
-
-            if show_pending:
-                filtered_df = filtered_df[filtered_df["billing_code"] == "PENDING"]
-
-            # Display table with selection capability
-            st.markdown("### Select Rows for Actions")
-            
-            # Initialize session state for editable dataframe
-            if "coordinator_billing_editable_df" not in st.session_state:
-                display_cols = [
-                    "patient_id",
-                    "facility",
-                    "task_count",
-                    "total_minutes",
-                    "billing_code",
-                    "billing_description",
-                    "billing_status",
-                ]
-                editable_df = filtered_df[display_cols].copy()
-                editable_df.insert(0, "☐ Select", False)
-                st.session_state.coordinator_billing_editable_df = editable_df
-            
-            # Display editable dataframe with selection column
-            st.markdown("**Check rows below to select them for actions:**")
-            edited_df = st.data_editor(
-                st.session_state.coordinator_billing_editable_df,
-                use_container_width=True,
-                hide_index=True,
-                key="coordinator_billing_editor",
+        with col1:
+            selected_month = st.selectbox(
+                "Select Month", options=months, format_func=lambda x: x["display"], key="single_month_select"
             )
-            
-            # Update session state with edited dataframe
-            st.session_state.coordinator_billing_editable_df = edited_df
-            
-            # Get selected rows
-            selected_rows = edited_df[edited_df["☐ Select"] == True]
-            
-            if not selected_rows.empty:
-                st.markdown("---")
-                st.success(f"✓ {len(selected_rows)} row(s) selected")
-                
-                # Action buttons
-                st.markdown("### Actions")
-                col1, col2 = st.columns(2)
-                
-                with col1:
-                    st.markdown("#### Update Billing Code")
-                    new_billing_code = st.text_input(
-                        "New Billing Code",
-                        placeholder="e.g., 99211, 99212",
-                        key="coordinator_new_code",
-                    )
-                    
-                    if st.button("Update Billing Code", key="update_code_btn"):
-                        if not new_billing_code or new_billing_code.strip() == "":
-                            st.error("Please enter a billing code.")
-                        else:
-                            st.info(f"Would update {len(selected_rows)} row(s) with code: {new_billing_code}")
-                            st.session_state.coordinator_billing_editable_df = None
-                            # TODO: Implement actual update function
-                
-                with col2:
-                    st.markdown("#### Export Selected")
-                    if st.button("Export Selected Rows", key="export_selected_btn"):
-                        display_cols = [col for col in edited_df.columns if col != "☐ Select"]
-                        selected_data = selected_rows[display_cols]
-                        csv_data = export_to_csv(selected_data, "coordinator_billing_selected")
-                        st.download_button(
-                            label="Download Selected (CSV)",
-                            data=csv_data,
-                            file_name=f"coordinator_billing_selected_{year}_{month:02d}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                            mime="text/csv",
-                            key="download_selected",
-                        )
-            else:
-                st.info("👆 Check the '☐ Select' column to select rows for actions")
 
-            # Export buttons for all/filtered data
-            st.markdown("---")
-            st.subheader("Export Options")
-            col1, col2, col3 = st.columns(3)
-
-            with col1:
-                csv_data = export_to_csv(filtered_df, "coordinator_billing")
-                st.download_button(
-                    label="Download Filtered Data (CSV)",
-                    data=csv_data,
-                    file_name=f"coordinator_billing_{year}_{month:02d}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                    mime="text/csv",
-                )
+        if selected_month:
+            year = selected_month["year"]
+            month = selected_month["month"]
 
             with col2:
-                csv_all = export_to_csv(billing_df, "coordinator_billing_all")
-                st.download_button(
-                    label="Download All Data (CSV)",
-                    data=csv_all,
-                    file_name=f"coordinator_billing_all_{year}_{month:02d}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                    mime="text/csv",
+                st.metric("Selected Period", f"{calendar.month_name[month]} {year}")
+
+            # Get summary data
+            summary = get_coordinator_summary(year, month)
+
+            if summary:
+                st.subheader("Monthly Summary")
+                col1, col2, col3 = st.columns(3)
+
+                with col1:
+                    st.metric("Total Patients", summary["total_patients"])
+                with col2:
+                    st.metric("Total Tasks", summary["total_tasks"])
+                with col3:
+                    st.metric("Total Minutes", f"{summary['total_minutes']:,.0f}")
+
+            # Get detailed data
+            billing_df = get_coordinator_billing_data(year, month)
+
+            if not billing_df.empty:
+                st.subheader("Billing Data by Patient")
+
+                # Filters
+                col1, col2 = st.columns(2)
+
+                with col1:
+                    billing_codes = ["All"] + sorted(
+                        billing_df["billing_code"].unique().tolist()
+                    )
+                    selected_code = st.selectbox("Filter by Billing Code", billing_codes, key="single_code_filter")
+
+                with col2:
+                    show_pending = st.checkbox("Show Only Pending Codes", value=False, key="single_pending_filter")
+
+                # Apply filters
+                filtered_df = billing_df.copy()
+
+                if selected_code != "All":
+                    filtered_df = filtered_df[filtered_df["billing_code"] == selected_code]
+
+                if show_pending:
+                    filtered_df = filtered_df[filtered_df["billing_code"] == "PENDING"]
+
+                # Display table with selection capability
+                st.markdown("### Select Rows for Actions")
+
+                # Initialize session state for editable dataframe
+                if "coordinator_billing_editable_df" not in st.session_state:
+                    display_cols = [
+                        "patient_id",
+                        "facility",
+                        "task_count",
+                        "total_minutes",
+                        "billing_code",
+                        "billing_description",
+                        "billing_status",
+                    ]
+                    editable_df = filtered_df[display_cols].copy()
+                    editable_df.insert(0, "☐ Select", False)
+                    st.session_state.coordinator_billing_editable_df = editable_df
+
+                # Display editable dataframe with selection column
+                st.markdown("**Check rows below to select them for actions:**")
+                edited_df = st.data_editor(
+                    st.session_state.coordinator_billing_editable_df,
+                    use_container_width=True,
+                    hide_index=True,
+                    key="coordinator_billing_editor",
                 )
 
-            with col3:
-                pending_df = billing_df[billing_df["billing_code"] == "PENDING"]
-                if not pending_df.empty:
-                    csv_pending = export_to_csv(
-                        pending_df, "coordinator_billing_pending"
-                    )
+                # Update session state with edited dataframe
+                st.session_state.coordinator_billing_editable_df = edited_df
+
+                # Get selected rows
+                selected_rows = edited_df[edited_df["☐ Select"] == True]
+
+                if not selected_rows.empty:
+                    st.markdown("---")
+                    st.success(f"✓ {len(selected_rows)} row(s) selected")
+
+                    # Action buttons
+                    st.markdown("### Actions")
+                    col1, col2 = st.columns(2)
+
+                    with col1:
+                        st.markdown("#### Update Billing Code")
+                        new_billing_code = st.text_input(
+                            "New Billing Code",
+                            placeholder="e.g., 99211, 99212",
+                            key="coordinator_new_code",
+                        )
+
+                        if st.button("Update Billing Code", key="update_code_btn"):
+                            if not new_billing_code or new_billing_code.strip() == "":
+                                st.error("Please enter a billing code.")
+                            else:
+                                st.info(f"Would update {len(selected_rows)} row(s) with code: {new_billing_code}")
+                                st.session_state.coordinator_billing_editable_df = None
+                                # TODO: Implement actual update function
+
+                    with col2:
+                        st.markdown("#### Export Selected")
+                        if st.button("Export Selected Rows", key="export_selected_btn"):
+                            display_cols = [col for col in edited_df.columns if col != "☐ Select"]
+                            selected_data = selected_rows[display_cols]
+                            csv_data = export_to_csv(selected_data, "coordinator_billing_selected")
+                            st.download_button(
+                                label="Download Selected (CSV)",
+                                data=csv_data,
+                                file_name=f"coordinator_billing_selected_{year}_{month:02d}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                                mime="text/csv",
+                                key="download_selected",
+                            )
+                else:
+                    st.info("👆 Check the '☐ Select' column to select rows for actions")
+
+                # Export buttons for all/filtered data
+                st.markdown("---")
+                st.subheader("Export Options")
+                col1, col2, col3 = st.columns(3)
+
+                with col1:
+                    csv_data = export_to_csv(filtered_df, "coordinator_billing")
                     st.download_button(
-                        label="Download Pending Codes (CSV)",
-                        data=csv_pending,
-                        file_name=f"coordinator_billing_pending_{year}_{month:02d}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                        label="Download Filtered Data (CSV)",
+                        data=csv_data,
+                        file_name=f"coordinator_billing_{year}_{month:02d}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
                         mime="text/csv",
                     )
 
+                with col2:
+                    csv_all = export_to_csv(billing_df, "coordinator_billing_all")
+                    st.download_button(
+                        label="Download All Data (CSV)",
+                        data=csv_all,
+                        file_name=f"coordinator_billing_all_{year}_{month:02d}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                        mime="text/csv",
+                    )
+
+                with col3:
+                    pending_df = billing_df[billing_df["billing_code"] == "PENDING"]
+                    if not pending_df.empty:
+                        csv_pending = export_to_csv(
+                            pending_df, "coordinator_billing_pending"
+                        )
+                        st.download_button(
+                            label="Download Pending Codes (CSV)",
+                            data=csv_pending,
+                            file_name=f"coordinator_billing_pending_{year}_{month:02d}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                            mime="text/csv",
+                        )
+
+            else:
+                st.info("No billing data available for selected period")
+
+    with tab2:
+        st.markdown("### 📦 Bulk Download Multiple Months")
+        st.markdown("Select multiple months to download individual CSV files for each month.")
+
+        # Multi-select for months
+        selected_months_bulk = st.multiselect(
+            "Select Months to Download",
+            options=months,
+            format_func=lambda x: x["display"],
+            key="bulk_month_select",
+            help="Choose one or more months to download"
+        )
+
+        if selected_months_bulk:
+            st.success(f"✓ {len(selected_months_bulk)} month(s) selected")
+
+            st.markdown("---")
+            st.markdown("### Download Individual Files")
+
+            # Show a download button for each selected month
+            for month_data in selected_months_bulk:
+                year = month_data["year"]
+                month = month_data["month"]
+                month_name = calendar.month_name[month]
+
+                # Get the data for this month
+                billing_df = get_coordinator_billing_data(year, month)
+
+                if not billing_df.empty:
+                    col1, col2 = st.columns([3, 1])
+
+                    with col1:
+                        st.markdown(f"**{month_name} {year}**")
+                        st.caption(f"{len(billing_df)} patients • {billing_df['total_minutes'].sum():,.0f} total minutes")
+
+                    with col2:
+                        csv_data = export_to_csv(billing_df, f"coordinator_billing_{year}_{month:02d}")
+                        st.download_button(
+                            label=f"📥 Download",
+                            data=csv_data,
+                            file_name=f"coordinator_billing_{year}_{month:02d}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                            mime="text/csv",
+                            key=f"bulk_download_{year}_{month:02d}",
+                        )
+                else:
+                    st.info(f"No data available for {month_name} {year}")
+
+                st.markdown("---")
         else:
-            st.info("No billing data available for selected period")
+            st.info("👆 Select one or more months above to generate download buttons.")
 
 
 if __name__ == "__main__":
