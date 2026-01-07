@@ -47,6 +47,11 @@ if (-not $SkipDownload) {
         New-Item -ItemType Directory -Path $csvBackupPath | Out-Null
         Copy-Item "downloads/*" $csvBackupPath -Recurse -Force
         Write-Host "  [OK] CSV files backed up to $csvBackupPath`n" -ForegroundColor Green
+
+        # Clear downloads folder to ensure fresh files with current timestamps
+        Write-Host "  Clearing downloads folder for fresh data..." -ForegroundColor Gray
+        Remove-Item "downloads\*" -Recurse -Force
+        Write-Host "  [OK] Downloads folder cleared`n" -ForegroundColor Green
     }
 
     Write-Host "[2/5] Downloading fresh data from Google Sheets..." -ForegroundColor Yellow
