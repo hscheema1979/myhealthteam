@@ -398,7 +398,6 @@ def display_monthly_coordinator_billing_dashboard():
                 for month_data in selected_months_bulk:
                     year = month_data["year"]
                     month = month_data["month"]
-                    month_name = calendar.month_name[month]
 
                     # Get the data for this month
                     billing_df = get_coordinator_billing_data(year, month)
@@ -424,39 +423,6 @@ def display_monthly_coordinator_billing_dashboard():
                 )
             with col2:
                 st.caption(f"ZIP size: {len(zip_data) / 1024:.1f} KB")
-
-            st.markdown("---")
-            st.markdown("### Or Download Individual Files")
-
-            # Show a download button for each selected month
-            for month_data in selected_months_bulk:
-                year = month_data["year"]
-                month = month_data["month"]
-                month_name = calendar.month_name[month]
-
-                # Get the data for this month
-                billing_df = get_coordinator_billing_data(year, month)
-
-                if not billing_df.empty:
-                    col1, col2 = st.columns([3, 1])
-
-                    with col1:
-                        st.markdown(f"**{month_name} {year}**")
-                        st.caption(f"{len(billing_df)} patients • {billing_df['total_minutes'].sum():,.0f} total minutes")
-
-                    with col2:
-                        csv_data = export_to_csv(billing_df, f"coordinator_billing_{year}_{month:02d}")
-                        st.download_button(
-                            label=f"📥 Download",
-                            data=csv_data,
-                            file_name=f"coordinator_billing_{year}_{month:02d}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                            mime="text/csv",
-                            key=f"bulk_download_{year}_{month:02d}",
-                        )
-                else:
-                    st.info(f"No data available for {month_name} {year}")
-
-                st.markdown("---")
         else:
             st.info("👆 Select one or more months above to generate download buttons.")
 

@@ -924,47 +924,6 @@ def display_weekly_provider_billing_dashboard(user_id=None, user_role_ids=None):
                 )
             with col2:
                 st.caption(f"ZIP size: {len(zip_data) / 1024:.1f} KB")
-
-            st.markdown("---")
-            st.markdown("### Or Download Individual Files")
-
-            # Show a download button for each selected week
-            for week_data in selected_weeks_bulk:
-                billing_week = week_data["billing_week"]
-                week_start = week_data["week_start_date"]
-                week_end = week_data["week_end_date"]
-
-                # Get the data for this week
-                billing_df = get_provider_billing_data(billing_week=billing_week)
-
-                if not billing_df.empty:
-                    # Calculate summary stats
-                    total_tasks = len(billing_df)
-                    total_minutes = billing_df["minutes_of_service"].sum() if "minutes_of_service" in billing_df.columns else 0
-                    unique_providers = billing_df["provider_name"].nunique() if "provider_name" in billing_df.columns else 0
-
-                    col1, col2 = st.columns([3, 1])
-
-                    with col1:
-                        st.markdown(f"**Week {billing_week}**")
-                        st.caption(f"{week_start} to {week_end}")
-                        st.caption(f"{total_tasks} tasks • {total_minutes:,.0f} min • {unique_providers} providers")
-
-                    with col2:
-                        # Export for 3rd party biller
-                        export_df = export_for_3rd_party_biller(billing_df)
-                        csv_data = export_df.to_csv(index=False).encode("utf-8")
-                        st.download_button(
-                            label=f"📥 Download",
-                            data=csv_data,
-                            file_name=f"provider_billing_{billing_week}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                            mime="text/csv",
-                            key=f"bulk_download_{billing_week}",
-                        )
-                else:
-                    st.info(f"No data available for Week {billing_week} ({week_start} to {week_end})")
-
-                st.markdown("---")
         else:
             st.info("👆 Select one or more weeks above to generate download buttons.")
 
