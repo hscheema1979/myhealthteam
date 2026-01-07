@@ -4647,8 +4647,9 @@ def get_todays_tasks(user_id: int, role: str) -> list[dict]:
 
 def submit_daily_tasks(user_id: int, role: str) -> bool:
     """
-    Updates all today's tasks for user to 'submitted' status
-    Returns True if successful
+    Marks today's tasks as submitted (kept as 'pending' status to allow future edits).
+    Returns True if successful.
+    Note: Status remains 'pending' indefinitely so coordinators can always edit their tasks.
     """
     import pytz
     from zoneinfo import ZoneInfo
@@ -4676,10 +4677,11 @@ def submit_daily_tasks(user_id: int, role: str) -> bool:
         else:
             return False
 
-        # Update all pending tasks for today to 'submitted'
+        # Set status to 'pending' (not 'submitted') so tasks remain editable
+        # Also update the timestamp to record when the "submit" action was taken
         query = f"""
             UPDATE {table_name}
-            SET submission_status = 'submitted',
+            SET submission_status = 'pending',
                 imported_at = CURRENT_TIMESTAMP
             WHERE {user_field} = ?
             AND date(task_date) = date(?)

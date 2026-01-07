@@ -3389,71 +3389,110 @@ def show_daily_task_log(user_id, role="provider"):
 
         display_df = tasks_df.rename(columns=column_mapping)
 
+        # Add task_id column for tracking edits
+        if "provider_task_id" in display_df.columns:
+            display_df["_task_id"] = display_df["provider_task_id"]
+        elif "coordinator_task_id" in display_df.columns:
+            display_df["_task_id"] = display_df["coordinator_task_id"]
+        else:
+            display_df["_task_id"] = None
+
         # Format time column
         if "Time" in display_df.columns:
             display_df["Time"] = pd.to_datetime(display_df["Time"]).dt.strftime("%H:%M")
 
-        # Show editable table
+        # Show editable table - always editable to allow corrections
         st.markdown("#### Today's Tasks")
         st.markdown("*Edit minutes, task type, or notes if corrections are needed*")
 
-        # Check if tasks are already submitted
-        is_submitted = (
-            tasks_df["submission_status"].iloc[0] == "submitted"
-            if "submission_status" in tasks_df.columns and not tasks_df.empty
-            else False
+        # Show editable table with hidden _task_id column for tracking
+        editable_columns = display_columns + ["_task_id"]
+        edited_df = st.data_editor(
+            display_df[editable_columns],
+            use_container_width=True,
+            hide_index=True,
+            key=f"daily_tasks_{user_id}_{role}",
+            num_rows="fixed",
+            disabled=["_task_id"],  # Disable only the _task_id column, not the entire table
         )
 
-        if is_submitted:
-            st.info("📋 Today's tasks have been submitted and are read-only.")
-            # Show read-only table
-            st.dataframe(
-                display_df[display_columns], use_container_width=True, hide_index=True
-            )
-        else:
-            # Show editable table
-            edited_df = st.data_editor(
-                display_df[display_columns],
-                use_container_width=True,
-                hide_index=True,
-                key=f"daily_tasks_{user_id}_{role}",
-                num_rows="fixed",
-            )
+        # Handle edits using database.update_task_details function
+        if edited_df is not None and not edited_df.equals(
+            display_df[editable_columns]
+        ):
+            # Save each changed row using update_task_details function
+            updates_count = 0
+            for idx, edited_row in edited_df.iterrows():
+                original_row = display_df[editable_columns].iloc[idx]
 
-            # Handle edits
-            if edited_df is not None and not edited_df.equals(
-                display_df[display_columns]
-            ):
-                st.info("💾 Changes saved automatically.")
+                # Get task_id from the hidden column
+                task_id = original_row["_task_id"]
 
-            # Submit button
-            st.markdown("---")
-            col1, col2, col3 = st.columns([1, 2, 1])
+                # Skip if no task_id or it's NaN
+                if pd.isna(task_id):
+                    continue
 
-            with col2:
-                if st.button("📤 Submit Day", type="primary", use_container_width=True):
-                    # Show confirmation dialog
-                    confirm_submit = st.checkbox(
-                        "I confirm that today's task log is accurate and complete.",
-                        key=f"confirm_submit_{user_id}",
-                    )
+                # Build updates dict with changed fields
+                updates = {}
 
-                    if confirm_submit:
-                        # Submit the day's tasks
-                        success = database.submit_daily_tasks(user_id, role)
-                        if success:
-                            st.success(
-                                "✅ Daily task log submitted successfully! Today's entries are now read-only."
-                            )
-                            st.balloons()
-                            time.sleep(2)  # Give user time to see success message
-                            st.rerun()  # Refresh to show read-only state
-                        else:
-                            st.error(
-                                "❌ Failed to submit daily tasks. Please try again."
-                            )
+                # Check minutes_spent
+                if "Minutes Spent" in edited_df.columns:
+                    orig_min = original_row["Minutes Spent"]
+                    edited_min = edited_row["Minutes Spent"]
+                    if pd.notna(edited_min) and str(edited_min) != str(orig_min):
+                        updates["duration_minutes"] = edited_min
+
+                # Check task_type
+                if "Task Type" in edited_df.columns:
+                    orig_type = original_row["Task Type"]
+                    edited_type = edited_row["Task Type"]
+                    if pd.notna(edited_type) and str(edited_type) != str(orig_type):
+                        updates["task_type"] = edited_type
+
+                # Check notes
+                if "Notes" in edited_df.columns:
+                    orig_notes = original_row["Notes"]
+                    edited_notes = edited_row["Notes"]
+                    if pd.notna(edited_notes) and str(edited_notes) != str(orig_notes):
+                        updates["notes"] = edited_notes
+
+                # Apply update if there are changes
+                if updates:
+                    success = database.update_task_details(task_id, role, updates)
+                    if success:
+                        updates_count += 1
+
+            if updates_count > 0:
+                st.success(f"✅ Saved {updates_count} task updates to database!")
+            else:
+                st.info("💾 No changes detected.")
+
+        # Submit button
+        st.markdown("---")
+        col1, col2, col3 = st.columns([1, 2, 1])
+
+        with col2:
+            if st.button("📤 Submit Day", type="primary", use_container_width=True):
+                # Show confirmation dialog
+                confirm_submit = st.checkbox(
+                    "I confirm that today's task log is accurate and complete.",
+                    key=f"confirm_submit_{user_id}",
+                )
+
+                if confirm_submit:
+                    # Submit the day's tasks
+                    success = database.submit_daily_tasks(user_id, role)
+                    if success:
+                        st.success(
+                            "✅ Daily task log submitted successfully!"
+                        )
+                        st.balloons()
+                        time.sleep(2)  # Give user time to see success message
+                        st.rerun()
                     else:
-                        st.warning(
+                        st.error("❌ Failed to submit daily tasks. Please try again.")
+                else:
+                    st.warning(
                             "Please confirm submission by checking the box above."
                         )
 

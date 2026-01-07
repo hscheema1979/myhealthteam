@@ -1900,212 +1900,98 @@ def show_daily_task_log(user_id, role="coordinator"):
         if "Time" in display_df.columns:
             display_df["Time"] = pd.to_datetime(display_df["Time"]).dt.strftime("%H:%M")
 
-        # Show editable table
+        # Show editable table - always editable to allow corrections
         st.markdown("#### Today's Tasks")
         st.markdown("*Edit minutes, task type, or notes if corrections are needed*")
 
-        # Check if tasks are already submitted
-        is_submitted = (
-            tasks_df["submission_status"].iloc[0] == "submitted"
-            if "submission_status" in tasks_df.columns and not tasks_df.empty
-            else False
+        # Show editable table with hidden _task_id column for tracking
+        editable_columns = display_columns + ["_task_id"]
+        edited_df = st.data_editor(
+            display_df[editable_columns],
+            use_container_width=True,
+            hide_index=True,
+            key=f"daily_tasks_{user_id}_{role}",
+            num_rows="fixed",
+            disabled=["_task_id"],  # Disable only the _task_id column, not the entire table
         )
 
-        if is_submitted:
-            st.info("📋 Today's tasks have been submitted and are read-only.")
-            # Show read-only table
-            st.dataframe(
-                display_df[display_columns], use_container_width=True, hide_index=True
-            )
-        else:
-            # Show editable table with hidden _task_id column for tracking
-            editable_columns = display_columns + ["_task_id"]
-            edited_df = st.data_editor(
-                display_df[editable_columns],
-                use_container_width=True,
-                hide_index=True,
-                key=f"daily_tasks_{user_id}_{role}",
-                num_rows="fixed",
-                disabled=True,  # Hide the _task_id column from user editing
-            )
+        # Handle edits using database.update_task_details function
+        if edited_df is not None and not edited_df.equals(
+            display_df[editable_columns]
+        ):
+            # Save each changed row using update_task_details function
+            updates_count = 0
+            for idx, edited_row in edited_df.iterrows():
+                original_row = display_df[editable_columns].iloc[idx]
 
-            # Handle edits using database.update_task_details function
-            if edited_df is not None and not edited_df.equals(
-                display_df[editable_columns]
-            ):
-                # Save each changed row using update_task_details function
-                updates_count = 0
-                for idx, edited_row in edited_df.iterrows():
-                    original_row = display_df[editable_columns].iloc[idx]
-                    
-                    # Get task_id from the hidden column
-                    task_id = original_row["_task_id"]
-                    
-                    # Skip if no task_id or it's NaN
-                    if pd.isna(task_id):
-                        continue
-                    
-                    # Build updates dict with changed fields
-                    updates = {}
-                    
-                    # Check minutes_spent
-                    if "Minutes Spent" in edited_df.columns:
-                        orig_min = original_row["Minutes Spent"]
-                        edited_min = edited_row["Minutes Spent"]
-                        if pd.notna(edited_min) and str(edited_min) != str(orig_min):
-                            updates["duration_minutes"] = edited_min
-                    
-                    # Check task_type
-                    if "Task Type" in edited_df.columns:
-                        orig_type = original_row["Task Type"]
-                        edited_type = edited_row["Task Type"]
-                        if pd.notna(edited_type) and str(edited_type) != str(orig_type):
-                            updates["task_type"] = edited_type
-                    
-                    # Check notes
-                    if "Notes" in edited_df.columns:
-                        orig_notes = original_row["Notes"]
-                        edited_notes = edited_row["Notes"]
-                        if pd.notna(edited_notes) and str(edited_notes) != str(orig_notes):
-                            updates["notes"] = edited_notes
-                    
-                    # Apply update if there are changes
-                    if updates:
-                        success = database.update_task_details(task_id, role, updates)
-                        if success:
-                            updates_count += 1
-                
-                if updates_count > 0:
-                    st.success(f"✅ Saved {updates_count} task updates to database!")
-                else:
-                    st.info("💾 No changes detected.")
-                # Save changes to database
-                try:
-                    import pandas as pd
-                    
-                    # Get the table name for this role
-                    from src.database import get_db_connection, ensure_monthly_coordinator_tasks_table
-                    
-                    conn = get_db_connection()
-                    table_name = ensure_monthly_coordinator_tasks_table(conn=conn)
-                    
-                    # Get row ID field for this table
-                    id_field = "coordinator_task_id" if role == "coordinator" else "provider_task_id"
-                    
-                    # Find changed rows and update them
-                    updates_count = 0
-                    for idx, edited_row in edited_df.iterrows():
-                        # Try to match original row by key fields
-                        # Use task_date, patient_id, task_type as composite key
-                        original_row = display_df[display_columns].iloc[idx]
-                        
-                        # Check if anything actually changed
-                        changed = False
-                        update_fields = []
-                        update_params = []
-                        
-                        # Check duration_minutes
-                        if "Minutes Spent" in edited_df.columns and "Minutes Spent" in display_df.columns:
-                            orig_min = original_row["Minutes Spent"]
-                            edited_min = edited_row["Minutes Spent"]
-                            if pd.notna(edited_min) and str(edited_min) != str(orig_min):
-                                update_fields.append("duration_minutes = ?")
-                                update_params.append(edited_min)
-                                changed = True
-                        
-                        # Check task_type
-                        if "Task Type" in edited_df.columns and "Task Type" in display_df.columns:
-                            orig_type = original_row["Task Type"]
-                            edited_type = edited_row["Task Type"]
-                            if pd.notna(edited_type) and str(edited_type) != str(orig_type):
-                                update_fields.append("task_type = ?")
-                                update_params.append(edited_type)
-                                changed = True
-                        
-                        # Check notes
-                        if "Notes" in edited_df.columns and "Notes" in display_df.columns:
-                            orig_notes = original_row["Notes"]
-                            edited_notes = edited_row["Notes"]
-                            if pd.notna(edited_notes) and str(edited_notes) != str(orig_notes):
-                                update_fields.append("notes = ?")
-                                update_params.append(edited_notes)
-                                changed = True
-                        
-                        if changed:
-                            # Build WHERE clause from original values
-                            where_conditions = []
-                            where_params = []
-                            
-                            if "Time" in original_row and pd.notna(original_row["Time"]):
-                                where_conditions.append("task_date = ?")
-                                where_params.append(original_row["Time"])
-                            
-                            if "Patient ID / Name" in original_row and pd.notna(original_row["Patient ID / Name"]):
-                                where_conditions.append("patient_id = ?")
-                                where_params.append(str(original_row["Patient ID / Name"]))
-                            
-                            # Use original task_type if present
-                            if "Task Type" in original_row and pd.notna(original_row["Task Type"]):
-                                where_conditions.append("task_type = ?")
-                                where_params.append(original_row["Task Type"])
-                            
-                            if where_conditions:
-                                # Add coordinator_id to WHERE clause
-                                where_conditions.append(f"{user_field} = ?")
-                                where_params.append(user_id)
-                                
-                                # Build and execute UPDATE query
-                                all_params = update_params + where_params
-                                query = f"""
-                                    UPDATE {table_name}
-                                    SET {', '.join(update_fields)}, imported_at = CURRENT_TIMESTAMP
-                                    WHERE {' AND '.join(where_conditions)}
-                                """
-                                conn.execute(query, tuple(all_params))
-                                updates_count += 1
-                    
-                    if updates_count > 0:
-                        conn.commit()
-                        st.success(f"✅ Saved {updates_count} task updates to database!")
-                    else:
-                        st.info("💾 No changes detected.")
-                        
-                    conn.close()
-                    
-                except Exception as e:
-                    st.error(f"❌ Error saving changes: {e}")
-                    print(f"Error saving task edits: {e}")
+                # Get task_id from the hidden column
+                task_id = original_row["_task_id"]
 
-            # Submit button
-            st.markdown("---")
-            col1, col2, col3 = st.columns([1, 2, 1])
+                # Skip if no task_id or it's NaN
+                if pd.isna(task_id):
+                    continue
 
-            with col2:
-                if st.button("📤 Submit Day", type="primary", use_container_width=True):
-                    # Show confirmation dialog
-                    confirm_submit = st.checkbox(
-                        "I confirm that today's task log is accurate and complete.",
-                        key=f"confirm_submit_{user_id}",
-                    )
+                # Build updates dict with changed fields
+                updates = {}
 
-                    if confirm_submit:
-                        # Submit the day's tasks
-                        success = database.submit_daily_tasks(user_id, role)
-                        if success:
-                            st.success(
-                                "✅ Daily task log submitted successfully! Today's entries are now read-only."
-                            )
-                            st.balloons()
-                            time.sleep(2)  # Give user time to see success message
-                            st.rerun()  # Refresh to show read-only state
-                        else:
-                            st.error(
-                                "❌ Failed to submit daily tasks. Please try again."
-                            )
-                    else:
-                        st.warning(
-                            "Please confirm submission by checking the box above."
+                # Check minutes_spent
+                if "Minutes Spent" in edited_df.columns:
+                    orig_min = original_row["Minutes Spent"]
+                    edited_min = edited_row["Minutes Spent"]
+                    if pd.notna(edited_min) and str(edited_min) != str(orig_min):
+                        updates["duration_minutes"] = edited_min
+
+                # Check task_type
+                if "Task Type" in edited_df.columns:
+                    orig_type = original_row["Task Type"]
+                    edited_type = edited_row["Task Type"]
+                    if pd.notna(edited_type) and str(edited_type) != str(orig_type):
+                        updates["task_type"] = edited_type
+
+                # Check notes
+                if "Notes" in edited_df.columns:
+                    orig_notes = original_row["Notes"]
+                    edited_notes = edited_row["Notes"]
+                    if pd.notna(edited_notes) and str(edited_notes) != str(orig_notes):
+                        updates["notes"] = edited_notes
+
+                # Apply update if there are changes
+                if updates:
+                    success = database.update_task_details(task_id, role, updates)
+                    if success:
+                        updates_count += 1
+
+            if updates_count > 0:
+                st.success(f"✅ Saved {updates_count} task updates to database!")
+            else:
+                st.info("💾 No changes detected.")
+
+        # Submit button
+        st.markdown("---")
+        col1, col2, col3 = st.columns([1, 2, 1])
+
+        with col2:
+            if st.button("📤 Submit Day", type="primary", use_container_width=True):
+                # Show confirmation dialog
+                confirm_submit = st.checkbox(
+                    "I confirm that today's task log is accurate and complete.",
+                    key=f"confirm_submit_{user_id}",
+                )
+
+                if confirm_submit:
+                    # Submit the day's tasks
+                    success = database.submit_daily_tasks(user_id, role)
+                    if success:
+                        st.success(
+                            "✅ Daily task log submitted successfully!"
                         )
+                        st.balloons()
+                        time.sleep(2)  # Give user time to see success message
+                        st.rerun()
+                    else:
+                        st.error("❌ Failed to submit daily tasks. Please try again.")
+                else:
+                    st.warning("Please confirm submission by checking the box above.")
 
     except Exception as e:
         st.error(f"Error loading daily task log: {e}")
