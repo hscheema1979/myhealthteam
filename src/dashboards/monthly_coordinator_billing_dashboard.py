@@ -6,6 +6,8 @@ Aggregates coordinator minutes by patient with billing code assignment
 import calendar
 import sqlite3
 from datetime import datetime
+import zipfile
+import io
 
 import pandas as pd
 import streamlit as st
@@ -384,8 +386,47 @@ def display_monthly_coordinator_billing_dashboard():
         if selected_months_bulk:
             st.success(f"✓ {len(selected_months_bulk)} month(s) selected")
 
+            # Create ZIP file for all selected months
             st.markdown("---")
-            st.markdown("### Download Individual Files")
+            st.markdown("### Download All as ZIP")
+
+            # Create in-memory ZIP file
+            zip_buffer = io.BytesIO()
+            total_files = 0
+
+            with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+                for month_data in selected_months_bulk:
+                    year = month_data["year"]
+                    month = month_data["month"]
+                    month_name = calendar.month_name[month]
+
+                    # Get the data for this month
+                    billing_df = get_coordinator_billing_data(year, month)
+
+                    if not billing_df.empty:
+                        csv_data = billing_df.to_csv(index=False).encode('utf-8')
+                        filename = f"coordinator_billing_{year}_{month:02d}.csv"
+                        zip_file.writestr(filename, csv_data)
+                        total_files += 1
+
+            zip_buffer.seek(0)
+            zip_data = zip_buffer.getvalue()
+
+            # Download ZIP button
+            col1, col2 = st.columns([2, 1])
+            with col1:
+                st.download_button(
+                    label=f"📦 Download All {total_files} File(s) as ZIP",
+                    data=zip_data,
+                    file_name=f"coordinator_billing_bulk_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip",
+                    mime="application/zip",
+                    key="bulk_download_zip",
+                )
+            with col2:
+                st.caption(f"ZIP size: {len(zip_data) / 1024:.1f} KB")
+
+            st.markdown("---")
+            st.markdown("### Or Download Individual Files")
 
             # Show a download button for each selected month
             for month_data in selected_months_bulk:

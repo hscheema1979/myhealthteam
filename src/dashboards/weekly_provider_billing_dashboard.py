@@ -8,6 +8,8 @@ Only accessible to Harpreet (Admin) and Justin (Superuser) for marking as billed
 
 import calendar
 from datetime import datetime, timedelta
+import zipfile
+import io
 
 import pandas as pd
 import streamlit as st
@@ -884,8 +886,47 @@ def display_weekly_provider_billing_dashboard(user_id=None, user_role_ids=None):
         if selected_weeks_bulk:
             st.success(f"✓ {len(selected_weeks_bulk)} week(s) selected")
 
+            # Create ZIP file for all selected weeks
             st.markdown("---")
-            st.markdown("### Download Individual Files")
+            st.markdown("### Download All as ZIP")
+
+            # Create in-memory ZIP file
+            zip_buffer = io.BytesIO()
+            total_files = 0
+
+            with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+                for week_data in selected_weeks_bulk:
+                    billing_week = week_data["billing_week"]
+
+                    # Get the data for this week
+                    billing_df = get_provider_billing_data(billing_week=billing_week)
+
+                    if not billing_df.empty:
+                        # Export for 3rd party biller
+                        export_df = export_for_3rd_party_biller(billing_df)
+                        csv_data = export_df.to_csv(index=False).encode('utf-8')
+                        filename = f"provider_billing_{billing_week}.csv"
+                        zip_file.writestr(filename, csv_data)
+                        total_files += 1
+
+            zip_buffer.seek(0)
+            zip_data = zip_buffer.getvalue()
+
+            # Download ZIP button
+            col1, col2 = st.columns([2, 1])
+            with col1:
+                st.download_button(
+                    label=f"📦 Download All {total_files} File(s) as ZIP",
+                    data=zip_data,
+                    file_name=f"provider_billing_bulk_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip",
+                    mime="application/zip",
+                    key="bulk_download_weekly_zip",
+                )
+            with col2:
+                st.caption(f"ZIP size: {len(zip_data) / 1024:.1f} KB")
+
+            st.markdown("---")
+            st.markdown("### Or Download Individual Files")
 
             # Show a download button for each selected week
             for week_data in selected_weeks_bulk:
