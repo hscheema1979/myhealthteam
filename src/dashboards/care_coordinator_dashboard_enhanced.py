@@ -1963,6 +1963,7 @@ def show_daily_task_log(user_id, role="coordinator"):
 
             if updates_count > 0:
                 st.success(f"✅ Saved {updates_count} task updates to database!")
+                st.rerun()  # Refresh table to show updated data
             else:
                 st.info("💾 No changes detected.")
 
