@@ -369,6 +369,27 @@ def process_psl(file_path, conn, provider_map, id_to_name):
             if not pat_name:
                 continue
 
+            # FIXED: Normalize patient_id to match patients table format (LAST FIRST DOB)
+            # This prevents duplicates when CSVs have different formats
+            # Try to get the DOB from the patient string or look up in patients table
+            pat_upper = pat_name.upper()
+
+            # If patient_id doesn't have DOB format (no XX/XX/XXXX), try to find it in patients table
+            if '/' not in pat_name:
+                # Look up patient in patients table to get proper format
+                # The patients table stores: patient_id = "LAST FIRST DOB"
+                # Try matching by name parts
+                name_parts = pat_upper.split()
+                if len(name_parts) >= 2:
+                    # Try to find matching patient
+                    lookup = conn.execute(
+                        "SELECT patient_id FROM patients WHERE UPPER(last_name || ' ' || first_name) = ?",
+                        (' '.join(name_parts[:2]),)
+                    ).fetchone()
+                    if lookup:
+                        pat_name = lookup[0]  # Use the properly formatted patient_id with DOB
+                        log_print(f"    Normalized patient_id: '{row.get('Patient Last, First DOB')}' -> '{pat_name}'")
+
             provider_name = id_to_name.get(p_id, p_code)
 
             # Process minutes from range format (e.g., "40-49" → 40)
