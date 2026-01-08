@@ -430,50 +430,56 @@ class AuthenticationManager:
     
     def get_primary_dashboard_role(self) -> Optional[int]:
         """
-        Get the primary dashboard role for the user based on role precedence
-        
-        Role precedence: Case Manager (40) > Lead Coordinator (37) > Admin (34) > Provider (33) > Coordinator (36) > Onboarding (35) > Data Entry (39)
-        
+        Get the primary dashboard role for the user based on is_primary column in database
+
         Special cases:
-        - Justin (Admin + Provider): Admin dashboard by default with provider switch option
         - Jan (Case Manager primary): CM dashboard with full management tabs
         - Jose (Lead Coordinator primary): LC dashboard with full management tabs
-        
+
         Returns:
             Primary role ID or None if no recognized role
         """
+        user_id = self.get_user_id()
+        if not user_id:
+            return None
+
+        # Get primary role from database (is_primary = 1)
+        from src.database import get_db_connection
+        conn = get_db_connection()
+        try:
+            result = conn.execute(
+                "SELECT role_id FROM user_roles WHERE user_id = ? AND is_primary = 1",
+                (user_id,)
+            ).fetchone()
+            if result and result[0]:
+                return result[0]
+        finally:
+            conn.close()
+
+        # Fallback: Check for specific user overrides
         user_roles = self.get_user_roles()
-        
-        # Check for specific user overrides first
         current_user = self.get_current_user()
         if current_user:
             full_name = (current_user.get('full_name') or '').lower()
             username = (current_user.get('username') or '').lower()
-            
-            # Justin should default to Admin dashboard
-            if 'justin' in full_name or 'justin' in username:
-                if 34 in user_roles:  # Admin role
-                    return 34
-                
-                # If no admin role, fall through to general precedence
-            
+
             # Jan should use Case Manager dashboard (keep current setup)
-            elif 'jan' in full_name or 'jan' in username:
+            if 'jan' in full_name or 'jan' in username:
                 if 40 in user_roles:  # Case Manager role
                     return 40
-            
+
             # Jose should use Lead Coordinator dashboard (keep current setup)
             elif 'jose' in full_name or 'jose' in username:
                 if 37 in user_roles:  # Lead Coordinator role
                     return 37
-        
-        # Define general role precedence (higher priority first)
+
+        # Final fallback: Use role precedence
         role_precedence = [40, 37, 34, 33, 36, 35, 39]  # Case Manager, Lead Coordinator, Admin, Provider, Coordinator, Onboarding, Data Entry
-        
+
         for role_id in role_precedence:
             if role_id in user_roles:
                 return role_id
-        
+
         return None
     
     def get_user_by_email_simple(self, email: str) -> Optional[Dict[str, Any]]:
