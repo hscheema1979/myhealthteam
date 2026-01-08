@@ -204,52 +204,56 @@ def show(user_id):
                 st.markdown("**Edit tasks below and click Save Changes to update**")
 
                 # Store original values BEFORE data_editor for comparison
-                # Use a key that includes date but NOT any session-specific parts
                 original_key = f"original_coord_data_{user_id}_{display_period}"
 
                 if original_key not in st.session_state:
                     # First time loading this date - store the original data from DB
                     st.session_state[original_key] = tasks_df[['Task ID', 'Patient Name', 'DOS', 'Duration', 'Service Type', 'Notes']].copy()
 
-                # Use simple column config without disabled - let data_editor handle editability
+                # Use data_editor WITH a key to preserve edits
+                editor_key = f"coord_editor_{user_id}_{display_period}"
                 edited_df = st.data_editor(
                     tasks_df[['Patient Name', 'DOS', 'Duration', 'Service Type', 'Notes']],
                     use_container_width=True,
                     hide_index=True,
-                    key=f"coordinator_task_editor_{user_id}_{display_period}",
+                    key=editor_key,
                     num_rows="fixed"
                 )
-                
+
                 # Save button
                 if st.button("💾 Save Changes", type="primary", key=f"save_coord_tasks_{user_id}_{display_period}"):
                     try:
+                        # Create aligned copies for proper row matching
+                        original_with_idx = st.session_state[original_key].reset_index(drop=True)
+                        edited_with_idx = edited_df.reset_index(drop=True)
+
                         # Update database with edited values
                         conn_update = database.get_db_connection()
                         updates_made = 0
 
-                        for i, (idx, row) in enumerate(edited_df.iterrows()):
-                            orig_row = st.session_state[original_key].iloc[i]
-                            task_id = orig_row['Task ID']  # Get the unique task ID
+                        for i in range(len(edited_with_idx)):
+                            orig_row = original_with_idx.iloc[i]
+                            edited_row = edited_with_idx.iloc[i]
+                            task_id = int(orig_row['Task ID'])  # Convert to int to avoid numpy type issues
 
-                            # Check if any editable fields changed - use safer comparison
-                            duration_changed = pd.notna(row['Duration']) and pd.notna(orig_row['Duration']) and int(row['Duration']) != int(orig_row['Duration'])
-                            type_changed = str(row['Service Type']) != str(orig_row['Service Type'])
-                            notes_changed = str(row['Notes']) != str(orig_row['Notes'])
+                            # Check if any editable fields changed
+                            duration_changed = pd.notna(edited_row['Duration']) and pd.notna(orig_row['Duration']) and int(edited_row['Duration']) != int(orig_row['Duration'])
+                            type_changed = str(edited_row['Service Type']) != str(orig_row['Service Type'])
+                            notes_changed = str(edited_row['Notes']) != str(orig_row['Notes'])
 
                             if duration_changed or type_changed or notes_changed:
-                                # Update the database using unique task ID
+                                # Use inline values for task_id to avoid numpy parameter binding issues
+                                new_duration = int(edited_row['Duration']) if pd.notna(edited_row['Duration']) else 0
+                                new_type = str(edited_row['Service Type']) if pd.notna(edited_row['Service Type']) else ""
+                                new_notes = str(edited_row['Notes']) if pd.notna(edited_row['Notes']) else ""
+
                                 conn_update.execute(f"""
                                     UPDATE {table_name}
-                                    SET duration_minutes = ?,
-                                        task_type = ?,
-                                        notes = ?
-                                    WHERE coordinator_task_id = ?
-                                """, (
-                                    int(row['Duration']) if pd.notna(row['Duration']) else 0,
-                                    str(row['Service Type']),
-                                    str(row['Notes']),
-                                    task_id
-                                ))
+                                    SET duration_minutes = {new_duration},
+                                        task_type = {repr(new_type)},
+                                        notes = {repr(new_notes)}
+                                    WHERE coordinator_task_id = {task_id}
+                                """)
                                 updates_made += 1
 
                         conn_update.commit()
@@ -257,8 +261,10 @@ def show(user_id):
 
                         if updates_made > 0:
                             st.success(f"✅ Saved {updates_made} task update(s)!")
-                            # Clear original state so it gets reloaded from DB on next rerun
+                            # Clear both original AND editor state so fresh data loads
                             del st.session_state[original_key]
+                            if editor_key in st.session_state:
+                                del st.session_state[editor_key]
                             st.rerun()
                         else:
                             st.info("No changes detected.")

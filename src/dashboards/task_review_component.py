@@ -75,7 +75,9 @@ def show(user_id):
                     provider_task_id,
                     patient_name,
                     task_date,
-                    task_description
+                    minutes_of_service,
+                    task_description,
+                    notes
                 FROM {table_name}
                 WHERE provider_id = ? AND date(task_date) = date(?)
                 ORDER BY task_date DESC
@@ -86,8 +88,10 @@ def show(user_id):
                     tasks_df = tasks_df.rename(columns={
                         'provider_task_id': 'Task ID',
                         'patient_name': 'Patient Name',
-                        'task_date': 'Date',
-                        'task_description': 'Location of Visit'
+                        'task_date': 'DOS',
+                        'minutes_of_service': 'Duration',
+                        'task_description': 'Service Type',
+                        'notes': 'Notes'
                     })
             else:
                 pass # Table doesn't exist for this date
@@ -125,20 +129,24 @@ def show(user_id):
                     SELECT
                         patient_name,
                         task_date,
-                        task_description
+                        minutes_of_service,
+                        task_description,
+                        notes
                     FROM {t_name}
                     WHERE provider_id = ? AND date(task_date) BETWEEN date(?) AND date(?)
                     ORDER BY task_date DESC
                     """
                     rows = conn.execute(query, (user_id, start_week, end_week)).fetchall()
                     all_rows.extend([dict(r) for r in rows])
-
+                
                 if all_rows:
                     tasks_df = pd.DataFrame(all_rows)
                     tasks_df = tasks_df.rename(columns={
                         'patient_name': 'Patient Name',
-                        'task_date': 'Date',
-                        'task_description': 'Location of Visit'
+                        'task_date': 'DOS',
+                        'minutes_of_service': 'Duration',
+                        'task_description': 'Service Type',
+                        'notes': 'Notes'
                     })
 
         elif view_type == "Monthly":
@@ -159,7 +167,9 @@ def show(user_id):
                 SELECT
                     patient_name,
                     task_date,
-                    task_description
+                    minutes_of_service,
+                    task_description,
+                    notes
                 FROM {table_name}
                 WHERE provider_id = ?
                 ORDER BY task_date DESC
@@ -169,33 +179,109 @@ def show(user_id):
                     tasks_df = pd.DataFrame([dict(r) for r in rows])
                     tasks_df = tasks_df.rename(columns={
                         'patient_name': 'Patient Name',
-                        'task_date': 'Date',
-                        'task_description': 'Location of Visit'
+                        'task_date': 'DOS',
+                        'minutes_of_service': 'Duration',
+                        'task_description': 'Service Type',
+                        'notes': 'Notes'
                     })
 
         # --- Display Results ---
         if not tasks_df.empty:
-            # Format Date
-            if 'Date' in tasks_df.columns:
-                tasks_df['Date'] = pd.to_datetime(tasks_df['Date']).dt.strftime('%Y-%m-%d')
+            # Format DOS
+            if 'DOS' in tasks_df.columns:
+                tasks_df['DOS'] = pd.to_datetime(tasks_df['DOS']).dt.strftime('%Y-%m-%d')
 
             # Metrics
             total_tasks = len(tasks_df)
-            st.metric("Total Tasks", total_tasks)
+            total_duration = tasks_df['Duration'].sum() if 'Duration' in tasks_df.columns else 0
+            
+            m1, m2 = st.columns(2)
+            m1.metric("Total Tasks", total_tasks)
+            m2.metric("Total Duration", f"{total_duration} mins")
 
-            # --- Daily View: Simplified read-only display ---
+            # --- Daily View: Editable ---
             if view_type == "Daily":
-                st.dataframe(
-                    tasks_df[['Patient Name', 'Date', 'Location of Visit']],
+                st.markdown("**Edit tasks below and click Save Changes to update**")
+
+                # Store original values BEFORE data_editor for comparison
+                original_key = f"original_provider_data_{user_id}_{display_period}"
+
+                if original_key not in st.session_state:
+                    # First time loading this date - store the original data from DB
+                    st.session_state[original_key] = tasks_df[['Task ID', 'Patient Name', 'DOS', 'Duration', 'Service Type', 'Notes']].copy()
+
+                # Use data_editor WITH a key to preserve edits
+                editor_key = f"provider_task_editor_{user_id}_{display_period}"
+                edited_df = st.data_editor(
+                    tasks_df[['Patient Name', 'DOS', 'Duration', 'Service Type', 'Notes']],
                     use_container_width=True,
                     hide_index=True,
-                    column_config={
-                        "Patient Name": st.column_config.TextColumn("Patient Name", width="large"),
-                        "Date": st.column_config.TextColumn("Date", width="small"),
-                        "Location of Visit": st.column_config.TextColumn("Location of Visit", width="large"),
-                    }
+                    key=editor_key,
+                    num_rows="fixed"
                 )
 
+                # Save button
+                if st.button("💾 Save Changes", type="primary", key=f"save_tasks_{user_id}_{display_period}"):
+                    try:
+                        # Create aligned copies for proper row matching
+                        original_with_idx = st.session_state[original_key].reset_index(drop=True)
+                        edited_with_idx = edited_df.reset_index(drop=True)
+
+                        # Update database with edited values
+                        conn_update = database.get_db_connection()
+                        updates_made = 0
+
+                        for i in range(len(edited_with_idx)):
+                            orig_row = original_with_idx.iloc[i]
+                            edited_row = edited_with_idx.iloc[i]
+                            task_id = int(orig_row['Task ID'])  # Convert to int to avoid numpy type issues
+
+                            # Check if any editable fields changed
+                            duration_changed = pd.notna(edited_row['Duration']) and pd.notna(orig_row['Duration']) and int(edited_row['Duration']) != int(orig_row['Duration'])
+                            type_changed = str(edited_row['Service Type']) != str(orig_row['Service Type'])
+                            notes_changed = str(edited_row['Notes']) != str(orig_row['Notes'])
+
+                            if duration_changed or type_changed or notes_changed:
+                                # Use inline values for task_id to avoid numpy parameter binding issues
+                                new_duration = int(edited_row['Duration']) if pd.notna(edited_row['Duration']) else 0
+                                new_type = str(edited_row['Service Type']) if pd.notna(edited_row['Service Type']) else ""
+                                new_notes = str(edited_row['Notes']) if pd.notna(edited_row['Notes']) else ""
+
+                                conn_update.execute(f"""
+                                    UPDATE {table_name}
+                                    SET minutes_of_service = {new_duration},
+                                        task_description = {repr(new_type)},
+                                        notes = {repr(new_notes)}
+                                    WHERE provider_task_id = {task_id}
+                                """)
+                                updates_made += 1
+
+                        conn_update.commit()
+                        conn_update.close()
+
+                        if updates_made > 0:
+                            st.success(f"✅ Saved {updates_made} task update(s)!")
+                            # Recalculate the provider_monthly_summary to reflect the changes
+                            from datetime import datetime
+                            selected_date_obj = datetime.strptime(display_period, '%Y-%m-%d')
+                            recalc_success, recalc_msg, recalc_count = database.recalculate_provider_monthly_summary(
+                                selected_date_obj.year, selected_date_obj.month, user_id
+                            )
+                            if recalc_success:
+                                st.info(f"📊 Summaries updated: {recalc_msg}")
+
+                            # Clear both original AND editor state so fresh data loads
+                            del st.session_state[original_key]
+                            if editor_key in st.session_state:
+                                del st.session_state[editor_key]
+                            st.rerun()
+                        else:
+                            st.info("No changes detected.")
+                    except Exception as e:
+                        st.error(f"Error saving changes: {e}")
+                        import traceback
+                        st.error(traceback.format_exc())
+            
             # --- Weekly/Monthly Views: Read-only ---
             else:
                 st.dataframe(
@@ -203,9 +289,11 @@ def show(user_id):
                     use_container_width=True,
                     hide_index=True,
                     column_config={
-                        "Patient Name": st.column_config.TextColumn("Patient Name", width="large"),
-                        "Date": st.column_config.TextColumn("Date", width="small"),
-                        "Location of Visit": st.column_config.TextColumn("Location of Visit", width="large"),
+                        "Patient Name": st.column_config.TextColumn("Patient Name", width="medium"),
+                        "DOS": st.column_config.TextColumn("Date", width="small"),
+                        "Duration": st.column_config.NumberColumn("Mins", width="small"),
+                        "Service Type": st.column_config.TextColumn("Task/Service", width="large"),
+                        "Notes": st.column_config.TextColumn("Notes", width="large"),
                     }
                 )
 
