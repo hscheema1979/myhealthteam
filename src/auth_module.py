@@ -430,34 +430,21 @@ class AuthenticationManager:
     
     def get_primary_dashboard_role(self) -> Optional[int]:
         """
-        Get the primary dashboard role for the user based on is_primary column in database
+        Get the primary dashboard role for the user based on role precedence
+
+        Role precedence: Case Manager (40) > Lead Coordinator (37) > Admin (34) > Provider (33) > Coordinator (36) > Onboarding (35) > Data Entry (39)
 
         Special cases:
+        - Justin (Admin + Provider): Uses role switcher to choose - defaults to Provider if selected, Admin otherwise
         - Jan (Case Manager primary): CM dashboard with full management tabs
         - Jose (Lead Coordinator primary): LC dashboard with full management tabs
 
         Returns:
             Primary role ID or None if no recognized role
         """
-        user_id = self.get_user_id()
-        if not user_id:
-            return None
-
-        # Get primary role from database (is_primary = 1)
-        from src.database import get_db_connection
-        conn = get_db_connection()
-        try:
-            result = conn.execute(
-                "SELECT role_id FROM user_roles WHERE user_id = ? AND is_primary = 1",
-                (user_id,)
-            ).fetchone()
-            if result and result[0]:
-                return result[0]
-        finally:
-            conn.close()
-
-        # Fallback: Check for specific user overrides
         user_roles = self.get_user_roles()
+
+        # Check for specific user overrides first
         current_user = self.get_current_user()
         if current_user:
             full_name = (current_user.get('full_name') or '').lower()
@@ -473,7 +460,10 @@ class AuthenticationManager:
                 if 37 in user_roles:  # Lead Coordinator role
                     return 37
 
-        # Final fallback: Use role precedence
+        # Users with both Provider (33) and Admin (34) roles should use Admin dashboard
+        # The role switcher in Admin dashboard allows switching to Provider view
+
+        # Define general role precedence (higher priority first)
         role_precedence = [40, 37, 34, 33, 36, 35, 39]  # Case Manager, Lead Coordinator, Admin, Provider, Coordinator, Onboarding, Data Entry
 
         for role_id in role_precedence:
