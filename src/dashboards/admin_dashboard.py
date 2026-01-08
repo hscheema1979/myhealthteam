@@ -327,40 +327,7 @@ def show():
     # Get user role IDs consistently
     user_role_ids = get_user_role_ids(user_id) if user_id else []
 
-    # Use the preferred dashboard role from session state if available
-    if user_role_ids:
-        active_role_id = st.session_state.get(
-            "preferred_dashboard_role", user_role_ids[0]
-        )
-        try:
-            user_roles = db.get_user_roles_by_user_id(current_user["user_id"])
-            # Don't reassign user_role_ids - use a different variable for role switching
-            role_options = {role["role_name"]: role["role_id"] for role in user_roles}
-
-            if len(role_options) > 1:
-                st.sidebar.subheader("Role Switcher")
-                selected_role_name = st.sidebar.selectbox(
-                    "Select Active Role",
-                    list(role_options.keys()),
-                    index=list(role_options.keys()).index(
-                        st.session_state.get(
-                            "active_role_name", list(role_options.keys())[0]
-                        )
-                    ),
-                    key="admin_role_switcher",
-                )
-                active_role_id = role_options[selected_role_name]
-                st.session_state["active_role_id"] = active_role_id
-                st.session_state["active_role_name"] = selected_role_name
-                st.sidebar.caption(f"Active as: {selected_role_name}")
-            else:
-                active_role_id = next(iter(role_options.values()), None)
-                st.session_state["active_role_id"] = active_role_id
-                st.session_state["active_role_name"] = next(
-                    iter(role_options.keys()), None
-                )
-        except Exception as e:
-            st.sidebar.error(f"Role error: {str(e)[:50]}...")
+    # Role switcher removed - main app.py role switcher handles all role switching
 
     # New tab order: User Role Management, Staff Onboarding, Coordinator Tasks, Provider Tasks, Patient Info, HHC View Template, Workflow Reassignment, ZMO, Billing Report
     # Note: User Management tab removed (functionality preserved in commented code below)
