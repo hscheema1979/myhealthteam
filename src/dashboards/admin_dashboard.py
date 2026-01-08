@@ -347,7 +347,7 @@ def show():
                             "active_role_name", list(role_options.keys())[0]
                         )
                     ),
-                    key="role_switcher",
+                    key="admin_role_switcher",
                 )
                 active_role_id = role_options[selected_role_name]
                 st.session_state["active_role_id"] = active_role_id
