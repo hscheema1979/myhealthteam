@@ -2722,6 +2722,7 @@ def transfer_onboarding_to_patient_table(onboarding_id):
             "facility_nurse_email": onboarding_dict.get("facility_nurse_email"),
             "primary_care_provider": onboarding_dict.get("primary_care_provider"),
             "pcp_last_seen": onboarding_dict.get("pcp_last_seen"),
+            "specialist_last_seen": onboarding_dict.get("specialist_last_seen"),
             "active_specialists": onboarding_dict.get("active_specialist"),
             "chronic_conditions_provider": onboarding_dict.get(
                 "chronic_conditions_onboarding"

@@ -25,6 +25,11 @@ ALTER TABLE onboarding_patients ADD COLUMN medical_contact_email TEXT;
 ALTER TABLE onboarding_patients ADD COLUMN facility_nurse_name TEXT;
 ALTER TABLE onboarding_patients ADD COLUMN facility_nurse_phone TEXT;
 ALTER TABLE onboarding_patients ADD COLUMN facility_nurse_email TEXT;
+ALTER TABLE onboarding_patients ADD COLUMN active_specialist TEXT;
+ALTER TABLE onboarding_patients ADD COLUMN specialist_last_seen TEXT;
+ALTER TABLE onboarding_patients ADD COLUMN chronic_conditions_onboarding TEXT;
+ALTER TABLE onboarding_patients ADD COLUMN primary_care_provider TEXT;
+ALTER TABLE onboarding_patients ADD COLUMN pcp_last_seen TEXT;
 
 -- Add columns to patients table (for completed onboarding transfers)
 ALTER TABLE patients ADD COLUMN facility_nurse_name TEXT;
