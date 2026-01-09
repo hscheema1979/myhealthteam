@@ -736,7 +736,9 @@ def render_zmo_tab(
             display_name = format_column_name(col)
 
             if col in READONLY_COLUMNS:
-                col_config[col] = st.column_config.DisabledColumn(display_name)
+                # Skip readonly columns - they'll use default config
+                # (changes won't be saved due to save function filtering)
+                continue
             elif pd.api.types.is_float_dtype(dtype) or pd.api.types.is_integer_dtype(dtype):
                 col_config[col] = st.column_config.NumberColumn(
                     display_name, width="medium"
@@ -745,8 +747,6 @@ def render_zmo_tab(
                 col_config[col] = st.column_config.TextColumn(
                     display_name, width="medium"
                 )
-            else:
-                col_config[col] = st.column_config.DisabledColumn(display_name)
 
         # Store current page data for comparison
         st.session_state[f"zmo_current_page_{st.session_state.zmo_page}"] = page_data.copy()
