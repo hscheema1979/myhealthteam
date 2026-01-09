@@ -4880,6 +4880,198 @@ def mark_coordinator_tasks_as_billed(summary_ids, user_id):
         conn.close()
 
 
+def recalculate_coordinator_monthly_summary(year, month, coordinator_id=None):
+    """
+    Recalculate coordinator_monthly_summary for a specific month/year after task edits.
+    This should be called after tasks are edited in the Task Review to update billing summaries.
+
+    Args:
+        year: Year (e.g., 2025)
+        month: Month (1-12)
+        coordinator_id: Optional coordinator ID to filter. If None, recalculates for all coordinators.
+
+    Returns:
+        Tuple (success: bool, message: str, affected_count: int)
+    """
+    conn = get_db_connection()
+    try:
+        coord_table = f"coordinator_tasks_{year}_{str(month).zfill(2)}"
+        summary_table = "coordinator_monthly_summary"
+
+        # Check if the coordinator tasks table exists
+        cursor = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name = ?",
+            (coord_table,),
+        )
+        if not cursor.fetchone():
+            return (False, f"Coordinator table {coord_table} does not exist", 0)
+
+        # Build WHERE clause for optional coordinator_id filter
+        where_clause = ""
+        params = []
+        if coordinator_id:
+            where_clause = "AND ct.coordinator_id = ?"
+            params.append(coordinator_id)
+
+        # Delete existing summary records for this month/year (and coordinator if specified)
+        delete_params = [year, month]
+        if coordinator_id:
+            delete_params.append(coordinator_id)
+
+        delete_sql = f"""
+            DELETE FROM {summary_table}
+            WHERE year = ? AND month = ?
+        """
+        if coordinator_id:
+            delete_sql += " AND coordinator_id = ?"
+
+        conn.execute(delete_sql, delete_params)
+
+        # Re-insert aggregated data from coordinator tasks
+        insert_sql = f"""
+            INSERT INTO {summary_table} (
+                coordinator_id, coordinator_name, patient_id, patient_name,
+                year, month, month_start_date, month_end_date,
+                total_tasks_completed, total_time_spent_minutes,
+                billing_code, billing_code_description,
+                billing_status, is_billed, billed_by,
+                created_date, updated_date
+            )
+            SELECT
+                ct.coordinator_id,
+                ct.coordinator_name,
+                ct.patient_id,
+                ct.patient_id as patient_name,
+                ? as year,
+                ? as month,
+                DATE(? || '-' || PRINTF('%02d', ?) || '-01') as month_start_date,
+                DATE(? || '-' || PRINTF('%02d', ?) || '-01', '+1 month', '-1 day') as month_end_date,
+                COUNT(*) as total_tasks_completed,
+                CAST(SUM(COALESCE(ct.duration_minutes, 0)) AS INTEGER) as total_time_spent_minutes,
+                CASE
+                    WHEN SUM(COALESCE(ct.duration_minutes, 0)) >= 50 THEN '99492'
+                    WHEN SUM(COALESCE(ct.duration_minutes, 0)) >= 20 THEN '99491'
+                    ELSE '99490'
+                END as billing_code,
+                CASE
+                    WHEN SUM(COALESCE(ct.duration_minutes, 0)) >= 50 THEN 'Care Management - Complex'
+                    WHEN SUM(COALESCE(ct.duration_minutes, 0)) >= 20 THEN 'Care Management - Moderate'
+                    ELSE 'Care Management - Basic'
+                END as billing_code_description,
+                'Pending' as billing_status,
+                FALSE as is_billed,
+                NULL as billed_by,
+                CURRENT_TIMESTAMP as created_date,
+                CURRENT_TIMESTAMP as updated_date
+            FROM {coord_table} ct
+            WHERE ct.coordinator_id IS NOT NULL
+                AND ct.patient_id IS NOT NULL
+                AND TRIM(ct.patient_id) != ''
+                {where_clause}
+            GROUP BY ct.coordinator_id, ct.coordinator_name, ct.patient_id
+        """
+
+        insert_params = [year, month, year, month, year, month] + params
+        cursor = conn.execute(insert_sql, insert_params)
+        conn.commit()
+
+        affected_count = cursor.rowcount
+        message = f"Successfully recalculated {affected_count} coordinator summary records for {year}-{month:02d}"
+        return (True, message, affected_count)
+
+    except Exception as e:
+        conn.rollback()
+        message = f"Error recalculating coordinator monthly summary: {str(e)}"
+        return (False, message, 0)
+    finally:
+        conn.close()
+
+
+def recalculate_provider_monthly_summary(year, month, provider_id=None):
+    """
+    Recalculate provider_monthly_summary for a specific month/year after task edits.
+    This should be called after tasks are edited in the Task Review to update summaries.
+
+    Args:
+        year: Year (e.g., 2025)
+        month: Month (1-12)
+        provider_id: Optional provider ID to filter. If None, recalculates for all providers.
+
+    Returns:
+        Tuple (success: bool, message: str, affected_count: int)
+    """
+    conn = get_db_connection()
+    try:
+        provider_table = f"provider_tasks_{year}_{str(month).zfill(2)}"
+        summary_table = "provider_monthly_summary"
+
+        # Check if the provider tasks table exists
+        cursor = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name = ?",
+            (provider_table,),
+        )
+        if not cursor.fetchone():
+            return (False, f"Provider table {provider_table} does not exist", 0)
+
+        # Build WHERE clause for optional provider_id filter
+        where_clause = ""
+        params = []
+        if provider_id:
+            where_clause = "AND pt.provider_id = ?"
+            params.append(provider_id)
+
+        # Delete existing summary records for this month/year (and provider if specified)
+        delete_params = [year, month]
+        if provider_id:
+            delete_params.append(provider_id)
+
+        delete_sql = f"""
+            DELETE FROM {summary_table}
+            WHERE year = ? AND month = ?
+        """
+        if provider_id:
+            delete_sql += " AND provider_id = ?"
+
+        conn.execute(delete_sql, delete_params)
+
+        # Re-insert aggregated data from provider tasks
+        insert_sql = f"""
+            INSERT INTO {summary_table} (
+                provider_id, provider_name, month, year,
+                total_tasks_completed, total_time_spent_minutes,
+                created_date, updated_date
+            )
+            SELECT
+                pt.provider_id,
+                pt.provider_name,
+                ? as month,
+                ? as year,
+                COUNT(*) as total_tasks_completed,
+                CAST(SUM(COALESCE(pt.minutes_of_service, 0)) AS INTEGER) as total_time_spent_minutes,
+                CURRENT_TIMESTAMP as created_date,
+                CURRENT_TIMESTAMP as updated_date
+            FROM {provider_table} pt
+            WHERE pt.provider_id IS NOT NULL
+                {where_clause}
+            GROUP BY pt.provider_id, pt.provider_name
+        """
+
+        insert_params = [month, year] + params
+        cursor = conn.execute(insert_sql, insert_params)
+        conn.commit()
+
+        affected_count = cursor.rowcount
+        message = f"Successfully recalculated {affected_count} provider summary records for {year}-{month:02d}"
+        return (True, message, affected_count)
+
+    except Exception as e:
+        conn.rollback()
+        message = f"Error recalculating provider monthly summary: {str(e)}"
+        return (False, message, 0)
+    finally:
+        conn.close()
+
+
 def approve_provider_payroll(payroll_ids, user_id):
     """
     Approve selected provider payroll records (Justin only).

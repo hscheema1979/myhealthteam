@@ -192,41 +192,75 @@ def get_action_required_blockers(row):
         # Show the first blocker with count of additional ones
         return f"{blockers[0]} (+{len(blockers)-1} more)"
 
-def show_patient_intake_form(current_user_id):
-    """Show new patient intake form for Stage 1 registration"""
+def show_patient_intake_form(current_user_id, patient_details=None):
+    """Show new patient intake form for Stage 1 registration.
+    If patient_details is provided, pre-fill the form for editing existing patient.
+    """
+    # Determine if editing existing patient or creating new one
+    is_edit_mode = patient_details is not None
+    onboarding_id = patient_details.get('onboarding_id') if is_edit_mode else None
+
+    # Helper function to safely parse dates
+    def parse_date_value(date_val):
+        if date_val:
+            try:
+                from datetime import datetime
+                if isinstance(date_val, str):
+                    return datetime.strptime(date_val, '%Y-%m-%d').date()
+                elif hasattr(date_val, 'date'):
+                    return date_val.date()
+                return date_val
+            except:
+                return None
+        return None
+
     with st.form("patient_intake_form"):
+        # Form title
+        if is_edit_mode:
+            st.markdown("### Stage 1: Patient Registration (Edit Mode)")
+            st.info("Complete the required fields (marked with *) to finish Stage 1 registration.")
+        else:
+            st.markdown("### Stage 1: New Patient Registration")
+
         # Basic Patient Information
         col1, col2 = st.columns(2)
         with col1:
-            first_name = st.text_input("First Name*", key="first_name")
-            last_name = st.text_input("Last Name*", key="last_name")
-            date_of_birth = st.date_input("Date of Birth*", key="dob", min_value=datetime(1900, 1, 1).date(), max_value=datetime(2100, 12, 31).date())
-            phone_primary = st.text_input("Primary Phone*", key="phone_primary")
-            
+            first_name = st.text_input("First Name*", value=patient_details.get('first_name', '') if is_edit_mode else '', key="first_name")
+            last_name = st.text_input("Last Name*", value=patient_details.get('last_name', '') if is_edit_mode else '', key="last_name")
+            date_of_birth = st.date_input("Date of Birth*", value=parse_date_value(patient_details.get('date_of_birth')) if is_edit_mode else None, key="dob", min_value=datetime(1900, 1, 1).date(), max_value=datetime(2100, 12, 31).date())
+            phone_primary = st.text_input("Primary Phone*", value=patient_details.get('phone_primary', '') if is_edit_mode else '', key="phone_primary")
+
         with col2:
-            email = st.text_input("Email", key="email")
-            gender = st.selectbox("Gender", ["Male", "Female", "Other", "Prefer not to say"], key="gender")
-            emergency_contact = st.text_input("Emergency Contact Name", key="emergency_contact")
-            emergency_phone = st.text_input("Emergency Contact Phone", key="emergency_phone")
-        
+            email = st.text_input("Email", value=patient_details.get('email', '') if is_edit_mode else '', key="email")
+            gender_options = ["Male", "Female", "Other", "Prefer not to say"]
+            gender_index = 0
+            if is_edit_mode and patient_details.get('gender') in gender_options:
+                gender_index = gender_options.index(patient_details.get('gender'))
+            gender = st.selectbox("Gender", gender_options, index=gender_index, key="gender")
+            emergency_contact = st.text_input("Emergency Contact Name", value=patient_details.get('emergency_contact_name', '') if is_edit_mode else '', key="emergency_contact")
+            emergency_phone = st.text_input("Emergency Contact Phone", value=patient_details.get('emergency_contact_phone', '') if is_edit_mode else '', key="emergency_phone")
+
         # Address Information
         st.markdown("### Address Information")
-        address_street = st.text_input("Street Address*", key="address_street")
-        address_city = st.text_input("City*", key="address_city")
-        address_state = st.selectbox("State*", [
-            "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "DC", "FL", 
-            "GA", "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", 
-            "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", 
-            "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", 
-            "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"
-        ], key="address_state")
-        address_zip = st.text_input("ZIP Code*", key="address_zip")
-        
+        address_street = st.text_input("Street Address*", value=patient_details.get('address_street', '') if is_edit_mode else '', key="address_street")
+        address_city = st.text_input("City*", value=patient_details.get('address_city', '') if is_edit_mode else '', key="address_city")
+
+        state_options = ["AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "DC", "FL",
+                        "GA", "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME",
+                        "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH",
+                        "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI",
+                        "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"]
+        state_index = 4  # Default to CA
+        if is_edit_mode and patient_details.get('address_state') in state_options:
+            state_index = state_options.index(patient_details.get('address_state'))
+        address_state = st.selectbox("State*", state_options, index=state_index, key="address_state")
+        address_zip = st.text_input("ZIP Code*", value=patient_details.get('address_zip', '') if is_edit_mode else '', key="address_zip")
+
         # Referral Information
         st.markdown("### Referral Information")
-        referral_source = st.text_input("Referral Source", key="referral_source")
-        referring_provider = st.text_input("Referring Provider", key="referring_provider")
-        referral_date = st.date_input("Referral Date", key="referral_date")
+        referral_source = st.text_input("Referral Source", value=patient_details.get('referral_source', '') if is_edit_mode else '', key="referral_source")
+        referring_provider = st.text_input("Referring Provider", value=patient_details.get('referring_provider', '') if is_edit_mode else '', key="referral_provider")
+        referral_date = st.date_input("Referral Date", value=parse_date_value(patient_details.get('referral_date')) if is_edit_mode else None, key="referral_date")
         
         # Facility Assignment - Get facilities from database
         st.markdown("### Facility Assignment")
@@ -238,25 +272,53 @@ def show_patient_intake_form(current_user_id):
             facility_options.append("Add New Facility")
         except Exception as e:
             facility_options = ["San Francisco", "Los Angeles", "San Diego", "Sacramento", "Add New Facility"]
-            
-        facility_assignment = st.selectbox("Referring Facility", facility_options, key="facility_assignment")
-        
-        # Submit button
-        col1, col2 = st.columns([1, 4])
-        with col1:
-            submitted = st.form_submit_button("Start Workflow", type="primary")
-        with col2:
-            if st.form_submit_button("Cancel"):
-                st.session_state['show_intake_form'] = False
-                st.session_state['onboarding_mode'] = None
-                st.rerun()
-        
-        if submitted:
-            if not first_name or not last_name or not date_of_birth or not phone_primary or not address_street or not address_city or not address_zip:
-                st.error("Please fill in all required fields (marked with *)")
-            else:
-                try:
-                    # Create patient data dictionary
+
+        facility_index = 0
+        if is_edit_mode and patient_details.get('facility_assignment') in facility_options:
+            facility_index = facility_options.index(patient_details.get('facility_assignment'))
+        facility_assignment = st.selectbox("Referring Facility", facility_options, index=facility_index, key="facility_assignment")
+
+        # Submit buttons - different for edit mode vs new patient
+        if is_edit_mode:
+            # Edit mode: Save Progress, Complete Stage 1, and Cancel buttons
+            col1, col2, col3 = st.columns([1, 1, 2])
+            with col1:
+                save_progress = st.form_submit_button("Save Progress")
+            with col2:
+                complete_stage = st.form_submit_button("Complete Stage 1", type="primary")
+            with col3:
+                if st.form_submit_button("Cancel"):
+                    st.session_state['onboarding_mode'] = None
+                    st.rerun()
+
+            # Handle Save Progress
+            if save_progress:
+                patient_data = {
+                    'first_name': first_name,
+                    'last_name': last_name,
+                    'date_of_birth': date_of_birth.isoformat(),
+                    'phone_primary': phone_primary,
+                    'email': email,
+                    'gender': gender,
+                    'emergency_contact_name': emergency_contact,
+                    'emergency_contact_phone': emergency_phone,
+                    'address_street': address_street,
+                    'address_city': address_city,
+                    'address_state': address_state,
+                    'address_zip': address_zip,
+                    'referral_source': referral_source,
+                    'referring_provider': referring_provider,
+                    'referral_date': referral_date.isoformat() if referral_date else None,
+                    'facility_assignment': facility_assignment if facility_assignment != "Add New Facility" else None
+                }
+                database.update_onboarding_checkbox_data(onboarding_id, patient_data)
+                st.success("Progress saved! You can continue later.")
+
+            # Handle Complete Stage 1
+            if complete_stage:
+                if not first_name or not last_name or not date_of_birth or not phone_primary or not address_street or not address_city or not address_zip:
+                    st.error("Please fill in all required fields (marked with *)")
+                else:
                     patient_data = {
                         'first_name': first_name,
                         'last_name': last_name,
@@ -275,24 +337,64 @@ def show_patient_intake_form(current_user_id):
                         'referral_date': referral_date.isoformat() if referral_date else None,
                         'facility_assignment': facility_assignment if facility_assignment != "Add New Facility" else None
                     }
-                    
-                    # Create onboarding workflow instance
-                    onboarding_id = database.create_onboarding_workflow_instance(patient_data, current_user_id)
-                    
-                    st.success(f"Patient {first_name} {last_name} onboarding workflow started!")
-                    
-                    # Mark Stage 1 as complete since we just completed registration
+                    database.update_onboarding_checkbox_data(onboarding_id, patient_data)
                     database.update_onboarding_stage_completion(onboarding_id, 1, True)
-                    
-                    # Clear the intake form flag and switch to resume mode for next stage
-                    st.session_state['show_intake_form'] = False
-                    st.session_state['current_onboarding_id'] = onboarding_id
-                    st.session_state['onboarding_mode'] = 'resume'
-                    st.info("Proceeding to Stage 2: Eligibility Verification...")
+                    st.success(f"Stage 1 Complete! Moving to Stage 2: Eligibility Verification...")
                     st.rerun()
-                        
-                except Exception as e:
-                    st.error(f"Error creating onboarding workflow: {e}")
+
+        else:
+            # New patient mode: Start Workflow and Cancel buttons
+            col1, col2 = st.columns([1, 4])
+            with col1:
+                submitted = st.form_submit_button("Start Workflow", type="primary")
+            with col2:
+                if st.form_submit_button("Cancel"):
+                    st.session_state['show_intake_form'] = False
+                    st.session_state['onboarding_mode'] = None
+                    st.rerun()
+
+            if submitted:
+                if not first_name or not last_name or not date_of_birth or not phone_primary or not address_street or not address_city or not address_zip:
+                    st.error("Please fill in all required fields (marked with *)")
+                else:
+                    try:
+                        # Create patient data dictionary
+                        patient_data = {
+                            'first_name': first_name,
+                            'last_name': last_name,
+                            'date_of_birth': date_of_birth.isoformat(),
+                            'phone_primary': phone_primary,
+                            'email': email,
+                            'gender': gender,
+                            'emergency_contact_name': emergency_contact,
+                            'emergency_contact_phone': emergency_phone,
+                            'address_street': address_street,
+                            'address_city': address_city,
+                            'address_state': address_state,
+                            'address_zip': address_zip,
+                            'referral_source': referral_source,
+                            'referring_provider': referring_provider,
+                            'referral_date': referral_date.isoformat() if referral_date else None,
+                            'facility_assignment': facility_assignment if facility_assignment != "Add New Facility" else None
+                        }
+
+                        # Create onboarding workflow instance
+                        onboarding_id = database.create_onboarding_workflow_instance(patient_data, current_user_id)
+
+                        st.success(f"Patient {first_name} {last_name} onboarding workflow started!")
+
+                        # Mark Stage 1 as complete since we just completed registration
+                        database.update_onboarding_stage_completion(onboarding_id, 1, True)
+
+                        # Clear the intake form flag and switch to resume mode for next stage
+                        st.session_state['show_intake_form'] = False
+                        st.session_state['current_onboarding_id'] = onboarding_id
+                        st.session_state['onboarding_mode'] = 'resume'
+                        st.info("Proceeding to Stage 2: Eligibility Verification...")
+                        st.rerun()
+
+                    except Exception as e:
+                        st.error(f"Error creating onboarding workflow: {e}")
 
 def show_resume_onboarding_form(patient_details, current_user_id):
     """Show form for resuming existing onboarding with current state"""
@@ -334,15 +436,38 @@ def show_resume_onboarding_form(patient_details, current_user_id):
 
     # Stage-specific forms
     if current_stage == 1:
-        st.info("Registration not yet completed. Please complete Stage 1 registration before proceeding.")
+        # Show editable intake form with existing patient data
+        show_patient_intake_form(current_user_id, patient_details)
     elif current_stage == 2:
-        show_eligibility_verification_form(patient_details, current_user_id)
+        try:
+            show_eligibility_verification_form(patient_details, current_user_id)
+        except Exception as e:
+            st.error(f"Error loading Stage 2 form: {e}")
+            import traceback
+            st.code(traceback.format_exc())
     elif current_stage == 3:
-        show_chart_creation_form(patient_details, current_user_id)
+        try:
+            show_chart_creation_form(patient_details, current_user_id)
+        except Exception as e:
+            st.error(f"Error loading Stage 3 form: {e}")
+            import traceback
+            st.code(traceback.format_exc())
     elif current_stage == 4:
-        show_intake_processing_form(patient_details, current_user_id)
+        try:
+            show_intake_processing_form(patient_details, current_user_id)
+        except Exception as e:
+            st.error(f"Error loading Stage 4 form: {e}")
+            import traceback
+            st.code(traceback.format_exc())
     elif current_stage == 5:
-        show_tv_scheduling_form(patient_details, current_user_id)
+        try:
+            show_tv_scheduling_form(patient_details, current_user_id)
+        except Exception as e:
+            st.error(f"Error loading Stage 5 form: {e}")
+            import traceback
+            st.code(traceback.format_exc())
+    else:
+        st.error(f"Unknown stage: {current_stage}")
 
 def show_eligibility_verification_form(patient_details, current_user_id):
     """Stage 2: Eligibility Verification"""
@@ -769,6 +894,17 @@ def show_intake_processing_form(patient_details, current_user_id):
         col1, col2, col3 = st.columns([1, 1, 2])
         with col1:
             if st.form_submit_button("Complete Stage 4", type="primary"):
+                # Safe date conversion helper
+                def safe_date_str(date_val):
+                    if not date_val:
+                        return None
+                    if isinstance(date_val, str):
+                        return date_val
+                    try:
+                        return date_val.strftime('%Y-%m-%d')
+                    except:
+                        return None
+
                 # Save intake processing, clinical, and mental health fields
                 checkbox_data = {
                     'medical_records_requested': medical_records_requested,
@@ -784,10 +920,10 @@ def show_intake_processing_form(patient_details, current_user_id):
                     'medical_contact_email': medical_contact_email,
                     'patient_status': patient_status,
                     'active_specialist': active_specialist,
-                    'specialist_last_seen': specialist_last_seen.strftime('%Y-%m-%d') if specialist_last_seen else None,
+                    'specialist_last_seen': safe_date_str(specialist_last_seen),
                     'chronic_conditions_onboarding': chronic_conditions_onboarding,
                     'primary_care_provider': primary_care_provider,
-                    'pcp_last_seen': pcp_last_seen.strftime('%Y-%m-%d') if pcp_last_seen else None,
+                    'pcp_last_seen': safe_date_str(pcp_last_seen),
                     'mh_schizophrenia': mh_schizophrenia,
                     'mh_depression': mh_depression,
                     'mh_anxiety': mh_anxiety,
@@ -826,9 +962,20 @@ def show_intake_processing_form(patient_details, current_user_id):
                     st.rerun()
                 else:
                     st.error("Please complete the intake call before proceeding.")
-        
+
         with col2:
             if st.form_submit_button("Save Progress"):
+                # Safe date conversion helper
+                def safe_date_str(date_val):
+                    if not date_val:
+                        return None
+                    if isinstance(date_val, str):
+                        return date_val
+                    try:
+                        return date_val.strftime('%Y-%m-%d')
+                    except:
+                        return None
+
                 # Save checkbox data, clinical, and mental health fields when saving progress
                 checkbox_data = {
                     'medical_records_requested': medical_records_requested,
@@ -844,10 +991,10 @@ def show_intake_processing_form(patient_details, current_user_id):
                     'medical_contact_email': medical_contact_email,
                     'patient_status': patient_status,
                     'active_specialist': active_specialist,
-                    'specialist_last_seen': specialist_last_seen.strftime('%Y-%m-%d') if specialist_last_seen else None,
+                    'specialist_last_seen': safe_date_str(specialist_last_seen),
                     'chronic_conditions_onboarding': chronic_conditions_onboarding,
                     'primary_care_provider': primary_care_provider,
-                    'pcp_last_seen': pcp_last_seen.strftime('%Y-%m-%d') if pcp_last_seen else None,
+                    'pcp_last_seen': safe_date_str(pcp_last_seen),
                     'mh_schizophrenia': mh_schizophrenia,
                     'mh_depression': mh_depression,
                     'mh_anxiety': mh_anxiety,

@@ -1167,7 +1167,7 @@ def render_workflow_steps(instance_id, user_id, user_role_ids):
                 st.number_input(
                     "",
                     min_value=0,
-                    value=duration_seconds // 60 if duration_seconds else 30,
+                    value=duration_seconds // 60 if duration_seconds else 0,
                     key=f"duration_{instance_id}_{step_id}",
                     label_visibility="collapsed",
                 )
