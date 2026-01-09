@@ -284,7 +284,7 @@ def show(user_id, user_role_ids=None):
         
         # Create tabs with management functionality for CPM
         if onboarding_queue and len(onboarding_queue) > 0:
-            tab1, tab2, tab3, tab4, tab5, tab6, tab_patient_info, tab_help = st.tabs(
+            tab1, tab2, tab3, tab4, tab5, tab6, tab_zmo, tab_help = st.tabs(
                 [
                     "My Patients",
                     "Team Management",
@@ -292,7 +292,7 @@ def show(user_id, user_role_ids=None):
                     "Phone Reviews",
                     "Task Review",
                     "Daily Task Log",
-                    "Patient Info",
+                    "ZMO (Patient Data)",
                     "Help",
                 ]
             )
@@ -319,8 +319,9 @@ def show(user_id, user_role_ids=None):
             with tab6:
                 show_daily_task_log(user_id, "provider")
 
-            with tab_patient_info:
-                show_patient_info_tab_provider(user_id)
+            with tab_zmo:
+                from src.zmo_module import render_zmo_tab
+                render_zmo_tab(user_id=user_id)
             with tab_help:
                 st.header("Help")
                 st.markdown(
@@ -368,13 +369,13 @@ def show(user_id, user_role_ids=None):
                 )
                 render_provider_help_examples(key_prefix="cpm_queue_")
         else:
-            tab1, tab2, tab3, tab4, tab_patient_info, tab_help = st.tabs(
+            tab1, tab2, tab3, tab4, tab_zmo, tab_help = st.tabs(
                 [
                     "My Patients",
                     "Team Management",
                     "Phone Reviews",
                     "Task Review",
-                    "Patient Info",
+                    "ZMO (Patient Data)",
                     "Help",
                 ]
             )
@@ -390,8 +391,9 @@ def show(user_id, user_role_ids=None):
 
             with tab4:
                 task_review_component.show(user_id)
-            with tab_patient_info:
-                show_patient_info_tab_provider(user_id)
+            with tab_zmo:
+                from src.zmo_module import render_zmo_tab
+                render_zmo_tab(user_id=user_id)
             with tab_help:
                 st.header("Help")
                 st.subheader("Color Legend (Patient Activity)")
@@ -451,13 +453,13 @@ def show(user_id, user_role_ids=None):
     else:
         # Regular care provider tabs - include onboarding queue if they have assigned patients
         if onboarding_queue and len(onboarding_queue) > 0:
-            tab1, tab2, tab3, tab4, tab_patient_info, tab_help = st.tabs(
+            tab1, tab2, tab3, tab4, tab_zmo, tab_help = st.tabs(
                 [
                     "My Patients",
                     "Onboarding Queue & Initial TV Visits",
                     "Phone Reviews",
                     "Task Review",
-                    "Patient Info",
+                    "ZMO (Patient Data)",
                     "Help",
                 ]
             )
@@ -477,8 +479,9 @@ def show(user_id, user_role_ids=None):
 
             with tab4:
                 task_review_component.show(user_id)
-            with tab_patient_info:
-                show_patient_info_tab_provider(user_id)
+            with tab_zmo:
+                from src.zmo_module import render_zmo_tab
+                render_zmo_tab(user_id=user_id)
             with tab_help:
                 st.header("Help")
                 st.markdown(
@@ -529,8 +532,8 @@ def show(user_id, user_role_ids=None):
                 )
                 render_provider_help_examples(key_prefix="cp_queue_")
         else:
-            tab1, tab2, tab3, tab_patient_info, tab_help = st.tabs(
-                ["My Patients", "Phone Reviews", "Task Review", "Patient Info", "Help"]
+            tab1, tab2, tab3, tab_zmo, tab_help = st.tabs(
+                ["My Patients", "Phone Reviews", "Task Review", "ZMO (Patient Data)", "Help"]
             )
 
             with tab1:
@@ -543,8 +546,9 @@ def show(user_id, user_role_ids=None):
 
             with tab3:
                 task_review_component.show(user_id)
-            with tab_patient_info:
-                show_patient_info_tab_provider(user_id)
+            with tab_zmo:
+                from src.zmo_module import render_zmo_tab
+                render_zmo_tab(user_id=user_id)
             with tab_help:
                 st.header("Help")
                 st.subheader("Color Legend (Patient Activity)")

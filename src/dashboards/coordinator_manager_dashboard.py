@@ -397,19 +397,20 @@ def show(user_id: int, user_role_ids=None):
     
     st.title("Coordinator Manager Dashboard")
     st.markdown("Manage coordinator team workload, patient assignments, and workflow distribution.")
-    
+
     # Create tabs
-    tab1, tab2, tab3 = st.tabs([
+    tab1, tab2, tab3, tab_zmo = st.tabs([
         "Coordinator Tasks",
         "Patient Reassignment",
-        "Workflow Assignment"
+        "Workflow Assignment",
+        "ZMO (Patient Data)"
     ])
-    
+
     # --- TAB 1: Coordinator Tasks ---
     # Use the centralized coordinator_tasks_module for consistent view with admin dashboard
     with tab1:
         # Call the unified coordinator tasks tab from the centralized module
-        # This ensures CM/CC users see the same Patient Monthly Summary and 
+        # This ensures CM/CC users see the same Patient Monthly Summary and
         # Coordinator Monthly Summary as the admin dashboard
         show_unified_coordinator_tasks_tab(
             user_id=user_id,
@@ -417,11 +418,16 @@ def show(user_id: int, user_role_ids=None):
             show_all_coordinators=True,  # Coordinator Managers can see all coordinators
             filter_by_coordinator=False
         )
-    
+
     # --- TAB 2: Patient Reassignment ---
     with tab2:
         show_patient_reassignment_tab(user_id)
-    
+
     # --- TAB 3: Workflow Assignment ---
     with tab3:
         show_workflow_assignment_tab(user_id)
+
+    # --- TAB 4: ZMO (Patient Data) ---
+    with tab_zmo:
+        from src.zmo_module import render_zmo_tab
+        render_zmo_tab(user_id=user_id)

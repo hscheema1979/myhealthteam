@@ -183,13 +183,13 @@ def show(user_id, user_role_ids=None):
         st.info(
             f"**Management Access**: You have {' & '.join(role_text)} privileges with additional tabs available"
         )
-        tab1, tab2, tab3, tab_workflow, tab_patient_info, tab4 = st.tabs(
+        tab1, tab2, tab3, tab_workflow, tab_zmo, tab4 = st.tabs(
             [
                 "My Patients",
                 "Phone Reviews",
                 "Team Management",
                 "Workflow Reassignment",
-                "Patient Info",
+                "ZMO (Patient Data)",
                 "Help",
             ]
         )
@@ -802,19 +802,21 @@ def show(user_id, user_role_ids=None):
                     "Contact your administrator if you need access to this feature."
                 )
 
-        with tab_patient_info:
-            show_patient_info_tab_coordinator(user_id)
+        with tab_zmo:
+            from src.zmo_module import render_zmo_tab
+            render_zmo_tab(user_id=user_id)
     else:
         # Non-management coordinator view: provide My Patients + Help tabs (no Team Management)
-        tab1, tab_task_review, tab_patient_info, tab2 = st.tabs(
-            ["My Patients", "Task Review", "Patient Info", "Help"]
+        tab1, tab_task_review, tab_zmo, tab2 = st.tabs(
+            ["My Patients", "Task Review", "ZMO (Patient Data)", "Help"]
         )
         with tab1:
             show_coordinator_patient_list(user_id, context="tab1")
         with tab_task_review:
             coordinator_task_review_component.show(user_id)
-        with tab_patient_info:
-            show_patient_info_tab_coordinator(user_id)
+        with tab_zmo:
+            from src.zmo_module import render_zmo_tab
+            render_zmo_tab(user_id=user_id)
         with tab2:
             st.header("Help")
             help_html = """
