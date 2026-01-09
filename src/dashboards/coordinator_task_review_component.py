@@ -60,12 +60,16 @@ def show(user_id):
             # --- Daily View ---
             selected_date = st.date_input("Select Date", value=pd.to_datetime('today'), key="coordinator_task_review_daily_date")
             st.caption(f"Showing tasks for {selected_date.strftime('%A, %B %d, %Y')}")
-            
+
             # Determine which table to query based on selected date
             year = selected_date.year
             month = selected_date.month
             table_name = f"coordinator_tasks_{year}_{str(month).zfill(2)}"
-            
+            display_period = selected_date.strftime('%Y-%m-%d')
+
+            # Store table_name in session_state for use in save handler
+            st.session_state[f"coord_table_name_{user_id}_{display_period}"] = table_name
+
             # Check if table is in available_months (meaning it exists)
             table_exists = any(t[1] == table_name for t in available_months)
             
@@ -77,10 +81,11 @@ def show(user_id):
                     task_date,
                     duration_minutes,
                     task_type,
-                    notes
+                    notes,
+                    created_at_pst
                 FROM {table_name}
                 WHERE coordinator_id = ? AND date(task_date) = date(?)
-                ORDER BY task_date DESC
+                ORDER BY created_at_pst DESC
                 """
                 rows = conn.execute(query, (user_id, selected_date)).fetchall()
                 if rows:
@@ -91,12 +96,11 @@ def show(user_id):
                         'task_date': 'DOS',
                         'duration_minutes': 'Duration',
                         'task_type': 'Service Type',
-                        'notes': 'Notes'
+                        'notes': 'Notes',
+                        'created_at_pst': 'Time (PST)'
                     })
             else:
                 pass # Table doesn't exist for this date
-                
-            display_period = selected_date.strftime('%Y-%m-%d')
 
         elif view_type == "Weekly":
             # --- Weekly View ---
@@ -131,14 +135,15 @@ def show(user_id):
                         task_date,
                         duration_minutes,
                         task_type,
-                        notes
+                        notes,
+                        created_at_pst
                     FROM {t_name}
                     WHERE coordinator_id = ? AND date(task_date) BETWEEN date(?) AND date(?)
-                    ORDER BY task_date DESC
+                    ORDER BY created_at_pst DESC
                     """
                     rows = conn.execute(query, (user_id, start_week, end_week)).fetchall()
                     all_rows.extend([dict(r) for r in rows])
-                
+
                 if all_rows:
                     tasks_df = pd.DataFrame(all_rows)
                     tasks_df = tasks_df.rename(columns={
@@ -146,7 +151,8 @@ def show(user_id):
                         'task_date': 'DOS',
                         'duration_minutes': 'Duration',
                         'task_type': 'Service Type',
-                        'notes': 'Notes'
+                        'notes': 'Notes',
+                        'created_at_pst': 'Time (PST)'
                     })
 
         elif view_type == "Monthly":
@@ -157,7 +163,7 @@ def show(user_id):
                 format_func=lambda x: x[0],
                 key="coordinator_task_review_month_select"
             )
-            
+
             if selected_option:
                 display_name, table_name, _, _ = selected_option
                 st.caption(f"Showing tasks for {display_name}")
@@ -169,10 +175,11 @@ def show(user_id):
                     task_date,
                     duration_minutes,
                     task_type,
-                    notes
+                    notes,
+                    created_at_pst
                 FROM {table_name}
                 WHERE coordinator_id = ?
-                ORDER BY task_date DESC
+                ORDER BY created_at_pst DESC
                 """
                 rows = conn.execute(query, (user_id,)).fetchall()
                 if rows:
@@ -182,7 +189,8 @@ def show(user_id):
                         'task_date': 'DOS',
                         'duration_minutes': 'Duration',
                         'task_type': 'Service Type',
-                        'notes': 'Notes'
+                        'notes': 'Notes',
+                        'created_at_pst': 'Time (PST)'
                     })
 
         # --- Display Results ---
@@ -208,12 +216,12 @@ def show(user_id):
 
                 if original_key not in st.session_state:
                     # First time loading this date - store the original data from DB
-                    st.session_state[original_key] = tasks_df[['Task ID', 'Patient Name', 'DOS', 'Duration', 'Service Type', 'Notes']].copy()
+                    st.session_state[original_key] = tasks_df[['Task ID', 'Patient Name', 'DOS', 'Duration', 'Service Type', 'Notes', 'Time (PST)']].copy()
 
                 # Use data_editor WITH a key to preserve edits
                 editor_key = f"coord_editor_{user_id}_{display_period}"
                 edited_df = st.data_editor(
-                    tasks_df[['Patient Name', 'DOS', 'Duration', 'Service Type', 'Notes']],
+                    tasks_df[['Patient Name', 'DOS', 'Duration', 'Service Type', 'Notes', 'Time (PST)']],
                     use_container_width=True,
                     hide_index=True,
                     key=editor_key,
@@ -223,6 +231,12 @@ def show(user_id):
                 # Save button
                 if st.button("💾 Save Changes", type="primary", key=f"save_coord_tasks_{user_id}_{display_period}"):
                     try:
+                        # Get table_name from session_state
+                        table_to_update = st.session_state.get(f"coord_table_name_{user_id}_{display_period}")
+                        if not table_to_update:
+                            st.error("Error: Could not determine which table to update. Please try refreshing the page.")
+                            return
+
                         # Create aligned copies for proper row matching
                         original_with_idx = st.session_state[original_key].reset_index(drop=True)
                         edited_with_idx = edited_df.reset_index(drop=True)
@@ -248,7 +262,7 @@ def show(user_id):
                                 new_notes = str(edited_row['Notes']) if pd.notna(edited_row['Notes']) else ""
 
                                 conn_update.execute(f"""
-                                    UPDATE {table_name}
+                                    UPDATE {table_to_update}
                                     SET duration_minutes = {new_duration},
                                         task_type = {repr(new_type)},
                                         notes = {repr(new_notes)}

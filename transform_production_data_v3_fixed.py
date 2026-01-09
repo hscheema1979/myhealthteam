@@ -1438,6 +1438,22 @@ def process_zmo(file_path, conn, provider_map):
 
         # Step 3: Insert data using INSERT OR REPLACE to preserve existing data
         # This preserves onboarding workflow data (patient_status, stages, etc.)
+
+        # CRITICAL: Preserve manually-entered contact data before wiping patients table
+        # These fields are entered via Stage 4 onboarding workflow and are not in ZMO data
+        preserved_contacts = conn.execute("""
+            SELECT patient_id,
+                   appointment_contact_name, appointment_contact_phone, appointment_contact_email,
+                   medical_contact_name, medical_contact_phone, medical_contact_email,
+                   facility_nurse_name, facility_nurse_phone, facility_nurse_email
+            FROM patients
+            WHERE appointment_contact_name IS NOT NULL
+               OR medical_contact_name IS NOT NULL
+               OR facility_nurse_name IS NOT NULL
+        """).fetchall()
+        preserved_contacts_dict = {row[0]: row for row in preserved_contacts}
+        log_print(f"  Preserving contact data for {len(preserved_contacts_dict)} patients")
+
         conn.execute("DELETE FROM patients")
         # NOTE: patient_assignments is now handled by process_provider_assignments_from_zmo
         conn.execute("DELETE FROM patient_assignments")
@@ -1454,6 +1470,33 @@ def process_zmo(file_path, conn, provider_map):
         ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             patients_data,
         )
+
+        # Restore preserved contact data that was wiped by DELETE + INSERT
+        if preserved_contacts_dict:
+            log_print(f"  Restoring contact data for {len(preserved_contacts_dict)} patients...")
+            for patient_id, contact_row in preserved_contacts_dict.items():
+                # Check if patient still exists after import
+                exists = conn.execute("SELECT 1 FROM patients WHERE patient_id = ?", (patient_id,)).fetchone()
+                if exists:
+                    conn.execute("""
+                        UPDATE patients SET
+                            appointment_contact_name = ?,
+                            appointment_contact_phone = ?,
+                            appointment_contact_email = ?,
+                            medical_contact_name = ?,
+                            medical_contact_phone = ?,
+                            medical_contact_email = ?,
+                            facility_nurse_name = ?,
+                            facility_nurse_phone = ?,
+                            facility_nurse_email = ?
+                        WHERE patient_id = ?
+                    """, (
+                        contact_row[1], contact_row[2], contact_row[3],  # appointment contact
+                        contact_row[4], contact_row[5], contact_row[6],  # medical contact
+                        contact_row[7], contact_row[8], contact_row[9],  # facility nurse
+                        patient_id
+                    ))
+            log_print(f"  Restored contact data successfully")
 
         # Patient panel - REMOVED: rebuilt by populate_patient_panel.sql from patients table with ALL columns
 

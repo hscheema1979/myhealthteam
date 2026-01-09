@@ -278,17 +278,19 @@ def save_progress_step(
             ).fetchone()
             if workflow_info:
                 now = pd.Timestamp.now()
+                # Convert to PST timezone (UTC-8 in winter, UTC-7 in summer)
+                now_pst = now.tz_localize('UTC').tz_convert('America/Los_Angeles')
                 table_name = ensure_monthly_coordinator_tasks_table(
                     year=now.year, month=now.month, conn=conn
                 )
 
-                # Insert duration record
+                # Insert duration record with unique PST timestamp
                 conn.execute(
                     f"""
                     INSERT INTO {table_name} (
                         coordinator_id, patient_id, task_date, duration_minutes,
-                        task_type, notes, source_system, imported_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                        task_type, notes, source_system, imported_at, created_at_pst
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                     (
                         coordinator_id,
@@ -299,6 +301,7 @@ def save_progress_step(
                         f"Progress on {step_info['task_name']}: {notes}",
                         "workflow_module",
                         now.strftime("%Y-%m-%d %H:%M:%S"),
+                        now_pst.strftime("%Y-%m-%d %H:%M:%S"),
                     ),
                 )
 
@@ -350,6 +353,8 @@ def complete_workflow_step(
         patient_id = workflow_info["patient_id"]
         pid_for_task = normalize_patient_id(patient_id, conn=conn)
         now = pd.Timestamp.now()
+        # Convert to PST timezone (UTC-8 in winter, UTC-7 in summer)
+        now_pst = now.tz_localize('UTC').tz_convert('America/Los_Angeles')
         table_name = ensure_monthly_coordinator_tasks_table(
             year=now.year, month=now.month, conn=conn
         )
@@ -357,8 +362,8 @@ def complete_workflow_step(
             f"""
             INSERT INTO {table_name} (
                 coordinator_id, patient_id, task_date, task_type,
-                duration_minutes, notes, source_system, imported_at
-            ) VALUES (?, ?, date('now'), ?, ?, ?, 'WORKFLOW', CURRENT_TIMESTAMP)
+                duration_minutes, notes, source_system, imported_at, created_at_pst
+            ) VALUES (?, ?, date('now'), ?, ?, ?, 'WORKFLOW', CURRENT_TIMESTAMP, ?)
         """,
             (
                 coordinator_id,
@@ -366,6 +371,7 @@ def complete_workflow_step(
                 f"WORKFLOW_STEP|{instance_id}|{step_id}",
                 duration_minutes,
                 f"Completed: {step_info['task_name']} (Step {step_info['step_order']}). {notes}",
+                now_pst.strftime("%Y-%m-%d %H:%M:%S"),
             ),
         )
         conn.commit()

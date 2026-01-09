@@ -807,7 +807,7 @@ def show_patient_list_section(user_id, section_id=None, has_cpm_role=False):
             display_df.columns = column_names
             if "Last Visit Date" in display_df.columns:
                 display_df["Last Visit Date"] = display_df["Last Visit Date"].apply(
-                    lambda x: pd.to_datetime(x, errors="coerce").strftime("%Y-%m-%d")
+                    lambda x: pd.to_datetime(x, errors="coerce").strftime("%m-%d-%Y")
                     if pd.notnull(pd.to_datetime(x, errors="coerce"))
                     else None
                 )
@@ -1577,13 +1577,13 @@ def show_unfiltered_patient_summary(patients_list=None, height=900):
         display_df = patients_df[display_columns].copy()
         display_df.columns = column_names
 
-        # Normalize last visit date to YYYY-MM-DD strings (or None)
+        # Normalize last visit date to MM-DD-YYYY strings (or None)
         if "Last Visit Date" in display_df.columns:
 
             def _format_date(val):
                 try:
                     ts = pd.to_datetime(val, errors="coerce")
-                    return ts.strftime("%Y-%m-%d") if not pd.isna(ts) else None
+                    return ts.strftime("%m-%d-%Y") if not pd.isna(ts) else None
                 except Exception:
                     return None
 
@@ -2625,13 +2625,13 @@ def show_team_management_section():
             # Create 'Last Visit Date' column from available last_visit columns
             if "last_visit_date" in patients_df.columns:
                 patients_df["Last Visit Date"] = patients_df["last_visit_date"].apply(
-                    lambda x: pd.to_datetime(x, errors="coerce").strftime("%Y-%m-%d")
+                    lambda x: pd.to_datetime(x, errors="coerce").strftime("%m-%d-%Y")
                     if pd.notnull(pd.to_datetime(x, errors="coerce"))
                     else None
                 )
             elif "last_visit" in patients_df.columns:
                 patients_df["Last Visit Date"] = patients_df["last_visit"].apply(
-                    lambda x: pd.to_datetime(x, errors="coerce").strftime("%Y-%m-%d")
+                    lambda x: pd.to_datetime(x, errors="coerce").strftime("%m-%d-%Y")
                     if pd.notnull(pd.to_datetime(x, errors="coerce"))
                     else None
                 )
@@ -3091,7 +3091,7 @@ def show_billing_status_section(user_id):
                 display_df = unbilled_tasks_df.copy()
                 display_df["task_date"] = pd.to_datetime(
                     display_df["task_date"]
-                ).dt.strftime("%Y-%m-%d")
+                ).dt.strftime("%m-%d-%Y")
 
                 # Show summary
                 st.write(f"**Total Unbilled Tasks:** {len(display_df)}")
@@ -3198,7 +3198,7 @@ def show_task_review_section(user_id):
                     )
 
                     # Format the DOS column
-                    df["DOS"] = pd.to_datetime(df["DOS"]).dt.strftime("%Y-%m-%d")
+                    df["DOS"] = pd.to_datetime(df["DOS"]).dt.strftime("%m-%d-%Y")
 
                     # Display summary
                     total_tasks = len(df)

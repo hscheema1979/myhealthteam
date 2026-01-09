@@ -694,7 +694,17 @@ SELECT DISTINCT p.patient_id,
     -- CRITICAL: Add care team fields needed by dashboard
     NULL as care_provider_name,
     NULL as care_coordinator_name,
-    p.last_visit_date
+    p.last_visit_date,
+    -- Contact fields from Stage 4 onboarding workflow
+    p.appointment_contact_name,
+    p.appointment_contact_phone,
+    p.appointment_contact_email,
+    p.medical_contact_name,
+    p.medical_contact_phone,
+    p.medical_contact_email,
+    p.facility_nurse_name,
+    p.facility_nurse_phone,
+    p.facility_nurse_email
 FROM patients p;
 -- Update provider/coordinator from assignments
 UPDATE patient_panel

@@ -198,7 +198,7 @@ def ensure_monthly_coordinator_tasks_table(
 ) -> str:
     """Ensure the monthly coordinator_tasks table for given year/month exists with required columns.
     - Creates the table if missing with full schema
-    - Adds missing columns (source_system, imported_at) if absent
+    - Adds missing columns (source_system, imported_at, created_at_pst) if absent
     Returns the table_name.
     """
     close_conn = False
@@ -228,7 +228,8 @@ def ensure_monthly_coordinator_tasks_table(
                     task_type TEXT,
                     notes TEXT,
                     source_system TEXT,
-                    imported_at TEXT
+                    imported_at TEXT,
+                    created_at_pst TEXT
                 )
             """)
             conn.commit()
@@ -244,6 +245,8 @@ def ensure_monthly_coordinator_tasks_table(
                 conn.execute(f"ALTER TABLE {table_name} ADD COLUMN source_system TEXT;")
             if "imported_at" not in col_names:
                 conn.execute(f"ALTER TABLE {table_name} ADD COLUMN imported_at TEXT;")
+            if "created_at_pst" not in col_names:
+                conn.execute(f"ALTER TABLE {table_name} ADD COLUMN created_at_pst TEXT;")
             # Add submission_status column for Daily Task Log feature
             if "submission_status" not in col_names:
                 conn.execute(
@@ -2185,13 +2188,18 @@ def save_coordinator_task(
         table_name = ensure_monthly_coordinator_tasks_table(
             year=task_year, month=task_month, conn=conn
         )
+
+        # Generate PST timestamp for unique entry identification
+        now = pd.Timestamp.now()
+        now_pst = now.tz_localize('UTC').tz_convert('America/Los_Angeles')
+
         conn.execute(
             f"""
             INSERT INTO {table_name}
-            (patient_id, coordinator_id, task_date, duration_minutes, task_type, notes, source_system, imported_at)
-            VALUES (?, ?, ?, ?, ?, ?, 'DATA_ENTRY', CURRENT_TIMESTAMP)
+            (patient_id, coordinator_id, task_date, duration_minutes, task_type, notes, source_system, imported_at, created_at_pst)
+            VALUES (?, ?, ?, ?, ?, ?, 'DATA_ENTRY', CURRENT_TIMESTAMP, ?)
         """,
-            (pid, coordinator_id, task_date, duration_minutes, task_description, notes),
+            (pid, coordinator_id, task_date, duration_minutes, task_description, notes, now_pst.strftime("%Y-%m-%d %H:%M:%S")),
         )
 
         conn.commit()
@@ -2709,6 +2717,9 @@ def transfer_onboarding_to_patient_table(onboarding_id):
             "medical_contact_name": onboarding_dict.get("medical_contact_name"),
             "medical_contact_phone": onboarding_dict.get("medical_contact_phone"),
             "medical_contact_email": onboarding_dict.get("medical_contact_email"),
+            "facility_nurse_name": onboarding_dict.get("facility_nurse_name"),
+            "facility_nurse_phone": onboarding_dict.get("facility_nurse_phone"),
+            "facility_nurse_email": onboarding_dict.get("facility_nurse_email"),
             "primary_care_provider": onboarding_dict.get("primary_care_provider"),
             "pcp_last_seen": onboarding_dict.get("pcp_last_seen"),
             "active_specialists": onboarding_dict.get("active_specialist"),
@@ -3507,12 +3518,24 @@ def save_coordinator_phone_review(coordinator_id, form_data):
         provider_as_pid = normalize_patient_id(
             form_data.get("provider_name", ""), conn=conn
         )
+
+        # Generate PST timestamp for unique entry identification
+        now = pd.Timestamp.now()
+        now_pst = now.tz_localize('UTC').tz_convert('America/Los_Angeles')
+
+        # Determine correct monthly table based on task_date
+        task_year = form_data["task_date"].year
+        task_month = form_data["task_date"].month
+        table_name = ensure_monthly_coordinator_tasks_table(
+            year=task_year, month=task_month, conn=conn
+        )
+
         conn.execute(
-            """
-            INSERT INTO coordinator_tasks_2025_09 (
+            f"""
+            INSERT INTO {table_name} (
                 coordinator_id, patient_id, task_date, task_type,
-                duration_minutes, notes, source_system, imported_at
-            ) VALUES (?, ?, ?, ?, ?, ?, 'PHONE_REVIEW', CURRENT_TIMESTAMP)
+                duration_minutes, notes, source_system, imported_at, created_at_pst
+            ) VALUES (?, ?, ?, ?, ?, ?, 'PHONE_REVIEW', CURRENT_TIMESTAMP, ?)
         """,
             (
                 coordinator_id,
@@ -3521,6 +3544,7 @@ def save_coordinator_phone_review(coordinator_id, form_data):
                 "19|Communication|Communication: Phone",
                 form_data["duration_minutes"],
                 f"Phone review with {form_data.get('provider_name', '')}: {form_data.get('notes', '')}",
+                now_pst.strftime("%Y-%m-%d %H:%M:%S"),
             ),
         )
 
@@ -4028,6 +4052,16 @@ def sync_onboarding_to_patient_panel(onboarding_id):
                 "intake_call_completed", False
             ),
             "intake_notes": onboarding_dict.get("intake_notes"),
+            # Contact fields
+            "appointment_contact_name": onboarding_dict.get("appointment_contact_name"),
+            "appointment_contact_phone": onboarding_dict.get("appointment_contact_phone"),
+            "appointment_contact_email": onboarding_dict.get("appointment_contact_email"),
+            "medical_contact_name": onboarding_dict.get("medical_contact_name"),
+            "medical_contact_phone": onboarding_dict.get("medical_contact_phone"),
+            "medical_contact_email": onboarding_dict.get("medical_contact_email"),
+            "facility_nurse_name": onboarding_dict.get("facility_nurse_name"),
+            "facility_nurse_phone": onboarding_dict.get("facility_nurse_phone"),
+            "facility_nurse_email": onboarding_dict.get("facility_nurse_email"),
         }
 
         # Check if patient already exists in patient_panel

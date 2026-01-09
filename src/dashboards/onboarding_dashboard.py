@@ -756,21 +756,46 @@ def show_intake_processing_form(patient_details, current_user_id):
         with col2:
             st.markdown("#### Medical Contact")
             medical_contact_name = st.text_input(
-                "Medical Contact Name", 
+                "Medical Contact Name",
                 value=patient_details.get('medical_contact_name', ''),
                 key="medical_contact_name"
             )
             medical_contact_phone = st.text_input(
-                "Medical Contact Phone", 
+                "Medical Contact Phone",
                 value=patient_details.get('medical_contact_phone', ''),
                 key="medical_contact_phone"
             )
             medical_contact_email = st.text_input(
-                "Medical Contact Email", 
+                "Medical Contact Email",
                 value=patient_details.get('medical_contact_email', ''),
                 key="medical_contact_email"
             )
-        
+
+        # Facility Nurse Contact
+        st.markdown("### Facility Nurse Contact")
+        col1, col2, col3 = st.columns(3)
+
+        with col1:
+            facility_nurse_name = st.text_input(
+                "Facility Nurse Name",
+                value=patient_details.get('facility_nurse_name', ''),
+                key="facility_nurse_name"
+            )
+
+        with col2:
+            facility_nurse_phone = st.text_input(
+                "Facility Nurse Phone",
+                value=patient_details.get('facility_nurse_phone', ''),
+                key="facility_nurse_phone"
+            )
+
+        with col3:
+            facility_nurse_email = st.text_input(
+                "Facility Nurse Email",
+                value=patient_details.get('facility_nurse_email', ''),
+                key="facility_nurse_email"
+            )
+
         # Patient Status
         st.markdown("### Patient Status")
         patient_status = st.selectbox(
@@ -918,6 +943,9 @@ def show_intake_processing_form(patient_details, current_user_id):
                     'medical_contact_name': medical_contact_name,
                     'medical_contact_phone': medical_contact_phone,
                     'medical_contact_email': medical_contact_email,
+                    'facility_nurse_name': facility_nurse_name,
+                    'facility_nurse_phone': facility_nurse_phone,
+                    'facility_nurse_email': facility_nurse_email,
                     'patient_status': patient_status,
                     'active_specialist': active_specialist,
                     'specialist_last_seen': safe_date_str(specialist_last_seen),
@@ -989,6 +1017,9 @@ def show_intake_processing_form(patient_details, current_user_id):
                     'medical_contact_name': medical_contact_name,
                     'medical_contact_phone': medical_contact_phone,
                     'medical_contact_email': medical_contact_email,
+                    'facility_nurse_name': facility_nurse_name,
+                    'facility_nurse_phone': facility_nurse_phone,
+                    'facility_nurse_email': facility_nurse_email,
                     'patient_status': patient_status,
                     'active_specialist': active_specialist,
                     'specialist_last_seen': safe_date_str(specialist_last_seen),
@@ -1351,7 +1382,7 @@ def show():
         return
     
     # Create tabs - Queue first!
-    tab1, tab2, tab3 = st.tabs(["Patient Queue", "Processing Status", "Facility Management"])
+    tab1, tab2, tab3, tab4 = st.tabs(["Patient Queue", "Processing Status", "Facility Management", "ZMO"])
     
     # Tab 1: Patient Queue (Primary Tab)
     with tab1:
@@ -1644,6 +1675,169 @@ def show():
                         st.error(f"Error adding facility: {e}")
                 else:
                     st.error("Facility name is required")
+
+    # Tab 4: ZMO (Patient Data Management)
+    with tab4:
+        st.subheader("ZMO: Patient Data Management")
+        import json
+        import os
+
+        try:
+            # Use cached functions to avoid redundant database queries
+            # Define these locally since they don't exist in database.py
+            @st.cache_data(ttl=300, show_spinner="Loading patient panel data...")
+            def _cached_get_all_patient_panel():
+                """Cached version of get_all_patient_panel - refreshes every 5 minutes"""
+                try:
+                    return database.get_all_patient_panel() if hasattr(database, "get_all_patient_panel") else []
+                except Exception as e:
+                    st.error(f"Error loading patient_panel: {e}")
+                    return []
+
+            @st.cache_data(ttl=300, show_spinner="Loading patient data...")
+            def _cached_get_all_patients():
+                """Cached version of get_all_patients - refreshes every 5 minutes"""
+                try:
+                    return database.get_all_patients() if hasattr(database, "get_all_patients") else []
+                except Exception as e:
+                    st.error(f"Error loading patients: {e}")
+                    return []
+
+            @st.cache_data(ttl=300, show_spinner="Processing patient data...")
+            def _cached_merge_patient_data(panel_df, patients_df):
+                """Cached version of patient data merge"""
+                if panel_df.empty or patients_df.empty:
+                    return panel_df if not panel_df.empty else patients_df
+
+                panel_cols = set(panel_df.columns)
+                patients_extra_cols = [
+                    col for col in patients_df.columns
+                    if col not in panel_cols and col != "patient_id"
+                ]
+
+                if patients_extra_cols:
+                    merged = panel_df.merge(
+                        patients_df[["patient_id"] + patients_extra_cols],
+                        how="left", on="patient_id"
+                    )
+                else:
+                    merged = panel_df.copy()
+
+                # Drop duplicate columns from patients merge
+                dup_cols = [col for col in merged.columns if col.endswith("_y")]
+                if dup_cols:
+                    merged = merged.drop(columns=dup_cols)
+
+                return merged
+
+            panel_rows = _cached_get_all_patient_panel()
+            patients_rows = _cached_get_all_patients()
+            panel_df = pd.DataFrame(panel_rows) if panel_rows else pd.DataFrame()
+            patients_df = pd.DataFrame(patients_rows) if patients_rows else pd.DataFrame()
+
+            if panel_df.empty or patients_df.empty:
+                st.info("No patient data available.")
+            else:
+                # Merge patient data
+                merged = _cached_merge_patient_data(panel_df, patients_df)
+
+                # Patient search
+                st.markdown("### Search Patients")
+                patient_search = st.text_input(
+                    "Search by name or ID",
+                    placeholder="Enter patient name, ID, or MRN...",
+                    key="ot_zmo_search"
+                )
+
+                # Filter based on search
+                if patient_search:
+                    search_lower = patient_search.lower()
+                    search_mask = merged.astype(str).apply(
+                        lambda row: any(search_lower in str(val).lower() for val in row),
+                        axis=1
+                    )
+                    merged = merged[search_mask]
+                    st.success(f"✓ Found {len(merged)} patients matching '{patient_search}'")
+                else:
+                    st.caption(f"Showing all {len(merged)} patients")
+
+                # Column management
+                st.markdown("### Column Selection")
+
+                # Get all columns
+                all_cols = list(merged.columns)
+
+                # Facility nurse columns should be prominently displayed
+                facility_nurse_cols = [
+                    "facility_nurse_name", "facility_nurse_phone", "facility_nurse_email",
+                    "appointment_contact_name", "appointment_contact_phone", "appointment_contact_email",
+                    "medical_contact_name", "medical_contact_phone", "medical_contact_email"
+                ]
+
+                # Default columns to show (patient info + facility + contacts)
+                default_cols = [
+                    "patient_id", "first_name", "last_name", "date_of_birth",
+                    "phone_primary", "facility", "status",
+                    "facility_nurse_name", "facility_nurse_phone", "facility_nurse_email",
+                    "appointment_contact_name", "appointment_contact_phone", "appointment_contact_email",
+                    "medical_contact_name", "medical_contact_phone", "medical_contact_email"
+                ]
+
+                # Filter to only show columns that exist
+                default_cols = [c for c in default_cols if c in all_cols]
+
+                # Multi-select for columns
+                selected_cols = st.multiselect(
+                    "Select columns to display",
+                    options=all_cols,
+                    default=default_cols,
+                    key="ot_zmo_columns"
+                )
+
+                if selected_cols:
+                    filtered = merged[selected_cols]
+
+                    # Show data with pagination
+                    st.markdown("### Patient Data")
+
+                    # Pagination
+                    if "ot_zmo_page" not in st.session_state:
+                        st.session_state.ot_zmo_page = 0
+
+                    rows_per_page = 50
+                    total_rows = len(filtered)
+                    total_pages = (total_rows + rows_per_page - 1) // rows_per_page
+
+                    # Pagination controls
+                    col_page1, col_page2, col_page3 = st.columns([1, 3, 1])
+
+                    with col_page1:
+                        if st.button("← Previous", key="ot_zmo_prev",
+                                   disabled=st.session_state.ot_zmo_page == 0):
+                            st.session_state.ot_zmo_page -= 1
+
+                    with col_page2:
+                        st.caption(f"Page {st.session_state.ot_zmo_page + 1} of {max(1, total_pages)} | {total_rows} rows")
+
+                    with col_page3:
+                        if st.button("Next →", key="ot_zmo_next",
+                                   disabled=st.session_state.ot_zmo_page >= total_pages - 1):
+                            st.session_state.ot_zmo_page += 1
+
+                    # Display current page
+                    start_idx = st.session_state.ot_zmo_page * rows_per_page
+                    end_idx = min(start_idx + rows_per_page, total_rows)
+                    page_df = filtered.iloc[start_idx:end_idx]
+
+                    st.dataframe(page_df, use_container_width=True)
+
+                    # Edit functionality (read-only for OT team)
+                    st.caption("💡 Contact fields are managed through Stage 4 onboarding")
+                else:
+                    st.warning("Please select at least one column to display.")
+
+        except Exception as e:
+            st.error(f"Error loading ZMO data: {e}")
 
     # Add a quick reference section
     st.markdown("---")
