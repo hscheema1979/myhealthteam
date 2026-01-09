@@ -654,13 +654,18 @@ def require_authentication(auth_manager: Optional[AuthenticationManager] = None)
 def render_login_sidebar(auth_manager: Optional[AuthenticationManager] = None):
     """
     Render login UI in the sidebar
-    
+
     Args:
         auth_manager: AuthenticationManager instance (optional)
     """
     if auth_manager is None:
         auth_manager = get_auth_manager()
-    
+
+    # Handle pending rerun from impersonation stop
+    if auth_manager.session_state.get('_pending_rerun'):
+        auth_manager.session_state['_pending_rerun'] = False
+        st.rerun()
+
     # Re-check persistence after UI mount if not yet checked
     if not auth_manager.session_state.get('persistent_login_checked', False):
         if auth_manager._check_persistent_login():
@@ -678,6 +683,7 @@ def render_login_sidebar(auth_manager: Optional[AuthenticationManager] = None):
             st.sidebar.warning("🔍 Impersonating: Unknown User")
         if st.sidebar.button("⏹️ Stop Impersonating", key="stop_impersonation"):
             auth_manager.stop_impersonation()
+            auth_manager.session_state['_pending_rerun'] = True
             st.rerun()
     
     st.sidebar.markdown("### Login")
