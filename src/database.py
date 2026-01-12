@@ -871,42 +871,6 @@ def get_user_by_id(user_id):
     return user
 
 
-def get_users_by_role(role_identifier):
-    """Get all users with a specific role - works with role_id (int) or role_name (string)"""
-    conn = get_db_connection()
-    try:
-        if isinstance(role_identifier, int):
-            # Handle role_id
-            users = conn.execute(
-                """
-                SELECT u.user_id, u.username, u.full_name, r.role_name
-                FROM users u
-                JOIN user_roles ur ON u.user_id = ur.user_id
-                JOIN roles r ON ur.role_id = r.role_id
-                WHERE r.role_id = ?
-            """,
-                (role_identifier,),
-            ).fetchall()
-        else:
-            # Handle role_name (string)
-            users = conn.execute(
-                """
-                SELECT u.user_id, u.username, u.full_name, r.role_name
-                FROM users u
-                JOIN user_roles ur ON u.user_id = ur.user_id
-                JOIN roles r ON ur.role_id = r.role_id
-                WHERE r.role_name = ?
-            """,
-                (role_identifier,),
-            ).fetchall()
-        return [dict(user) for user in users]
-    except Exception as e:
-        print(f"Error in get_users_by_role: {e}")
-        return []
-    finally:
-        conn.close()
-
-
 def get_provider_onboarding_queue(provider_user_id):
     """Get onboarding patients assigned to a specific provider for initial TV visits"""
     conn = get_db_connection()
@@ -2970,25 +2934,6 @@ def transfer_onboarding_to_patient_table(onboarding_id):
         conn.close()
 
 
-def get_users_by_role_name(role_name):
-    """Get all users with a specific role by role name"""
-    conn = get_db_connection()
-    try:
-        users = conn.execute(
-            """
-            SELECT u.user_id, u.username, u.full_name
-            FROM users u
-            JOIN user_roles ur ON u.user_id = ur.user_id
-            JOIN roles r ON ur.role_id = r.role_id
-            WHERE r.role_name = ?
-        """,
-            (role_name,),
-        ).fetchall()
-        return [dict(user) for user in users]
-    finally:
-        conn.close()
-
-
 def insert_patient_from_onboarding(onboarding_id):
     """Insert patient data into patients table from onboarding data while keeping onboarding record"""
     conn = get_db_connection()
@@ -3233,7 +3178,26 @@ def insert_patient_from_onboarding(onboarding_id):
 
 
 def get_users_by_role(role_identifier):
-    """Get all users with a specific role - works with role_id (int) or role_name (string)"""
+    """
+    Get all users with a specific role.
+
+    Supports multiple input patterns:
+    - Role ID (int): get_users_by_role(33) or get_users_by_role(36)
+    - Role Constant: get_users_by_role(ROLE_CARE_PROVIDER)
+    - Role Abbreviation (str): get_users_by_role("CP") or get_users_by_role("CC")
+    - Full Role Name (str): get_users_by_role("Care Coordinator")
+
+    Args:
+        role_identifier: Either role_id (int) or role_name (str)
+
+    Returns:
+        List of dicts with keys: user_id, username, full_name
+
+    Examples:
+        >>> get_users_by_role(33)
+        >>> get_users_by_role("CP")
+        >>> get_users_by_role("Care Coordinator")
+    """
     conn = get_db_connection()
     try:
         if isinstance(role_identifier, int):

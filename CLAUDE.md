@@ -67,6 +67,15 @@ Located in `src/dashboards/`:
 - `ensure_monthly_provider_tasks_table()`: Creates/validates monthly provider_tasks_YYYY_MM tables
 - Patient, coordinator, provider, and task CRUD functions
 - Session management: `create_user_session()`, `get_user_by_session()`, `delete_user_session()`
+- `get_users_by_role(role_identifier)`: Retrieves users by role ID or role name (supports multiple input patterns)
+
+**Role-Based User Retrieval**: The `get_users_by_role()` function supports flexible role identification:
+- Role ID (int): `get_users_by_role(33)` or `get_users_by_role(36)`
+- Role Constant: `get_users_by_role(ROLE_CARE_PROVIDER)`
+- Role Abbreviation (str): `get_users_by_role("CP")` or `get_users_by_role("CC")`
+- Full Role Name (str): `get_users_by_role("Care Coordinator")`
+
+Returns list of dicts with keys: `user_id`, `username`, `full_name`. Used by 8 dashboards for user assignment and filtering.
 
 **Monthly partitioned tables**: Tasks are stored in monthly tables (`coordinator_tasks_YYYY_MM`, `provider_tasks_YYYY_MM`) for performance and data organization. These tables include `source_system` column to track data origin (CSV_IMPORT, MANUAL, DASHBOARD, WORKFLOW).
 
