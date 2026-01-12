@@ -577,8 +577,8 @@ def get_onboarding_queue_stats():
         # Get stats from regular patients who might be in onboarding
         patient_stats = conn.execute("""
             SELECT
-                COUNT(CASE WHEN p.status LIKE 'Active%' AND upa.provider_id IS NULL THEN 1 END) as unassigned_active_patients,
-                COUNT(CASE WHEN p.status = 'Active' AND p.created_date > date('now', '-30 days') THEN 1 END) as new_patients_30_days
+                COUNT(CASE WHEN (p.status LIKE 'Active%' OR p.status = 'Hospice') AND upa.provider_id IS NULL THEN 1 END) as unassigned_active_patients,
+                COUNT(CASE WHEN (p.status = 'Active' OR p.status = 'Hospice') AND p.created_date > date('now', '-30 days') THEN 1 END) as new_patients_30_days
             FROM patients p
             LEFT JOIN patient_assignments upa ON p.patient_id = upa.patient_id
         """).fetchone()
@@ -3826,7 +3826,7 @@ def get_provider_panel_patients_by_month(provider_id, selected_month):
                 GROUP BY patient_id
             ) lp ON p.patient_id = lp.patient_id
             LEFT JOIN facilities f ON p.facility_id = f.facility_id
-            WHERE p.status LIKE 'Active%'
+            WHERE (p.status LIKE 'Active%' OR p.status = 'Hospice')
         """
 
         result = conn.execute(query, (provider_id, selected_month)).fetchall()

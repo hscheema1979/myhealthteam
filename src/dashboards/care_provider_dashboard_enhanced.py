@@ -740,8 +740,8 @@ def show_patient_list_section(user_id, section_id=None, has_cpm_role=False):
             f"Unmapped facilities found in patient data: {sorted(unmapped_facilities)}"
         )
 
-    # Only show patients with status in Active, Active-Geri, Active-PCP
-    allowed_statuses = ["Active", "Active-Geri", "Active-PCP"]
+    # Only show patients with status in Active, Active-Geri, Active-PCP, Hospice
+    allowed_statuses = ["Active", "Active-Geri", "Active-PCP", "Hospice"]
     # filtered_patients = [p for p in patient_data_list if (p.get('status', '') or '').strip() in allowed_statuses]
     filtered_patients = patient_data_list
 
@@ -2910,11 +2910,11 @@ def show_team_management_section():
             st.markdown("#### 👥 Complete Patient Panel")
 
             # Define active status patterns
-            active_statuses = ["Active", "Active-Geri", "Active-PCP"]
+            active_statuses = ["Active", "Active-Geri", "Active-PCP", "Hospice"]
 
             # Split patients into active and inactive
             if "status" in patients_df.columns:
-                # Active patients: status starts with 'Active'
+                # Active patients: status starts with 'Active' or is 'Hospice'
                 active_patients = patients_df[
                     patients_df["status"]
                     .fillna("")
@@ -2926,6 +2926,11 @@ def show_team_management_section():
                     .astype(str)
                     .str.strip()
                     .str.startswith("Active")
+                    | patients_df["status"]
+                    .fillna("")
+                    .astype(str)
+                    .str.strip()
+                    == "Hospice"
                 ].copy()
 
                 # Inactive patients: everything else
@@ -2941,6 +2946,11 @@ def show_team_management_section():
                         .astype(str)
                         .str.strip()
                         .str.startswith("Active")
+                        | patients_df["status"]
+                        .fillna("")
+                        .astype(str)
+                        .str.strip()
+                        == "Hospice"
                     )
                 ].copy()
             else:

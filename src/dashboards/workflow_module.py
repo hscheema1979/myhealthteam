@@ -771,7 +771,7 @@ def show_workflow_management(
                 patients_rows = conn.execute("""
                     SELECT first_name, last_name
                     FROM patients
-                    WHERE status LIKE 'Active%'
+                    WHERE status LIKE 'Active%' OR status = 'Hospice'
                     ORDER BY last_name, first_name
                 """).fetchall()
                 conn.close()

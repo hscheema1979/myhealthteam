@@ -659,88 +659,74 @@ GROUP BY pt.billing_code,
 -- COMPLETION MESSAGE
 -- ============================================================================
 -- ============================================================================
--- STEP 8: Rebuild patient_panel from patients (with correct status)
+-- STEP 8: Rebuild patient_panel from patients (with correct schema)
 -- ============================================================================
--- CRITICAL: process_zmo inserts patient_panel without status column
--- This step rebuilds it from patients table with ALL columns including status
+-- CRITICAL: Schema must match what get_all_patient_panel() expects in database.py
+-- Required columns: patient_id, first_name, last_name, date_of_birth, phone_primary,
+--   current_facility_id, facility, status, created_date, provider_id, coordinator_id,
+--   provider_name, coordinator_name, last_visit_date, last_visit_service_type,
+--   goals_of_care, goc_value, code_status, subjective_risk_level, service_type,
+--   er_count_1yr, hospitalization_count_1yr, mental_health_concerns, provider_mh_*,
+--   cognitive_function, functional_status, active_specialists, active_concerns,
+--   chronic_conditions_provider, appointment_contact_*, medical_contact_*,
+--   care_provider_name, care_coordinator_name, updated_date
 DROP TABLE IF EXISTS patient_panel;
 CREATE TABLE patient_panel AS
-SELECT DISTINCT p.patient_id,
+SELECT DISTINCT
+    p.patient_id,
     p.first_name,
     p.last_name,
     p.date_of_birth,
     p.phone_primary,
-    p.address_street,
-    p.address_city,
-    p.address_state,
-    p.address_zip,
-    p.insurance_primary,
-    p.insurance_policy_number,
     p.current_facility_id,
     p.facility,
-    p.assigned_coordinator_id,
     p.status,
-    -- CRITICAL: This was missing from process_zmo INSERT
-    p.initial_tv_completed_date,
-    p.initial_tv_notes,
-    p.initial_tv_provider,
     p.created_date,
-    NULL as provider_id,
-    -- Will be populated from patient_assignments
-    NULL as coordinator_id,
-    -- Will be populated from patient_assignments
-    NULL as provider_name,
-    NULL as coordinator_name,
-    -- CRITICAL: Add care team fields needed by dashboard
-    NULL as care_provider_name,
-    NULL as care_coordinator_name,
+    CAST(COALESCE(pa.provider_id, 0) AS INTEGER) as provider_id,
+    CAST(COALESCE(pa.coordinator_id, 0) AS TEXT) as coordinator_id,
+    CASE WHEN pa.provider_id > 0 THEN u_prov.full_name ELSE NULL END as provider_name,
+    CASE WHEN pa.coordinator_id > 0 THEN u_coord.full_name ELSE NULL END as coordinator_name,
     p.last_visit_date,
-    -- Contact fields from Stage 4 onboarding workflow
+    p.service_type as last_visit_service_type,
+    p.goals_of_care,
+    p.goc_value,
+    p.code_status,
+    p.subjective_risk_level,
+    p.service_type,
+    COALESCE(p.er_count_1yr, 0) as er_count_1yr,
+    COALESCE(p.hospitalization_count_1yr, 0) as hospitalization_count_1yr,
+    COALESCE(p.mental_health_concerns, 0) as mental_health_concerns,
+    COALESCE(p.provider_mh_schizophrenia, 0) as provider_mh_schizophrenia,
+    COALESCE(p.provider_mh_depression, 0) as provider_mh_depression,
+    COALESCE(p.provider_mh_anxiety, 0) as provider_mh_anxiety,
+    COALESCE(p.provider_mh_stress, 0) as provider_mh_stress,
+    COALESCE(p.provider_mh_adhd, 0) as provider_mh_adhd,
+    COALESCE(p.provider_mh_bipolar, 0) as provider_mh_bipolar,
+    COALESCE(p.provider_mh_suicidal, 0) as provider_mh_suicidal,
+    p.cognitive_function,
+    p.functional_status,
+    p.active_specialists,
+    p.active_concerns,
+    p.chronic_conditions_provider,
     p.appointment_contact_name,
     p.appointment_contact_phone,
-    p.appointment_contact_email,
     p.medical_contact_name,
     p.medical_contact_phone,
-    p.medical_contact_email,
-    p.facility_nurse_name,
-    p.facility_nurse_phone,
-    p.facility_nurse_email
-FROM patients p;
--- Update provider/coordinator from assignments
-UPDATE patient_panel
-SET provider_id = (
-        SELECT provider_id
-        FROM patient_assignments pa
-        WHERE pa.patient_id = patient_panel.patient_id
-    ),
-    coordinator_id = (
-        SELECT coordinator_id
-        FROM patient_assignments pa
-        WHERE pa.patient_id = patient_panel.patient_id
-    );
--- Update provider/coordinator names from users
-UPDATE patient_panel
-SET provider_name = (
-        SELECT full_name
-        FROM users u
-        WHERE u.user_id = patient_panel.provider_id
-    ),
-    coordinator_name = (
-        SELECT full_name
-        FROM users u
-        WHERE u.user_id = patient_panel.coordinator_id
-    ),
-    -- CRITICAL: Update care team fields needed by dashboard
-    care_provider_name = (
-        SELECT full_name
-        FROM users u
-        WHERE u.user_id = patient_panel.provider_id
-    ),
-    care_coordinator_name = (
-        SELECT full_name
-        FROM users u
-        WHERE u.user_id = patient_panel.coordinator_id
-    );
+    CASE WHEN pa.provider_id > 0 THEN u_prov.full_name ELSE NULL END as care_provider_name,
+    CASE WHEN pa.coordinator_id > 0 THEN u_coord.full_name ELSE NULL END as care_coordinator_name,
+    datetime('now') as updated_date
+FROM patients p
+LEFT JOIN patient_assignments pa ON p.patient_id = pa.patient_id AND pa.status = 'active'
+LEFT JOIN users u_prov ON pa.provider_id = u_prov.user_id
+LEFT JOIN users u_coord ON pa.coordinator_id = u_coord.user_id;
+
+-- Create indexes for performance
+CREATE INDEX IF NOT EXISTS idx_patient_panel_patient_id ON patient_panel(patient_id);
+CREATE INDEX IF NOT EXISTS idx_patient_panel_provider_id ON patient_panel(provider_id);
+CREATE INDEX IF NOT EXISTS idx_patient_panel_coordinator_id ON patient_panel(coordinator_id);
+CREATE INDEX IF NOT EXISTS idx_patient_panel_status ON patient_panel(status);
+CREATE INDEX IF NOT EXISTS idx_patient_panel_facility ON patient_panel(facility);
+CREATE INDEX IF NOT EXISTS idx_patient_panel_last_visit ON patient_panel(last_visit_date);
 SELECT 'Post-import processing complete' as status,
     (
         SELECT COUNT(*)

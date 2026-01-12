@@ -1773,7 +1773,7 @@ def show():
                                     with col_assignee_sel[0]:
                                         if available_assignees:
                                             assignee_options = {
-                                                f"{name} (ID: {uid})": uid
+                                                name: uid
                                                 for uid, name in available_assignees
                                             }
                                             selected_assignee = st.selectbox(
@@ -1913,7 +1913,7 @@ def show():
                             pd.DataFrame(all_patients)
                         )
                         if not all_patients_df.empty:
-                            active_statuses = ["Active", "Active-Geri", "Active-PCP"]
+                            active_statuses = ["Active", "Active-Geri", "Active-PCP", "Hospice"]
                             if "status" in all_patients_df.columns:
                                 active_patients = all_patients_df[
                                     all_patients_df["status"]
@@ -1926,6 +1926,11 @@ def show():
                                     .astype(str)
                                     .str.strip()
                                     .str.startswith("Active")
+                                    | all_patients_df["status"]
+                                    .fillna("")
+                                    .astype(str)
+                                    .str.strip()
+                                    == "Hospice"
                                 ]
                                 bulk_patients_to_assign = (
                                     active_patients["patient_id"].dropna().tolist()
@@ -1942,7 +1947,7 @@ def show():
                     # Bulk Assignee Selection
                     if available_assignees:
                         bulk_assignee_options = {
-                            f"{name} (ID: {uid})": uid
+                            name: uid
                             for uid, name in available_assignees
                         }
                         bulk_selected_assignee = st.selectbox(
@@ -1959,7 +1964,7 @@ def show():
                         col_confirm1, col_confirm2 = st.columns([2, 1])
                         with col_confirm1:
                             st.warning(
-                                f"This will reassign {len(bulk_patients_to_assign)} patients to {assignment_role.lower()}: {bulk_selected_assignee.split(' (')[0]}"
+                                f"This will reassign {len(bulk_patients_to_assign)} patients to {assignment_role.lower()}: {bulk_selected_assignee}"
                             )
                         with col_confirm2:
                             if st.button(
@@ -2293,9 +2298,9 @@ def show():
                 st.markdown("---")
 
                 # Split patients into active and inactive
-                active_statuses = ["Active", "Active-Geri", "Active-PCP"]
+                active_statuses = ["Active", "Active-Geri", "Active-PCP", "Hospice"]
                 if "status" in patients_df.columns:
-                    # Active patients: status starts with 'Active'
+                    # Active patients: status starts with 'Active' or is 'Hospice'
                     active_patients = patients_df[
                         patients_df["status"]
                         .fillna("")
@@ -2307,6 +2312,11 @@ def show():
                         .astype(str)
                         .str.strip()
                         .str.startswith("Active")
+                        | patients_df["status"]
+                        .fillna("")
+                        .astype(str)
+                        .str.strip()
+                        == "Hospice"
                     ].copy()
 
                     # Inactive patients: everything else
@@ -2322,6 +2332,11 @@ def show():
                             .astype(str)
                             .str.strip()
                             .str.startswith("Active")
+                            | patients_df["status"]
+                            .fillna("")
+                            .astype(str)
+                            .str.strip()
+                            == "Hospice"
                         )
                     ].copy()
                 else:

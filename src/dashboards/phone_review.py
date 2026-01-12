@@ -25,7 +25,7 @@ def show_phone_review_entry(mode, user_id, provider_id=None):
         patient_data_list = database.get_provider_patient_panel_enhanced(selected_provider_id)
 
     # Only show active patients
-    allowed_statuses = ['Active', 'Active-Geri', 'Active-PCP']
+    allowed_statuses = ['Active', 'Active-Geri', 'Active-PCP', 'Hospice']
     active_patients = [p for p in patient_data_list if (p.get('status', '') or '').strip() in allowed_statuses]
     patient_names = [f"{p.get('first_name','').strip()} {p.get('last_name','').strip()}".strip() for p in active_patients]
     patient_map = {f"{p.get('first_name','').strip()} {p.get('last_name','').strip()}": p for p in active_patients}

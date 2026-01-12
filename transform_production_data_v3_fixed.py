@@ -945,20 +945,32 @@ def update_patient_last_visit_dates(conn):
 
 def populate_patient_panel(conn):
     """
-    Populate patient_panel as a clean, unified denormalized table for "My Patients" views.
-    This creates a focused static table with essential columns needed by both Provider and Coordinator dashboards.
+    Populate patient_panel as a denormalized table for "My Patients" views.
+    This creates a static table with all columns needed by both Provider and Coordinator dashboards.
     Supports unified "My Patients" view across both dashboards.
+
+    SCHEMA MUST MATCH what get_all_patient_panel() expects in database.py:
+    - patient_id, first_name, last_name, date_of_birth, phone_primary
+    - current_facility_id, facility, status, created_date
+    - provider_id, coordinator_id, provider_name, coordinator_name
+    - last_visit_date, last_visit_service_type
+    - goals_of_care, goc_value, code_status, subjective_risk_level, service_type
+    - er_count_1yr, hospitalization_count_1yr
+    - mental_health_concerns, provider_mh_*, cognitive_function, functional_status
+    - active_specialists, active_concerns, chronic_conditions_provider
+    - appointment_contact_name, appointment_contact_phone
+    - medical_contact_name, medical_contact_phone
+    - care_provider_name, care_coordinator_name, updated_date
     """
-    log_print("Populating unified patient_panel (My Patients view)...")
+    log_print("Populating patient_panel table...")
     try:
-        # Drop and recreate the patient_panel table with unified schema
-        log_print("  Creating unified patient_panel table schema...")
+        # Drop and recreate the patient_panel table
+        log_print("  Creating patient_panel table schema...")
         conn.execute("DROP TABLE IF EXISTS patient_panel")
 
-        # Create clean patient_panel table with essential columns for My Patients view
+        # Create patient_panel table with EXACT schema matching working backup
         conn.execute("""
             CREATE TABLE patient_panel (
-                -- Core patient identification
                 patient_id TEXT PRIMARY KEY,
                 first_name TEXT,
                 last_name TEXT,
@@ -969,7 +981,6 @@ def populate_patient_panel(conn):
                 status TEXT,
                 created_date TEXT,
 
-                -- Provider/Coordinator assignment
                 provider_id INTEGER,
                 coordinator_id TEXT,
                 provider_name TEXT,
@@ -977,18 +988,15 @@ def populate_patient_panel(conn):
                 last_visit_date TEXT,
                 last_visit_service_type TEXT,
 
-                -- Clinical fields needed for display
                 goals_of_care TEXT,
                 goc_value TEXT,
                 code_status TEXT,
                 subjective_risk_level TEXT,
                 service_type TEXT,
 
-                -- Healthcare utilization
                 er_count_1yr INTEGER,
                 hospitalization_count_1yr INTEGER,
 
-                -- Mental health conditions (provider assessment)
                 mental_health_concerns INTEGER,
                 provider_mh_schizophrenia INTEGER,
                 provider_mh_depression INTEGER,
@@ -998,26 +1006,21 @@ def populate_patient_panel(conn):
                 provider_mh_bipolar INTEGER,
                 provider_mh_suicidal INTEGER,
 
-                -- Functional and cognitive status
                 cognitive_function TEXT,
                 functional_status TEXT,
 
-                -- Care coordination fields
                 active_specialists TEXT,
                 active_concerns TEXT,
                 chronic_conditions_provider TEXT,
 
-                -- Contact information for care coordination
                 appointment_contact_name TEXT,
                 appointment_contact_phone TEXT,
                 medical_contact_name TEXT,
                 medical_contact_phone TEXT,
 
-                -- Care team member names for easy display
                 care_provider_name TEXT,
                 care_coordinator_name TEXT,
 
-                -- Metadata
                 updated_date TEXT DEFAULT (datetime('now'))
             )
         """)
@@ -1040,13 +1043,12 @@ def populate_patient_panel(conn):
             "CREATE INDEX idx_patient_panel_last_visit ON patient_panel(last_visit_date)"
         )
 
-        log_print("  Unified schema created - populating with essential data...")
+        log_print("  Schema created - populating with data...")
 
-        # Build clean patient_panel with essential fields for My Patients view
+        # Build patient_panel with all required fields
         query = """
         INSERT INTO patient_panel
         SELECT
-            -- Core patient fields from patients table
             p.patient_id,
             p.first_name,
             p.last_name,
@@ -1057,55 +1059,46 @@ def populate_patient_panel(conn):
             p.status,
             p.created_date,
 
-            -- Provider/Coordinator assignment from patient_assignments table (FIXED: use correct source)
-            COALESCE(pa.provider_id, 0) as provider_id,
-            COALESCE(pa.coordinator_id, 0) as coordinator_id,
+            CAST(COALESCE(pa.provider_id, 0) AS INTEGER) as provider_id,
+            CAST(COALESCE(pa.coordinator_id, 0) AS TEXT) as coordinator_id,
             CASE WHEN pa.provider_id > 0 THEN u_prov.full_name ELSE NULL END as provider_name,
             CASE WHEN pa.coordinator_id > 0 THEN u_coord.full_name ELSE NULL END as coordinator_name,
             p.last_visit_date,
             p.service_type as last_visit_service_type,
 
-            -- Clinical fields for display
             p.goals_of_care,
             p.goc_value,
             p.code_status,
             p.subjective_risk_level,
             p.service_type,
 
-            -- Healthcare utilization
-            p.er_count_1yr,
-            p.hospitalization_count_1yr,
+            COALESCE(p.er_count_1yr, 0) as er_count_1yr,
+            COALESCE(p.hospitalization_count_1yr, 0) as hospitalization_count_1yr,
 
-            -- Mental health conditions (provider assessment)
-            p.mental_health_concerns,
-            p.provider_mh_schizophrenia,
-            p.provider_mh_depression,
-            p.provider_mh_anxiety,
-            p.provider_mh_stress,
-            p.provider_mh_adhd,
-            p.provider_mh_bipolar,
-            p.provider_mh_suicidal,
+            COALESCE(p.mental_health_concerns, 0) as mental_health_concerns,
+            COALESCE(p.provider_mh_schizophrenia, 0) as provider_mh_schizophrenia,
+            COALESCE(p.provider_mh_depression, 0) as provider_mh_depression,
+            COALESCE(p.provider_mh_anxiety, 0) as provider_mh_anxiety,
+            COALESCE(p.provider_mh_stress, 0) as provider_mh_stress,
+            COALESCE(p.provider_mh_adhd, 0) as provider_mh_adhd,
+            COALESCE(p.provider_mh_bipolar, 0) as provider_mh_bipolar,
+            COALESCE(p.provider_mh_suicidal, 0) as provider_mh_suicidal,
 
-            -- Functional and cognitive status
             p.cognitive_function,
             p.functional_status,
 
-            -- Care coordination fields
             p.active_specialists,
             p.active_concerns,
             p.chronic_conditions_provider,
 
-            -- Contact information
             p.appointment_contact_name,
             p.appointment_contact_phone,
             p.medical_contact_name,
             p.medical_contact_phone,
 
-            -- Care team member names (FIXED: use correct fields from patient_assignments table)
             CASE WHEN pa.provider_id > 0 THEN u_prov.full_name ELSE NULL END as care_provider_name,
             CASE WHEN pa.coordinator_id > 0 THEN u_coord.full_name ELSE NULL END as care_coordinator_name,
 
-            -- Updated date
             datetime('now') as updated_date
         FROM patients p
         LEFT JOIN patient_assignments pa ON p.patient_id = pa.patient_id AND pa.status = 'active'
@@ -1120,7 +1113,7 @@ def populate_patient_panel(conn):
         cursor.execute("SELECT COUNT(*) FROM patient_panel")
         panel_count = cursor.fetchone()[0]
 
-        log_print(f"  Unified patient panel populated with {panel_count} records")
+        log_print(f"  Patient panel populated with {panel_count} records")
         return panel_count
 
     except Exception as e:

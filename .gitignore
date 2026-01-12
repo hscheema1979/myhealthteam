@@ -239,3 +239,6 @@ db-sync/flags/
 
 #All the docs
 docs/src/oauth_config.py
+
+# OAuth config (contains sensitive credentials)
+src/oauth_config.py

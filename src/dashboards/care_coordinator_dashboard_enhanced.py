@@ -1440,7 +1440,7 @@ def show_coordinator_patient_list(user_id, context="default"):
         "Phone Number",
     ]
     # Metrics for active patient counts (show only once, no dropdown)
-    allowed_statuses = ["Active", "Active-Geri", "Active-PCP"]
+    allowed_statuses = ["Active", "Active-Geri", "Active-PCP", "Hospice"]
     total_active = len(
         [
             p
@@ -1468,13 +1468,13 @@ def show_coordinator_patient_list(user_id, context="default"):
     col3.metric("Active-PCP Patients", count_pcp)
 
     # Prepare patient name list for workflow UI
-    # Get active patients directly from database where status like "Active%"
+    # Get active patients directly from database where status like "Active%" or is "Hospice"
     try:
         conn = database.get_db_connection()
         active_patients_rows = conn.execute("""
             SELECT first_name, last_name
             FROM patients
-            WHERE status LIKE 'Active%'
+            WHERE status LIKE 'Active%' OR status = 'Hospice'
             ORDER BY last_name, first_name
         """).fetchall()
         conn.close()
@@ -1491,7 +1491,10 @@ def show_coordinator_patient_list(user_id, context="default"):
     active_patients = [
         p
         for p in patient_data_list
-        if p.get("status") and str(p.get("status")).strip().startswith("Active")
+        if p.get("status") and (
+            str(p.get("status")).strip().startswith("Active") or
+            str(p.get("status")).strip() == "Hospice"
+        )
     ]
 
     if patient_data_list:
@@ -1619,7 +1622,10 @@ def show_coordinator_patient_list(user_id, context="default"):
             active_patients = [
                 p
                 for p in patient_data_list
-                if p.get("status") and str(p.get("status")).strip().startswith("Active")
+                if p.get("status") and (
+                    str(p.get("status")).strip().startswith("Active") or
+                    str(p.get("status")).strip() == "Hospice"
+                )
             ]
             active_patients = sorted(
                 active_patients,
