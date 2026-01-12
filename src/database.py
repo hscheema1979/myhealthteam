@@ -3884,6 +3884,7 @@ def get_all_patient_panel():
             labs_notes,
             imaging_notes,
             general_notes,
+            next_appointment_date,
             updated_date
         FROM patient_panel
         ORDER BY last_name, first_name

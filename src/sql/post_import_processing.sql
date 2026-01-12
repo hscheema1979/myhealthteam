@@ -712,6 +712,10 @@ SELECT DISTINCT
     p.appointment_contact_phone,
     p.medical_contact_name,
     p.medical_contact_phone,
+    p.labs_notes,
+    p.imaging_notes,
+    p.general_notes,
+    p.next_appointment_date,
     CASE WHEN pa.provider_id > 0 THEN u_prov.full_name ELSE NULL END as care_provider_name,
     CASE WHEN pa.coordinator_id > 0 THEN u_coord.full_name ELSE NULL END as care_coordinator_name,
     datetime('now') as updated_date

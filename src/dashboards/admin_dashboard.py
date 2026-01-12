@@ -2347,6 +2347,7 @@ def show():
                         "labs_notes",
                         "imaging_notes",
                         "general_notes",
+                        "next_appointment_date",
                     ]
                     existing_cols = [
                         c for c in display_cols if c in active_patients.columns
@@ -2368,6 +2369,10 @@ def show():
                     if "general_notes" in df_display.columns:
                         col_config["general_notes"] = st.column_config.TextColumn(
                             "General Notes", help="General patient notes"
+                        )
+                    if "next_appointment_date" in df_display.columns:
+                        col_config["next_appointment_date"] = st.column_config.TextColumn(
+                            "Next Appointment Date", help="Date of next scheduled appointment"
                         )
                     edited = st.data_editor(
                         df_display,
@@ -2413,6 +2418,10 @@ def show():
                                 "Last Visit Date",
                                 "service_type",
                                 "phone_primary",
+                                "labs_notes",
+                                "imaging_notes",
+                                "general_notes",
+                                "next_appointment_date",
                             ]
                             existing_cols = [
                                 c
@@ -2424,6 +2433,22 @@ def show():
                             if "patient_id" in df_display.columns:
                                 col_config["patient_id"] = st.column_config.TextColumn(
                                     "patient_id", disabled=True
+                                )
+                            if "labs_notes" in df_display.columns:
+                                col_config["labs_notes"] = st.column_config.TextColumn(
+                                    "Labs Notes", help="Notes about lab results"
+                                )
+                            if "imaging_notes" in df_display.columns:
+                                col_config["imaging_notes"] = st.column_config.TextColumn(
+                                    "Imaging Notes", help="Notes about imaging results"
+                                )
+                            if "general_notes" in df_display.columns:
+                                col_config["general_notes"] = st.column_config.TextColumn(
+                                    "General Notes", help="General patient notes"
+                                )
+                            if "next_appointment_date" in df_display.columns:
+                                col_config["next_appointment_date"] = st.column_config.TextColumn(
+                                    "Next Appointment Date", help="Date of next scheduled appointment"
                                 )
                             edited_inactive = st.data_editor(
                                 df_display,

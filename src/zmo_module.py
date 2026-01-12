@@ -53,7 +53,7 @@ PATIENT_PANEL_COLUMNS = {
     "appointment_contact_name", "appointment_contact_phone",
     "medical_contact_name", "medical_contact_phone",
     # Notes
-    "labs_notes", "imaging_notes", "general_notes",
+    "labs_notes", "imaging_notes", "general_notes", "next_appointment_date",
     # Display names (computed, stored as text columns)
     "care_provider_name", "care_coordinator_name",
     # Metadata
@@ -308,6 +308,7 @@ def format_column_name(col: str) -> str:
         "labs_notes": "Labs Notes",
         "imaging_notes": "Imaging Notes",
         "general_notes": "General Notes",
+        "next_appointment_date": "Next Appointment Date",
     }
     return overrides.get(col, name)
 
@@ -749,7 +750,7 @@ def render_zmo_tab(
                 # Skip readonly columns - they'll use default config
                 # (changes won't be saved due to save function filtering)
                 continue
-            elif col in ["labs_notes", "imaging_notes", "general_notes"]:
+            elif col in ["labs_notes", "imaging_notes", "general_notes", "next_appointment_date"]:
                 # Notes columns - use wider text column
                 col_config[col] = st.column_config.TextColumn(
                     display_name, width="large"

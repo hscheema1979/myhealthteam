@@ -1022,6 +1022,8 @@ def populate_patient_panel(conn):
                 imaging_notes TEXT,
                 general_notes TEXT,
 
+                next_appointment_date TEXT,
+
                 care_provider_name TEXT,
                 care_coordinator_name TEXT,
 
@@ -1103,6 +1105,8 @@ def populate_patient_panel(conn):
             p.labs_notes,
             p.imaging_notes,
             p.general_notes,
+
+            p.next_appointment_date,
 
             CASE WHEN pa.provider_id > 0 THEN u_prov.full_name ELSE NULL END as care_provider_name,
             CASE WHEN pa.coordinator_id > 0 THEN u_coord.full_name ELSE NULL END as care_coordinator_name,
