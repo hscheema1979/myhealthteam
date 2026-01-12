@@ -4123,6 +4123,203 @@ def sync_onboarding_to_patient_panel(onboarding_id):
         conn.close()
 
 
+def sync_onboarding_to_all_tables(onboarding_id):
+    """
+    Comprehensive sync function that updates ALL patient tables when onboarding is complete.
+
+    This function ensures the patient data from onboarding is propagated to:
+    1. patients table (canonical source)
+    2. patient_panel table (denormalized for dashboards/ZMO)
+    3. HHC export tables (for HHC View Template)
+    4. patient_assignments table (ensures provider/coordinator assignments exist)
+
+    Call this function at Stage 5 completion to ensure all views are up to date.
+
+    Args:
+        onboarding_id: The onboarding_patients.onboarding_id
+
+    Returns:
+        dict with status of each sync operation:
+        {
+            'patient_id': str or None,
+            'patients_table': bool,
+            'patient_panel': bool,
+            'patient_assignments': bool,
+            'hhc_export': bool,
+            'success': bool,
+            'message': str
+        }
+    """
+    result = {
+        'patient_id': None,
+        'patients_table': False,
+        'patient_panel': False,
+        'patient_assignments': False,
+        'hhc_export': False,
+        'success': False,
+        'message': ''
+    }
+
+    conn = get_db_connection()
+    try:
+        # Get onboarding data
+        onboarding = conn.execute(
+            """
+            SELECT * FROM onboarding_patients WHERE onboarding_id = ?
+        """,
+            (onboarding_id,),
+        ).fetchone()
+
+        if not onboarding:
+            result['message'] = f"No onboarding patient found with ID {onboarding_id}"
+            return result
+
+        onboarding_dict = dict(onboarding)
+
+        # Step 1: Ensure patient_id exists in patients table
+        patient_id = onboarding_dict.get("patient_id")
+        if not patient_id:
+            # First, create/update patient record to get patient_id
+            conn.commit()  # Commit any pending before calling other function
+            conn.close()
+            patient_id = insert_patient_from_onboarding(onboarding_id)
+            conn = get_db_connection()
+            result['message'] += f"Created patient record: {patient_id}. "
+
+        result['patient_id'] = patient_id
+
+        # Step 2: Update patients table with latest onboarding data
+        conn.execute(
+            """
+            UPDATE patients SET
+                tv_date = COALESCE(?, tv_date),
+                tv_scheduled = COALESCE(?, tv_scheduled),
+                initial_tv_provider = COALESCE(?, initial_tv_provider),
+                initial_tv_completed_date = COALESCE(?, initial_tv_completed_date),
+                assigned_provider_id = COALESCE(?, assigned_provider_id),
+                assigned_coordinator_id = COALESCE(?, assigned_coordinator_id),
+                facility = COALESCE(?, facility),
+                current_facility_id = COALESCE(?, current_facility_id),
+                eligibility_status = COALESCE(?, eligibility_status),
+                eligibility_verified = COALESCE(?, eligibility_verified),
+                emed_chart_created = COALESCE(?, emed_chart_created),
+                chart_id = COALESCE(?, chart_id),
+                facility_confirmed = COALESCE(?, facility_confirmed),
+                chart_notes = COALESCE(?, chart_notes),
+                intake_call_completed = COALESCE(?, intake_call_completed),
+                intake_notes = COALESCE(?, intake_notes),
+                updated_date = CURRENT_TIMESTAMP
+            WHERE patient_id = ?
+            """,
+            (
+                onboarding_dict.get('tv_date'),
+                onboarding_dict.get('tv_scheduled', False),
+                onboarding_dict.get('initial_tv_provider'),
+                onboarding_dict.get('tv_date'),  # Use tv_date for initial_tv_completed_date
+                onboarding_dict.get('assigned_provider_user_id'),
+                onboarding_dict.get('assigned_coordinator_user_id'),
+                onboarding_dict.get('facility_assignment'),
+                onboarding_dict.get('facility_assignment'),
+                onboarding_dict.get('eligibility_status'),
+                onboarding_dict.get('eligibility_verified', False),
+                onboarding_dict.get('emed_chart_created', False),
+                onboarding_dict.get('chart_id'),
+                onboarding_dict.get('facility_confirmed', False),
+                onboarding_dict.get('chart_notes'),
+                onboarding_dict.get('intake_call_completed', False),
+                onboarding_dict.get('intake_notes'),
+                patient_id,
+            ),
+        )
+        result['patients_table'] = True
+
+        # Step 3: Sync to patient_panel (ZMO view reads from here)
+        conn.commit()  # Commit before calling sync function
+        conn.close()
+        panel_patient_id = sync_onboarding_to_patient_panel(onboarding_id)
+        conn = get_db_connection()
+        result['patient_panel'] = (panel_patient_id == patient_id)
+
+        # Step 4: Ensure patient_assignments exists with correct provider/coordinator
+        provider_id = onboarding_dict.get('assigned_provider_user_id')
+        coordinator_id = onboarding_dict.get('assigned_coordinator_user_id')
+
+        if provider_id or coordinator_id:
+            # Check if assignment exists
+            existing_assignment = conn.execute(
+                """
+                SELECT assignment_id FROM patient_assignments
+                WHERE patient_id = ? AND assignment_type = 'onboarding' AND status = 'active'
+            """,
+                (patient_id,),
+            ).fetchone()
+
+            if existing_assignment:
+                # Update existing assignment
+                conn.execute(
+                    """
+                    UPDATE patient_assignments
+                    SET provider_id = COALESCE(?, provider_id),
+                        coordinator_id = COALESCE(?, coordinator_id),
+                        updated_date = CURRENT_TIMESTAMP
+                    WHERE assignment_id = ?
+                """,
+                    (provider_id, coordinator_id, existing_assignment['assignment_id']),
+                )
+                result['message'] += f"Updated assignment {existing_assignment['assignment_id']}. "
+            else:
+                # Create new assignment
+                conn.execute(
+                    """
+                    INSERT INTO patient_assignments (
+                        patient_id, provider_id, coordinator_id, assignment_date,
+                        assignment_type, status, priority_level, notes,
+                        created_date, updated_date
+                    ) VALUES (?, ?, ?, datetime('now'), 'onboarding', 'active', 'medium',
+                             'Assignment created from Stage 5 onboarding completion',
+                             datetime('now'), datetime('now'))
+                """,
+                    (patient_id, provider_id, coordinator_id),
+                )
+                result['message'] += f"Created new assignment. "
+            result['patient_assignments'] = True
+        else:
+            result['message'] += "No provider/coordinator to assign. "
+
+        # Step 5: Refresh HHC export table if it exists
+        try:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='hhc_patients_export'"
+            )
+            if cursor.fetchone():
+                # Table exists - trigger a refresh by recreating from view
+                conn.execute("DROP TABLE IF EXISTS hhc_patients_export")
+                conn.execute(
+                    """
+                    CREATE TABLE hhc_patients_export AS
+                    SELECT * FROM hhc_export_view
+                """
+                )
+                result['hhc_export'] = True
+                result['message'] += "HHC export refreshed. "
+        except Exception as e:
+            # HHC export table might not exist yet, which is OK
+            result['message'] += f"HHC refresh skipped: {e}. "
+
+        conn.commit()
+        result['success'] = True
+
+    except Exception as e:
+        conn.rollback()
+        result['message'] = f"Error during sync: {str(e)}"
+        print(f"Error in sync_onboarding_to_all_tables: {e}")
+    finally:
+        conn.close()
+
+    return result
+
+
 def create_patient_assignment(
     patient_id,
     provider_id=None,

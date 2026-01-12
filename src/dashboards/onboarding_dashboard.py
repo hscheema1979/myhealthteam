@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from src import database
+from src import zmo_module
 from datetime import datetime
 
 # Define the onboarding workflow steps
@@ -578,6 +579,31 @@ def show_eligibility_verification_form(patient_details, current_user_id):
                     st.success('Stage 2 data saved')
 
                 if eligibility_verified:
+                    # First, create/update patient record in patients table now that patient is eligible
+                    try:
+                        patient_id = database.insert_patient_from_onboarding(patient_details['onboarding_id'])
+                        if patient_id:
+                            st.info(f"✓ Patient record created in patients table: {patient_id}")
+                        else:
+                            st.warning("Patient record already exists or was updated")
+                    except Exception as e:
+                        st.error(f"Error creating patient record: {str(e)}")
+
+                    # Then sync to patient_panel table so patient appears in ZMO
+                    try:
+                        panel_patient_id = database.sync_onboarding_to_patient_panel(patient_details['onboarding_id'])
+                        if panel_patient_id:
+                            st.info(f"✓ Patient added to patient_panel (visible in ZMO)")
+                    except Exception as e:
+                        st.warning(f"Patient panel sync warning: {e}")
+
+                    # Clear ZMO cache so patient appears immediately in ZMO tab
+                    try:
+                        zmo_module.get_patient_panel_data.clear()
+                        zmo_module.get_patients_data.clear()
+                    except Exception:
+                        pass  # Cache clearing may fail if not yet loaded
+
                     # Mark stage complete and update related tasks
                     database.update_onboarding_stage_completion(patient_details['onboarding_id'], 2, True)
 
@@ -590,11 +616,11 @@ def show_eligibility_verification_form(patient_details, current_user_id):
                                 {'eligibility_verified': True}
                             )
 
-                    st.success("Stage 2 Complete! Moving to Chart Creation...")
+                    st.success("Stage 2 Complete! Patient added to patients, patient_panel, and ZMO. Moving to Chart Creation...")
                     st.rerun()
                 else:
                     st.error("Eligibility not verified. Data saved—please verify eligibility to proceed.")
-        
+
         with col2:
             if st.form_submit_button("Save Progress"):
                 # Save progress for Stage 2 (insurance, eligibility, and annual well visit)
@@ -608,8 +634,24 @@ def show_eligibility_verification_form(patient_details, current_user_id):
                     'annual_well_visit': annual_well_visit,
                 }
                 database.update_onboarding_checkbox_data(patient_details['onboarding_id'], checkbox_payload)
-                st.info("Progress saved! You can resume later.")
-        
+
+                # If patient already exists in patients table (from previous Stage 2 completion), update it
+                if patient_details.get('patient_id'):
+                    try:
+                        database.insert_patient_from_onboarding(patient_details['onboarding_id'])
+                        database.sync_onboarding_to_patient_panel(patient_details['onboarding_id'])
+                        # Clear ZMO cache so changes appear immediately
+                        try:
+                            zmo_module.get_patient_panel_data.clear()
+                            zmo_module.get_patients_data.clear()
+                        except Exception:
+                            pass
+                        st.success("✓ Progress saved and patient data synced to ZMO!")
+                    except Exception as e:
+                        st.info(f"Progress saved! (ZMO sync skipped: {e})")
+                else:
+                    st.info("Progress saved! Patient will be added to ZMO after eligibility is verified.")
+
         with col3:
             if st.form_submit_button("Back to Queue"):
                 st.session_state['onboarding_mode'] = None
@@ -686,8 +728,24 @@ def show_chart_creation_form(patient_details, current_user_id):
                     'chart_notes': chart_notes
                 }
                 database.update_onboarding_checkbox_data(patient_details['onboarding_id'], chart_data)
-                st.info("Progress saved!")
-        
+
+                # Sync patient data to tables if patient already exists (added after Stage 2)
+                if patient_details.get('patient_id'):
+                    try:
+                        database.insert_patient_from_onboarding(patient_details['onboarding_id'])
+                        database.sync_onboarding_to_patient_panel(patient_details['onboarding_id'])
+                        # Clear ZMO cache so changes appear immediately
+                        try:
+                            zmo_module.get_patient_panel_data.clear()
+                            zmo_module.get_patients_data.clear()
+                        except Exception:
+                            pass
+                        st.success("✓ Progress saved and patient data synced to ZMO!")
+                    except Exception as e:
+                        st.info(f"Progress saved! (ZMO sync skipped: {e})")
+                else:
+                    st.info("Progress saved! (Patient not yet added to ZMO - complete Stage 2 eligibility first)")
+
         with col3:
             if st.form_submit_button("Back to Queue"):
                 st.session_state['onboarding_mode'] = None
@@ -964,17 +1022,23 @@ def show_intake_processing_form(patient_details, current_user_id):
 
                 # Require intake call completion before completing
                 if intake_call_completed:
-                    # Create patient_id at the end of Stage 4 to ensure it's available for Stage 5
+                    # Update patient record with Stage 4 intake data (patient was created at Stage 2)
                     try:
                         patient_id = database.insert_patient_from_onboarding(patient_details['onboarding_id'])
                         if patient_id:
-                            st.info(f"Patient ID created: {patient_id}")
+                            st.info(f"✓ Patient record updated with intake data: {patient_id}")
                         else:
-                            st.warning("Patient ID already exists or was updated")
+                            st.warning("Patient record already exists or was updated")
                     except Exception as e:
-                        st.error(f"Error creating patient ID: {str(e)}")
-                        # Don't prevent stage completion if patient creation fails
-                    
+                        st.error(f"Error updating patient record: {str(e)}")
+                        # Don't prevent stage completion if patient update fails
+
+                    # Also sync to patient_panel to ensure latest data
+                    try:
+                        database.sync_onboarding_to_patient_panel(patient_details['onboarding_id'])
+                    except Exception as e:
+                        st.warning(f"Patient panel sync warning: {e}")
+
                     database.update_onboarding_stage_completion(patient_details['onboarding_id'], 4, True)
 
                     # Update tasks
@@ -986,7 +1050,7 @@ def show_intake_processing_form(patient_details, current_user_id):
                                 {'intake_call_completed': True}
                             )
 
-                    st.success("Stage 4 Complete! Patient ID created. Moving to TV Scheduling...")
+                    st.success("Stage 4 Complete! Patient intake data synced. Moving to TV Scheduling...")
                     st.rerun()
                 else:
                     st.error("Please complete the intake call before proceeding.")
@@ -1035,8 +1099,24 @@ def show_intake_processing_form(patient_details, current_user_id):
                     'mh_suicidal': mh_suicidal,
                 }
                 database.update_onboarding_checkbox_data(patient_details['onboarding_id'], checkbox_data)
-                st.info("Progress saved!")
-        
+
+                # Sync patient data to tables if patient already exists
+                if patient_details.get('patient_id'):
+                    try:
+                        database.insert_patient_from_onboarding(patient_details['onboarding_id'])
+                        database.sync_onboarding_to_patient_panel(patient_details['onboarding_id'])
+                        # Clear ZMO cache so changes appear immediately
+                        try:
+                            zmo_module.get_patient_panel_data.clear()
+                            zmo_module.get_patients_data.clear()
+                        except Exception:
+                            pass
+                        st.success("✓ Progress saved and patient data synced to ZMO!")
+                    except Exception as e:
+                        st.info(f"Progress saved! (ZMO sync skipped: {e})")
+                else:
+                    st.info("Progress saved! (Patient not yet added to ZMO)")
+
         with col3:
             if st.form_submit_button("Back to Queue"):
                 st.session_state['onboarding_mode'] = None
@@ -1241,59 +1321,47 @@ def show_tv_scheduling_form(patient_details, current_user_id):
                     conn.close()
                 
                 assignments_complete = regional_provider_assigned and coordinator_assigned_in_patient_table
-                
+
                 if basic_requirements_met and assignments_complete:
                     # Save Stage 5 data including provider assignment
                     database.update_onboarding_stage5_completion(
-                        patient_details['onboarding_id'], 
-                        st.session_state.tv_form_data['tv_date'], 
-                        st.session_state.tv_form_data['tv_time'], 
+                        patient_details['onboarding_id'],
+                        st.session_state.tv_form_data['tv_date'],
+                        st.session_state.tv_form_data['tv_time'],
                         st.session_state.tv_form_data['assigned_provider'],  # Initial TV provider
                         st.session_state.get('assigned_regional_provider', 'Select Regional Provider...'),  # Regional provider
                         st.session_state.tv_form_data['assigned_coordinator']
                     )
-                    
-                    # Patient ID should already exist from Stage 4, but ensure patient data is updated
-                    try:
-                        database.insert_patient_from_onboarding(patient_details['onboarding_id'])
-                    except Exception as e:
-                        st.warning(f"Patient table update warning: {e}")
-                    
-                    # Verify assignments were written to patient_assignments table
-                    try:
-                        # Get the patient_id to check assignments
-                        updated_patient = database.get_onboarding_patient_details(patient_details['onboarding_id'])
-                        patient_id = updated_patient.get('patient_id')
-                        
-                        if patient_id:
-                            # Check if assignments exist in patient_assignments table
-                            conn = database.get_db_connection()
-                            assignments_check = conn.execute("""
-                                SELECT provider_id, coordinator_id 
-                                FROM patient_assignments 
-                                WHERE patient_id = ? AND status = 'active'
-                            """, (patient_id,)).fetchone()
-                            conn.close()
-                            
-                            if assignments_check and assignments_check[0] and assignments_check[1]:
-                                st.info("✅ Provider and coordinator assignments verified in patient_assignments table")
-                            else:
-                                st.warning("⚠️ Assignments may not have been properly written to patient_assignments table")
-                        else:
-                            st.warning("⚠️ Patient ID not found - assignments verification skipped")
-                    except Exception as e:
-                        st.warning(f"Assignment verification warning: {e}")
-                    
+
+                    # COMPREHENSIVE SYNC: Update ALL tables at once (patients, patient_panel, ZMO, HHC, patient_assignments)
+                    with st.spinner("Syncing patient data to all tables..."):
+                        sync_result = database.sync_onboarding_to_all_tables(patient_details['onboarding_id'])
+
+                    # Display sync results
+                    if sync_result['success']:
+                        st.success(f"✅ Patient synced to all tables:")
+                        col_a, col_b, col_c = st.columns(3)
+                        with col_a:
+                            st.metric("Patients Table", "✓" if sync_result['patients_table'] else "✗")
+                        with col_b:
+                            st.metric("Patient Panel (ZMO)", "✓" if sync_result['patient_panel'] else "✗")
+                        with col_c:
+                            st.metric("Patient Assignments", "✓" if sync_result['patient_assignments'] else "✗")
+                        col_d, col_e = st.columns(2)
+                        with col_d:
+                            st.metric("HHC Export", "✓" if sync_result['hhc_export'] else "✗")
+                        with col_e:
+                            st.metric("Patient ID", sync_result.get('patient_id', 'N/A'))
+
+                        if sync_result.get('message'):
+                            st.info(sync_result['message'])
+                    else:
+                        st.error(f"❌ Sync failed: {sync_result.get('message', 'Unknown error')}")
+
                     # Complete Stage 5 and set patient status to 'Completed'
                     database.update_onboarding_stage_completion(patient_details['onboarding_id'], 5, True)
                     database.update_onboarding_patient_status(patient_details['onboarding_id'], 'Completed')
-                    
-                    # Ensure data is transferred to patient_panel table
-                    try:
-                        database.sync_onboarding_to_patient_panel(patient_details['onboarding_id'])
-                    except Exception as e:
-                        st.warning(f"Patient panel sync warning: {e}")
-                    
+
                     # Update tasks
                     tasks = patient_details.get('tasks', [])
                     for task in tasks:
@@ -1301,14 +1369,22 @@ def show_tv_scheduling_form(patient_details, current_user_id):
                             database.update_onboarding_task_status(
                                 task['task_id'], 'Complete', current_user_id,
                                 {
-                                    'tv_scheduled': True, 
+                                    'tv_scheduled': True,
                                     'initial_tv_completed': True,
                                     'provider_assigned': True,
                                     'coordinator_assigned': True
                                 }
                             )
-                    
-                    st.success("Stage 5 Complete! Patient onboarding workflow finished. Patient status set to 'Completed' and data transferred to patients and patient_panel tables.")
+
+                    # Clear ZMO cache so patient appears immediately in ZMO tab
+                    try:
+                        zmo_module.get_patient_panel_data.clear()
+                        zmo_module.get_patients_data.clear()
+                    except Exception:
+                        pass  # Cache clearing may fail if not yet loaded
+
+                    st.success("🎉 Stage 5 Complete! Patient onboarding workflow finished.")
+                    st.info(f"Patient ID: {sync_result.get('patient_id', 'N/A')} | Status: Completed | Synced to: patients, patient_panel (ZMO), HHC View, patient_assignments")
                     st.balloons()
                     st.session_state['onboarding_mode'] = None
                     st.rerun()
@@ -1346,9 +1422,25 @@ def show_tv_scheduling_form(patient_details, current_user_id):
                 # Save the progress to database
                 try:
                     result = database.save_onboarding_tv_scheduling_progress(patient_details['onboarding_id'], form_data)
-                    
+
                     if result:
-                        st.success("✅ Progress saved successfully! Your changes have been saved to the database.")
+                        # Sync patient data to tables if patient already exists
+                        if patient_details.get('patient_id'):
+                            try:
+                                database.insert_patient_from_onboarding(patient_details['onboarding_id'])
+                                database.sync_onboarding_to_patient_panel(patient_details['onboarding_id'])
+                                # Clear ZMO cache so changes appear immediately
+                                try:
+                                    zmo_module.get_patient_panel_data.clear()
+                                    zmo_module.get_patients_data.clear()
+                                except Exception:
+                                    pass
+                                st.success("✅ Progress saved and patient data synced to ZMO!")
+                            except Exception as e:
+                                st.warning(f"Progress saved! (ZMO sync skipped: {e})")
+                        else:
+                            st.success("✅ Progress saved successfully! (Patient not yet added to ZMO)")
+
                         # Refresh the patient details to show updated data
                         st.session_state['view_patient_details'] = database.get_onboarding_patient_details(patient_details['onboarding_id'])
                         # Force queue refresh by setting a flag to reload queue data
@@ -1365,7 +1457,7 @@ def show_tv_scheduling_form(patient_details, current_user_id):
                     import traceback
                     with st.expander("Error Details"):
                         st.code(traceback.format_exc())
-    
+
     with col3:
         with st.form("back_to_queue_form"):
             if st.form_submit_button("Back to Queue"):

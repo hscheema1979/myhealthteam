@@ -137,3 +137,42 @@ Historical and utility SQL scripts are in `src/sql/archive/`. These include:
 - Data transformation and migration scripts
 - Population scripts for summary tables
 - Schema enhancement scripts
+
+## Google OAuth Setup (PRODUCTION - VPS2)
+
+### Configuration
+
+**Google Client ID**: `298448117337-5eno2h0163etcl9vnqjjj524k48ae0d2.apps.googleusercontent.com`
+**Production Redirect URI**: `https://care.myhealthteam.org`
+
+### Environment Variables on VPS2
+
+The systemd service file `/etc/systemd/system/myhealthteam.service` must have:
+```
+Environment=GOOGLE_REDIRECT_URI=https://care.myhealthteam.org
+```
+
+### Google Cloud Console Setup
+
+1. Go to https://console.cloud.google.com/apis/credentials
+2. Client ID: `298448117337-5eno2h0163etcl9vnqjjj524k48ae0d2.apps.googleusercontent.com`
+3. Authorized redirect URIs must include EXACTLY:
+   - `https://care.myhealthteam.org` (no trailing slash)
+   - `http://localhost:8501` (local dev)
+   - `http://localhost:8502` (local dev)
+
+### KNOWN ISSUE - OAuth Callback Double-Execution
+
+**Problem**: After Google OAuth redirect, the callback handler is being called twice due to Streamlit reruns. The first execution succeeds (gets token), but the second fails with `invalid_grant` because the authorization code is one-time use only.
+
+**Files Involved**:
+- `src/auth_module.py` - OAuth callback handling in `render_login_sidebar()` (lines ~709-732)
+- `src/google_oauth.py` - Token exchange and user creation
+
+**Root Cause**: Streamlit reruns the entire script on every interaction. After successful OAuth, the script reruns and the callback handler tries to process the same `code` parameter again.
+
+**Fix Needed**:
+1. After successful OAuth, immediately clear query params AND set a flag in session state to prevent re-processing
+2. Or use a different approach (e.g., dedicated callback endpoint, state parameter validation)
+
+**Current Workaround**: None - Google login is broken on production.

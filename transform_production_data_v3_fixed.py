@@ -1234,8 +1234,9 @@ def create_hhc_export_view(conn):
 
 def process_zmo(file_path, conn, provider_map):
     """Import patient data from ZMO_Main.csv
-    Creates patients, patient_panel, patient_assignments, onboarding_patients records
+    Creates patients, patient_panel, patient_assignments records
     Auto-updates facilities table with new facilities from ZMO
+    NOTE: Does NOT create onboarding_patients records - those are only created manually via the Onboarding Dashboard
     """
     log_print(f"Processing ZMO: {os.path.basename(file_path)}")
     try:
@@ -1259,7 +1260,8 @@ def process_zmo(file_path, conn, provider_map):
         # Step 2: Process patient records
         patients_data = []
         assignments_data = []
-        onboarding_data = []
+        # NOTE: onboarding_data removed - onboarding_patients table is NOT populated by this script
+        # onboarding_patients records are only created manually via the Onboarding Dashboard
 
         # Track patient_ids to handle duplicates
         seen_patient_ids = {}
@@ -1419,34 +1421,9 @@ def process_zmo(file_path, conn, provider_map):
                     f"    Added assignment: {patient_id} -> Provider: {provider_id_for_assignment}, Coordinator: {coordinator_id_for_assignment}"
                 )
 
-            # Onboarding - Include all workflow tracking columns
-            onboarding_data.append(
-                (
-                    patient_id,
-                    first_name,
-                    last_name,
-                    dob.strftime("%Y-%m-%d") if dob else None,
-                    phone,
-                    provider_id,
-                    coordinator_id,
-                    initial_tv_date.strftime("%Y-%m-%d") if initial_tv_date else None,
-                    str(row.get("Initial TV\nProv", "")).strip()
-                    if pd.notna(row.get("Initial TV\nProv"))
-                    else None,
-                    'Active',  # patient_status default
-                    None,  # assigned_pot_user_id (no data in ZMO)
-                    0,  # stage1_complete
-                    0,  # stage2_complete
-                    0,  # stage3_complete
-                    0,  # stage4_complete
-                    0,  # stage5_complete
-                    None,  # completed_date
-                    datetime.now().strftime('%Y-%m-%d %H:%M:%S'),  # updated_date
-                )
-            )
+            # NOTE: Onboarding data collection removed - onboarding_patients is NOT populated by this script
 
         # Step 3: Insert data using INSERT OR REPLACE to preserve existing data
-        # This preserves onboarding workflow data (patient_status, stages, etc.)
 
         # CRITICAL: Preserve manually-entered contact data before wiping patients table
         # These fields are entered via Stage 4 onboarding workflow and are not in ZMO data
@@ -1466,8 +1443,7 @@ def process_zmo(file_path, conn, provider_map):
         conn.execute("DELETE FROM patients")
         # NOTE: patient_assignments is now handled by process_provider_assignments_from_zmo
         conn.execute("DELETE FROM patient_assignments")
-        # NOTE: onboarding_patients uses INSERT OR REPLACE to preserve workflow data
-        # This prevents loss of patient_status, stage tracking, etc. when importing new CSV data
+        # NOTE: onboarding_patients is NOT touched by this script - only created manually via Onboarding Dashboard
 
         # Insert patients (simplified - expand columns as needed)
         conn.executemany(
@@ -1518,18 +1494,8 @@ def process_zmo(file_path, conn, provider_map):
                 assignments_data,
             )
 
-        # Onboarding - INSERT OR REPLACE to preserve workflow data (patient_status, stages, etc.)
-        # Only updates fields from ZMO, preserves existing workflow tracking data
-        conn.executemany(
-            """INSERT OR REPLACE INTO onboarding_patients (
-                patient_id, first_name, last_name, date_of_birth, phone_primary,
-                assigned_provider_user_id, assigned_coordinator_user_id, tv_date, initial_tv_provider,
-                patient_status, assigned_pot_user_id,
-                stage1_complete, stage2_complete, stage3_complete, stage4_complete, stage5_complete,
-                completed_date, updated_date
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-            onboarding_data,
-        )
+        # NOTE: onboarding_patients INSERT removed - this script no longer populates onboarding_patients table
+        # onboarding_patients records are only created manually via the Onboarding Dashboard
 
         log_print(f"  Imported {len(patients_data)} patients")
         log_print(f"  Total assignments collected: {len(assignments_data)}")
