@@ -52,6 +52,8 @@ PATIENT_PANEL_COLUMNS = {
     # Contacts
     "appointment_contact_name", "appointment_contact_phone",
     "medical_contact_name", "medical_contact_phone",
+    # Notes
+    "labs_notes", "imaging_notes", "general_notes",
     # Display names (computed, stored as text columns)
     "care_provider_name", "care_coordinator_name",
     # Metadata
@@ -71,6 +73,8 @@ PATIENTS_TABLE_COLUMNS = {
     "insurance_primary", "insurance_policy_number", "insurance_secondary",
     # Medical records
     "medical_record_number", "enrollment_date", "discharge_date", "notes",
+    # Notes
+    "labs_notes", "imaging_notes", "general_notes",
     # Metadata
     "created_date", "updated_date", "created_by", "updated_by", "current_facility_id",
     # Flags
@@ -301,6 +305,9 @@ def format_column_name(col: str) -> str:
         "soc": "SOC",
         "dme": "DME",
         "polst": "POLST",
+        "labs_notes": "Labs Notes",
+        "imaging_notes": "Imaging Notes",
+        "general_notes": "General Notes",
     }
     return overrides.get(col, name)
 
@@ -742,6 +749,11 @@ def render_zmo_tab(
                 # Skip readonly columns - they'll use default config
                 # (changes won't be saved due to save function filtering)
                 continue
+            elif col in ["labs_notes", "imaging_notes", "general_notes"]:
+                # Notes columns - use wider text column
+                col_config[col] = st.column_config.TextColumn(
+                    display_name, width="large"
+                )
             elif pd.api.types.is_float_dtype(dtype) or pd.api.types.is_integer_dtype(dtype):
                 col_config[col] = st.column_config.NumberColumn(
                     display_name, width="medium"

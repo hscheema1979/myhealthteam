@@ -1018,6 +1018,10 @@ def populate_patient_panel(conn):
                 medical_contact_name TEXT,
                 medical_contact_phone TEXT,
 
+                labs_notes TEXT,
+                imaging_notes TEXT,
+                general_notes TEXT,
+
                 care_provider_name TEXT,
                 care_coordinator_name TEXT,
 
@@ -1095,6 +1099,10 @@ def populate_patient_panel(conn):
             p.appointment_contact_phone,
             p.medical_contact_name,
             p.medical_contact_phone,
+
+            p.labs_notes,
+            p.imaging_notes,
+            p.general_notes,
 
             CASE WHEN pa.provider_id > 0 THEN u_prov.full_name ELSE NULL END as care_provider_name,
             CASE WHEN pa.coordinator_id > 0 THEN u_coord.full_name ELSE NULL END as care_coordinator_name,
