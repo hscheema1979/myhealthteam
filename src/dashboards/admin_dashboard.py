@@ -1657,7 +1657,7 @@ def show():
                     available_assignees = [
                         (
                             p["user_id"],
-                            f"{p.get('first_name', '')} {p.get('last_name', '')}",
+                            p.get("full_name", ""),
                         )
                         for p in providers
                     ]
@@ -1667,7 +1667,7 @@ def show():
                     available_assignees = [
                         (
                             c["user_id"],
-                            f"{c.get('first_name', '')} {c.get('last_name', '')}",
+                            c.get("full_name", ""),
                         )
                         for c in coordinators
                     ]
@@ -1913,24 +1913,18 @@ def show():
                             pd.DataFrame(all_patients)
                         )
                         if not all_patients_df.empty:
-                            active_statuses = ["Active", "Active-Geri", "Active-PCP", "Hospice"]
+                            active_statuses = ["Active", "Active-Geri", "Active-PCP", "Hospice", "HOSPICE"]
                             if "status" in all_patients_df.columns:
-                                active_patients = all_patients_df[
+                                status_normalized = (
                                     all_patients_df["status"]
                                     .fillna("")
                                     .astype(str)
                                     .str.strip()
-                                    .isin(active_statuses)
-                                    | all_patients_df["status"]
-                                    .fillna("")
-                                    .astype(str)
-                                    .str.strip()
-                                    .str.startswith("Active")
-                                    | all_patients_df["status"]
-                                    .fillna("")
-                                    .astype(str)
-                                    .str.strip()
-                                    == "Hospice"
+                                )
+                                active_patients = all_patients_df[
+                                    (status_normalized.isin(active_statuses))
+                                    | (status_normalized.str.startswith("Active"))
+                                    | (status_normalized.str.upper() == "HOSPICE")
                                 ]
                                 bulk_patients_to_assign = (
                                     active_patients["patient_id"].dropna().tolist()
@@ -2298,45 +2292,27 @@ def show():
                 st.markdown("---")
 
                 # Split patients into active and inactive
-                active_statuses = ["Active", "Active-Geri", "Active-PCP", "Hospice"]
+                active_statuses = ["Active", "Active-Geri", "Active-PCP", "Hospice", "HOSPICE"]
                 if "status" in patients_df.columns:
-                    # Active patients: status starts with 'Active' or is 'Hospice'
-                    active_patients = patients_df[
+                    # Active patients: status starts with 'Active' or is 'Hospice' (case-insensitive)
+                    status_normalized = (
                         patients_df["status"]
                         .fillna("")
                         .astype(str)
                         .str.strip()
-                        .isin(active_statuses)
-                        | patients_df["status"]
-                        .fillna("")
-                        .astype(str)
-                        .str.strip()
-                        .str.startswith("Active")
-                        | patients_df["status"]
-                        .fillna("")
-                        .astype(str)
-                        .str.strip()
-                        == "Hospice"
+                    )
+                    active_patients = patients_df[
+                        (status_normalized.isin(active_statuses))
+                        | (status_normalized.str.startswith("Active"))
+                        | (status_normalized.str.upper() == "HOSPICE")
                     ].copy()
 
                     # Inactive patients: everything else
                     inactive_patients = patients_df[
                         ~(
-                            patients_df["status"]
-                            .fillna("")
-                            .astype(str)
-                            .str.strip()
-                            .isin(active_statuses)
-                            | patients_df["status"]
-                            .fillna("")
-                            .astype(str)
-                            .str.strip()
-                            .str.startswith("Active")
-                            | patients_df["status"]
-                            .fillna("")
-                            .astype(str)
-                            .str.strip()
-                            == "Hospice"
+                            (status_normalized.isin(active_statuses))
+                            | (status_normalized.str.startswith("Active"))
+                            | (status_normalized.str.upper() == "HOSPICE")
                         )
                     ].copy()
                 else:
