@@ -121,6 +121,8 @@ PATIENTS_TABLE_COLUMNS = {
 READONLY_COLUMNS = {
     # Computed display names (from JOINs or COALESCE)
     "care_provider_name", "care_coordinator_name", "provider_name", "coordinator_name",
+    # Provider/Coordinator assignment IDs (must use reassignment function)
+    "provider_id", "coordinator_id",
     # Auto-timestamps
     "created_date", "updated_date",
     # Primary key that shouldn't be changed
@@ -130,9 +132,10 @@ READONLY_COLUMNS = {
 }
 
 # Columns that require special handling (update patient_assignments table instead)
+# NOTE: These are now in READONLY_COLUMNS - assignments must use reassignment function
 ASSIGNMENT_COLUMNS = {
-    "provider_id": "provider_id",
-    "coordinator_id": "coordinator_id",
+    # "provider_id": "provider_id",  # Disabled - use reassignment function instead
+    # "coordinator_id": "coordinator_id",  # Disabled - use reassignment function instead
 }
 
 # Persistent columns that must always be visible
@@ -753,6 +756,8 @@ def render_zmo_tab(
 
         # ===== Display Table =====
         if enable_editing:
+            # Determine which columns to disable (readonly columns that exist in page_data)
+            disabled_columns = [col for col in READONLY_COLUMNS if col in page_data.columns]
             edited_data = st.data_editor(
                 page_data,
                 use_container_width=True,
@@ -760,6 +765,7 @@ def render_zmo_tab(
                 column_config=col_config,
                 key=f"zmo_editor_{st.session_state.zmo_page}",
                 hide_index=True,
+                disabled=disabled_columns if disabled_columns else None,
             )
         else:
             st.dataframe(

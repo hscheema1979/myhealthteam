@@ -13,6 +13,11 @@ from datetime import datetime
 from src import database
 from src.database import get_db_connection
 from src.core_utils import get_user_role_ids
+from src.oauth_config import get_oauth_config
+from src.google_oauth import (
+    get_google_auth_url,
+    handle_google_oauth_callback,
+)
 from streamlit_js_eval import streamlit_js_eval
 
 # Optional CookieManager from extra_streamlit_components
@@ -145,16 +150,16 @@ class AuthenticationManager:
         finally:
             conn.close()
     
-    def authenticate_user(self, email: str, password: Optional[str] = None, 
+    def authenticate_user(self, email: str, password: Optional[str] = None,
                          auth_method: str = "email_password") -> Optional[Dict[str, Any]]:
         """
         Main authentication method that requires password by default
-        
+
         Args:
             email: User's email address
             password: User's password (required)
-            auth_method: "email_password" (default) or "email_only" 
-            
+            auth_method: "email_password" (default) or "email_only"
+
         Returns:
             User dictionary if authenticated, None otherwise
         """
@@ -167,6 +172,37 @@ class AuthenticationManager:
             # Only allow email-only if explicitly requested (for backward compatibility)
             return self.authenticate_by_email_only(email)
         else:
+            return None
+
+    def authenticate_with_google_code(self, code: str) -> Optional[Dict[str, Any]]:
+        """
+        Authenticate user using Google OAuth authorization code
+
+        Args:
+            code: Authorization code from Google OAuth callback
+
+        Returns:
+            User dictionary if authenticated, None otherwise
+        """
+        try:
+            user = handle_google_oauth_callback(code)
+            if user:
+                # Update last login timestamp
+                conn = get_db_connection()
+                try:
+                    conn.execute("""
+                        UPDATE users
+                        SET last_login = CURRENT_TIMESTAMP
+                        WHERE user_id = ?
+                    """, (user['user_id'],))
+                    conn.commit()
+                except sqlite3.Error as e:
+                    print(f"Error updating last login: {e}")
+                finally:
+                    conn.close()
+            return user
+        except Exception as e:
+            print(f"Google authentication error: {e}")
             return None
     
     def _save_persistent_login(self, user: Dict[str, Any]):
@@ -192,7 +228,7 @@ class AuthenticationManager:
                 st.session_state['_persistent_session_id'] = sid
                 persistent_data['session_id'] = sid
                 try:
-                    st.experimental_set_query_params(session_id=sid)
+                    st.query_params['session_id'] = sid
                 except Exception:
                     pass
             except Exception as e:
@@ -218,11 +254,9 @@ class AuthenticationManager:
             # Server-side session via query param or cookie first
             session_id = None
             try:
-                params = st.experimental_get_query_params()
-                if isinstance(params, dict):
-                    sid_list = params.get('session_id')
-                    if sid_list:
-                        session_id = sid_list[0]
+                params = st.query_params
+                if 'session_id' in params:
+                    session_id = params['session_id']
             except Exception:
                 pass
             if self.cookie_manager is not None:
@@ -672,6 +706,21 @@ def render_login_sidebar(auth_manager: Optional[AuthenticationManager] = None):
             auth_manager.session_state['persistent_login_checked'] = True
             st.rerun()
 
+    # Check for OAuth callback
+    query_params = st.query_params
+    if 'code' in query_params and 'state' in query_params:
+        code = query_params['code']
+        user = auth_manager.authenticate_with_google_code(code)
+        if user:
+            auth_manager.setup_user_session(user, "google_oauth", True)
+            st.session_state['login_email_prefill'] = user.get('email')
+            # Clear query params
+            query_params.clear()
+            st.sidebar.success(f"Welcome, {auth_manager.get_user_full_name()}!")
+            st.rerun()
+        else:
+            st.sidebar.error("Google authentication failed.")
+            query_params.clear()
 
     # Show impersonation warning if active
     if auth_manager.is_impersonating():
@@ -685,37 +734,105 @@ def render_login_sidebar(auth_manager: Optional[AuthenticationManager] = None):
             auth_manager.stop_impersonation()
             auth_manager.session_state['_pending_rerun'] = True
             st.rerun()
-    
+
     st.sidebar.markdown("### Login")
-    
+
+    # Check if Google OAuth is configured
+    oauth_config = get_oauth_config()
+    google_oauth_enabled = oauth_config.google_enabled
+
     if not auth_manager.is_authenticated():
-        with st.sidebar.form("login_form"):
-            prefill_email = st.session_state.get('login_email_prefill', '')
-            email = st.text_input("Email", value=prefill_email, placeholder="user@example.com")
-            
-            # Password is required by default - no checkbox needed
-            password = st.text_input("Password", type="password", placeholder="Enter your password")
-            require_password = True
-            
-            # Remember Me checkbox for persistent login
-            remember_me = st.checkbox("Remember Me", value=True, help="Stay logged in for 30 days")
-            
-            login_button = st.form_submit_button("Login")
-            
-            if login_button:
-                if email:
-                    # Always use password authentication
-                    user = auth_manager.authenticate_user(email, password, "email_password")
-                    
-                    if user:
-                        auth_manager.setup_user_session(user, "email_password", True)
-                        st.session_state['login_email_prefill'] = user.get('email')
-                        st.sidebar.success(f"Welcome, {auth_manager.get_user_full_name()}!")
-                        st.rerun()
+        # Show Google Sign-In button if configured
+        if google_oauth_enabled:
+            # Generate Google OAuth URL
+            try:
+                google_auth_url = get_google_auth_url()
+
+                # Google Sign-In Button
+                st.sidebar.markdown("""
+                <style>
+                div[data-testid="stSidebar"] > div:first-child {
+                    background-color: #f8f9fa;
+                }
+                .google-signin-btn {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    background-color: #fff;
+                    border: 1px solid #dadce0;
+                    border-radius: 4px;
+                    padding: 10px 16px;
+                    margin: 8px 0;
+                    text-decoration: none;
+                    font-family: 'Roboto', sans-serif;
+                    font-size: 14px;
+                    font-weight: 500;
+                    color: #3c4043;
+                    width: 100%;
+                    box-sizing: border-box;
+                    transition: background-color 0.2s, box-shadow 0.2s;
+                    cursor: pointer;
+                }
+                .google-signin-btn:hover {
+                    background-color: #f7f8f8;
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+                }
+                .google-icon {
+                    width: 18px;
+                    height: 18px;
+                    margin-right: 12px;
+                }
+                .btn-text {
+                    flex-grow: 1;
+                    text-align: center;
+                }
+                </style>
+                """, unsafe_allow_html=True)
+
+                st.sidebar.markdown(
+                    f'<a href="{google_auth_url}" class="google-signin-btn" target="_self">'
+                    '<svg class="google-icon" viewBox="0 0 48 48">'
+                    '<path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>'
+                    '<path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path>'
+                    '<path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path>'
+                    '<path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path>'
+                    '</svg>'
+                    '<span class="btn-text">Sign in with Google</span></a>',
+                    unsafe_allow_html=True
+                )
+
+                st.sidebar.markdown("<div style='text-align: center; color: #666; font-size: 12px; margin: 8px 0;'>— or —</div>", unsafe_allow_html=True)
+            except Exception as e:
+                st.sidebar.error(f"Google OAuth configuration error: {e}")
+
+        # Email/password login in an expander
+        with st.sidebar.expander("Sign in with Email"):
+            with st.form("login_form"):
+                prefill_email = st.session_state.get('login_email_prefill', '')
+                email = st.text_input("Email", value=prefill_email, placeholder="user@example.com")
+
+                # Password is required by default - no checkbox needed
+                password = st.text_input("Password", type="password", placeholder="Enter your password")
+
+                # Remember Me checkbox for persistent login
+                remember_me = st.checkbox("Remember Me", value=True, help="Stay logged in for 30 days")
+
+                login_button = st.form_submit_button("Login")
+
+                if login_button:
+                    if email:
+                        # Always use password authentication
+                        user = auth_manager.authenticate_user(email, password, "email_password")
+
+                        if user:
+                            auth_manager.setup_user_session(user, "email_password", remember_me)
+                            st.session_state['login_email_prefill'] = user.get('email')
+                            st.sidebar.success(f"Welcome, {auth_manager.get_user_full_name()}!")
+                            st.rerun()
+                        else:
+                            st.sidebar.error("Authentication failed. Please check your credentials.")
                     else:
-                        st.sidebar.error("Authentication failed. Please check your credentials.")
-                else:
-                    st.sidebar.error("Please enter your email")
+                        st.sidebar.error("Please enter your email")
     else:
         # Show logged in user info and logout button
         if auth_manager.is_impersonating():
@@ -725,13 +842,18 @@ def render_login_sidebar(auth_manager: Optional[AuthenticationManager] = None):
             else:
                 st.sidebar.info("Original: Unknown User")
         else:
-            st.sidebar.success(f"Logged in as: {auth_manager.get_user_full_name()}")
-        
+            user = auth_manager.get_current_user()
+            display_name = auth_manager.get_user_full_name()
+            # Show OAuth indicator if applicable
+            if user and user.get('oauth_provider') == 'google':
+                display_name = f"{display_name} (Google)"
+            st.sidebar.success(f"Logged in as: {display_name}")
+
         # Admin impersonation dropdown
         if auth_manager.has_role(34) and not auth_manager.is_impersonating():  # Admin role ID
             st.sidebar.markdown("---")
             st.sidebar.markdown("### 🔍 User Impersonation")
-            
+
             # Get all users for dropdown
             all_users = auth_manager.get_all_users_for_dropdown()
             if all_users:
@@ -741,7 +863,7 @@ def render_login_sidebar(auth_manager: Optional[AuthenticationManager] = None):
                     options=list(user_options.keys()),
                     key="impersonate_dropdown"
                 )
-                
+
                 if st.sidebar.button("🎭 Start Impersonating", key="start_impersonation"):
                     if selected_user_display:
                         target_user_id = user_options[selected_user_display]
@@ -750,7 +872,7 @@ def render_login_sidebar(auth_manager: Optional[AuthenticationManager] = None):
                             st.rerun()
                         else:
                             st.sidebar.error("Failed to start impersonation")
-        
+
         st.sidebar.markdown("---")
         if st.sidebar.button("Logout"):
             auth_manager.logout_user()

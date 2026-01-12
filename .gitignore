@@ -238,4 +238,4 @@ db-sync/temp/
 db-sync/flags/
 
 #All the docs
-docs/
+docs/src/oauth_config.py

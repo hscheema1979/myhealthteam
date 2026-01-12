@@ -1785,6 +1785,13 @@ def show_patient_info_tab_provider(user_id):
         df["Last Visit Date"] = df[found_last] if found_last else None
         df["days_since_last_visit"] = df.get("Last Visit Date").apply(_days_since)
 
+        # Define columns that should be disabled for editing (must use reassignment function)
+        disabled_columns = []
+        for col in ["coordinator_id", "provider_id", "coordinator_name", "provider_name",
+                    "care_coordinator_name", "care_provider_name"]:
+            if col in df.columns:
+                disabled_columns.append(col)
+
         display_cols = [
             "patient_id",
             "status",
@@ -1795,6 +1802,11 @@ def show_patient_info_tab_provider(user_id):
             "service_type",
             "phone_primary",
         ]
+        # Add coordinator and provider columns if they exist
+        for col in ["coordinator_name", "provider_name"]:
+            if col in df.columns and col not in display_cols:
+                display_cols.append(col)
+
         existing_cols = [c for c in display_cols if c in df.columns]
         df_display = df[existing_cols].copy()
 
@@ -1814,12 +1826,15 @@ def show_patient_info_tab_provider(user_id):
         # Display based on edit permissions
         if edit_mode and has_admin_access:
             # Show editable dataframe for admin users
+            # Disable coordinator and provider columns - must use reassignment function
+            disabled_in_display = [col for col in disabled_columns if col in df_display.columns]
             edited_df = st.data_editor(
                 df_display,
                 use_container_width=True,
                 hide_index=True,
                 num_rows="dynamic",
                 key="cp_patient_info_editor",
+                disabled=disabled_in_display if disabled_in_display else None,
             )
             if edited_df is not None and not edited_df.equals(df_display):
                 _apply_patient_info_edits(edited_df, df_display)

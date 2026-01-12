@@ -11,13 +11,29 @@ import pandas as pd
 
 # Setup logging to write to both terminal and file
 LOG_FILE = f"transform_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+
+# Custom StreamHandler that handles stdout flush errors when running under Task Scheduler
+class SafeStreamHandler(logging.StreamHandler):
+    def emit(self, record):
+        try:
+            super().emit(record)
+        except (OSError, ValueError):
+            pass  # Ignore stdout errors when running in hidden window (Task Scheduler)
+
+    def flush(self):
+        try:
+            super().flush()
+        except (OSError, ValueError):
+            pass  # Ignore flush errors
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(message)s",
     handlers=[
         logging.FileHandler(LOG_FILE),
-        logging.StreamHandler(sys.stdout),  # Also print to console
+        SafeStreamHandler(sys.stdout),  # Use safe handler that ignores flush errors
     ],
+    force=True,  # Ensure this configuration is applied
 )
 logger = logging.getLogger(__name__)
 
