@@ -1027,7 +1027,7 @@ def show_patient_list_section(user_id, section_id=None, has_cpm_role=False):
             )
         with col_type:
             # Patient type dropdown for billing code selection
-            patient_type_options = ["Select one", "New", "Established", "Acute", "Cognitive", "Follow Up", "TCM"]
+            patient_type_options = ["Select one", "New", "Established", "Acute", "Cognitive", "Follow Up", "TCM-7", "TCM-14"]
             selected_patient_type = st.selectbox(
                 "Patient Type",
                 patient_type_options,
@@ -1039,7 +1039,26 @@ def show_patient_list_section(user_id, section_id=None, has_cpm_role=False):
             selected_billing_code = None
             selected_billing_desc = ""
 
-            if task_location_val == "Home":
+            # Special handling for TCM codes (TCM-7 = 99496, TCM-14 = 99495)
+            if selected_patient_type == "TCM-7":
+                # TCM 7-day codes - use location to determine specific code
+                if task_location_val == "Home":
+                    selected_billing_code = "99496"  # PCP-TCM 7 days (HO)
+                elif task_location_val == "Tele":
+                    selected_billing_code = "99496"  # PCP-TCM 7 days (TE)
+                elif task_location_val == "Office":
+                    selected_billing_code = "99496"  # PCP-TCM 7 days (OF)
+                selected_billing_desc = "TCM 7-day"
+            elif selected_patient_type == "TCM-14":
+                # TCM 14-day codes - use location to determine specific code
+                if task_location_val == "Home":
+                    selected_billing_code = "99495"  # PCP-TCM 14 days (HO)
+                elif task_location_val == "Tele":
+                    selected_billing_code = "99495"  # PCP-TCM 14 days (TE)
+                elif task_location_val == "Office":
+                    selected_billing_code = "99495"  # PCP-TCM 14 days (OF)
+                selected_billing_desc = "TCM 14-day"
+            elif task_location_val == "Home":
                 selected_billing_code = "99345"  # NEW HOME VISIT: 75min-99345 - default biller
                 selected_billing_desc = "Home Visit (75 min)"
             elif task_location_val == "Tele":
@@ -1050,21 +1069,29 @@ def show_patient_list_section(user_id, section_id=None, has_cpm_role=False):
                 selected_billing_desc = "Office Visit (45 min)"
             else:
                 # Fallback to first available billing code if location unknown
-                # Use selected patient type if specified, otherwise default to "New"
-                patient_type_for_billing = (
-                    selected_patient_type if selected_patient_type != "Select one"
-                    else "New"
-                )
-                billing_options = database.get_billing_codes(
-                    service_type="Primary Care Visit",
-                    location_type=task_location_val,
-                    patient_type=patient_type_for_billing,
-                )
-                if billing_options:
-                    selected_billing_code = billing_options[0].get("billing_code", "Unknown")
-                    selected_billing_desc = billing_options[0].get("description", "")
+                # Special handling for TCM codes (they have fixed billing codes regardless of location)
+                if selected_patient_type == "TCM-7":
+                    selected_billing_code = "99496"  # TCM 7-day
+                    selected_billing_desc = "TCM 7-day"
+                elif selected_patient_type == "TCM-14":
+                    selected_billing_code = "99495"  # TCM 14-day
+                    selected_billing_desc = "TCM 14-day"
                 else:
-                    selected_billing_code = None
+                    # Use selected patient type if specified, otherwise default to "New"
+                    patient_type_for_billing = (
+                        selected_patient_type if selected_patient_type != "Select one"
+                        else "New"
+                    )
+                    billing_options = database.get_billing_codes(
+                        service_type="Primary Care Visit",
+                        location_type=task_location_val,
+                        patient_type=patient_type_for_billing,
+                    )
+                    if billing_options:
+                        selected_billing_code = billing_options[0].get("billing_code", "Unknown")
+                        selected_billing_desc = billing_options[0].get("description", "")
+                    else:
+                        selected_billing_code = None
 
             # Store the selected billing code (invisible to provider)
             if selected_billing_code:
@@ -2192,7 +2219,7 @@ def show_provider_onboarding_queue(user_id, onboarding_queue):
 
             with col3:
                 # Patient type selection for billing code lookup
-                patient_type_options = ["New", "Established", "Acute", "Cognitive", "Follow Up", "TCM"]
+                patient_type_options = ["New", "Established", "Acute", "Cognitive", "Follow Up", "TCM-7", "TCM-14"]
                 task_entry["patient_type"] = st.selectbox(
                     f"Patient Type {i+1}",
                     patient_type_options,
@@ -2209,17 +2236,26 @@ def show_provider_onboarding_queue(user_id, onboarding_queue):
                     visit_type = task_entry.get("visit_type", "Home Visit")
                     location_type = "Home" if visit_type == "Home Visit" else "Tele"
 
-                    billing_options = database.get_billing_codes(
-                        service_type="Primary Care Visit",
-                        location_type=location_type,
-                        patient_type=current_patient_type,
-                    )
+                    # Special handling for TCM codes (direct code assignment)
+                    if current_patient_type == "TCM-7":
+                        task_entry["billing_code"] = "99496"  # TCM 7-day
+                        task_entry["duration_minutes"] = 30  # Typical TCM duration
+                    elif current_patient_type == "TCM-14":
+                        task_entry["billing_code"] = "99495"  # TCM 14-day
+                        task_entry["duration_minutes"] = 60  # Typical TCM duration
+                    else:
+                        # Regular lookup for other patient types
+                        billing_options = database.get_billing_codes(
+                            service_type="Primary Care Visit",
+                            location_type=location_type,
+                            patient_type=current_patient_type,
+                        )
 
-                    if billing_options:
-                        task_entry["billing_code"] = billing_options[0].get("billing_code", "99345")
-                        duration_min = billing_options[0].get("min_minutes", 45)
-                        duration_max = billing_options[0].get("max_minutes", 75)
-                        task_entry["duration_minutes"] = (duration_min + duration_max) // 2
+                        if billing_options:
+                            task_entry["billing_code"] = billing_options[0].get("billing_code", "99345")
+                            duration_min = billing_options[0].get("min_minutes", 45)
+                            duration_max = billing_options[0].get("max_minutes", 75)
+                            task_entry["duration_minutes"] = (duration_min + duration_max) // 2
 
                 st.session_state[session_key_patient_type] = current_patient_type
 
