@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from src import database
 
 def show(user_id):
-    """Display task review for coordinators with Daily/Weekly/Monthly views"""
+    """Display task review for coordinators with Daily/Weekly/Monthly views - ALL EDITABLE"""
     st.subheader("Task Review")
 
     # Get available coordinator task tables using SQLite syntax
@@ -55,6 +55,7 @@ def show(user_id):
 
         tasks_df = pd.DataFrame()
         display_period = ""
+        affected_months = set()  # Track which months need summary recalculation
 
         if view_type == "Daily":
             # --- Daily View ---
@@ -66,13 +67,14 @@ def show(user_id):
             month = selected_date.month
             table_name = f"coordinator_tasks_{year}_{str(month).zfill(2)}"
             display_period = selected_date.strftime('%Y-%m-%d')
+            affected_months.add((year, month))
 
             # Store table_name in session_state for use in save handler
             st.session_state[f"coord_table_name_{user_id}_{display_period}"] = table_name
 
             # Check if table is in available_months (meaning it exists)
             table_exists = any(t[1] == table_name for t in available_months)
-            
+
             if table_exists:
                 query = f"""
                 SELECT
@@ -82,7 +84,8 @@ def show(user_id):
                     duration_minutes,
                     task_type,
                     notes,
-                    created_at_pst
+                    created_at_pst,
+                    '{table_name}' as _table_name
                 FROM {table_name}
                 WHERE coordinator_id = ? AND date(task_date) = date(?)
                 ORDER BY created_at_pst DESC
@@ -104,7 +107,6 @@ def show(user_id):
 
         elif view_type == "Weekly":
             # --- Weekly View ---
-            # Helper to get week range
             def get_week_range(date_obj):
                 start = date_obj - timedelta(days=date_obj.weekday()) # Monday
                 end = start + timedelta(days=6) # Sunday
@@ -112,7 +114,7 @@ def show(user_id):
 
             selected_date_wk = st.date_input("Select any day in the desired week", value=pd.to_datetime('today'), key="coordinator_task_review_weekly_date")
             start_week, end_week = get_week_range(selected_date_wk)
-            
+
             st.caption(f"Showing tasks for week: {start_week.strftime('%Y-%m-%d')} to {end_week.strftime('%Y-%m-%d')}")
             display_period = f"{start_week.strftime('%Y-%m-%d')}_{end_week.strftime('%Y-%m-%d')}"
 
@@ -124,19 +126,22 @@ def show(user_id):
                 # Only add if it exists in DB
                 if any(t[1] == t_name for t in available_months):
                     tables_to_query.add(t_name)
+                    affected_months.add((curr.year, curr.month))
                 curr += timedelta(days=1)
-            
+
             if tables_to_query:
                 all_rows = []
                 for t_name in tables_to_query:
                     query = f"""
                     SELECT
+                        coordinator_task_id,
                         patient_id,
                         task_date,
                         duration_minutes,
                         task_type,
                         notes,
-                        created_at_pst
+                        created_at_pst,
+                        '{t_name}' as _table_name
                     FROM {t_name}
                     WHERE coordinator_id = ? AND date(task_date) BETWEEN date(?) AND date(?)
                     ORDER BY created_at_pst DESC
@@ -147,6 +152,7 @@ def show(user_id):
                 if all_rows:
                     tasks_df = pd.DataFrame(all_rows)
                     tasks_df = tasks_df.rename(columns={
+                        'coordinator_task_id': 'Task ID',
                         'patient_id': 'Patient Name',
                         'task_date': 'DOS',
                         'duration_minutes': 'Duration',
@@ -165,18 +171,21 @@ def show(user_id):
             )
 
             if selected_option:
-                display_name, table_name, _, _ = selected_option
+                display_name, table_name, year, month = selected_option
                 st.caption(f"Showing tasks for {display_name}")
                 display_period = display_name.replace(' ', '_')
+                affected_months.add((year, month))
 
                 query = f"""
                 SELECT
+                    coordinator_task_id,
                     patient_id,
                     task_date,
                     duration_minutes,
                     task_type,
                     notes,
-                    created_at_pst
+                    created_at_pst,
+                    '{table_name}' as _table_name
                 FROM {table_name}
                 WHERE coordinator_id = ?
                 ORDER BY created_at_pst DESC
@@ -185,6 +194,7 @@ def show(user_id):
                 if rows:
                     tasks_df = pd.DataFrame([dict(r) for r in rows])
                     tasks_df = tasks_df.rename(columns={
+                        'coordinator_task_id': 'Task ID',
                         'patient_id': 'Patient Name',
                         'task_date': 'DOS',
                         'duration_minutes': 'Duration',
@@ -202,98 +212,100 @@ def show(user_id):
             # Metrics
             total_tasks = len(tasks_df)
             total_duration = tasks_df['Duration'].sum() if 'Duration' in tasks_df.columns else 0
-            
+
             m1, m2 = st.columns(2)
             m1.metric("Total Tasks", total_tasks)
             m2.metric("Total Duration", f"{total_duration} mins")
 
-            # --- Daily View: Editable ---
-            if view_type == "Daily":
-                st.markdown("**Edit tasks below and click Save Changes to update**")
+            # --- All Views: Editable with Save Functionality ---
+            st.markdown("**Edit tasks below and click Save Changes to update**")
 
-                # Store original values BEFORE data_editor for comparison
-                original_key = f"original_coord_data_{user_id}_{display_period}"
+            # Store original values BEFORE data_editor for comparison
+            original_key = f"original_coord_data_{user_id}_{display_period}"
 
-                if original_key not in st.session_state:
-                    # First time loading this date - store the original data from DB
-                    st.session_state[original_key] = tasks_df[['Task ID', 'Patient Name', 'DOS', 'Duration', 'Service Type', 'Notes', 'Time (PST)']].copy()
+            if original_key not in st.session_state:
+                # First time loading this period - store the original data from DB
+                # Include Task ID and _table_name for proper updates
+                st.session_state[original_key] = tasks_df[['Task ID', 'Patient Name', 'DOS', 'Duration', 'Service Type', 'Notes', 'Time (PST)', '_table_name']].copy()
 
-                # Use data_editor WITH a key to preserve edits
-                editor_key = f"coord_editor_{user_id}_{display_period}"
-                edited_df = st.data_editor(
-                    tasks_df[['Patient Name', 'DOS', 'Duration', 'Service Type', 'Notes', 'Time (PST)']],
-                    use_container_width=True,
-                    hide_index=True,
-                    key=editor_key,
-                    num_rows="fixed"
-                )
+            # Use data_editor WITH a key to preserve edits
+            editor_key = f"coord_editor_{user_id}_{display_period}"
+            edited_df = st.data_editor(
+                tasks_df[['Patient Name', 'DOS', 'Duration', 'Service Type', 'Notes', 'Time (PST)']],
+                use_container_width=True,
+                hide_index=True,
+                key=editor_key,
+                num_rows="fixed"
+            )
 
-                # Save button
-                if st.button("💾 Save Changes", type="primary", key=f"save_coord_tasks_{user_id}_{display_period}"):
-                    try:
-                        # Get table_name from session_state
-                        table_to_update = st.session_state.get(f"coord_table_name_{user_id}_{display_period}")
-                        if not table_to_update:
-                            st.error("Error: Could not determine which table to update. Please try refreshing the page.")
-                            return
+            # Save button
+            if st.button("Save Changes", type="primary", key=f"save_coord_tasks_{user_id}_{display_period}"):
+                try:
+                    # Create aligned copies for proper row matching
+                    original_with_idx = st.session_state[original_key].reset_index(drop=True)
+                    edited_with_idx = edited_df.reset_index(drop=True)
 
-                        # Create aligned copies for proper row matching
-                        original_with_idx = st.session_state[original_key].reset_index(drop=True)
-                        edited_with_idx = edited_df.reset_index(drop=True)
+                    # Update database with edited values
+                    conn_update = database.get_db_connection()
+                    updates_made = 0
+                    tables_updated = set()
 
-                        # Update database with edited values
-                        conn_update = database.get_db_connection()
-                        updates_made = 0
+                    for i in range(len(edited_with_idx)):
+                        orig_row = original_with_idx.iloc[i]
+                        edited_row = edited_with_idx.iloc[i]
 
-                        for i in range(len(edited_with_idx)):
-                            orig_row = original_with_idx.iloc[i]
-                            edited_row = edited_with_idx.iloc[i]
-                            task_id = int(orig_row['Task ID'])  # Convert to int to avoid numpy type issues
+                        # Get task_id and table_name from original row
+                        task_id = int(orig_row['Task ID'])  # Convert to int to avoid numpy type issues
+                        table_to_update = orig_row['_table_name']
 
-                            # Check if any editable fields changed
-                            duration_changed = pd.notna(edited_row['Duration']) and pd.notna(orig_row['Duration']) and int(edited_row['Duration']) != int(orig_row['Duration'])
-                            type_changed = str(edited_row['Service Type']) != str(orig_row['Service Type'])
-                            notes_changed = str(edited_row['Notes']) != str(orig_row['Notes'])
+                        # Check if any editable fields changed
+                        duration_changed = pd.notna(edited_row['Duration']) and pd.notna(orig_row['Duration']) and int(edited_row['Duration']) != int(orig_row['Duration'])
+                        type_changed = str(edited_row['Service Type']) != str(orig_row['Service Type'])
+                        notes_changed = str(edited_row['Notes']) != str(orig_row['Notes'])
 
-                            if duration_changed or type_changed or notes_changed:
-                                # Use inline values for task_id to avoid numpy parameter binding issues
-                                new_duration = int(edited_row['Duration']) if pd.notna(edited_row['Duration']) else 0
-                                new_type = str(edited_row['Service Type']) if pd.notna(edited_row['Service Type']) else ""
-                                new_notes = str(edited_row['Notes']) if pd.notna(edited_row['Notes']) else ""
+                        if duration_changed or type_changed or notes_changed:
+                            # Use inline values for task_id to avoid numpy parameter binding issues
+                            new_duration = int(edited_row['Duration']) if pd.notna(edited_row['Duration']) else 0
+                            new_type = str(edited_row['Service Type']) if pd.notna(edited_row['Service Type']) else ""
+                            new_notes = str(edited_row['Notes']) if pd.notna(edited_row['Notes']) else ""
 
-                                conn_update.execute(f"""
-                                    UPDATE {table_to_update}
-                                    SET duration_minutes = {new_duration},
-                                        task_type = {repr(new_type)},
-                                        notes = {repr(new_notes)}
-                                    WHERE coordinator_task_id = {task_id}
-                                """)
-                                updates_made += 1
+                            conn_update.execute(f"""
+                                UPDATE {table_to_update}
+                                SET duration_minutes = {new_duration},
+                                    task_type = {repr(new_type)},
+                                    notes = {repr(new_notes)}
+                                WHERE coordinator_task_id = {task_id}
+                            """)
+                            updates_made += 1
+                            tables_updated.add(table_to_update)
 
-                        conn_update.commit()
-                        conn_update.close()
+                    conn_update.commit()
+                    conn_update.close()
 
-                        if updates_made > 0:
-                            st.success(f"✅ Saved {updates_made} task update(s)!")
-                            # Clear both original AND editor state so fresh data loads
-                            del st.session_state[original_key]
-                            if editor_key in st.session_state:
-                                del st.session_state[editor_key]
-                            st.rerun()
-                        else:
-                            st.info("No changes detected.")
-                    except Exception as e:
-                        st.error(f"Error saving changes: {e}")
-                        import traceback
-                        st.error(traceback.format_exc())
-            
-            # --- Weekly/Monthly Views: Read-only ---
-            else:
-                st.dataframe(
-                    tasks_df,
-                    use_container_width=True,
-                    hide_index=True
-                )
+                    if updates_made > 0:
+                        st.success(f"Saved {updates_made} task update(s)!")
+
+                        # Recalculate billing summaries for affected months
+                        recalc_success = False
+                        for year, month in affected_months:
+                            success, msg, count = database.recalculate_coordinator_monthly_summary(year, month, coordinator_id=user_id)
+                            if success:
+                                st.info(f"Billing summaries updated for {year}-{month:02d}: {count} records")
+                                recalc_success = True
+                            else:
+                                st.warning(f"Could not update billing summary for {year}-{month:02d}: {msg}")
+
+                        # Clear both original AND editor state so fresh data loads
+                        del st.session_state[original_key]
+                        if editor_key in st.session_state:
+                            del st.session_state[editor_key]
+                        st.rerun()
+                    else:
+                        st.info("No changes detected.")
+                except Exception as e:
+                    st.error(f"Error saving changes: {e}")
+                    import traceback
+                    st.error(traceback.format_exc())
 
             csv = tasks_df.to_csv(index=False)
             st.download_button(
@@ -307,5 +319,7 @@ def show(user_id):
 
     except Exception as e:
         st.error(f"Error loading task review: {e}")
+        import traceback
+        st.error(traceback.format_exc())
     finally:
         conn.close()
