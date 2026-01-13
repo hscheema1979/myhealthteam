@@ -23,6 +23,7 @@ from src.config.ui_style_config import (
 )
 from src.dashboards import task_review_component
 from src.dashboards.phone_review import show_phone_review_entry
+from src.dashboards.provider_monthly_task_review import show as show_monthly_task_review
 
 
 def _has_admin_role(user_id):
@@ -314,7 +315,7 @@ def show(user_id, user_role_ids=None):
                 show_phone_review_entry(mode="cp", user_id=user_id)
 
             with tab5:
-                task_review_component.show(user_id)
+                show_monthly_task_review(user_id)
 
             with tab6:
                 show_daily_task_log(user_id, "provider")
@@ -365,7 +366,10 @@ def show(user_id, user_role_ids=None):
 
                 st.subheader("Task Review")
                 st.markdown(
-                    "- Columns: Task, Date, Minutes, Status, Notes; Filters by date/task/status; CSV export"
+                    "- Monthly view only: edit Duration (minutes) for tasks"
+                )
+                st.markdown(
+                    "- Columns: Patient Name, Date, Duration, Service Type; CSV export"
                 )
                 render_provider_help_examples(key_prefix="cpm_queue_")
         else:
@@ -390,7 +394,7 @@ def show(user_id, user_role_ids=None):
                 show_phone_review_entry(mode="cp", user_id=user_id)
 
             with tab4:
-                task_review_component.show(user_id)
+                show_monthly_task_review(user_id)
             with tab_zmo:
                 from src.zmo_module import render_zmo_tab
                 render_zmo_tab(user_id=user_id)
@@ -419,9 +423,9 @@ def show(user_id, user_role_ids=None):
                 st.markdown(
                     "  • Fields: Task Type, Date, Notes; validation and save to provider_tasks"
                 )
-                st.markdown("- Task Review: filter and download tasks.")
+                st.markdown("- Task Review: monthly view with minutes editing.")
                 st.markdown(
-                    "  • Columns: Task, Date, Minutes, Status, Notes; CSV export"
+                    "  • Columns: Patient Name, Date, Duration, Service Type; CSV export"
                 )
                 render_provider_help_examples(key_prefix="cpm_noqueue_")
             with tab_help:
@@ -445,9 +449,9 @@ def show(user_id, user_role_ids=None):
                 st.markdown(
                     "  • Fields: Task Type, Date, Notes; validation and save to provider_tasks"
                 )
-                st.markdown("- Task Review: filter and download tasks.")
+                st.markdown("- Task Review: monthly view with minutes editing.")
                 st.markdown(
-                    "  • Columns: Task, Date, Minutes, Status, Notes; CSV export"
+                    "  • Columns: Patient Name, Date, Duration, Service Type; CSV export"
                 )
                 render_provider_help_examples(key_prefix="cp_noqueue_")
     else:
@@ -478,7 +482,7 @@ def show(user_id, user_role_ids=None):
                 show_phone_review_entry(mode="cp", user_id=user_id)
 
             with tab4:
-                task_review_component.show(user_id)
+                show_monthly_task_review(user_id)
             with tab_zmo:
                 from src.zmo_module import render_zmo_tab
                 render_zmo_tab(user_id=user_id)
@@ -528,7 +532,10 @@ def show(user_id, user_role_ids=None):
 
                 st.subheader("Task Review")
                 st.markdown(
-                    "- Columns: Task, Date, Minutes, Status, Notes; Filters by date/task/status; CSV export"
+                    "- Monthly view only: edit Duration (minutes) for tasks"
+                )
+                st.markdown(
+                    "- Columns: Patient Name, Date, Duration, Service Type; CSV export"
                 )
                 render_provider_help_examples(key_prefix="cp_queue_")
         else:
@@ -563,7 +570,7 @@ def show(user_id, user_role_ids=None):
                     st.info("Blue: ≥200 minutes this month")
                 st.subheader("Sections")
                 st.markdown(
-                    "- My Patients: act on your panel.\n- Phone Reviews: structured entry forms.\n- Task Review: filter and download tasks."
+                    "- My Patients: act on your panel.\n- Phone Reviews: structured entry forms.\n- Task Review: monthly view with minutes editing."
                 )
 
 
