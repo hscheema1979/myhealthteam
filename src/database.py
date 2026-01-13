@@ -263,8 +263,8 @@ def ensure_monthly_provider_tasks_table(
     year: int = None, month: int = None, conn: sqlite3.Connection = None
 ) -> str:
     """Ensure the monthly provider_tasks table for given year/month exists with required columns.
-    - Creates the table if missing with full schema
-    - Adds missing columns (source_system, imported_at) if absent
+    - Creates the table if missing with full schema matching transform_production_data_v3_fixed.py
+    - Adds missing columns (source_system, imported_at, status, is_deleted) if absent
     Returns the table_name.
     """
     close_conn = False
@@ -285,29 +285,27 @@ def ensure_monthly_provider_tasks_table(
         if not exists:
             conn.execute(f"""
                 CREATE TABLE {table_name} (
-                    provider_task_id INT,
-                    task_id INT,
-                    provider_id INT,
+                    provider_task_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    provider_id INTEGER,
                     provider_name TEXT,
-                    patient_name TEXT,
-                    user_id INT,
                     patient_id TEXT,
-                    status TEXT,
+                    patient_name TEXT,
+                    task_date DATE,
+                    task_description TEXT,
                     notes TEXT,
-                    minutes_of_service INT,
-                    billing_code_id INT,
-                    created_date NUM,
-                    updated_date NUM,
-                    task_date NUM,
-                    month INT,
-                    year INT,
+                    minutes_of_service INTEGER,
                     billing_code TEXT,
                     billing_code_description TEXT,
-                    task_description TEXT,
-                    source_system TEXT,
-                    imported_at TEXT
+                    source_system TEXT DEFAULT 'CSV_IMPORT',
+                    imported_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    status TEXT DEFAULT 'completed',
+                    is_deleted INTEGER DEFAULT 0,
+                    UNIQUE(provider_id, patient_id, task_date, task_description)
                 )
             """)
+            conn.execute(
+                f"CREATE INDEX IF NOT EXISTS idx_{table_name}_provider ON {table_name}(provider_id)"
+            )
             conn.commit()
         else:
             # Verify required columns exist; add if missing
@@ -320,6 +318,10 @@ def ensure_monthly_provider_tasks_table(
                 conn.execute(f"ALTER TABLE {table_name} ADD COLUMN source_system TEXT;")
             if "imported_at" not in col_names:
                 conn.execute(f"ALTER TABLE {table_name} ADD COLUMN imported_at TEXT;")
+            if "status" not in col_names:
+                conn.execute(f"ALTER TABLE {table_name} ADD COLUMN status TEXT DEFAULT 'completed';")
+            if "is_deleted" not in col_names:
+                conn.execute(f"ALTER TABLE {table_name} ADD COLUMN is_deleted INTEGER DEFAULT 0;")
             conn.commit()
         return table_name
     finally:
@@ -1096,26 +1098,22 @@ def save_onboarding_tv_scheduling_progress(onboarding_id, form_data):
                     existing = conn.execute(
                         """
                         SELECT assignment_id FROM patient_assignments
-                        WHERE patient_id = ? AND assignment_type = ? AND status = 'active'
+                        WHERE patient_id = ? AND status = 'active'
                     """,
-                        (text_patient_id, "onboarding"),
+                        (text_patient_id,),
                     ).fetchone()
 
                     if existing:
-                        # Update existing assignment
+                        # Update existing assignment - match actual table schema
                         conn.execute(
                             """
                             UPDATE patient_assignments
-                            SET provider_id = ?, coordinator_id = ?, priority_level = ?,
-                                notes = ?, updated_date = datetime('now'), updated_by = ?
+                            SET provider_id = ?, coordinator_id = ?, status = 'active'
                             WHERE assignment_id = ?
                         """,
                             (
                                 provider_user_id,
                                 coordinator_user_id,
-                                "medium",
-                                "Assignment updated from onboarding TV scheduling progress",
-                                None,
                                 existing["assignment_id"],
                             ),
                         )
@@ -1267,10 +1265,11 @@ def update_onboarding_stage5_completion(
         # Create or update patient assignment record if we have a patient_id and assignments
         if patient_id and (regional_provider_user_id or coordinator_user_id):
             # Check if assignment already exists for this patient
+            # Note: patient_assignments table doesn't have assignment_type column, so we check by patient_id and status
             existing = conn.execute(
                 """
                 SELECT assignment_id FROM patient_assignments
-                WHERE patient_id = ? AND assignment_type = 'onboarding' AND status = 'active'
+                WHERE patient_id = ? AND status = 'active'
             """,
                 (patient_id,),
             ).fetchone()
@@ -1280,9 +1279,7 @@ def update_onboarding_stage5_completion(
                 conn.execute(
                     """
                     UPDATE patient_assignments
-                    SET provider_id = ?, coordinator_id = ?,
-                        notes = 'Updated from onboarding Stage 5 completion',
-                        updated_date = datetime('now')
+                    SET provider_id = ?, coordinator_id = ?, status = 'active'
                     WHERE assignment_id = ?
                 """,
                     (
@@ -1292,16 +1289,12 @@ def update_onboarding_stage5_completion(
                     ),
                 )
             else:
-                # Create new assignment
+                # Create new assignment - match actual table schema
                 conn.execute(
                     """
                     INSERT INTO patient_assignments (
-                        patient_id, provider_id, coordinator_id, assignment_date,
-                        assignment_type, status, priority_level, notes,
-                        created_date, updated_date
-                    ) VALUES (?, ?, ?, datetime('now'), 'onboarding', 'active', 'medium',
-                             'Assignment created from onboarding Stage 5 completion',
-                             datetime('now'), datetime('now'))
+                        patient_id, provider_id, coordinator_id, status
+                    ) VALUES (?, ?, ?, 'active')
                 """,
                     (patient_id, regional_provider_user_id, coordinator_user_id),
                 )
@@ -1603,7 +1596,7 @@ def get_tasks_billing_codes():
     conn = get_db_connection()
     try:
         codes = conn.execute(
-            "SELECT code, description FROM task_billing_codes"
+            "SELECT code, description FROM task_billing_codes WHERE is_active = 1"
         ).fetchall()
         return [dict(row) for row in codes]
     finally:
@@ -1618,7 +1611,7 @@ def get_tasks_billing_codes_by_service_type(service_type):
             """
             SELECT code_id, task_description, billing_code, description
             FROM task_billing_codes
-            WHERE service_type = ?
+            WHERE service_type = ? AND is_active = 1
             ORDER BY task_description
         """,
             (service_type,),
@@ -1773,10 +1766,11 @@ def get_billing_codes(service_type=None, location_type=None, patient_type=None):
         columns = [column[1] for column in cursor.fetchall()]
 
         # Build query based on whether is_default column exists
+        # Always filter by is_active = 1 to only show enabled billing codes
         if "is_default" in columns:
-            query = "SELECT code_id, task_description, service_type, location_type, patient_type, min_minutes, max_minutes, billing_code, description, rate, COALESCE(is_default, 0) as is_default FROM task_billing_codes"
+            query = "SELECT code_id, task_description, service_type, location_type, patient_type, min_minutes, max_minutes, billing_code, description, rate, COALESCE(is_default, 0) as is_default FROM task_billing_codes WHERE is_active = 1"
         else:
-            query = "SELECT code_id, task_description, service_type, location_type, patient_type, min_minutes, max_minutes, billing_code, description, rate, 0 as is_default FROM task_billing_codes"
+            query = "SELECT code_id, task_description, service_type, location_type, patient_type, min_minutes, max_minutes, billing_code, description, rate, 0 as is_default FROM task_billing_codes WHERE is_active = 1"
 
         conditions = []
         params = []
@@ -1790,7 +1784,7 @@ def get_billing_codes(service_type=None, location_type=None, patient_type=None):
             conditions.append("patient_type = ?")
             params.append(patient_type)
         if conditions:
-            query += " WHERE " + " AND ".join(conditions)
+            query += " AND " + " AND ".join(conditions)
         query += " ORDER BY min_minutes DESC, max_minutes DESC"
         rows = conn.execute(query, tuple(params)).fetchall()
         return [dict(r) for r in rows]
@@ -1913,7 +1907,7 @@ def save_daily_task(
                 """
                 SELECT min_minutes, billing_code, rate, description
                 FROM task_billing_codes
-                WHERE billing_code = ?
+                WHERE billing_code = ? AND is_active = 1
                 LIMIT 1
             """,
                 (billing_code,),
@@ -1926,7 +1920,7 @@ def save_daily_task(
                 """
                 SELECT min_minutes, billing_code, rate, description
                 FROM task_billing_codes
-                WHERE task_description = ?
+                WHERE task_description = ? AND is_active = 1
                 LIMIT 1
             """,
                 (task_description,),
@@ -1973,6 +1967,20 @@ def save_daily_task(
         except Exception as e:
             print(f"Error fetching patient name: {e}")
 
+        # Strip billing code pattern from task_description before storing
+        import re
+        clean_task_description = re.sub(r'\s*-\s*\d{5}\s*$', '', task_description).strip()
+
+        # Get provider name for denormalization
+        provider_name = ""
+        try:
+            provider_name_result = conn.execute(
+                "SELECT full_name FROM users WHERE user_id = ?", (provider_id,)
+            ).fetchone()
+            provider_name = provider_name_result[0] if provider_name_result else ""
+        except Exception as e:
+            print(f"Error fetching provider name: {e}")
+
         # Insert into monthly provider_tasks table dynamically
         table_name = ensure_monthly_provider_tasks_table(
             year=task_year, month=task_month, conn=conn
@@ -1980,17 +1988,18 @@ def save_daily_task(
         cursor = conn.execute(
             f"""
             INSERT INTO {table_name}
-            (provider_id, patient_id, patient_name, task_date, notes, minutes_of_service, task_description, billing_code, billing_code_description, source_system, imported_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'DATA_ENTRY', CURRENT_TIMESTAMP)
+            (provider_id, provider_name, patient_id, patient_name, task_date, notes, minutes_of_service, task_description, billing_code, billing_code_description, source_system, imported_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'DATA_ENTRY', CURRENT_TIMESTAMP)
         """,
             (
                 provider_id,
+                provider_name,
                 pid,
                 patient_name,
                 task_date,
                 notes,
                 duration_minutes,
-                task_description,
+                clean_task_description,
                 billing_code_val,
                 billing_code_description,
             ),
@@ -2007,12 +2016,6 @@ def save_daily_task(
                 billing_week = task_dt_obj.isocalendar()[1]
                 week_start = task_dt_obj - pd.Timedelta(days=task_dt_obj.weekday())
                 week_end = week_start + pd.Timedelta(days=6)
-
-                # Get provider name
-                provider_name_result = conn.execute(
-                    "SELECT full_name FROM users WHERE user_id = ?", (provider_id,)
-                ).fetchone()
-                provider_name = provider_name_result[0] if provider_name_result else ""
 
                 conn.execute(
                     """
@@ -2888,39 +2891,34 @@ def transfer_onboarding_to_patient_table(onboarding_id):
 
         if provider_id or coordinator_id:
             print(f"DEBUG: Creating patient assignment")
-            # Check if assignment already exists
+            # Check if assignment already exists - match actual table schema
             existing_assignment = conn.execute(
                 """
                 SELECT assignment_id FROM patient_assignments
-                WHERE patient_id = ? AND assignment_type = 'onboarding' AND status = 'active'
+                WHERE patient_id = ? AND status = 'active'
             """,
                 (patient_id,),
             ).fetchone()
 
             if existing_assignment:
                 print(f"DEBUG: Updating existing assignment {existing_assignment[0]}")
-                # Update existing assignment
+                # Update existing assignment - match actual table schema
                 conn.execute(
                     """
                     UPDATE patient_assignments
-                    SET provider_id = ?, coordinator_id = ?,
-                        updated_date = datetime('now')
+                    SET provider_id = ?, coordinator_id = ?, status = 'active'
                     WHERE assignment_id = ?
                 """,
                     (provider_id, coordinator_id, existing_assignment[0]),
                 )
             else:
                 print(f"DEBUG: Creating new assignment")
-                # Create new assignment
+                # Create new assignment - match actual table schema
                 conn.execute(
                     """
                     INSERT INTO patient_assignments (
-                        patient_id, provider_id, coordinator_id, assignment_date,
-                        assignment_type, status, priority_level, notes,
-                        created_date, updated_date
-                    ) VALUES (?, ?, ?, datetime('now'), 'onboarding', 'active', 'medium',
-                             'Assignment created from onboarding completion',
-                             datetime('now'), datetime('now'))
+                        patient_id, provider_id, coordinator_id, status
+                    ) VALUES (?, ?, ?, 'active')
                 """,
                     (patient_id, provider_id, coordinator_id),
                 )
@@ -3125,11 +3123,11 @@ def insert_patient_from_onboarding(onboarding_id):
 
         if provider_id or coordinator_id:
             print(f"DEBUG: Entering assignment creation logic")
-            # Check if assignment already exists using text-based patient_id
+            # Check if assignment already exists using text-based patient_id - match actual table schema
             existing_assignment = conn.execute(
                 """
                 SELECT assignment_id FROM patient_assignments
-                WHERE patient_id = ? AND assignment_type = 'onboarding' AND status = 'active'
+                WHERE patient_id = ? AND status = 'active'
             """,
                 (text_patient_id,),
             ).fetchone()
@@ -3138,28 +3136,23 @@ def insert_patient_from_onboarding(onboarding_id):
                 print(
                     f"DEBUG: Updating existing assignment {existing_assignment['assignment_id']}"
                 )
-                # Update existing assignment
+                # Update existing assignment - match actual table schema
                 conn.execute(
                     """
                     UPDATE patient_assignments
-                    SET provider_id = ?, coordinator_id = ?,
-                        updated_date = datetime('now')
+                    SET provider_id = ?, coordinator_id = ?, status = 'active'
                     WHERE assignment_id = ?
                 """,
                     (provider_id, coordinator_id, existing_assignment["assignment_id"]),
                 )
             else:
                 print(f"DEBUG: Creating new assignment for {text_patient_id}")
-                # Create new assignment
+                # Create new assignment - match actual table schema
                 conn.execute(
                     """
                     INSERT INTO patient_assignments (
-                        patient_id, provider_id, coordinator_id, assignment_date,
-                        assignment_type, status, priority_level, notes,
-                        created_date, updated_date
-                    ) VALUES (?, ?, ?, datetime('now'), 'onboarding', 'active', 'medium',
-                             'Assignment created from onboarding completion',
-                             datetime('now'), datetime('now'))
+                        patient_id, provider_id, coordinator_id, status
+                    ) VALUES (?, ?, ?, 'active')
                 """,
                     (text_patient_id, provider_id, coordinator_id),
                 )
@@ -4217,35 +4210,31 @@ def sync_onboarding_to_all_tables(onboarding_id):
             existing_assignment = conn.execute(
                 """
                 SELECT assignment_id FROM patient_assignments
-                WHERE patient_id = ? AND assignment_type = 'onboarding' AND status = 'active'
+                WHERE patient_id = ? AND status = 'active'
             """,
                 (patient_id,),
             ).fetchone()
 
             if existing_assignment:
-                # Update existing assignment
+                # Update existing assignment - match actual table schema
                 conn.execute(
                     """
                     UPDATE patient_assignments
                     SET provider_id = COALESCE(?, provider_id),
                         coordinator_id = COALESCE(?, coordinator_id),
-                        updated_date = CURRENT_TIMESTAMP
+                        status = 'active'
                     WHERE assignment_id = ?
                 """,
                     (provider_id, coordinator_id, existing_assignment['assignment_id']),
                 )
                 result['message'] += f"Updated assignment {existing_assignment['assignment_id']}. "
             else:
-                # Create new assignment
+                # Create new assignment - match actual table schema
                 conn.execute(
                     """
                     INSERT INTO patient_assignments (
-                        patient_id, provider_id, coordinator_id, assignment_date,
-                        assignment_type, status, priority_level, notes,
-                        created_date, updated_date
-                    ) VALUES (?, ?, ?, datetime('now'), 'onboarding', 'active', 'medium',
-                             'Assignment created from Stage 5 onboarding completion',
-                             datetime('now'), datetime('now'))
+                        patient_id, provider_id, coordinator_id, status
+                    ) VALUES (?, ?, ?, 'active')
                 """,
                     (patient_id, provider_id, coordinator_id),
                 )
@@ -4292,64 +4281,48 @@ def create_patient_assignment(
     patient_id,
     provider_id=None,
     coordinator_id=None,
-    assignment_type="onboarding",
+    assignment_type="onboarding",  # Note: not used in actual schema, kept for API compatibility
     status="active",
-    priority_level="medium",
-    notes=None,
-    created_by=None,
+    priority_level="medium",  # Note: not used in actual schema, kept for API compatibility
+    notes=None,  # Note: not used in actual schema, kept for API compatibility
+    created_by=None,  # Note: not used in actual schema, kept for API compatibility
 ):
-    """Create a patient assignment in the patient_assignments table"""
+    """Create a patient assignment in the patient_assignments table
+
+    Note: The actual patient_assignments table only has: assignment_id, patient_id, provider_id,
+    coordinator_id, status, source, imported_at. Parameters like assignment_type, priority_level,
+    notes, created_by are accepted for API compatibility but not stored.
+    """
     conn = get_db_connection()
     try:
-        # Check if assignment already exists for this patient
+        # Check if assignment already exists for this patient - match actual table schema
         existing = conn.execute(
             """
             SELECT assignment_id FROM patient_assignments
-            WHERE patient_id = ? AND assignment_type = ? AND status = 'active'
+            WHERE patient_id = ? AND status = 'active'
         """,
-            (patient_id, assignment_type),
+            (patient_id,),
         ).fetchone()
 
         if existing:
-            # Update existing assignment
+            # Update existing assignment - match actual table schema
             conn.execute(
                 """
                 UPDATE patient_assignments
-                SET provider_id = ?, coordinator_id = ?, priority_level = ?,
-                    notes = ?, updated_date = datetime('now'), updated_by = ?
+                SET provider_id = ?, coordinator_id = ?, status = 'active'
                 WHERE assignment_id = ?
             """,
-                (
-                    provider_id,
-                    coordinator_id,
-                    priority_level,
-                    notes,
-                    created_by,
-                    existing["assignment_id"],
-                ),
+                (provider_id, coordinator_id, existing["assignment_id"]),
             )
         else:
-            # Create new assignment
+            # Create new assignment - match actual table schema
             conn.execute(
                 """
                 INSERT INTO patient_assignments (
-                    patient_id, provider_id, coordinator_id, assignment_date,
-                    assignment_type, status, priority_level, notes,
-                    created_date, updated_date, created_by, updated_by
-                ) VALUES (?, ?, ?, datetime('now'), ?, ?, ?, ?,
-                         datetime('now'), datetime('now'), ?, ?)
+                    patient_id, provider_id, coordinator_id, status
+                ) VALUES (?, ?, ?, ?)
             """,
-                (
-                    patient_id,
-                    provider_id,
-                    coordinator_id,
-                    assignment_type,
-                    status,
-                    priority_level,
-                    notes,
-                    created_by,
-                    created_by,
-                ),
+                (patient_id, provider_id, coordinator_id, status),
             )
 
         conn.commit()
@@ -5457,3 +5430,54 @@ def update_billing_company(billing_status_ids, billing_company, user_id):
        return (False, message, 0)
    finally:
        conn.close()
+
+
+def refresh_all_summaries(year, month):
+    """
+    Refresh all summary tables for a given month.
+    This is the central function to call after tasks are saved/edited.
+    
+    Updates:
+    - provider_monthly_summary
+    - coordinator_monthly_summary
+    
+    Args:
+        year: Year (e.g., 2025)
+        month: Month (1-12)
+        
+    Returns:
+        Tuple (success: bool, message: str, affected_count: int)
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    conn = get_db_connection()
+    try:
+        total_affected = 0
+        
+        # 1. Recalculate provider monthly summary
+        try:
+            success, msg, count = recalculate_provider_monthly_summary(year, month)
+            if success:
+                total_affected += count
+                logger.info(f'Provider monthly summary: {msg}')
+        except Exception as e:
+            logger.warning(f'Could not recalculate provider monthly summary: {e}')
+        
+        # 2. Recalculate coordinator monthly summary
+        try:
+            success, msg, count = recalculate_coordinator_monthly_summary(year, month)
+            if success:
+                total_affected += count
+                logger.info(f'Coordinator monthly summary: {msg}')
+        except Exception as e:
+            logger.warning(f'Could not recalculate coordinator monthly summary: {e}')
+        
+        return (True, f'Refreshed summaries for {year}-{str(month).zfill(2)}', total_affected)
+        
+    except Exception as e:
+        logger.error(f'Error refreshing summaries: {e}')
+        return (False, f'Error: {str(e)}', 0)
+    finally:
+        conn.close()
+

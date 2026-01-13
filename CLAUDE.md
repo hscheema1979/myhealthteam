@@ -155,13 +155,194 @@ Test files are in `src/utils/` with `test_*.py` prefix:
 - `test_dashboard_functions.py`
 - `test_updated_coordinator_functions.py`
 
+## Data Refresh Workflow
+
+**`refresh_production_data.ps1`**: Main script for downloading and importing fresh healthcare data from external sources.
+
+### Usage
+
+```powershell
+# Full refresh (download + import + backup)
+.\refresh_production_data.ps1
+
+# Skip download (use existing downloaded files)
+.\refresh_production_data.ps1 -SkipDownload
+
+# Skip backup (faster, use with caution)
+.\refresh_production_data.ps1 -SkipBackup
+
+# Sync CSV data to production VPS2 after import
+.\refresh_production_data.ps1 -SyncToProduction
+```
+
+### Workflow Steps
+
+1. **Backup**: Creates timestamped backup of `production.db` in `backups/`
+2. **Download**: Downloads fresh data from Google Sheets via `scripts/1_download_files_complete.ps1`
+3. **Consolidate**: Merges CSV files via `scripts/2_consolidate_files.ps1`
+4. **Transform**: Runs `transform_production_data_v3_fixed.py` to import data
+5. **Post-Process**: Runs `src/sql/post_import_processing.sql` to rebuild views and summaries
+6. **Sync** (optional): Smart sync to VPS2 via `db-sync/bin/sync_csv_data.ps1`
+
+### Important Notes
+
+- The ETL process uses `transform_production_data_v3_fixed.py` which performs a DROP/CREATE cycle on the `patient_panel` table
+- Custom columns (like notes columns) must be mapped in the ETL script to be preserved
+- Always test with `-SkipDownload` first before running full refresh
+- The smart sync preserves manual entries on VPS2 (only syncs `source_system = 'CSV_IMPORT'` rows)
+
+## Scheduled Workflows
+
+**`src/workflows/daily_summary_update.py`**: Automated daily script to update billing and payroll summary tables. Runs at 5:00 AM via Windows Task Scheduler.
+
+### Updates Performed
+
+- Weekly Provider Billing Summary (`provider_weekly_summary_with_billing`)
+- Weekly Provider Payroll Summary (`provider_weekly_payroll_status`)
+- Monthly Coordinator Billing Summary (`coordinator_monthly_summary`)
+
+### Running Manually
+
+```bash
+python src/workflows/daily_summary_update.py
+```
+
+### Key Features
+
+- Processes only new/updated records
+- Maintains data integrity during updates
+- Includes error handling and logging to `logs/daily_summary_update.log`
+- Preserves historical data with upsert logic
+- Calculates week dates as Monday-Sunday for billing periods
+
+## Billing System Architecture
+
+**`src/billing/weekly_billing_processor.py`**: Handles automated weekly billing report generation with carryover logic.
+
+### Key Components
+
+- **Billing Week Calculation**: Weeks are Monday-Sunday, formatted as `YYYY-WW`
+- **Carryover Logic**: Unbilled tasks from previous weeks are automatically carried over to current week
+- **Billing Status Flow**: Not Billed → Billed → Invoiced → Claim Submitted → Insurance Processed → Approve to Pay → Paid
+- **Status History Tracking**: All status changes logged in `billing_status_history` table
+
+### Tables
+
+- `provider_task_billing_status`: Main billing tracking table with flags for each status
+- `billing_status_history`: Audit trail of all status changes
+- `provider_weekly_summary_with_billing`: Aggregated weekly summaries by provider and billing code
+
+### Processing Flow
+
+1. Carry over unbilled tasks from previous weeks
+2. Mark original tasks as carried over
+3. Mark eligible current week tasks as "Billed" (has billing code, minutes > 0, not "Not_Billable")
+4. Log all status changes in history table
+
+### Running Billing Processing
+
+```python
+from src.billing.weekly_billing_processor import WeeklyBillingProcessor
+
+processor = WeeklyBillingProcessor()
+processor.setup_billing_system()  # First time only
+result = processor.process_weekly_billing()
+```
+
+## UI Styling Conventions
+
+**`src/config/ui_style_config.py`**: Centralized styling configuration for professional healthcare appearance.
+
+### Key Principles
+
+- **No Emojis**: `USE_EMOJIS = False` for professional healthcare environment
+- **Professional Indicators**: Use text indicators like "[HIGH]", "[MEDIUM]", "[LOW]" instead of emojis
+- **Consistent Headers**: Use `get_section_title()` for all section headers
+- **Metric Labels**: Use `get_metric_label()` for all metric displays
+
+### Usage Examples
+
+```python
+from src.config.ui_style_config import get_section_title, get_metric_label, TextStyle, apply_custom_css
+
+# Apply professional styling
+apply_custom_css()
+
+# Section headers (no emojis)
+st.header(get_section_title("Coordinator Performance"))
+
+# Metric labels
+col1.metric(get_metric_label("tasks", is_current_month=True), value)
+
+# Status indicators
+st.info(f"{TextStyle.INFO_INDICATOR}: Data updated successfully")
+```
+
+### Color Scheme
+
+- Primary Blue: `#1f77b4` (current period data)
+- Success Green: `#2ca02c`
+- Warning Orange: `#ff7f0e`
+- Error Red: `#d62728`
+- Neutral Gray: `#7f7f7f` (historical data)
+
+## VPS Deployment
+
+### Quick Deploy to VPS2
+
+```bash
+# SSH to production server
+ssh server2
+
+# Navigate to application directory
+cd /opt/myhealthteam
+
+# Pull latest changes
+git pull origin main
+
+# Restart the service
+sudo systemctl restart myhealthteam
+
+# Verify service status
+sudo systemctl status myhealthteam
+```
+
+### Applying Schema Changes on VPS2
+
+When adding new columns or tables:
+
+```bash
+ssh server2 "cd /opt/myhealthteam && sqlite3 production.db < src/sql/add_new_columns.sql"
+```
+
+### Production Environment
+
+- **Service**: `myhealthteam` (systemd)
+- **Database**: `/opt/myhealthteam/production.db`
+- **Logs**: `journalctl -u myhealthteam -f`
+- **Redirect URI**: `https://care.myhealthteam.org`
+
 ## SQL Scripts
 
-Historical and utility SQL scripts are in `src/sql/archive/`. These include:
-- Monthly table creation scripts
-- Data transformation and migration scripts
-- Population scripts for summary tables
-- Schema enhancement scripts
+Historical and utility SQL scripts are in `src/sql/archive/`. Active SQL scripts include:
+
+**Core ETL and Setup:**
+- `post_import_processing.sql`: Rebuilds views, updates patient data, populates summaries after ETL
+- `create_weekly_billing_system.sql`: Creates billing system tables
+- `populate_weekly_billing_system.sql`: Migrates existing data to billing system
+- `weekly_billing_report_generator.sql`: Generates billing reports
+
+**Schema Migration Scripts:**
+- `add_notes_columns.sql`: Adds labs_notes, imaging_notes, general_notes to patient tables
+- `add_next_appointment_date.sql`: Adds next_appointment_date column
+- `add_appointment_contact_columns.sql`: Adds appointment-related columns
+- `migrate_add_billing_columns.sql`: Adds billing-related columns
+- `migrate_billing_codes.sql`: Billing code migration
+
+**Workflow Scripts:**
+- `populate_workflow_templates_from_csv.sql`: Imports workflow templates
+- `add_general_phone_inquiries_workflow.sql`: General phone workflow setup
+- `fix_workflow_typos.sql`: Fixes workflow template issues
 
 ## Google OAuth Setup (PRODUCTION - VPS2)
 
@@ -221,20 +402,35 @@ Environment=GOOGLE_REDIRECT_URI=https://care.myhealthteam.org
 
 ## Adding New Columns to Tables
 
-This section documents the process for adding new columns to database tables without losing existing data during data refreshes.
+This section documents the complete process for adding new columns to database tables without losing existing data during data refreshes.
 
 ### Overview
 
 The system uses a DROP/CREATE cycle for the `patient_panel` table during data refreshes. To preserve data in new columns, they must be:
 1. Added to the source `patients` table
-2. Mapped in the ETL transformation script
-3. Made available in the UI components
+2. Added to the `patient_panel` table
+3. Mapped in the ETL transformation script (`transform_production_data_v3_fixed.py`)
+4. **CRITICAL**: Mapped in the post-import processing script (`post_import_processing.sql`)
+5. Made available in the UI components
+
+### Complete File Paths
+
+All files that must be updated when adding new columns:
+
+| File | Purpose | Location |
+|------|---------|----------|
+| `d:\Git\myhealthteam2\Dev\src\sql\add_new_columns.sql` | SQL script to add columns to database tables | Create this file |
+| `d:\Git\myhealthteam2\Dev\transform_production_data_v3_fixed.py` | ETL transformation script - maps columns during data refresh | Lines ~973 (CREATE TABLE), ~1054 (INSERT) |
+| `d:\Git\myhealthteam2\Dev\src\sql\post_import_processing.sql` | Post-import processing - CRITICAL for data preservation | Line ~674 (CREATE TABLE patient_panel) |
+| `d:\Git\myhealthteam2\Dev\src\dashboards\admin_dashboard.py` | Admin dashboard UI - Patient Info tab | Add to column_config |
+| `d:\Git\myhealthteam2\Dev\src\zmo_module.py` | ZMO module UI - patient panel | Add to column_config |
+| `d:\Git\myhealthteam2\Dev\src\database.py` | Database queries (if needed) | Add update functions |
 
 ### Step-by-Step Process
 
-#### Step 1: Add Column to `patients` Table
+#### Step 1: Create SQL Script to Add Columns
 
-**File**: `src/sql/add_new_columns.sql` (create if not exists)
+**File**: `d:\Git\myhealthteam2\Dev\src\sql\add_new_columns.sql` (create if not exists)
 
 ```sql
 -- Add new column to patients table
@@ -244,15 +440,21 @@ ALTER TABLE patients ADD COLUMN new_column_name TEXT DEFAULT NULL;
 ALTER TABLE patient_panel ADD COLUMN new_column_name TEXT DEFAULT NULL;
 ```
 
-**Execute on both environments**:
-- Local: `sqlite3 production.db < src/sql/add_new_columns.sql`
-- VPS2: `sqlite3 /opt/myhealthteam/production.db < src/sql/add_new_columns.sql`
+**Execute on local database**:
+```powershell
+Get-Content src\sql\add_new_columns.sql | sqlite3 production.db
+```
 
-#### Step 2: Update ETL Transformation Script
+**Execute on VPS2 database** (after deployment):
+```bash
+ssh server2 "cd /opt/myhealthteam && sqlite3 production.db < src/sql/add_new_columns.sql"
+```
 
-**File**: `transform_production_data_v3_fixed.py`
+#### Step 2: Update ETL Transformation Script - CREATE TABLE
 
-**Location 1**: `CREATE TABLE patient_panel` statement (around line 973)
+**File**: `d:\Git\myhealthteam2\Dev\transform_production_data_v3_fixed.py`
+
+**Location**: `CREATE TABLE patient_panel` statement (around line 973)
 
 Add the new column to the table schema:
 ```python
@@ -263,7 +465,11 @@ CREATE TABLE patient_panel (
 )
 ```
 
-**Location 2**: `INSERT INTO patient_panel` SELECT statement (around line 1054)
+#### Step 3: Update ETL Transformation Script - INSERT
+
+**File**: `d:\Git\myhealthteam2\Dev\transform_production_data_v3_fixed.py`
+
+**Location**: `INSERT INTO patient_panel` SELECT statement (around line 1054)
 
 Add the new column to the SELECT list:
 ```python
@@ -278,10 +484,31 @@ FROM patients p
 
 **Important**: The column must be selected from the `patients` table (aliased as `p`) to preserve existing data.
 
-#### Step 3: Update UI Components (if editable)
+#### Step 4: Update Post-Import Processing Script (CRITICAL)
+
+**File**: `d:\Git\myhealthteam2\Dev\src\sql\post_import_processing.sql`
+
+**Location**: `CREATE TABLE patient_panel AS` statement (around line 674)
+
+**This is the most critical step** - if you skip this, data will be lost after the ETL refresh!
+
+Add the new column to the SELECT list:
+```sql
+CREATE TABLE patient_panel AS
+SELECT DISTINCT
+    -- ... existing columns ...
+    p.new_column_name,
+    -- ... existing columns ...
+FROM patients p
+LEFT JOIN patient_assignments pa ON p.patient_id = pa.patient_id AND pa.status = 'active'
+LEFT JOIN users u_prov ON pa.provider_id = u_prov.user_id
+LEFT JOIN users u_coord ON pa.coordinator_id = u_coord.user_id;
+```
+
+#### Step 5: Update UI Components (if editable)
 
 **For Admin Dashboard Patient Info tab**:
-**File**: `src/dashboards/admin_dashboard.py`
+**File**: `d:\Git\myhealthteam2\Dev\src\dashboards\admin_dashboard.py`
 
 Add the new column to the `st.data_editor` configuration:
 ```python
@@ -299,38 +526,27 @@ edited_df = st.data_editor(
 ```
 
 **For ZMO Module**:
-**File**: `src/zmo_module.py`
+**File**: `d:\Git\myhealthteam2\Dev\src\zmo_module.py`
 
 Add the new column to the patient panel data editor configuration (similar to admin_dashboard.py).
 
-#### Step 4: Update Database Queries (if needed)
+#### Step 6: Test the Changes Locally
 
-**File**: `src/database.py`
-
-If the new column needs to be queried or updated, add appropriate functions:
-```python
-def update_patient_new_column(patient_id, new_value):
-    """Update the new column for a patient"""
-    conn = get_db_connection()
-    try:
-        conn.execute(
-            "UPDATE patients SET new_column_name = ? WHERE patient_id = ?",
-            (new_value, patient_id)
-        )
-        conn.commit()
-    finally:
-        conn.close()
-```
-
-#### Step 5: Test the Changes
-
-1. **Local Testing**:
+1. **Run the data refresh workflow**:
    ```powershell
-   # Run the data refresh workflow
    .\refresh_production_data.ps1 -SkipDownload -SkipBackup
    ```
 
-2. **Verify Data Preservation**:
+2. **Verify column exists in both tables**:
+   ```powershell
+   # Check patients table
+   sqlite3 production.db "PRAGMA table_info(patients);" | Select-String "new_column_name"
+
+   # Check patient_panel table
+   sqlite3 production.db "PRAGMA table_info(patient_panel);" | Select-String "new_column_name"
+   ```
+
+3. **Verify data preservation**:
    ```sql
    -- Check that data is preserved in patients table
    SELECT patient_id, new_column_name FROM patients WHERE new_column_name IS NOT NULL LIMIT 5;
@@ -339,24 +555,24 @@ def update_patient_new_column(patient_id, new_value):
    SELECT patient_id, new_column_name FROM patient_panel WHERE new_column_name IS NOT NULL LIMIT 5;
    ```
 
-3. **Test UI Editing**:
+4. **Test UI Editing**:
    - Launch the application: `streamlit run app.py`
    - Navigate to Admin Dashboard > Patient Info tab
    - Edit the new column for a patient
    - Verify the change persists after page refresh
 
-#### Step 6: Deploy to Production
+#### Step 7: Deploy to Production
 
 1. **Commit Changes**:
    ```bash
-   git add transform_production_data_v3_fixed.py src/dashboards/admin_dashboard.py src/zmo_module.py src/database.py src/sql/add_new_columns.sql
+   git add transform_production_data_v3_fixed.py src/sql/post_import_processing.sql src/dashboards/admin_dashboard.py src/zmo_module.py src/database.py src/sql/add_new_columns.sql
    git commit -m "Add new_column_name to patient tables and UI"
-   git push
+   git push origin main
    ```
 
 2. **Deploy to VPS2**:
    ```bash
-   ssh server2 "cd /opt/myhealthteam && git pull"
+   ssh server2 "cd /opt/myhealthteam && git pull origin main"
    ```
 
 3. **Apply Schema Changes on VPS2**:
@@ -367,6 +583,11 @@ def update_patient_new_column(patient_id, new_value):
 4. **Restart Service**:
    ```bash
    ssh server2 "sudo systemctl restart myhealthteam"
+   ```
+
+5. **Verify on VPS2**:
+   ```bash
+   ssh server2 "cd /opt/myhealthteam && sqlite3 production.db 'PRAGMA table_info(patient_panel);' | grep new_column_name"
    ```
 
 ### Column Types and Defaults

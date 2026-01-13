@@ -70,7 +70,7 @@ class AuthenticationManager:
             self.session_state['remember_me'] = False
         if 'persistent_login_checked' not in self.session_state:
             self.session_state['persistent_login_checked'] = False
-        
+
         # Defer persistent login restore to UI mount to avoid duplicate component keys
     
     def authenticate_by_email_only(self, email: str) -> Optional[Dict[str, Any]]:
@@ -357,7 +357,7 @@ class AuthenticationManager:
             # Clear from session state
             if '_persistent_login_data' in st.session_state:
                 del st.session_state['_persistent_login_data']
-            
+
             # Clear from browser cookie if CookieManager is available
             if self.cookie_manager is not None:
                 try:
@@ -379,13 +379,25 @@ class AuthenticationManager:
                     self.cookie_manager.delete('session_id', key=self._next_sje_key("cookie_del"))
                 except Exception as e:
                     print(f"Error clearing persistent login cookie: {e}")
-            
-            # Clear from browser localStorage
+
+            # Clear from browser localStorage (including OAuth processed states)
             try:
-                streamlit_js_eval(js_expressions="localStorage.removeItem('persistent_login')", key=self._next_sje_key("persistent_clear"))
+                clear_all_js = """
+                (function() {
+                    localStorage.removeItem('persistent_login');
+                    // Clear all OAuth processed states
+                    const keys = Object.keys(localStorage);
+                    keys.forEach(key => {
+                        if (key.startsWith('oauth_processed_')) {
+                            localStorage.removeItem(key);
+                        }
+                    });
+                })()
+                """
+                streamlit_js_eval(js_expressions=clear_all_js, key=self._next_sje_key("clear_all_local"))
             except Exception as ls_error:
                 print(f"Error clearing localStorage persistent login: {ls_error}")
-                
+
         except Exception as e:
             print(f"Error clearing persistent login: {e}")
     
@@ -710,17 +722,79 @@ def render_login_sidebar(auth_manager: Optional[AuthenticationManager] = None):
     query_params = st.query_params
     if 'code' in query_params and 'state' in query_params:
         code = query_params['code']
-        user = auth_manager.authenticate_with_google_code(code)
-        if user:
-            auth_manager.setup_user_session(user, "google_oauth", True)
-            st.session_state['login_email_prefill'] = user.get('email')
-            # Clear query params
+        state = query_params['state']
+
+        # Check if this state was recently processed using localStorage (persists across refresh)
+        check_state_js = f"""
+        (function() {{
+            const key = 'oauth_processed_' + '{state}';
+            const timestamp = localStorage.getItem(key);
+            if (!timestamp) return 'new';
+            // Check if processed within last 2 minutes (120000 ms)
+            const age = Date.now() - parseInt(timestamp);
+            return age < 120000 ? 'recent' : 'expired';
+        }})()
+        """
+        state_status = streamlit_js_eval(
+            js_expressions=check_state_js,
+            key=auth_manager._next_sje_key("oauth_check_state")
+        )
+
+        # Handle different scenarios based on authentication state and state status
+        if auth_manager.is_authenticated() and state_status == 'recent':
+            # User is authenticated + state was recently processed = page refresh after login
+            # Just clear the URL silently
             query_params.clear()
-            st.sidebar.success(f"Welcome, {auth_manager.get_user_full_name()}!")
-            st.rerun()
+            streamlit_js_eval(
+                js_expressions="window.history.replaceState({}, '', window.location.pathname);",
+                key=auth_manager._next_sje_key("oauth_url_cleanup_refresh")
+            )
+        elif auth_manager.is_authenticated() and state_status in ['new', None, 'expired']:
+            # User is authenticated but this is a new/old state
+            # Either re-login attempt or race condition - just clear URL
+            query_params.clear()
+            streamlit_js_eval(
+                js_expressions="window.history.replaceState({}, '', window.location.pathname);",
+                key=auth_manager._next_sje_key("oauth_url_cleanup_authenticated")
+            )
+        elif not auth_manager.is_authenticated() and state_status == 'recent':
+            # User is NOT authenticated but state was recently processed
+            # This shouldn't happen - might be session loss. Clear state and try processing.
+            clear_state_js = f"localStorage.removeItem('oauth_processed_' + '{state}');"
+            streamlit_js_eval(js_expressions=clear_state_js, key=auth_manager._next_sje_key("oauth_clear_state"))
+            # Fall through to process the OAuth callback
+            user = auth_manager.authenticate_with_google_code(code)
         else:
-            st.sidebar.error("Google authentication failed.")
-            query_params.clear()
+            # User is NOT authenticated + state is new/expired/unknown = normal login flow
+            # Mark this state as processed BEFORE processing (in case of refresh during processing)
+            mark_processed_js = f"localStorage.setItem('oauth_processed_' + '{state}', Date.now());"
+            streamlit_js_eval(
+                js_expressions=mark_processed_js,
+                key=auth_manager._next_sje_key("oauth_mark_processed")
+            )
+
+            user = auth_manager.authenticate_with_google_code(code)
+
+        # Handle the result of OAuth processing (if we attempted it)
+        if not auth_manager.is_authenticated():
+            if 'user' in locals() and user:
+                auth_manager.setup_user_session(user, "google_oauth", True)
+                st.session_state['login_email_prefill'] = user.get('email')
+                query_params.clear()
+                streamlit_js_eval(
+                    js_expressions="window.history.replaceState({}, '', window.location.pathname);",
+                    key=auth_manager._next_sje_key("oauth_url_cleanup_success")
+                )
+                st.sidebar.success(f"Welcome, {auth_manager.get_user_full_name()}!")
+                st.rerun()
+            else:
+                st.sidebar.error("Google authentication failed. The authorization code may have expired.")
+                query_params.clear()
+                clear_state_js = f"localStorage.removeItem('oauth_processed_' + '{state}');"
+                streamlit_js_eval(
+                    js_expressions=f"window.history.replaceState({{}}, '', window.location.pathname); {clear_state_js}",
+                    key=auth_manager._next_sje_key("oauth_url_cleanup_error")
+                )
 
     # Show impersonation warning if active
     if auth_manager.is_impersonating():

@@ -1,0 +1,40 @@
+Revised billing codes - 
+
+Location:
+Home
+Telehealth
+Office
+
+Pateint_type: <--- Add this is as a drop down under location for the Provider Dashboar Daily task log 
+New
+Follow Up
+TCM-7
+TCM-14
+Cognitive
+
+Codes ... 
+NEW HOME VISIT
+75min-99345 - default biller
+FOLLOW UP HOME VISIT - 
+60min-99350 - default biller 
+40min-99349 - do not use this for now
+NEW TELEVISIT VISIT
+NEW OFFICE VISIT
+60min-99205
+45min-99204 - default biller
+FOLLOW UP TELE VISIT
+FOLLOW UP OFFICE VISIT
+45min-99215
+30min-99214 - default biller 
+
+ACUTE TELE VISIT
+ACUTE OFFICE VISIT
+15min-99213 - default biller
+
+TCM-7d
+30min-99496-default biller
+TCM-14d
+30min-99495-default biller
+
+Cog A+B
+96138 + 96132-default bille

@@ -5,7 +5,7 @@ from datetime import datetime
 from src import database
 
 def show(user_id):
-    """Display monthly task review for providers with minutes editing only"""
+    """Display monthly task review for providers - read-only view with new columns"""
     st.subheader("Monthly Task Review")
 
     if st.button("🔄 Refresh Data", key="refresh_provider_monthly_data"):
@@ -57,104 +57,52 @@ def show(user_id):
 
             query = f"""
             SELECT
-                provider_task_id,
-                patient_name,
-                task_date,
-                minutes_of_service,
-                task_description
-            FROM {table_name}
-            WHERE provider_id = ?
-            ORDER BY task_date DESC
+                pt.provider_task_id,
+                pt.patient_name,
+                pt.task_date,
+                p.date_of_birth,
+                tbc.location_type,
+                tbc.patient_type,
+                pt.notes
+            FROM {table_name} pt
+            LEFT JOIN patients p ON pt.patient_id = p.patient_id
+            LEFT JOIN task_billing_codes tbc ON pt.billing_code = tbc.billing_code
+            WHERE pt.provider_id = ?
+            ORDER BY pt.task_date DESC
             """
             rows = conn.execute(query, (user_id,)).fetchall()
 
             if rows:
                 tasks_df = pd.DataFrame([dict(r) for r in rows])
+
                 tasks_df = tasks_df.rename(columns={
                     'provider_task_id': 'Task ID',
                     'patient_name': 'Patient Name',
-                    'task_date': 'DOS',
-                    'minutes_of_service': 'Duration',
-                    'task_description': 'Service Type'
+                    'task_date': 'Date of Service',
+                    'date_of_birth': 'Patient DOB',
+                    'location_type': 'Location of Service',
+                    'patient_type': 'Patient Type',
+                    'notes': 'Notes'
                 })
 
-                tasks_df['DOS'] = pd.to_datetime(tasks_df['DOS']).dt.strftime('%Y-%m-%d')
+                tasks_df['Date of Service'] = pd.to_datetime(tasks_df['Date of Service']).dt.strftime('%Y-%m-%d')
 
                 total_tasks = len(tasks_df)
-                total_duration = tasks_df['Duration'].sum() if 'Duration' in tasks_df.columns else 0
+                st.metric("Total Tasks", total_tasks)
 
-                m1, m2 = st.columns(2)
-                m1.metric("Total Tasks", total_tasks)
-                m2.metric("Total Duration", f"{total_duration} mins")
-
-                st.markdown("**Edit Duration (minutes) below and click Save Changes to update**")
-
-                original_key = f"original_provider_monthly_data_{user_id}_{year}_{month}"
-
-                if original_key not in st.session_state:
-                    st.session_state[original_key] = tasks_df[['Task ID', 'Patient Name', 'DOS', 'Duration', 'Service Type']].copy()
-
-                editor_key = f"provider_monthly_task_editor_{user_id}_{year}_{month}"
-                edited_df = st.data_editor(
-                    tasks_df[['Patient Name', 'DOS', 'Duration', 'Service Type']],
+                st.dataframe(
+                    tasks_df,
                     use_container_width=True,
                     hide_index=True,
-                    key=editor_key,
-                    num_rows="fixed",
                     column_config={
-                        "Patient Name": st.column_config.TextColumn("Patient Name", width="medium", disabled=True),
-                        "DOS": st.column_config.TextColumn("Date", width="small", disabled=True),
-                        "Duration": st.column_config.NumberColumn("Duration (mins)", width="small", min_value=0, step=1),
-                        "Service Type": st.column_config.TextColumn("Service Type", width="large", disabled=True),
+                        "Patient Name": st.column_config.TextColumn("Patient Name", width="medium"),
+                        "Date of Service": st.column_config.TextColumn("Date of Service", width="small"),
+                        "Patient DOB": st.column_config.TextColumn("Patient DOB", width="small"),
+                        "Location of Service": st.column_config.TextColumn("Location", width="small"),
+                        "Patient Type": st.column_config.TextColumn("Patient Type", width="small"),
+                        "Notes": st.column_config.TextColumn("Notes", width="large"),
                     }
                 )
-
-                if st.button("💾 Save Changes", type="primary", key=f"save_monthly_tasks_{user_id}_{year}_{month}"):
-                    try:
-                        original_with_idx = st.session_state[original_key].reset_index(drop=True)
-                        edited_with_idx = edited_df.reset_index(drop=True)
-
-                        conn_update = database.get_db_connection()
-                        updates_made = 0
-
-                        for i in range(len(edited_with_idx)):
-                            orig_row = original_with_idx.iloc[i]
-                            edited_row = edited_with_idx.iloc[i]
-                            task_id = int(orig_row['Task ID'])
-
-                            duration_changed = pd.notna(edited_row['Duration']) and pd.notna(orig_row['Duration']) and int(edited_row['Duration']) != int(orig_row['Duration'])
-
-                            if duration_changed:
-                                new_duration = int(edited_row['Duration']) if pd.notna(edited_row['Duration']) else 0
-
-                                conn_update.execute(f"""
-                                    UPDATE {table_name}
-                                    SET minutes_of_service = {new_duration}
-                                    WHERE provider_task_id = {task_id}
-                                """)
-                                updates_made += 1
-
-                        conn_update.commit()
-                        conn_update.close()
-
-                        if updates_made > 0:
-                            st.success(f"✅ Saved {updates_made} task update(s)!")
-                            recalc_success, recalc_msg, recalc_count = database.recalculate_provider_monthly_summary(
-                                year, month, user_id
-                            )
-                            if recalc_success:
-                                st.info(f"📊 Summaries updated: {recalc_msg}")
-
-                            del st.session_state[original_key]
-                            if editor_key in st.session_state:
-                                del st.session_state[editor_key]
-                            st.rerun()
-                        else:
-                            st.info("No changes detected.")
-                    except Exception as e:
-                        st.error(f"Error saving changes: {e}")
-                        import traceback
-                        st.error(traceback.format_exc())
 
                 csv = tasks_df.to_csv(index=False)
                 st.download_button(

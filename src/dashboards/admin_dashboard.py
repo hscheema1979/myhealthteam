@@ -934,10 +934,15 @@ def show():
                         with f_col2:
                             if "status" in df.columns:
                                 statuses = sorted(df["status"].dropna().unique())
+                                default_statuses = [
+                                    s
+                                    for s in statuses
+                                    if s in ["Active", "Active-Geri", "Active-PCP", "Hospice", "HOSPICE"]
+                                ]
                                 sel_status = st.multiselect(
                                     "Filter by Status",
                                     statuses,
-                                    default=[],
+                                    default=default_statuses,
                                     key="prov_task_status_filter",
                                 )
                             else:
@@ -1235,9 +1240,15 @@ def show():
                                                 statuses = sorted(
                                                     week_df["status"].dropna().unique()
                                                 )
+                                                default_statuses = [
+                                                    s
+                                                    for s in statuses
+                                                    if s in ["Active", "Active-Geri", "Active-PCP", "Hospice", "HOSPICE"]
+                                                ]
                                                 sel_status_week = st.multiselect(
                                                     "Filter by Status",
                                                     statuses,
+                                                    default=default_statuses,
                                                     key="prov_task_week_status_filter",
                                                 )
                                                 if sel_status_week:

@@ -1027,7 +1027,7 @@ def show_patient_list_section(user_id, section_id=None, has_cpm_role=False):
             )
         with col_type:
             # Patient type dropdown for billing code selection
-            patient_type_options = ["Select one", "New", "Established", "Acute", "Cognitive", "Follow Up", "TCM-7", "TCM-14"]
+            patient_type_options = ["Select one", "New", "Acute", "Cognitive", "TCM-7", "TCM-14"]
             selected_patient_type = st.selectbox(
                 "Patient Type",
                 patient_type_options,
@@ -2219,7 +2219,7 @@ def show_provider_onboarding_queue(user_id, onboarding_queue):
 
             with col3:
                 # Patient type selection for billing code lookup
-                patient_type_options = ["New", "Established", "Acute", "Cognitive", "Follow Up", "TCM-7", "TCM-14"]
+                patient_type_options = ["New", "Acute", "Cognitive", "Follow Up", "TCM-7", "TCM-14"]
                 task_entry["patient_type"] = st.selectbox(
                     f"Patient Type {i+1}",
                     patient_type_options,

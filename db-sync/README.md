@@ -26,10 +26,32 @@ The sync uses **smart CSV sync** which:
 
 | Script | Purpose |
 |--------|---------|
+| `sync_tables.ps1` | **Pull specific tables from prod to local** (for testing) |
 | `sync_csv_data.ps1` | Smart CSV sync (recommended) |
 | `sync_production_db.ps1` | Full DB sync (use with caution) |
 | `test_connection.ps1` | Verify SSH and database access |
 | `setup_scheduled_task.ps1` | Configure automatic 15-min sync |
+
+### Sync Specific Tables
+
+Pull any table(s) from production to local for testing against live data:
+
+```powershell
+# Pull single table
+.\bin\sync_tables.ps1 -Tables onboarding_tasks
+
+# Pull multiple tables
+.\bin\sync_tables.ps1 -Tables onboarding_tasks,onboarding_patients
+
+# Preview what would be synced
+.\bin\sync_tables.ps1 -Tables onboarding_tasks -DryRun
+
+# List all tables on remote with row counts
+.\bin\sync_tables.ps1 -ListRemote
+
+# Skip confirmation prompt
+.\bin\sync_tables.ps1 -Tables onboarding_tasks -Force
+```
 
 ## Configuration
 
