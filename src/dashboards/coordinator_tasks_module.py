@@ -63,6 +63,155 @@ def _safe_key(val):
         return str(val) if val else None
 
 
+def _save_coordinator_tasks_changes(original_df, edited_df, table_name: str, user_id: int):
+    """
+    Save changes made to the coordinator tasks table.
+
+    Args:
+        original_df: DataFrame before editing
+        edited_df: DataFrame after editing
+        table_name: Name of the database table (e.g., coordinator_tasks_2026_01)
+        user_id: ID of the user making the changes
+    """
+    try:
+        import sqlite3
+
+        # Track changes
+        updates = 0
+        inserts = 0
+        errors = 0
+
+        conn = database.get_db_connection()
+        cursor = conn.cursor()
+
+        # Columns that map to database (exclude computed columns)
+        db_column_mapping = {
+            "coordinator_task_id": "coordinator_task_id",
+            "task_type": "task_type",
+            "duration_minutes": "duration_minutes",
+            "date": "task_date",  # UI shows 'date', DB has 'task_date'
+            "task_date": "task_date",
+            "notes": "notes",
+            "status": "submission_status",  # UI shows 'status', DB has 'submission_status'
+            "submission_status": "submission_status",
+        }
+
+        # Get primary key column
+        pk_col = "coordinator_task_id"
+
+        # Process existing rows (by index position)
+        for idx in range(min(len(original_df), len(edited_df))):
+            orig_row = original_df.iloc[idx]
+            edit_row = edited_df.iloc[idx]
+
+            # Check if this is a new row (no primary key)
+            pk_value = edit_row.get(pk_col) if pk_col in edit_row.index else None
+            if pd.isna(pk_value) or pk_value is None or pk_value == "":
+                # New row - insert it
+                inserts += 1
+                try:
+                    # Get values for insert
+                    task_type = edit_row.get("task_type") if "task_type" in edit_row.index else None
+                    duration = edit_row.get("duration_minutes") if "duration_minutes" in edit_row.index else None
+                    date_val = edit_row.get("date") if "date" in edit_row.index else edit_row.get("task_date")
+                    notes = edit_row.get("notes") if "notes" in edit_row.index else None
+                    patient_id = edit_row.get("patient_id") if "patient_id" in edit_row.index else None
+                    coordinator_id = edit_row.get("coordinator_id") if "coordinator_id" in edit_row.index else None
+
+                    cursor.execute("""
+                        INSERT INTO {} (task_type, duration_minutes, task_date, notes, patient_id, coordinator_id, source_system)
+                        VALUES (?, ?, ?, ?, ?, ?, 'DASHBOARD')
+                    """.format(table_name), (
+                        task_type,
+                        int(duration) if pd.notna(duration) else None,
+                        date_val,
+                        notes,
+                        patient_id,
+                        coordinator_id
+                    ))
+                except Exception as e:
+                    errors += 1
+                    st.error(f"Error inserting row {idx}: {e}")
+                continue
+
+            # Check for changes in editable columns
+            changes = {}
+            for col in edit_row.index:
+                if col not in db_column_mapping:
+                    continue  # Skip non-DB columns
+
+                db_col = db_column_mapping[col]
+                orig_val = orig_row.get(col)
+                edit_val = edit_row.get(col)
+
+                # Compare values (handle NaN)
+                orig_is_nan = pd.isna(orig_val)
+                edit_is_nan = pd.isna(edit_val)
+
+                if orig_is_nan and edit_is_nan:
+                    continue
+                if orig_is_nan != edit_is_nan:
+                    changes[db_col] = edit_val if not edit_is_nan else None
+                elif str(orig_val) != str(edit_val):
+                    changes[db_col] = edit_val
+
+            if changes:
+                updates += 1
+                # Build UPDATE query
+                set_clause = ", ".join([f"{col} = ?" for col in changes.keys()])
+                values = list(changes.values())
+                values.append(pk_value)  # WHERE clause value
+
+                cursor.execute(
+                    f"UPDATE {table_name} SET {set_clause} WHERE coordinator_task_id = ?",
+                    values
+                )
+
+        # Handle completely new rows added beyond original length
+        for idx in range(len(original_df), len(edited_df)):
+            edit_row = edited_df.iloc[idx]
+            inserts += 1
+            try:
+                task_type = edit_row.get("task_type") if "task_type" in edit_row.index else None
+                duration = edit_row.get("duration_minutes") if "duration_minutes" in edit_row.index else None
+                date_val = edit_row.get("date") if "date" in edit_row.index else edit_row.get("task_date")
+                notes = edit_row.get("notes") if "notes" in edit_row.index else None
+                patient_id = edit_row.get("patient_id") if "patient_id" in edit_row.index else None
+                coordinator_id = edit_row.get("coordinator_id") if "coordinator_id" in edit_row.index else None
+
+                cursor.execute("""
+                    INSERT INTO {} (task_type, duration_minutes, task_date, notes, patient_id, coordinator_id, source_system)
+                    VALUES (?, ?, ?, ?, ?, ?, 'DASHBOARD')
+                """.format(table_name), (
+                    task_type,
+                    int(duration) if pd.notna(duration) else None,
+                    date_val,
+                    notes,
+                    patient_id,
+                    coordinator_id
+                ))
+            except Exception as e:
+                errors += 1
+                st.error(f"Error inserting new row {idx}: {e}")
+
+        conn.commit()
+        conn.close()
+
+        # Show results
+        if updates > 0 or inserts > 0:
+            st.success(f"Changes saved: {updates} row(s) updated, {inserts} row(s) inserted.")
+            st.rerun()
+        elif errors == 0:
+            st.info("No changes detected.")
+        if errors > 0:
+            st.warning(f"{errors} error(s) occurred while saving.")
+
+    except Exception as e:
+        st.error(f"Error saving changes: {e}")
+        import traceback
+        traceback.print_exc()
+
+
 def show_coordinator_tasks_tab(
     user_id: int,
     user_role_ids=None,
@@ -404,9 +553,9 @@ def show_coordinator_tasks_tab(
                         columns={"total_minutes": "Sum of Minutes"}
                     )
                     df_summary = df_summary.sort_values(
-                        "Sum of Minutes", ascending=True
+                        "Sum of Minutes", ascending=False
                     )
-                    st.write("Sorted by Sum of Minutes (lowest to highest):")
+                    st.write("Sorted by Sum of Minutes (most to least):")
                     st.dataframe(df_summary, use_container_width=True)
                 else:
                     st.info("No coordinator summary data available for this month.")
@@ -422,48 +571,7 @@ def show_coordinator_tasks_tab(
         conn = database.get_db_connection()
         df = pd.read_sql_query(f"SELECT * FROM {table_name}", conn)
         conn.close()
-        
-        # If patient_id is present, join with patients table for patient info
-        if "patient_id" in df.columns:
-            try:
-                patients = (
-                    database.get_all_patients()
-                    if hasattr(database, "get_all_patients")
-                    else []
-                )
-                patients_df = pd.DataFrame(patients)
-                required_cols = {
-                    "patient_id",
-                    "first_name",
-                    "last_name",
-                    "dob",
-                }
-                if not patients_df.empty and required_cols.issubset(patients_df.columns):
-                    df = df.merge(
-                        patients_df[
-                            [
-                                "patient_id",
-                                "first_name",
-                                "last_name",
-                                "dob",
-                            ]
-                        ],
-                        on="patient_id",
-                        how="left",
-                    )
-                    # Move patient info columns to front
-                    first_cols = [
-                        col
-                        for col in ["last_name", "first_name", "dob"]
-                        if col in df.columns
-                    ]
-                    other_cols = [
-                        c for c in df.columns if c not in first_cols
-                    ]
-                    df = df[first_cols + other_cols]
-            except Exception as e:
-                st.warning(f"Could not join patient info: {e}")
-        
+
         # Build coordinator name mapping for tasks table
         # Start with names from tasks table (where available and not empty)
         id_to_name = {}
@@ -512,65 +620,34 @@ def show_coordinator_tasks_tab(
                 )
         else:
             selected_coord = "All"
-        
+
         with filter_cols[1]:
-            st.markdown("**Patient**")
-            if "Patient Name" in df.columns:
-                patient_display = (
-                    df[["patient_id", "Patient Name"]]
-                    .drop_duplicates()
-                    .dropna()
-                )
-                patient_options = [
-                    f"{row['Patient Name']} ({row['patient_id']})"
-                    for _, row in patient_display.iterrows()
+            st.markdown("**Patient ID**")
+            patient_options = (
+                [
+                    str(pid)
+                    for pid in sorted(df["patient_id"].dropna().unique())
                 ]
-                patient_map = {
-                    f"{row['Patient Name']} ({row['patient_id']})": row[
-                        "patient_id"
-                    ]
-                    for _, row in patient_display.iterrows()
-                }
-            elif "patient_name" in df.columns:
-                patient_display = (
-                    df[["patient_id", "patient_name"]]
-                    .drop_duplicates()
-                    .dropna()
-                )
-                patient_options = [
-                    f"{row['patient_name']} ({row['patient_id']})"
-                    for _, row in patient_display.iterrows()
-                ]
-                patient_map = {
-                    f"{row['patient_name']} ({row['patient_id']})": row[
-                        "patient_id"
-                    ]
-                    for _, row in patient_display.iterrows()
-                }
-            else:
-                patient_options = (
-                    [
-                        str(pid)
-                        for pid in sorted(df["patient_id"].dropna().unique())
-                    ]
-                    if "patient_id" in df.columns
-                    else []
-                )
-                patient_map = {str(pid): pid for pid in patient_options}
-            
+                if "patient_id" in df.columns
+                else []
+            )
+            patient_map = {str(pid): pid for pid in patient_options}
+
             selected_patient = st.selectbox(
                 "Patient",
                 ["All"] + patient_options,
                 key="coord_tasks_patient_filter",
                 label_visibility="collapsed",
             )
-        
+
         with filter_cols[2]:
             st.markdown("**Status**")
-            if "status" in df.columns:
-                status_options = sorted(df["status"].dropna().unique())
+            # Check for submission_status column (the actual column name in the database)
+            status_col = "submission_status" if "submission_status" in df.columns else "status"
+            if status_col in df.columns:
+                status_options = sorted(df[status_col].dropna().unique())
                 selected_status = st.selectbox(
-                    "Filter by Status",
+                    "Status",
                     ["All"] + list(status_options),
                     key="coord_tasks_status_filter",
                     label_visibility="collapsed",
@@ -580,76 +657,77 @@ def show_coordinator_tasks_tab(
         
         # --- Apply Filters ---
         filtered_df = df.copy()
-        
+
         # Filter by coordinator (only if showing all coordinators)
         if show_all_coordinators and selected_coord != "All":
             filtered_df = filtered_df[
                 filtered_df["coordinator_name"] == selected_coord
             ]
-        
+
         # Filter by coordinator (if filtering by specific coordinator)
         if filter_by_coordinator and not show_all_coordinators:
             filtered_df = filtered_df[
                 filtered_df["coordinator_id"] == str(user_id)
             ]
-        
+
         # Filter by patient
         if selected_patient != "All":
             filtered_df = filtered_df[
                 filtered_df["patient_id"] == patient_map[selected_patient]
             ]
-        
-        # Filter by status
+
+        # Filter by status (use the correct column name)
         if selected_status != "All":
+            status_col = "submission_status" if "submission_status" in filtered_df.columns else "status"
             filtered_df = filtered_df[
-                filtered_df["status"] == selected_status
+                filtered_df[status_col] == selected_status
             ]
         
         # --- Display Tasks Table ---
         if not filtered_df.empty:
-            # Only show a fixed set of columns
+            # Create a display dataframe with renamed columns for better UX
+            display_df = filtered_df.copy()
+
+            # Rename submission_status to status for display
+            if "submission_status" in display_df.columns:
+                display_df = display_df.rename(columns={"submission_status": "status"})
+
+            # Rename task_date to date for display
+            if "task_date" in display_df.columns:
+                display_df = display_df.rename(columns={"task_date": "date"})
+
+            # Define columns to show (use renamed column names)
             preferred_order = [
                 "coordinator_name",
                 "status",
                 "patient_id",
-                "patient_name",
-                "patient_full_name",
-                "first_name",
-                "last_name",
-                "dob",
                 "task_type",
                 "duration_minutes",
                 "date",
                 "notes",
-                "Patient Name",
             ]
-            show_cols = [
-                col
-                for col in preferred_order
-                if col in filtered_df.columns
-            ]
-            
-            # Prefer patient_name/full_name, else first_name + last_name
-            if "patient_name" in show_cols:
-                pass
-            elif "patient_full_name" in show_cols:
-                pass
-            elif "first_name" in show_cols and "last_name" in show_cols:
-                # Combine first_name and last_name into a single column
-                filtered_df["Patient Name"] = (
-                    filtered_df["first_name"].fillna("")
-                    + " "
-                    + filtered_df["last_name"].fillna("")
-                )
-                show_cols.append("Patient Name")
-            
-            st.data_editor(
-                filtered_df[show_cols],
+
+            # Build list of columns that exist in display_df
+            show_cols = [col for col in preferred_order if col in display_df.columns]
+
+            # Store original data (with original column names) for comparison during save
+            original_df = filtered_df.copy()
+
+            # Display editable table (use display_df with renamed columns)
+            edited_df = st.data_editor(
+                display_df[show_cols],
                 use_container_width=True,
                 num_rows="dynamic",
                 height=700,
                 key="coordinator_tasks_table_editor",
             )
+
+            # Save button (left-aligned with table)
+            save_clicked = st.button("Save Changes", type="primary", key="save_coordinator_tasks")
+
+            if save_clicked:
+                _save_coordinator_tasks_changes(original_df, edited_df, table_name, user_id)
+
         else:
             st.info(f"No data in table {table_name} after filtering.")
     
