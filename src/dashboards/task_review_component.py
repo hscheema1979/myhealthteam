@@ -127,6 +127,7 @@ def show(user_id):
                 for t_name in tables_to_query:
                     query = f"""
                     SELECT
+                        provider_task_id,
                         patient_name,
                         task_date,
                         minutes_of_service,
@@ -142,6 +143,7 @@ def show(user_id):
                 if all_rows:
                     tasks_df = pd.DataFrame(all_rows)
                     tasks_df = tasks_df.rename(columns={
+                        'provider_task_id': 'Task ID',
                         'patient_name': 'Patient Name',
                         'task_date': 'DOS',
                         'minutes_of_service': 'Duration',
@@ -165,6 +167,7 @@ def show(user_id):
 
                 query = f"""
                 SELECT
+                    provider_task_id,
                     patient_name,
                     task_date,
                     minutes_of_service,
@@ -178,6 +181,7 @@ def show(user_id):
                 if rows:
                     tasks_df = pd.DataFrame([dict(r) for r in rows])
                     tasks_df = tasks_df.rename(columns={
+                        'provider_task_id': 'Task ID',
                         'patient_name': 'Patient Name',
                         'task_date': 'DOS',
                         'minutes_of_service': 'Duration',
