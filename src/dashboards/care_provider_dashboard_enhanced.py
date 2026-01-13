@@ -21,7 +21,6 @@ from src.config.ui_style_config import (
     get_metric_label,
     get_section_title,
 )
-from src.dashboards import task_review_component
 from src.dashboards.phone_review import show_phone_review_entry
 from src.dashboards.provider_monthly_task_review import show as show_monthly_task_review
 
@@ -1019,12 +1018,21 @@ def show_patient_list_section(user_id, section_id=None, has_cpm_role=False):
                 None if (task_location == "Select one") else task_location
             )
 
-        col_patient, col_task = st.columns([2, 2])
+        col_patient, col_type, col_task = st.columns([2, 1.5, 2])
         with col_patient:
             # Add "Select one" option to patient dropdown
             patient_options = ["Select one"] + patient_names
             selected_patient_name = st.selectbox(
                 "Select Patient", patient_options, key=f"{key_prefix}_patient"
+            )
+        with col_type:
+            # Patient type dropdown for billing code selection
+            patient_type_options = ["Select one", "New", "Established", "Acute", "Cognitive", "Follow Up", "TCM"]
+            selected_patient_type = st.selectbox(
+                "Patient Type",
+                patient_type_options,
+                index=1,  # Default to "New" for onboarding queue
+                key=f"{key_prefix}_patient_type"
             )
         with col_task:
             # Auto-assign billing code based on visit location and type
@@ -1042,10 +1050,15 @@ def show_patient_list_section(user_id, section_id=None, has_cpm_role=False):
                 selected_billing_desc = "Office Visit (45 min)"
             else:
                 # Fallback to first available billing code if location unknown
+                # Use selected patient type if specified, otherwise default to "New"
+                patient_type_for_billing = (
+                    selected_patient_type if selected_patient_type != "Select one"
+                    else "New"
+                )
                 billing_options = database.get_billing_codes(
                     service_type="Primary Care Visit",
                     location_type=task_location_val,
-                    patient_type="Established Patient",
+                    patient_type=patient_type_for_billing,
                 )
                 if billing_options:
                     selected_billing_code = billing_options[0].get("billing_code", "Unknown")
@@ -2124,7 +2137,7 @@ def show_provider_onboarding_queue(user_id, onboarding_queue):
             st.divider()
 
             # Task entry form
-            col1, col2, col3 = st.columns([1, 1, 1])
+            col1, col2, col3, col4 = st.columns([1, 1, 1, 1])
 
             with col1:
                 task_entry["date"] = st.date_input(
@@ -2146,20 +2159,75 @@ def show_provider_onboarding_queue(user_id, onboarding_queue):
                 # Update task entry if visit type changed
                 if new_visit_type != current_visit_type:
                     task_entry["visit_type"] = new_visit_type
-                    # Update billing code and duration based on visit type
+                    # Map visit type to location_type for billing lookup
+                    location_type = "Home" if new_visit_type == "Home Visit" else "Tele"
+                    patient_type = task_entry.get("patient_type", "New")
+
+                    # Look up billing code based on location and patient type
+                    billing_options = database.get_billing_codes(
+                        service_type="Primary Care Visit",
+                        location_type=location_type,
+                        patient_type=patient_type,
+                    )
+
+                    if billing_options:
+                        task_entry["billing_code"] = billing_options[0].get("billing_code", "99345")
+                        duration_min = billing_options[0].get("min_minutes", 45)
+                        duration_max = billing_options[0].get("max_minutes", 75)
+                        task_entry["duration_minutes"] = (duration_min + duration_max) // 2
+                    else:
+                        # Fallback defaults
+                        if new_visit_type == "Home Visit":
+                            task_entry["billing_code"] = "99345"
+                            task_entry["duration_minutes"] = 45
+                        else:
+                            task_entry["billing_code"] = "99201"
+                            task_entry["duration_minutes"] = 30
+
+                    # Update task type description
                     if new_visit_type == "Home Visit":
-                        task_entry["billing_code"] = "99345"
-                        task_entry["duration_minutes"] = 45
                         task_entry["task_type"] = "PCP-Visit Home Visit (HV) (NEW pt)"
                     else:
-                        task_entry["billing_code"] = "99201"
-                        task_entry["duration_minutes"] = 30
                         task_entry["task_type"] = "PCP-Visit Telehealth (TE) (NEW pt)"
 
             with col3:
+                # Patient type selection for billing code lookup
+                patient_type_options = ["New", "Established", "Acute", "Cognitive", "Follow Up", "TCM"]
+                task_entry["patient_type"] = st.selectbox(
+                    f"Patient Type {i+1}",
+                    patient_type_options,
+                    index=patient_type_options.index(task_entry.get("patient_type", "New")),
+                    key=f"patient_type_{i}",
+                    help="Select patient type for accurate billing code assignment"
+                )
+
+                # Update billing code when patient type changes
+                current_patient_type = task_entry.get("patient_type", "New")
+                session_key_patient_type = f"prev_patient_type_{i}"
+                if session_key_patient_type in st.session_state and st.session_state[session_key_patient_type] != current_patient_type:
+                    # Patient type changed, update billing code
+                    visit_type = task_entry.get("visit_type", "Home Visit")
+                    location_type = "Home" if visit_type == "Home Visit" else "Tele"
+
+                    billing_options = database.get_billing_codes(
+                        service_type="Primary Care Visit",
+                        location_type=location_type,
+                        patient_type=current_patient_type,
+                    )
+
+                    if billing_options:
+                        task_entry["billing_code"] = billing_options[0].get("billing_code", "99345")
+                        duration_min = billing_options[0].get("min_minutes", 45)
+                        duration_max = billing_options[0].get("max_minutes", 75)
+                        task_entry["duration_minutes"] = (duration_min + duration_max) // 2
+
+                st.session_state[session_key_patient_type] = current_patient_type
+
+            with col4:
                 st.write(f"**Patient:** {task_entry['patient_name']}")
                 st.write(f"**Task:** {task_entry['task_type']}")
-                # st.write(f"**Billing Code:** {task_entry.get('billing_code', '99345')} ({task_entry.get('duration_minutes', 45)} min)")
+                st.write(f"**Billing Code:** {task_entry.get('billing_code', '99345')} ({task_entry.get('duration_minutes', 45)} min)")
+                st.caption(f"Patient Type: {task_entry.get('patient_type', 'New')}")
 
             task_entry["notes"] = st.text_area(
                 f"Visit Notes {i+1}",
@@ -2307,6 +2375,7 @@ def show_provider_onboarding_queue(user_id, onboarding_queue):
                                 task_date=task_entry["date"],
                                 task_description=task_entry["task_type"],
                                 notes=task_entry["notes"],
+                                billing_code=task_entry.get("billing_code"),
                             )
 
                             # Save additional clinical data for both visit types
