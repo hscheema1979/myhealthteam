@@ -552,7 +552,7 @@ def show(user_id, user_role_ids=None):
                 show_phone_review_entry(mode="cp", user_id=user_id)
 
             with tab3:
-                task_review_component.show(user_id)
+                show_monthly_task_review(user_id)
             with tab_zmo:
                 from src.zmo_module import render_zmo_tab
                 render_zmo_tab(user_id=user_id)

@@ -8,6 +8,9 @@ def show(user_id):
     """Display monthly task review for providers with minutes editing only"""
     st.subheader("Monthly Task Review")
 
+    if st.button("🔄 Refresh Data", key="refresh_provider_monthly_data"):
+        st.rerun()
+
     conn = database.get_db_connection()
     try:
         query = """
