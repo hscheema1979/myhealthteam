@@ -18,7 +18,6 @@ from src.dashboards import (
     admin_dashboard,
     care_coordinator_dashboard_enhanced,
     care_provider_dashboard_enhanced,
-    coordinator_manager_dashboard,
     data_entry_dashboard,
     justin_simple_payment_tracker,
     monthly_coordinator_billing_dashboard,
