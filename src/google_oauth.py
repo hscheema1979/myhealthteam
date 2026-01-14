@@ -134,7 +134,14 @@ def get_google_user_info(access_token: str) -> Optional[Dict[str, Any]]:
 
 def get_or_create_user_from_google(user_info: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     """
-    Get existing user or create new user from Google profile information
+    Get existing user or create new user from Google profile information.
+
+    Google-only authentication: Trusts Google completely.
+    - Looks up user by google_id only (NOT by email)
+    - Updates user info from Google on each login
+    - Creates new user if google_id not found
+
+    This keeps Google logins completely separate from email/password logins.
 
     Args:
         user_info: Google user info dict containing id, email, name, picture
@@ -155,7 +162,7 @@ def get_or_create_user_from_google(user_info: Dict[str, Any]) -> Optional[Dict[s
 
     conn = get_db_connection()
     try:
-        # First, try to find user by google_id
+        # Look for existing user by google_id ONLY (Google users are independent)
         user = conn.execute("""
             SELECT user_id, username, email, first_name, last_name, full_name, status,
                    oauth_provider, google_id, picture_url
@@ -164,34 +171,18 @@ def get_or_create_user_from_google(user_info: Dict[str, Any]) -> Optional[Dict[s
         """, (google_id,)).fetchone()
 
         if user:
-            # Update user info in case anything changed
+            # User exists - update their info from Google (names, picture might have changed)
             conn.execute("""
                 UPDATE users
-                SET picture_url = ?,
-                    last_login = CURRENT_TIMESTAMP
-                WHERE user_id = ?
-            """, (picture_url, user['user_id']))
-            conn.commit()
-            return dict(user)
-
-        # Next, try to find user by email (link Google account to existing user)
-        user = conn.execute("""
-            SELECT user_id, username, email, first_name, last_name, full_name, status,
-                   oauth_provider, google_id, picture_url
-            FROM users
-            WHERE email = ? AND status = 'active'
-        """, (email,)).fetchone()
-
-        if user:
-            # Link Google account to existing user
-            conn.execute("""
-                UPDATE users
-                SET google_id = ?,
-                    oauth_provider = 'google',
+                SET email = ?,
+                    first_name = ?,
+                    last_name = ?,
+                    full_name = ?,
                     picture_url = ?,
+                    oauth_provider = 'google',
                     last_login = CURRENT_TIMESTAMP
                 WHERE user_id = ?
-            """, (google_id, picture_url, user['user_id']))
+            """, (email, given_name, family_name, full_name, picture_url, user['user_id']))
             conn.commit()
 
             # Return updated user
@@ -203,7 +194,8 @@ def get_or_create_user_from_google(user_info: Dict[str, Any]) -> Optional[Dict[s
             """, (user['user_id'],)).fetchone()
             return dict(user)
 
-        # Create new user
+        # User doesn't exist - create new Google-only user
+        # Generate unique username from email
         username = email.split('@')[0]
         # Ensure username is unique
         existing = conn.execute("SELECT 1 FROM users WHERE username = ?", (username,)).fetchone()
@@ -226,9 +218,10 @@ def get_or_create_user_from_google(user_info: Dict[str, Any]) -> Optional[Dict[s
             SELECT user_id, username, email, first_name, last_name, full_name, status,
                    oauth_provider, google_id, picture_url
             FROM users
-            WHERE email = ?
-        """, (email,)).fetchone()
+            WHERE google_id = ?
+        """, (google_id,)).fetchone()
 
+        print(f"Created new Google user: {email}, user_id: {user['user_id'] if user else 'None'}")
         return dict(user) if user else None
 
     except Exception as e:

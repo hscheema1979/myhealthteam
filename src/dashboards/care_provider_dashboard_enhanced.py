@@ -1027,7 +1027,7 @@ def show_patient_list_section(user_id, section_id=None, has_cpm_role=False):
             )
         with col_type:
             # Patient type dropdown for billing code selection
-            patient_type_options = ["Select one", "New", "Acute", "Cognitive", "TCM-7", "TCM-14"]
+            patient_type_options = ["Select one", "New", "Acute", "Cognitive", "Follow Up", "TCM-7", "TCM-14"]
             selected_patient_type = st.selectbox(
                 "Patient Type",
                 patient_type_options,

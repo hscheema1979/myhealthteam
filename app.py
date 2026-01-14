@@ -1,4 +1,11 @@
 import streamlit as st
+from datetime import datetime
+
+def debug_log(message):
+    """Write debug message to file"""
+    with open('oauth_debug.txt', 'a') as f:
+        f.write(f"{datetime.now().isoformat()} - APP: {message}\n")
+    print(f"APP: {message}")
 
 st.set_page_config(
     page_title="Zen Medicine", layout="wide", initial_sidebar_state="expanded"
@@ -524,9 +531,11 @@ def main():
                     )
 
     # Display dashboard based on user and their roles
+    debug_log(f"is_authenticated = {auth_manager.is_authenticated()}")
     if auth_manager.is_authenticated():
         user_id = auth_manager.get_user_id()
         user_role_ids = auth_manager.get_user_roles()
+        debug_log(f"user_id={user_id}, user_role_ids={user_role_ids}")
 
         # Check for preferred role (for users with multiple roles)
         preferred_role = st.session_state.get("preferred_dashboard_role")
@@ -570,6 +579,9 @@ def main():
             st.info("Please contact your administrator.")
     else:
         # Simple landing page for users not logged in
+        debug_log(f"User NOT authenticated - showing login page")
+        debug_log(f"  session_state.authenticated_user: {st.session_state.get('authenticated_user')}")
+        debug_log(f"  session_state.user_id: {st.session_state.get('user_id')}")
         st.markdown("# Zen Medicine")
 
         col1, col2, col3 = st.columns([1, 2, 1])

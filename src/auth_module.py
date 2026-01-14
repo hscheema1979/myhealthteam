@@ -6,10 +6,24 @@ It supports both email/password and OAuth authentication methods.
 """
 
 import streamlit as st
+import logging
 import sqlite3
 import json
 from typing import Optional, Dict, Any, List
 from datetime import datetime
+
+# Setup debug logging to file
+logging.basicConfig(
+    filename='oauth_debug.log',
+    level=logging.DEBUG,
+    format='%(asctime)s - %(message)s'
+)
+
+def debug_log(message):
+    """Write debug message to file and print to console"""
+    with open('oauth_debug.txt', 'a') as f:
+        f.write(f"{datetime.now().isoformat()} - {message}\n")
+    print(message)
 from src import database
 from src.database import get_db_connection
 from src.core_utils import get_user_role_ids
@@ -404,25 +418,75 @@ class AuthenticationManager:
     def setup_user_session(self, user: Dict[str, Any], login_method: str, remember_me: bool = False):
         """
         Setup user session after successful authentication
-        
+
         Args:
             user: User dictionary from authentication
             login_method: Method used for login ("email_only" or "email_password")
             remember_me: Whether to save persistent login data
         """
-        self.session_state['authenticated_user'] = user
-        self.session_state['login_method'] = login_method
-        self.session_state['user_id'] = user['user_id']
-        self.session_state['user_full_name'] = user['full_name'] or f"{user['first_name']} {user['last_name']}"
-        self.session_state['remember_me'] = remember_me
-        
-        # Get user role IDs
-        user_role_ids = get_user_role_ids(user['user_id'])
-        self.session_state['user_role_ids'] = user_role_ids
-        
-        # Save persistent login if remember_me is enabled
-        if remember_me and login_method != 'persistent':
-            self._save_persistent_login(user)
+        import json
+        import os
+
+        debug_log(f"  setup_user_session: START")
+
+        try:
+            # Collect basic data first - NO session_state access yet
+            user_id = user['user_id']
+            user_full_name = user['full_name'] or f"{user['first_name']} {user['last_name']}"
+
+            debug_log(f"    user_id: {user_id}, user_full_name: {user_full_name}")
+
+            # CRITICAL: Write minimal data to temp file IMMEDIATELY
+            # This happens BEFORE any operations that might trigger rerun
+            session_data = {
+                'authenticated_user': user,
+                'login_method': login_method,
+                'user_id': user_id,
+                'user_full_name': user_full_name,
+                'remember_me': remember_me,
+                'user_role_ids': [],  # Will be updated after query
+            }
+
+            temp_file_path = 'temp_session_data.json'
+            with open(temp_file_path, 'w') as f:
+                json.dump(session_data, f)
+
+            debug_log(f"    Wrote INITIAL session data to temp file")
+
+            # Now get user role IDs (may trigger DB query but NOT session_state access)
+            user_role_ids = get_user_role_ids(user_id)
+            debug_log(f"    user_role_ids: {user_role_ids}")
+
+            # Update the temp file with role_ids
+            session_data['user_role_ids'] = user_role_ids
+            with open(temp_file_path, 'w') as f:
+                json.dump(session_data, f)
+
+            debug_log(f"    Updated temp file with user_role_ids")
+
+            # Now apply to session state - this WILL trigger rerun
+            for key, value in session_data.items():
+                self.session_state[key] = value
+
+            debug_log(f"    Applied all data to session_state")
+
+            # Clean up temp file - we've successfully applied to session_state
+            if os.path.exists(temp_file_path):
+                os.remove(temp_file_path)
+                debug_log(f"    Cleaned up temp file")
+
+            # Save persistent login if remember_me is enabled
+            if remember_me and login_method != 'persistent':
+                self._save_persistent_login(user)
+                debug_log(f"    Persistent login saved")
+
+            debug_log(f"  setup_user_session: COMPLETE")
+        except Exception as e:
+            debug_log(f"  setup_user_session ERROR: {e}")
+            import traceback
+            debug_log(f"    Traceback: {traceback.format_exc()}")
+            # Don't raise - let temp file handle recovery
+            pass
     
     def logout_user(self, clear_persistent: bool = True):
         """
@@ -712,89 +776,168 @@ def render_login_sidebar(auth_manager: Optional[AuthenticationManager] = None):
         auth_manager.session_state['_pending_rerun'] = False
         st.rerun()
 
-    # Re-check persistence after UI mount if not yet checked
-    if not auth_manager.session_state.get('persistent_login_checked', False):
-        if auth_manager._check_persistent_login():
-            auth_manager.session_state['persistent_login_checked'] = True
-            st.rerun()
+    # GLOBAL CHECK: Check for temp session file from interrupted OAuth flow
+    # This runs on EVERY script execution to ensure we can recover from any interrupt
+    import os
+    temp_file_path = 'temp_session_data.json'
+    if os.path.exists(temp_file_path):
+        debug_log(f"GLOBAL: Found temp session file - restoring...")
+        try:
+            import json
+            with open(temp_file_path, 'r') as f:
+                session_data = json.load(f)
 
-    # Check for OAuth callback
+            # Apply the saved session data
+            for key, value in session_data.items():
+                auth_manager.session_state[key] = value
+
+            # Clean up temp file
+            os.remove(temp_file_path)
+
+            debug_log(f"GLOBAL: Session restored from temp file")
+            debug_log(f"GLOBAL: is_authenticated after restore: {auth_manager.is_authenticated()}")
+
+            # If we successfully restored and are authenticated, rerun to show dashboard
+            if auth_manager.is_authenticated():
+                st.sidebar.success(f"Welcome, {auth_manager.get_user_full_name()}!")
+                st.rerun()
+                return
+        except Exception as e:
+            debug_log(f"GLOBAL: Error restoring session: {e}")
+            # Clean up and continue
+            try:
+                os.remove(temp_file_path)
+            except:
+                pass
+
+    # Check for OAuth callback FIRST - before persistent login check
+    # This prevents persistent login from interrupting OAuth flow
     query_params = st.query_params
     if 'code' in query_params and 'state' in query_params:
         code = query_params['code']
         state = query_params['state']
 
-        # Check if this state was recently processed using localStorage (persists across refresh)
-        check_state_js = f"""
-        (function() {{
-            const key = 'oauth_processed_' + '{state}';
-            const timestamp = localStorage.getItem(key);
-            if (!timestamp) return 'new';
-            // Check if processed within last 2 minutes (120000 ms)
-            const age = Date.now() - parseInt(timestamp);
-            return age < 120000 ? 'recent' : 'expired';
-        }})()
-        """
-        state_status = streamlit_js_eval(
-            js_expressions=check_state_js,
-            key=auth_manager._next_sje_key("oauth_check_state")
-        )
+        debug_log(f"=== OAuth callback detected ===")
+        debug_log(f"  state: {state}")
+        debug_log(f"  is_authenticated at entry: {auth_manager.is_authenticated()}")
 
-        # Handle different scenarios based on authentication state and state status
-        if auth_manager.is_authenticated() and state_status == 'recent':
-            # User is authenticated + state was recently processed = page refresh after login
-            # Just clear the URL silently
-            query_params.clear()
-            streamlit_js_eval(
-                js_expressions="window.history.replaceState({}, '', window.location.pathname);",
-                key=auth_manager._next_sje_key("oauth_url_cleanup_refresh")
-            )
-        elif auth_manager.is_authenticated() and state_status in ['new', None, 'expired']:
-            # User is authenticated but this is a new/old state
-            # Either re-login attempt or race condition - just clear URL
-            query_params.clear()
-            streamlit_js_eval(
-                js_expressions="window.history.replaceState({}, '', window.location.pathname);",
-                key=auth_manager._next_sje_key("oauth_url_cleanup_authenticated")
-            )
-        elif not auth_manager.is_authenticated() and state_status == 'recent':
-            # User is NOT authenticated but state was recently processed
-            # This shouldn't happen - might be session loss. Clear state and try processing.
-            clear_state_js = f"localStorage.removeItem('oauth_processed_' + '{state}');"
-            streamlit_js_eval(js_expressions=clear_state_js, key=auth_manager._next_sje_key("oauth_clear_state"))
-            # Fall through to process the OAuth callback
-            user = auth_manager.authenticate_with_google_code(code)
-        else:
-            # User is NOT authenticated + state is new/expired/unknown = normal login flow
-            # Mark this state as processed BEFORE processing (in case of refresh during processing)
-            mark_processed_js = f"localStorage.setItem('oauth_processed_' + '{state}', Date.now());"
-            streamlit_js_eval(
-                js_expressions=mark_processed_js,
-                key=auth_manager._next_sje_key("oauth_mark_processed")
-            )
+        # Check if there's a temp session file from a previous interrupted run
+        import os
+        if os.path.exists('temp_session_data.json'):
+            debug_log(f"  Found temp session file - restoring...")
+            try:
+                import json
+                with open('temp_session_data.json', 'r') as f:
+                    session_data = json.load(f)
 
-            user = auth_manager.authenticate_with_google_code(code)
+                # Apply the saved session data
+                for key, value in session_data.items():
+                    self.session_state[key] = value
 
-        # Handle the result of OAuth processing (if we attempted it)
-        if not auth_manager.is_authenticated():
-            if 'user' in locals() and user:
-                auth_manager.setup_user_session(user, "google_oauth", True)
-                st.session_state['login_email_prefill'] = user.get('email')
+                # Clean up temp file
+                os.remove('temp_session_data.json')
+
+                debug_log(f"  Session restored from temp file")
+                debug_log(f"  is_authenticated after restore: {auth_manager.is_authenticated()}")
+
+                # Clear URL and show success
                 query_params.clear()
                 streamlit_js_eval(
                     js_expressions="window.history.replaceState({}, '', window.location.pathname);",
-                    key=auth_manager._next_sje_key("oauth_url_cleanup_success")
+                    key=auth_manager._next_sje_key("oauth_url_cleanup")
                 )
                 st.sidebar.success(f"Welcome, {auth_manager.get_user_full_name()}!")
                 st.rerun()
-            else:
-                st.sidebar.error("Google authentication failed. The authorization code may have expired.")
+                return  # Exit after restoring
+            except Exception as e:
+                debug_log(f"  Error restoring session: {e}")
+                os.remove('temp_session_data.json')  # Clean up and continue
+
+        # Use a session flag to ensure we only process each OAuth callback once per session
+        # This prevents double-processing on st.rerun()
+        oauth_state_key = f'_oauth_processed_{state}'
+        if auth_manager.session_state.get(oauth_state_key, False):
+            # Already processed this callback - just clear URL and continue
+            query_params.clear()
+            streamlit_js_eval(
+                js_expressions="window.history.replaceState({}, '', window.location.pathname);",
+                key=auth_manager._next_sje_key("oauth_cleanup_done")
+            )
+        elif auth_manager.is_authenticated():
+            # User is already authenticated - stale callback from page refresh
+            # Just clear URL and continue (user stays logged in via persistent session)
+            query_params.clear()
+            streamlit_js_eval(
+                js_expressions="window.history.replaceState({}, '', window.location.pathname);",
+                key=auth_manager._next_sje_key("oauth_cleanup_authenticated")
+            )
+        else:
+            # New OAuth callback - process it
+            # Mark as processed first to prevent double-processing on rerun
+            auth_manager.session_state[oauth_state_key] = True
+
+            # Process the OAuth callback
+            user = auth_manager.authenticate_with_google_code(code)
+            if user:
+                debug_log(f"=== Google login successful ===")
+                debug_log(f"  email: {user.get('email')}")
+                debug_log(f"  user_id: {user.get('user_id')}")
+                debug_log(f"  full_name: {user.get('full_name')}")
+                debug_log(f"  oauth_provider: {user.get('oauth_provider')}")
+
+                # CRITICAL: Set session state IMMEDIATELY with try/except
+                try:
+                    debug_log(f"  About to call setup_user_session")
+                    auth_manager.setup_user_session(user, "google_oauth", True)
+                    debug_log(f"  setup_user_session returned without error")
+                except Exception as e:
+                    debug_log(f"  setup_user_session ERROR: {e}")
+                    import traceback
+                    tb = traceback.format_exc()
+                    debug_log(f"  Traceback: {tb}")
+                    # Continue anyway - check if we have temp file
+                    pass
+
+                # CRITICAL: Check if authentication worked NOW, not in a separate app.py run
+                debug_log(f"  Checking is_authenticated NOW: {auth_manager.is_authenticated()}")
+                debug_log(f"  session_state.authenticated_user NOW: {st.session_state.get('authenticated_user')}")
+
                 query_params.clear()
-                clear_state_js = f"localStorage.removeItem('oauth_processed_' + '{state}');"
+                # Clear browser URL to prevent re-processing on refresh
                 streamlit_js_eval(
-                    js_expressions=f"window.history.replaceState({{}}, '', window.location.pathname); {clear_state_js}",
+                    js_expressions="window.history.replaceState({}, '', window.location.pathname);",
+                    key=auth_manager._next_sje_key("oauth_url_cleanup")
+                )
+
+                if auth_manager.is_authenticated():
+                    st.sidebar.success(f"Welcome, {auth_manager.get_user_full_name()}!")
+                    debug_log(f"=== About to call st.rerun() ===")
+                    st.rerun()
+                else:
+                    debug_log(f"=== ERROR: Still not authenticated after setup! ===")
+                    # Check if temp file exists
+                    if os.path.exists('temp_session_data.json'):
+                        debug_log(f"  Temp file exists - should restore on next run")
+                    st.sidebar.error("Authentication failed. Please try again.")
+            else:
+                debug_log(f"=== Google login FAILED ===")
+                st.sidebar.error("Google authentication failed. Please try again.")
+                query_params.clear()
+                streamlit_js_eval(
+                    js_expressions="window.history.replaceState({}, '', window.location.pathname);",
                     key=auth_manager._next_sje_key("oauth_url_cleanup_error")
                 )
+                # Clear the flag so they can try again
+                auth_manager.session_state[oauth_state_key] = False
+
+    # Re-check persistence AFTER OAuth callback (only if no OAuth callback in URL)
+    # This prevents persistent login from interrupting OAuth flow
+    if not auth_manager.session_state.get('persistent_login_checked', False):
+        # Only check persistent login if there's no OAuth callback in progress
+        if 'code' not in query_params or 'state' not in query_params:
+            if auth_manager._check_persistent_login():
+                auth_manager.session_state['persistent_login_checked'] = True
+                st.rerun()
 
     # Show impersonation warning if active
     if auth_manager.is_impersonating():
