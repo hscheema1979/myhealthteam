@@ -4150,6 +4150,8 @@ def sync_onboarding_to_all_tables(onboarding_id):
         result['patient_id'] = patient_id
 
         # Step 2: Update patients table with latest onboarding data
+        # Note: assigned_provider_id is not in patients table, only assigned_coordinator_id
+        # Provider assignments are tracked in patient_assignments table instead
         conn.execute(
             """
             UPDATE patients SET
@@ -4157,7 +4159,6 @@ def sync_onboarding_to_all_tables(onboarding_id):
                 tv_scheduled = COALESCE(?, tv_scheduled),
                 initial_tv_provider = COALESCE(?, initial_tv_provider),
                 initial_tv_completed_date = COALESCE(?, initial_tv_completed_date),
-                assigned_provider_id = COALESCE(?, assigned_provider_id),
                 assigned_coordinator_id = COALESCE(?, assigned_coordinator_id),
                 facility = COALESCE(?, facility),
                 current_facility_id = COALESCE(?, current_facility_id),
@@ -4177,7 +4178,6 @@ def sync_onboarding_to_all_tables(onboarding_id):
                 onboarding_dict.get('tv_scheduled', False),
                 onboarding_dict.get('initial_tv_provider'),
                 onboarding_dict.get('tv_date'),  # Use tv_date for initial_tv_completed_date
-                onboarding_dict.get('assigned_provider_user_id'),
                 onboarding_dict.get('assigned_coordinator_user_id'),
                 onboarding_dict.get('facility_assignment'),
                 onboarding_dict.get('facility_assignment'),
