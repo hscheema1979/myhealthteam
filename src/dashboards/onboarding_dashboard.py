@@ -1439,15 +1439,21 @@ def show_tv_scheduling_form(patient_details, current_user_id):
     with col2:
         with st.form("save_progress_form"):
             if st.form_submit_button("Save Progress"):
-                # Collect form data from session state
+                # Collect form data from session state - include ALL provider selections
+                # Read from both tv_form_data and session_state to handle form submission timing
+                regional_prov = st.session_state.tv_form_data.get('assigned_regional_provider') or st.session_state.get('assigned_regional_provider', 'Select Regional Provider...')
                 form_data = {
                     'tv_date': st.session_state.tv_form_data['tv_date'],
                     'tv_time': st.session_state.tv_form_data['tv_time'],
-                    'assigned_provider': st.session_state.tv_form_data['assigned_provider'],
+                    'assigned_provider': st.session_state.tv_form_data['assigned_provider'],  # Initial TV provider
+                    'assigned_regional_provider': regional_prov,  # Regional provider - THIS WAS MISSING
                     'assigned_coordinator': st.session_state.tv_form_data['assigned_coordinator'],
                     'tv_scheduled': st.session_state.tv_form_data['tv_scheduled'],
                     'patient_notified': st.session_state.tv_form_data['patient_notified'],
-                    'initial_tv_completed': st.session_state.tv_form_data['initial_tv_completed']
+                    'initial_tv_completed': st.session_state.tv_form_data['initial_tv_completed'],
+                    'visit_type': st.session_state.tv_form_data.get('visit_type', 'Home Visit'),
+                    'billing_code': st.session_state.tv_form_data.get('billing_code', '99345'),
+                    'duration_minutes': st.session_state.tv_form_data.get('duration_minutes', 45)
                 }
                 
                 # Save the progress to database

@@ -938,15 +938,19 @@ def save_onboarding_tv_scheduling_progress(onboarding_id, form_data):
     """Save partial progress for TV scheduling form without completing the stage"""
     conn = get_db_connection()
     try:
-        # Extract provider user_id from the selection format "Full Name (username)"
+        # IMPORTANT: Use assigned_regional_provider for the permanent assigned_provider_user_id
+        # This is the provider who will be the ongoing care provider, not just the initial TV provider
         provider_user_id = None
+        regional_provider_selection = form_data.get("assigned_regional_provider")
         if (
-            form_data.get("assigned_provider")
-            and form_data["assigned_provider"] != "Select Provider..."
+            regional_provider_selection
+            and regional_provider_selection != "Select Regional Provider..."
+            and regional_provider_selection != "No Providers Available"
+            and regional_provider_selection != "Regional Provider Assignment Needed"
         ):
             # Get the username from the format "Full Name (username)"
             username = (
-                form_data["assigned_provider"].split("(")[-1].replace(")", "").strip()
+                regional_provider_selection.split("(")[-1].replace(")", "").strip()
             )
             provider_cursor = conn.execute(
                 "SELECT user_id FROM users WHERE username = ?", (username,)
