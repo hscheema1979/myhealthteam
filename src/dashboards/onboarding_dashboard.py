@@ -1270,31 +1270,9 @@ def show_tv_scheduling_form(patient_details, current_user_id):
                 regional_provider_assigned = False
                 coordinator_assigned_in_patient_table = False
 
-                # Fallback: If patient_id is missing (Stage 4 may not have set it), create it now
-                if not patient_id:
-                    try:
-                        with st.spinner("Creating patient record..."):
-                            patient_id = database.insert_patient_from_onboarding(patient_details['onboarding_id'])
-                            if patient_id:
-                                st.success(f"Patient record created: {patient_id}")
-                                # Refresh patient_details to get the updated patient_id
-                                patient_details['patient_id'] = patient_id
-                            else:
-                                st.error("Failed to create patient record. Please contact support.")
-                                st.stop()
-                    except Exception as e:
-                        st.error(f"Error creating patient record: {e}")
-                        st.stop()
-
-                # Get selections - try tv_form_data first, then fall back to session_state directly
-                # This handles the case where the form was submitted before tv_form_data was updated
+                # Get selections from both tv_form_data and session_state
                 regional_provider_selection = st.session_state.tv_form_data.get('assigned_regional_provider') or st.session_state.get('assigned_regional_provider', 'Select Regional Provider...')
                 coordinator_selection = st.session_state.tv_form_data.get('assigned_coordinator') or st.session_state.get('assigned_coordinator', 'Select Coordinator...')
-
-                # Debug logging
-                st.write(f"DEBUG: patient_id = {patient_id}")
-                st.write(f"DEBUG: regional_provider_selection = {regional_provider_selection}")
-                st.write(f"DEBUG: coordinator_selection = {coordinator_selection}")
 
                 conn = database.get_db_connection()
                 try:
@@ -1309,7 +1287,6 @@ def show_tv_scheduling_form(patient_details, current_user_id):
                             provider_users = database.get_users_by_role("CP")
                             provider_map = {f"{u['full_name']} ({u['username']})": u['user_id'] for u in provider_users}
                             provider_id = provider_map.get(regional_provider_selection)
-                            st.write(f"DEBUG: provider_id found = {provider_id}")
                         except Exception as e:
                             st.warning(f"Provider lookup error: {e}")
 
@@ -1320,7 +1297,6 @@ def show_tv_scheduling_form(patient_details, current_user_id):
                             coordinator_users = database.get_users_by_role("CC")
                             coordinator_map = {f"{u['full_name']} ({u['username']})": u['user_id'] for u in coordinator_users}
                             coordinator_id = coordinator_map.get(coordinator_selection)
-                            st.write(f"DEBUG: coordinator_id found = {coordinator_id}")
                         except Exception as e:
                             st.warning(f"Coordinator lookup error: {e}")
 
@@ -1439,61 +1415,55 @@ def show_tv_scheduling_form(patient_details, current_user_id):
     with col2:
         with st.form("save_progress_form"):
             if st.form_submit_button("Save Progress"):
-                # Collect form data from session state - include ALL provider selections
-                # Read from both tv_form_data and session_state to handle form submission timing
+                # Step 1: Extract user IDs and update onboarding_patients table
                 regional_prov = st.session_state.tv_form_data.get('assigned_regional_provider') or st.session_state.get('assigned_regional_provider', 'Select Regional Provider...')
-                form_data = {
-                    'tv_date': st.session_state.tv_form_data['tv_date'],
-                    'tv_time': st.session_state.tv_form_data['tv_time'],
-                    'assigned_provider': st.session_state.tv_form_data['assigned_provider'],  # Initial TV provider
-                    'assigned_regional_provider': regional_prov,  # Regional provider - THIS WAS MISSING
-                    'assigned_coordinator': st.session_state.tv_form_data['assigned_coordinator'],
+                coordinator_prov = st.session_state.tv_form_data.get('assigned_coordinator') or st.session_state.get('assigned_coordinator', 'Select Coordinator...')
+
+                # Helper to extract user_id from "Full Name (username)" format
+                def get_user_id_from_selection(selection):
+                    if selection and selection not in ['Select Regional Provider...', 'Select Coordinator...', 'No Providers Available', 'No Coordinators Available']:
+                        try:
+                            username = selection.split('(')[-1].replace(')', '').strip()
+                            conn = database.get_db_connection()
+                            row = conn.execute("SELECT user_id FROM users WHERE username = ?", (username,)).fetchone()
+                            conn.close()
+                            return row[0] if row else None
+                        except:
+                            pass
+                    return None
+
+                # Prepare all data for onboarding_patients (single source of truth)
+                checkbox_data = {
+                    'tv_date': st.session_state.tv_form_data['tv_date'].strftime('%Y-%m-%d') if st.session_state.tv_form_data['tv_date'] else None,
+                    'tv_time': st.session_state.tv_form_data['tv_time'].strftime('%H:%M:%S') if st.session_state.tv_form_data['tv_time'] else None,
                     'tv_scheduled': st.session_state.tv_form_data['tv_scheduled'],
                     'patient_notified': st.session_state.tv_form_data['patient_notified'],
                     'initial_tv_completed': st.session_state.tv_form_data['initial_tv_completed'],
+                    'initial_tv_completed_date': st.session_state.tv_form_data['tv_date'].strftime('%Y-%m-%d') if st.session_state.tv_form_data['tv_date'] else None,
+                    'initial_tv_provider': st.session_state.tv_form_data['assigned_provider'].split('(')[0].strip() if st.session_state.tv_form_data['assigned_provider'] and '(' in st.session_state.tv_form_data['assigned_provider'] else None,
+                    'assigned_provider_user_id': get_user_id_from_selection(regional_prov),  # Regional provider ID
+                    'assigned_coordinator_user_id': get_user_id_from_selection(coordinator_prov),
                     'visit_type': st.session_state.tv_form_data.get('visit_type', 'Home Visit'),
                     'billing_code': st.session_state.tv_form_data.get('billing_code', '99345'),
-                    'duration_minutes': st.session_state.tv_form_data.get('duration_minutes', 45)
+                    'duration_minutes': st.session_state.tv_form_data.get('duration_minutes', 45),
                 }
-                
-                # Save the progress to database
+
+                # Step 2: Write to onboarding_patients (update_onboarding_checkbox_data syncs to patients & patient_panel)
+                database.update_onboarding_checkbox_data(patient_details['onboarding_id'], checkbox_data)
+
+                # Step 3: Call the ONE sync function that handles everything else (patient_assignments, HHC, etc.)
+                sync_result = database.sync_onboarding_to_all_tables(patient_details['onboarding_id'])
+
+                # Clear ZMO cache
                 try:
-                    result = database.save_onboarding_tv_scheduling_progress(patient_details['onboarding_id'], form_data)
+                    zmo_module.get_patient_panel_data.clear()
+                    zmo_module.get_patients_data.clear()
+                except Exception:
+                    pass
 
-                    if result:
-                        # Sync patient data to tables if patient already exists
-                        if patient_details.get('patient_id'):
-                            try:
-                                database.insert_patient_from_onboarding(patient_details['onboarding_id'])
-                                database.sync_onboarding_to_patient_panel(patient_details['onboarding_id'])
-                                # Clear ZMO cache so changes appear immediately
-                                try:
-                                    zmo_module.get_patient_panel_data.clear()
-                                    zmo_module.get_patients_data.clear()
-                                except Exception:
-                                    pass
-                                st.success("✅ Progress saved and patient data synced to ZMO!")
-                            except Exception as e:
-                                st.warning(f"Progress saved! (ZMO sync skipped: {e})")
-                        else:
-                            st.success("✅ Progress saved successfully! (Patient not yet added to ZMO)")
-
-                        # Refresh the patient details to show updated data
-                        st.session_state['view_patient_details'] = database.get_onboarding_patient_details(patient_details['onboarding_id'])
-                        # Force queue refresh by setting a flag to reload queue data
-                        st.session_state['force_queue_refresh'] = True
-                        # Small delay to ensure database transaction is fully committed
-                        import time
-                        time.sleep(0.1)
-                        st.rerun()
-                    else:
-                        st.error("❌ Failed to save progress. Please try again.")
-                except Exception as e:
-                    st.error(f"❌ Exception during save: {e}")
-                    # Show more detailed error information
-                    import traceback
-                    with st.expander("Error Details"):
-                        st.code(traceback.format_exc())
+                st.success("✅ Progress saved and synced to all tables!")
+                st.session_state['force_queue_refresh'] = True
+                st.rerun()
 
     with col3:
         with st.form("back_to_queue_form"):
