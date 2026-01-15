@@ -6,8 +6,8 @@ from datetime import datetime
 
 # Define the onboarding workflow steps
 ONBOARDING_STEPS = [
-    {"step": 1, "title": "Patient Registration", "description": "Initial patient data entry", "stage_field": "stage1_complete"},
-    {"step": 2, "title": "Eligibility Verification", "description": "Insurance and eligibility check", "stage_field": "stage2_complete"},
+    {"step": 1, "title": "Patient Registration", "description": "Basic info, insurance, and eligibility", "stage_field": "stage1_complete"},
+    {"step": 2, "title": "Patient Details", "description": "Contact, address, referral, and facility", "stage_field": "stage2_complete"},
     {"step": 3, "title": "Chart Creation", "description": "Patient chart setup", "stage_field": "stage3_complete"},
     {"step": 4, "title": "Intake Processing", "description": "Medical records and documentation", "stage_field": "stage4_complete"},
     {"step": 5, "title": "Visit Scheduling", "description": "Initial visit appointment setup", "stage_field": "stage5_complete"}
@@ -115,7 +115,7 @@ def get_action_required_blockers(row):
     if not row.get('assigned_pot_name') or row.get('assigned_pot_name') == 'Unassigned':
         blockers.append("Assign POT user")
     
-    # Stage 1: Patient Registration blockers
+    # Stage 1: Patient Registration blockers (Basic Info + Insurance + Eligibility)
     if current_stage == 'Stage 1: Patient Registration':
         if not row.get('first_name'):
             blockers.append("Enter patient first name")
@@ -123,6 +123,15 @@ def get_action_required_blockers(row):
             blockers.append("Enter patient last name")
         if not row.get('date_of_birth'):
             blockers.append("Enter date of birth")
+        if not row.get('insurance_provider'):
+            blockers.append("Enter insurance provider")
+        if not row.get('policy_number'):
+            blockers.append("Enter insurance policy number")
+        if not row.get('eligibility_verified'):
+            blockers.append("Verify insurance eligibility")
+
+    # Stage 2: Patient Details blockers (Contact + Address + Referral + Facility)
+    elif current_stage == 'Stage 2: Patient Details':
         if not row.get('phone_primary'):
             blockers.append("Enter primary phone number")
         if not row.get('address_street'):
@@ -133,17 +142,6 @@ def get_action_required_blockers(row):
             blockers.append("Select state")
         if not row.get('address_zip'):
             blockers.append("Enter ZIP code")
-    
-    # Stage 2: Eligibility Verification blockers
-    elif current_stage == 'Stage 2: Eligibility Verification':
-        if not row.get('insurance_provider'):
-            blockers.append("Enter insurance provider")
-        if not row.get('policy_number'):
-            blockers.append("Enter insurance policy number")
-        if not row.get('eligibility_verified'):
-            blockers.append("Verify insurance eligibility")
-        if not row.get('insurance_cards_received'):
-            blockers.append("Receive insurance cards/face sheet")
     
     # Stage 3: Chart Creation blockers
     elif current_stage == 'Stage 3: Chart Creation':
@@ -164,7 +162,7 @@ def get_action_required_blockers(row):
             blockers.append("Request medical records")
     
     # Stage 5: TV Visit Scheduling blockers
-    elif current_stage == 'Stage 5: TV Scheduling':
+    elif current_stage == 'Stage 5: Visit Scheduling':
         if not row.get('assigned_provider_user_id'):
             blockers.append("Assign Initial TV Provider")
         elif not row.get('tv_scheduled'):
@@ -196,6 +194,8 @@ def get_action_required_blockers(row):
 def show_patient_intake_form(current_user_id, patient_details=None):
     """Show new patient intake form for Stage 1 registration.
     If patient_details is provided, pre-fill the form for editing existing patient.
+
+    Stage 1: Basic Patient Info + Insurance Information + Eligibility Check
     """
     # Determine if editing existing patient or creating new one
     is_edit_mode = patient_details is not None
@@ -223,61 +223,61 @@ def show_patient_intake_form(current_user_id, patient_details=None):
         else:
             st.markdown("### Stage 1: New Patient Registration")
 
-        # Basic Patient Information
-        col1, col2 = st.columns(2)
+        # Section 1: Basic Patient Information
+        st.markdown("#### 1. Basic Patient Info")
+        col1, col2, col3 = st.columns(3)
         with col1:
             first_name = st.text_input("First Name*", value=patient_details.get('first_name', '') if is_edit_mode else '', key="first_name")
+        with col2:
             last_name = st.text_input("Last Name*", value=patient_details.get('last_name', '') if is_edit_mode else '', key="last_name")
+        with col3:
             date_of_birth = st.date_input("Date of Birth*", value=parse_date_value(patient_details.get('date_of_birth')) if is_edit_mode else None, key="dob", min_value=datetime(1900, 1, 1).date(), max_value=datetime(2100, 12, 31).date())
-            phone_primary = st.text_input("Primary Phone*", value=patient_details.get('phone_primary', '') if is_edit_mode else '', key="phone_primary")
+
+        # Section 2: Insurance Information
+        st.markdown("#### 2. Insurance Information")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            insurance_provider = st.text_input("Primary Insurance Provider*", value=patient_details.get('insurance_provider', '') if is_edit_mode else '', key="insurance_provider")
+        with col2:
+            policy_number = st.text_input("Policy Number*", value=patient_details.get('policy_number', '') if is_edit_mode else '', key="policy_number")
+        with col3:
+            group_number = st.text_input("Group Number", value=patient_details.get('group_number', '') if is_edit_mode else '', key="group_number")
+
+        # Section 3: Eligibility Check
+        st.markdown("#### 3. Eligibility Check")
+        col1, col2, col3 = st.columns(3)
+
+        # Get existing values with proper defaults
+        existing_eligibility_status = patient_details.get('eligibility_status', 'Pending Verification') if is_edit_mode else 'Pending Verification'
+        eligibility_options = ["Eligible", "Not Eligible", "Pending Verification", "Needs Follow-up"]
+
+        # Find index of existing value, default to 'Pending Verification' if not found
+        try:
+            default_index = eligibility_options.index(existing_eligibility_status)
+        except ValueError:
+            default_index = eligibility_options.index('Pending Verification')
+
+        with col1:
+            eligibility_status = st.selectbox(
+                "Eligibility Status*",
+                eligibility_options,
+                index=default_index,
+                key="eligibility_status"
+            )
 
         with col2:
-            email = st.text_input("Email", value=patient_details.get('email', '') if is_edit_mode else '', key="email")
-            gender_options = ["Male", "Female", "Other", "Prefer not to say"]
-            gender_index = 0
-            if is_edit_mode and patient_details.get('gender') in gender_options:
-                gender_index = gender_options.index(patient_details.get('gender'))
-            gender = st.selectbox("Gender", gender_options, index=gender_index, key="gender")
-            emergency_contact = st.text_input("Emergency Contact Name", value=patient_details.get('emergency_contact_name', '') if is_edit_mode else '', key="emergency_contact")
-            emergency_phone = st.text_input("Emergency Contact Phone", value=patient_details.get('emergency_contact_phone', '') if is_edit_mode else '', key="emergency_phone")
+            eligibility_verified = st.checkbox(
+                "Eligibility Verified",
+                value=patient_details.get('eligibility_verified', False) if is_edit_mode else False,
+                key="eligibility_verified"
+            )
 
-        # Address Information
-        st.markdown("### Address Information")
-        address_street = st.text_input("Street Address*", value=patient_details.get('address_street', '') if is_edit_mode else '', key="address_street")
-        address_city = st.text_input("City*", value=patient_details.get('address_city', '') if is_edit_mode else '', key="address_city")
-
-        state_options = ["AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "DC", "FL",
-                        "GA", "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME",
-                        "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH",
-                        "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI",
-                        "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"]
-        state_index = 4  # Default to CA
-        if is_edit_mode and patient_details.get('address_state') in state_options:
-            state_index = state_options.index(patient_details.get('address_state'))
-        address_state = st.selectbox("State*", state_options, index=state_index, key="address_state")
-        address_zip = st.text_input("ZIP Code*", value=patient_details.get('address_zip', '') if is_edit_mode else '', key="address_zip")
-
-        # Referral Information
-        st.markdown("### Referral Information")
-        referral_source = st.text_input("Referral Source", value=patient_details.get('referral_source', '') if is_edit_mode else '', key="referral_source")
-        referring_provider = st.text_input("Referring Provider", value=patient_details.get('referring_provider', '') if is_edit_mode else '', key="referral_provider")
-        referral_date = st.date_input("Referral Date", value=parse_date_value(patient_details.get('referral_date')) if is_edit_mode else None, key="referral_date")
-        
-        # Facility Assignment - Get facilities from database
-        st.markdown("### Facility Assignment")
-        try:
-            conn = database.get_db_connection()
-            facilities = conn.execute("SELECT facility_name FROM facilities ORDER BY facility_name").fetchall()
-            conn.close()
-            facility_options = [f[0] for f in facilities] if facilities else []
-            facility_options.append("Add New Facility")
-        except Exception as e:
-            facility_options = ["San Francisco", "Los Angeles", "San Diego", "Sacramento", "Add New Facility"]
-
-        facility_index = 0
-        if is_edit_mode and patient_details.get('facility_assignment') in facility_options:
-            facility_index = facility_options.index(patient_details.get('facility_assignment'))
-        facility_assignment = st.selectbox("Referring Facility", facility_options, index=facility_index, key="facility_assignment")
+        eligibility_notes = st.text_area(
+            "Verification Notes",
+            value=patient_details.get('eligibility_notes', '') if is_edit_mode else '',
+            placeholder="Enter details about insurance verification, coverage limitations, etc.",
+            key="eligibility_notes"
+        )
 
         # Submit buttons - different for edit mode vs new patient
         if is_edit_mode:
@@ -298,49 +298,60 @@ def show_patient_intake_form(current_user_id, patient_details=None):
                     'first_name': first_name,
                     'last_name': last_name,
                     'date_of_birth': date_of_birth.isoformat(),
-                    'phone_primary': phone_primary,
-                    'email': email,
-                    'gender': gender,
-                    'emergency_contact_name': emergency_contact,
-                    'emergency_contact_phone': emergency_phone,
-                    'address_street': address_street,
-                    'address_city': address_city,
-                    'address_state': address_state,
-                    'address_zip': address_zip,
-                    'referral_source': referral_source,
-                    'referring_provider': referring_provider,
-                    'referral_date': referral_date.isoformat() if referral_date else None,
-                    'facility_assignment': facility_assignment if facility_assignment != "Add New Facility" else None
+                    'insurance_provider': insurance_provider,
+                    'policy_number': policy_number,
+                    'group_number': group_number,
+                    'eligibility_status': eligibility_status,
+                    'eligibility_notes': eligibility_notes,
+                    'eligibility_verified': eligibility_verified,
                 }
                 database.update_onboarding_checkbox_data(onboarding_id, patient_data)
                 st.success("Progress saved! You can continue later.")
 
             # Handle Complete Stage 1
             if complete_stage:
-                if not first_name or not last_name or not date_of_birth or not phone_primary or not address_street or not address_city or not address_zip:
-                    st.error("Please fill in all required fields (marked with *)")
+                # Validate required fields
+                if not first_name or not last_name or not date_of_birth:
+                    st.error("Please fill in all required Basic Patient Info fields (marked with *)")
+                elif not insurance_provider or not policy_number:
+                    st.error("Please fill in all required Insurance fields (marked with *)")
+                elif not eligibility_verified:
+                    st.error("Please verify eligibility to complete Stage 1")
                 else:
                     patient_data = {
                         'first_name': first_name,
                         'last_name': last_name,
                         'date_of_birth': date_of_birth.isoformat(),
-                        'phone_primary': phone_primary,
-                        'email': email,
-                        'gender': gender,
-                        'emergency_contact_name': emergency_contact,
-                        'emergency_contact_phone': emergency_phone,
-                        'address_street': address_street,
-                        'address_city': address_city,
-                        'address_state': address_state,
-                        'address_zip': address_zip,
-                        'referral_source': referral_source,
-                        'referring_provider': referring_provider,
-                        'referral_date': referral_date.isoformat() if referral_date else None,
-                        'facility_assignment': facility_assignment if facility_assignment != "Add New Facility" else None
+                        'insurance_provider': insurance_provider,
+                        'policy_number': policy_number,
+                        'group_number': group_number,
+                        'eligibility_status': eligibility_status,
+                        'eligibility_notes': eligibility_notes,
+                        'eligibility_verified': eligibility_verified,
                     }
                     database.update_onboarding_checkbox_data(onboarding_id, patient_data)
+
+                    # Create/update patient record in patients table and sync to patient_panel
+                    try:
+                        patient_id = database.insert_patient_from_onboarding(onboarding_id)
+                        if patient_id:
+                            st.info(f"Patient record created/updated: {patient_id}")
+                    except Exception as e:
+                        st.warning(f"Patient record update: {e}")
+
+                    try:
+                        database.sync_onboarding_to_all_tables(onboarding_id)
+                        # Clear ZMO cache so patient appears immediately
+                        try:
+                            zmo_module.get_patient_panel_data.clear()
+                            zmo_module.get_patients_data.clear()
+                        except Exception:
+                            pass
+                    except Exception as e:
+                        st.warning(f"Sync to tables: {e}")
+
                     database.update_onboarding_stage_completion(onboarding_id, 1, True)
-                    st.success(f"Stage 1 Complete! Moving to Stage 2: Eligibility Verification...")
+                    st.success("Stage 1 Complete! Moving to Stage 2: Patient Details...")
                     st.rerun()
 
         else:
@@ -355,8 +366,13 @@ def show_patient_intake_form(current_user_id, patient_details=None):
                     st.rerun()
 
             if submitted:
-                if not first_name or not last_name or not date_of_birth or not phone_primary or not address_street or not address_city or not address_zip:
-                    st.error("Please fill in all required fields (marked with *)")
+                # Validate required fields
+                if not first_name or not last_name or not date_of_birth:
+                    st.error("Please fill in all required Basic Patient Info fields (marked with *)")
+                elif not insurance_provider or not policy_number:
+                    st.error("Please fill in all required Insurance fields (marked with *)")
+                elif not eligibility_verified:
+                    st.error("Please verify eligibility to start the workflow")
                 else:
                     try:
                         # Create patient data dictionary
@@ -364,19 +380,12 @@ def show_patient_intake_form(current_user_id, patient_details=None):
                             'first_name': first_name,
                             'last_name': last_name,
                             'date_of_birth': date_of_birth.isoformat(),
-                            'phone_primary': phone_primary,
-                            'email': email,
-                            'gender': gender,
-                            'emergency_contact_name': emergency_contact,
-                            'emergency_contact_phone': emergency_phone,
-                            'address_street': address_street,
-                            'address_city': address_city,
-                            'address_state': address_state,
-                            'address_zip': address_zip,
-                            'referral_source': referral_source,
-                            'referring_provider': referring_provider,
-                            'referral_date': referral_date.isoformat() if referral_date else None,
-                            'facility_assignment': facility_assignment if facility_assignment != "Add New Facility" else None
+                            'insurance_provider': insurance_provider,
+                            'policy_number': policy_number,
+                            'group_number': group_number,
+                            'eligibility_status': eligibility_status,
+                            'eligibility_notes': eligibility_notes,
+                            'eligibility_verified': eligibility_verified,
                         }
 
                         # Create onboarding workflow instance
@@ -387,11 +396,23 @@ def show_patient_intake_form(current_user_id, patient_details=None):
                         # Mark Stage 1 as complete since we just completed registration
                         database.update_onboarding_stage_completion(onboarding_id, 1, True)
 
+                        # Sync to all tables
+                        try:
+                            database.sync_onboarding_to_all_tables(onboarding_id)
+                            # Clear ZMO cache so patient appears immediately
+                            try:
+                                zmo_module.get_patient_panel_data.clear()
+                                zmo_module.get_patients_data.clear()
+                            except Exception:
+                                pass
+                        except Exception as e:
+                            st.warning(f"Sync to tables: {e}")
+
                         # Clear the intake form flag and switch to resume mode for next stage
                         st.session_state['show_intake_form'] = False
                         st.session_state['current_onboarding_id'] = onboarding_id
                         st.session_state['onboarding_mode'] = 'resume'
-                        st.info("Proceeding to Stage 2: Eligibility Verification...")
+                        st.info("Proceeding to Stage 2: Patient Details...")
                         st.rerun()
 
                     except Exception as e:
@@ -414,7 +435,7 @@ def show_resume_onboarding_form(patient_details, current_user_id):
             st.rerun()
     
     # Progress indicator
-    stages = ['Registration', 'Eligibility', 'Chart Creation', 'Intake Processing', 'TV Scheduling']
+    stages = ['Registration', 'Patient Details', 'Chart Creation', 'Intake Processing', 'TV Scheduling']
     # Compute how many steps are completed
     completed_steps = sum(1 for s in stages if patient_details.get(f'stage{stages.index(s)+1}_complete', False))
 
@@ -471,186 +492,187 @@ def show_resume_onboarding_form(patient_details, current_user_id):
         st.error(f"Unknown stage: {current_stage}")
 
 def show_eligibility_verification_form(patient_details, current_user_id):
-    """Stage 2: Eligibility Verification"""
-    st.markdown("### Stage 2: Insurance Eligibility Verification")
-    
+    """Stage 2: Patient Details (Contact, Address, Referral, Facility)"""
+    st.markdown("### Stage 2: Patient Details")
+
     col1, col2 = st.columns([3, 1])
     with col1:
-        st.info("Verify patient's insurance coverage and eligibility status")
+        st.info("Complete patient contact information, address, referral details, and facility assignment")
     with col2:
         # Patient info card
         with st.expander("Patient Info", expanded=False):
+            st.write(f"**Name:** {patient_details.get('first_name', 'N/A')} {patient_details.get('last_name', 'N/A')}")
+            st.write(f"**DOB:** {patient_details.get('date_of_birth', 'N/A')}")
             st.write(f"**Insurance:** {patient_details.get('insurance_provider', 'N/A')}")
-            st.write(f"**Policy #:** {patient_details.get('policy_number', 'N/A')}")
-            st.write(f"**Group #:** {patient_details.get('group_number', 'N/A')}")
-    
-    with st.form("eligibility_form"):
-        st.markdown("#### Insurance Information")
-        
-        # Insurance input fields
-        insurance_provider = st.text_input(
-            "Primary Insurance Provider*", 
-            value=patient_details.get('insurance_provider', ''),
-            key="insurance_provider"
-        )
-        policy_number = st.text_input(
-            "Policy Number*", 
-            value=patient_details.get('policy_number', ''),
-            key="policy_number"
-        )
-        group_number = st.text_input(
-            "Group Number", 
-            value=patient_details.get('group_number', ''),
-            key="group_number"
-        )
-        
-        st.markdown("#### Eligibility Check")
-        
-        # Get existing values with proper defaults
-        existing_eligibility_status = patient_details.get('eligibility_status', 'Pending Verification')
-        eligibility_options = ["Eligible", "Not Eligible", "Pending Verification", "Needs Follow-up"]
-        
-        # Find index of existing value, default to 'Pending Verification' if not found
-        try:
-            default_index = eligibility_options.index(existing_eligibility_status)
-        except ValueError:
-            default_index = eligibility_options.index('Pending Verification')
-        
-        eligibility_status = st.selectbox(
-            "Eligibility Status*", 
-            eligibility_options,
-            index=default_index,
-            key="eligibility_status"
-        )
-        
-        eligibility_verified = st.checkbox(
-            "Eligibility Verified", 
-            value=patient_details.get('eligibility_verified', False),
-            key="eligibility_verified"
-        )
-        
-        eligibility_notes = st.text_area(
-            "Verification Notes", 
-            value=patient_details.get('eligibility_notes', ''),
-            placeholder="Enter details about insurance verification, coverage limitations, etc.",
-            key="eligibility_notes"
-        )
-        
-        st.markdown("#### Annual Well Visit")
-        
-        # Handle existing annual well visit date
-        existing_annual_well_visit = patient_details.get('annual_well_visit')
-        annual_well_visit_value = None
-        if existing_annual_well_visit:
+
+    # Helper function to safely parse dates
+    def parse_date_value(date_val):
+        if date_val:
             try:
                 from datetime import datetime
-                if isinstance(existing_annual_well_visit, str):
-                    annual_well_visit_value = datetime.strptime(existing_annual_well_visit, '%Y-%m-%d').date()
-                elif hasattr(existing_annual_well_visit, 'date'):
-                    annual_well_visit_value = existing_annual_well_visit.date()
-            except (ValueError, TypeError):
-                annual_well_visit_value = None
-        
-        annual_well_visit = st.date_input(
-            "Annual Well Visit Date", 
-            value=annual_well_visit_value,
-            help="Select the date for the patient's annual wellness visit",
-            key="annual_well_visit"
-        )
-        
+                if isinstance(date_val, str):
+                    return datetime.strptime(date_val, '%Y-%m-%d').date()
+                elif hasattr(date_val, 'date'):
+                    return date_val.date()
+                return date_val
+            except:
+                return None
+        return None
+
+    with st.form("patient_details_form"):
+        # Section 1: Contact Information
+        st.markdown("#### 1. Contact Information")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            phone_primary = st.text_input("Primary Phone*", value=patient_details.get('phone_primary', ''), key="phone_primary")
+        with col2:
+            email = st.text_input("Email", value=patient_details.get('email', ''), key="email")
+        with col3:
+            gender_options = ["Male", "Female", "Other", "Prefer not to say"]
+            gender_index = 0
+            if patient_details.get('gender') in gender_options:
+                gender_index = gender_options.index(patient_details.get('gender'))
+            gender = st.selectbox("Gender", gender_options, index=gender_index, key="gender")
+
+        col1, col2 = st.columns(2)
+        with col1:
+            emergency_contact = st.text_input("Emergency Contact Name", value=patient_details.get('emergency_contact_name', ''), key="emergency_contact")
+        with col2:
+            emergency_phone = st.text_input("Emergency Contact Phone", value=patient_details.get('emergency_contact_phone', ''), key="emergency_phone")
+
+        # Section 2: Address Information
+        st.markdown("#### 2. Address Information")
+        address_street = st.text_input("Street Address*", value=patient_details.get('address_street', ''), key="address_street")
+
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            address_city = st.text_input("City*", value=patient_details.get('address_city', ''), key="address_city")
+        with col2:
+            state_options = ["AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "DC", "FL",
+                            "GA", "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME",
+                            "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH",
+                            "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI",
+                            "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"]
+            state_index = 4  # Default to CA
+            if patient_details.get('address_state') in state_options:
+                state_index = state_options.index(patient_details.get('address_state'))
+            address_state = st.selectbox("State*", state_options, index=state_index, key="address_state")
+        with col3:
+            address_zip = st.text_input("ZIP Code*", value=patient_details.get('address_zip', ''), key="address_zip")
+
+        # Section 3: Referral Information
+        st.markdown("#### 3. Referral Information")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            referral_source = st.text_input("Referral Source", value=patient_details.get('referral_source', ''), key="referral_source")
+        with col2:
+            referring_provider = st.text_input("Referring Provider", value=patient_details.get('referring_provider', ''), key="referring_provider")
+        with col3:
+            referral_date = st.date_input("Referral Date", value=parse_date_value(patient_details.get('referral_date')), key="referral_date")
+
+        # Section 4: Facility Assignment
+        st.markdown("#### 4. Facility Assignment")
+        try:
+            conn = database.get_db_connection()
+            facilities = conn.execute("SELECT facility_name FROM facilities ORDER BY facility_name").fetchall()
+            conn.close()
+            facility_options = [f[0] for f in facilities] if facilities else []
+            facility_options.append("Add New Facility")
+        except Exception as e:
+            facility_options = ["San Francisco", "Los Angeles", "San Diego", "Sacramento", "Add New Facility"]
+
+        facility_index = 0
+        if patient_details.get('facility_assignment') in facility_options:
+            facility_index = facility_options.index(patient_details.get('facility_assignment'))
+        facility_assignment = st.selectbox("Facility Assignment", facility_options, index=facility_index, key="facility_assignment")
+
+        # Buttons
         col1, col2, col3 = st.columns([1, 1, 2])
         with col1:
             if st.form_submit_button("Complete Stage 2", type="primary"):
-                # Validate required insurance fields
-                if not insurance_provider or not policy_number:
-                    st.error("Please fill in all required insurance fields (marked with *)")
+                # Validate required fields
+                if not phone_primary:
+                    st.error("Please enter a primary phone number")
+                elif not address_street or not address_city or not address_zip:
+                    st.error("Please fill in all required address fields (marked with *)")
                 else:
-                    # Save insurance and eligibility fields including annual well visit
+                    # Save all Stage 2 data
                     checkbox_payload = {
-                        'insurance_provider': insurance_provider,
-                        'policy_number': policy_number,
-                        'group_number': group_number,
-                        'eligibility_status': eligibility_status,
-                        'eligibility_notes': eligibility_notes,
-                        'eligibility_verified': eligibility_verified,
-                        'annual_well_visit': annual_well_visit,
+                        'phone_primary': phone_primary,
+                        'email': email,
+                        'gender': gender,
+                        'emergency_contact_name': emergency_contact,
+                        'emergency_contact_phone': emergency_phone,
+                        'address_street': address_street,
+                        'address_city': address_city,
+                        'address_state': address_state,
+                        'address_zip': address_zip,
+                        'referral_source': referral_source,
+                        'referring_provider': referring_provider,
+                        'referral_date': referral_date.isoformat() if referral_date else None,
+                        'facility_assignment': facility_assignment if facility_assignment != "Add New Facility" else None,
                     }
                     database.update_onboarding_checkbox_data(patient_details['onboarding_id'], checkbox_payload)
-                    st.success('Stage 2 data saved')
 
-                if eligibility_verified:
-                    # First, create/update patient record in patients table now that patient is eligible
+                    # Sync to all tables (patient should already exist from Stage 1)
                     try:
-                        patient_id = database.insert_patient_from_onboarding(patient_details['onboarding_id'])
-                        if patient_id:
-                            st.info(f"✓ Patient record created in patients table: {patient_id}")
-                        else:
-                            st.warning("Patient record already exists or was updated")
-                    except Exception as e:
-                        st.error(f"Error creating patient record: {str(e)}")
-
-                    # Then sync to patient_panel table so patient appears in ZMO
-                    try:
-                        panel_patient_id = database.sync_onboarding_to_patient_panel(patient_details['onboarding_id'])
-                        if panel_patient_id:
-                            st.info(f"✓ Patient added to patient_panel (visible in ZMO)")
-                    except Exception as e:
-                        st.warning(f"Patient panel sync warning: {e}")
-
-                    # Clear ZMO cache so patient appears immediately in ZMO tab
-                    try:
-                        zmo_module.get_patient_panel_data.clear()
-                        zmo_module.get_patients_data.clear()
-                    except Exception:
-                        pass  # Cache clearing may fail if not yet loaded
-
-                    # Mark stage complete and update related tasks
-                    database.update_onboarding_stage_completion(patient_details['onboarding_id'], 2, True)
-
-                    # Update task status - find eligibility tasks and mark complete
-                    tasks = patient_details.get('tasks', [])
-                    for task in tasks:
-                        if task['task_stage'] == 2:
-                            database.update_onboarding_task_status(
-                                task['task_id'], 'Complete', current_user_id,
-                                {'eligibility_verified': True}
-                            )
-
-                    st.success("Stage 2 Complete! Patient added to patients, patient_panel, and ZMO. Moving to Chart Creation...")
-                    st.rerun()
-                else:
-                    st.error("Eligibility not verified. Data saved—please verify eligibility to proceed.")
-
-        with col2:
-            if st.form_submit_button("Save Progress"):
-                # Save progress for Stage 2 (insurance, eligibility, and annual well visit)
-                checkbox_payload = {
-                    'insurance_provider': insurance_provider,
-                    'policy_number': policy_number,
-                    'group_number': group_number,
-                    'eligibility_status': eligibility_status,
-                    'eligibility_notes': eligibility_notes,
-                    'eligibility_verified': eligibility_verified,
-                    'annual_well_visit': annual_well_visit,
-                }
-                database.update_onboarding_checkbox_data(patient_details['onboarding_id'], checkbox_payload)
-
-                # If patient already exists in patients table (from previous Stage 2 completion), update it
-                if patient_details.get('patient_id'):
-                    try:
-                        database.insert_patient_from_onboarding(patient_details['onboarding_id'])
-                        database.sync_onboarding_to_patient_panel(patient_details['onboarding_id'])
-                        # Clear ZMO cache so changes appear immediately
+                        database.sync_onboarding_to_all_tables(patient_details['onboarding_id'])
+                        # Clear ZMO cache
                         try:
                             zmo_module.get_patient_panel_data.clear()
                             zmo_module.get_patients_data.clear()
                         except Exception:
                             pass
-                        st.success("✓ Progress saved and patient data synced to ZMO!")
                     except Exception as e:
-                        st.info(f"Progress saved! (ZMO sync skipped: {e})")
-                else:
-                    st.info("Progress saved! Patient will be added to ZMO after eligibility is verified.")
+                        st.warning(f"Sync warning: {e}")
+
+                    # Mark stage complete
+                    database.update_onboarding_stage_completion(patient_details['onboarding_id'], 2, True)
+
+                    # Update tasks
+                    tasks = patient_details.get('tasks', [])
+                    for task in tasks:
+                        if task['task_stage'] == 2:
+                            database.update_onboarding_task_status(
+                                task['task_id'], 'Complete', current_user_id,
+                                {'stage2_complete': True}
+                            )
+
+                    st.success("Stage 2 Complete! Moving to Stage 3: Chart Creation...")
+                    st.rerun()
+
+        with col2:
+            if st.form_submit_button("Save Progress"):
+                # Save progress for Stage 2
+                checkbox_payload = {
+                    'phone_primary': phone_primary,
+                    'email': email,
+                    'gender': gender,
+                    'emergency_contact_name': emergency_contact,
+                    'emergency_contact_phone': emergency_phone,
+                    'address_street': address_street,
+                    'address_city': address_city,
+                    'address_state': address_state,
+                    'address_zip': address_zip,
+                    'referral_source': referral_source,
+                    'referring_provider': referring_provider,
+                    'referral_date': referral_date.isoformat() if referral_date else None,
+                    'facility_assignment': facility_assignment if facility_assignment != "Add New Facility" else None,
+                }
+                database.update_onboarding_checkbox_data(patient_details['onboarding_id'], checkbox_payload)
+
+                # Sync to ZMO if patient exists
+                try:
+                    database.sync_onboarding_to_all_tables(patient_details['onboarding_id'])
+                    # Clear ZMO cache
+                    try:
+                        zmo_module.get_patient_panel_data.clear()
+                        zmo_module.get_patients_data.clear()
+                    except Exception:
+                        pass
+                    st.success("Progress saved and synced to ZMO!")
+                except Exception as e:
+                    st.info(f"Progress saved! (ZMO sync: {e})")
 
         with col3:
             if st.form_submit_button("Back to Queue"):

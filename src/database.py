@@ -778,12 +778,12 @@ def get_onboarding_queue():
                 op.created_date,
                 op.updated_date,
                 CASE
-                    WHEN NOT op.stage1_complete THEN 'Patient Registration'
-                    WHEN NOT op.stage2_complete THEN 'Eligibility Verification'
-                    WHEN NOT op.stage3_complete THEN 'Chart Creation'
-                    WHEN NOT op.stage4_complete THEN 'Intake Processing'
-                    WHEN NOT op.stage5_complete THEN 'TV Visit Scheduling'
-                    ELSE 'Workflow Complete'
+                    WHEN NOT op.stage1_complete THEN 'Stage 1: Patient Registration'
+                    WHEN NOT op.stage2_complete THEN 'Stage 2: Patient Details'
+                    WHEN NOT op.stage3_complete THEN 'Stage 3: Chart Creation'
+                    WHEN NOT op.stage4_complete THEN 'Stage 4: Intake Processing'
+                    WHEN NOT op.stage5_complete THEN 'Stage 5: Visit Scheduling'
+                    ELSE 'Completed'
                 END as current_stage,
                 CASE
                     WHEN op.created_date > datetime('now', '-1 day') THEN 'High'
@@ -2249,10 +2249,10 @@ def get_onboarding_queue():
             wi.workflow_status AS workflow_status,
             CASE
                 WHEN op.stage5_complete = 1 THEN 'Completed'
-                WHEN op.stage4_complete = 1 THEN 'Stage 5: TV Scheduling'
+                WHEN op.stage4_complete = 1 THEN 'Stage 5: Visit Scheduling'
                 WHEN op.stage3_complete = 1 THEN 'Stage 4: Intake Processing'
                 WHEN op.stage2_complete = 1 THEN 'Stage 3: Chart Creation'
-                WHEN op.stage1_complete = 1 THEN 'Stage 2: Eligibility Verification'
+                WHEN op.stage1_complete = 1 THEN 'Stage 2: Patient Details'
                 ELSE 'Stage 1: Patient Registration'
             END AS current_stage,
             CASE
@@ -2269,17 +2269,19 @@ def get_onboarding_queue():
             op.stage3_complete,
             op.stage4_complete,
             op.stage5_complete,
-            -- Stage 1 blockers (Patient Registration)
+            -- Stage 1 blockers (Patient Registration: Basic Info + Insurance + Eligibility)
             op.first_name,
             op.last_name,
             op.date_of_birth,
-            op.phone_primary,
-            -- Stage 2 blockers (Eligibility Verification)
             op.insurance_provider,
             op.policy_number,
             op.eligibility_verified,
-            op.insurance_cards_received,
-            op.eligibility_status,
+            -- Stage 2 blockers (Patient Details: Contact + Address)
+            op.phone_primary,
+            op.address_street,
+            op.address_city,
+            op.address_state,
+            op.address_zip,
             -- Stage 3 blockers (Chart Creation)
             op.emed_chart_created,
             op.facility_confirmed,
@@ -2287,7 +2289,7 @@ def get_onboarding_queue():
             -- Stage 4 blockers (Intake Processing)
             op.intake_call_completed,
             op.medical_records_requested,
-            -- Stage 5 blockers (TV Visit Scheduling)
+            -- Stage 5 blockers (Visit Scheduling)
             op.assigned_provider_user_id,
             op.tv_scheduled,
             op.initial_tv_completed,
