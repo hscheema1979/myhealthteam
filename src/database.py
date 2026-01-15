@@ -4028,6 +4028,22 @@ def sync_onboarding_to_patient_panel(onboarding_id):
             "facility_nurse_name": onboarding_dict.get("facility_nurse_name"),
             "facility_nurse_phone": onboarding_dict.get("facility_nurse_phone"),
             "facility_nurse_email": onboarding_dict.get("facility_nurse_email"),
+            # TV Scheduling columns (newly added to patient_panel)
+            "tv_date": onboarding_dict.get("tv_date"),
+            "tv_time": onboarding_dict.get("tv_time"),
+            "tv_scheduled": onboarding_dict.get("tv_scheduled", False),
+            "patient_notified": onboarding_dict.get("patient_notified", False),
+            "initial_tv_completed": onboarding_dict.get("initial_tv_completed", False),
+            "initial_tv_completed_date": onboarding_dict.get("initial_tv_completed_date"),
+            "initial_tv_provider": onboarding_dict.get("initial_tv_provider"),
+            "initial_tv_notes": onboarding_dict.get("initial_tv_notes"),
+            "provider_completed_initial_tv": onboarding_dict.get("provider_completed_initial_tv", False),
+            # Additional fields
+            "active_specialist": onboarding_dict.get("active_specialist"),
+            "specialist_last_seen": onboarding_dict.get("specialist_last_seen"),
+            "chronic_conditions_onboarding": onboarding_dict.get("chronic_conditions_onboarding"),
+            "primary_care_provider": onboarding_dict.get("primary_care_provider"),
+            "pcp_last_seen": onboarding_dict.get("pcp_last_seen"),
         }
 
         # Check if patient already exists in patient_panel
