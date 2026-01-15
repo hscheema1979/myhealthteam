@@ -1270,65 +1270,78 @@ def show_tv_scheduling_form(patient_details, current_user_id):
                 regional_provider_assigned = False
                 coordinator_assigned_in_patient_table = False
 
+                # Fallback: If patient_id is missing (Stage 4 may not have set it), create it now
+                if not patient_id:
+                    try:
+                        with st.spinner("Creating patient record..."):
+                            patient_id = database.insert_patient_from_onboarding(patient_details['onboarding_id'])
+                            if patient_id:
+                                st.success(f"Patient record created: {patient_id}")
+                                # Refresh patient_details to get the updated patient_id
+                                patient_details['patient_id'] = patient_id
+                            else:
+                                st.error("Failed to create patient record. Please contact support.")
+                                st.stop()
+                    except Exception as e:
+                        st.error(f"Error creating patient record: {e}")
+                        st.stop()
+
                 # Get selections from tv_form_data (not session_state directly to avoid stale values)
                 regional_provider_selection = st.session_state.tv_form_data.get('assigned_regional_provider', 'Select Regional Provider...')
                 coordinator_selection = st.session_state.tv_form_data.get('assigned_coordinator', 'Select Coordinator...')
 
-                if patient_id:
-                    conn = database.get_db_connection()
-                    try:
-                        # Extract user IDs from dropdown selections
-                        provider_id = None
-                        coordinator_id = None
+                conn = database.get_db_connection()
+                try:
+                    # Extract user IDs from dropdown selections
+                    provider_id = None
+                    coordinator_id = None
 
-                        # Get provider ID from dropdown selection
-                        if (regional_provider_selection and
-                            regional_provider_selection not in ['Select Regional Provider...', 'No Providers Available', 'Regional Provider Assignment Needed']):
-                            try:
-                                provider_users = database.get_users_by_role("CP")
-                                provider_map = {f"{u['full_name']} ({u['username']})": u['user_id'] for u in provider_users}
-                                provider_id = provider_map.get(regional_provider_selection)
-                            except Exception as e:
-                                st.warning(f"Provider lookup error: {e}")
+                    # Get provider ID from dropdown selection
+                    if (regional_provider_selection and
+                        regional_provider_selection not in ['Select Regional Provider...', 'No Providers Available', 'Regional Provider Assignment Needed']):
+                        try:
+                            provider_users = database.get_users_by_role("CP")
+                            provider_map = {f"{u['full_name']} ({u['username']})": u['user_id'] for u in provider_users}
+                            provider_id = provider_map.get(regional_provider_selection)
+                        except Exception as e:
+                            st.warning(f"Provider lookup error: {e}")
 
-                        # Get coordinator ID from dropdown selection
-                        if (coordinator_selection and
-                            coordinator_selection not in ['Select Coordinator...', 'No Coordinators Available', 'Coordinator Assignment Needed']):
-                            try:
-                                coordinator_users = database.get_users_by_role("CC")
-                                coordinator_map = {f"{u['full_name']} ({u['username']})": u['user_id'] for u in coordinator_users}
-                                coordinator_id = coordinator_map.get(coordinator_selection)
-                            except Exception as e:
-                                st.warning(f"Coordinator lookup error: {e}")
+                    # Get coordinator ID from dropdown selection
+                    if (coordinator_selection and
+                        coordinator_selection not in ['Select Coordinator...', 'No Coordinators Available', 'Coordinator Assignment Needed']):
+                        try:
+                            coordinator_users = database.get_users_by_role("CC")
+                            coordinator_map = {f"{u['full_name']} ({u['username']})": u['user_id'] for u in coordinator_users}
+                            coordinator_id = coordinator_map.get(coordinator_selection)
+                        except Exception as e:
+                            st.warning(f"Coordinator lookup error: {e}")
 
-                        # Save assignments to patient_assignments table if selections were made
-                        if provider_id or coordinator_id:
-                            current_user_id = st.session_state.get('user_id', 1)  # Default to 1 if no user_id
-                            database.create_patient_assignment(
-                                patient_id=patient_id,
-                                provider_id=provider_id,
-                                coordinator_id=coordinator_id,
-                                assignment_type="onboarding",
-                                status="active",
-                                created_by=current_user_id
-                            )
+                    # Save assignments to patient_assignments table if selections were made
+                    if provider_id or coordinator_id:
+                        current_user_id = st.session_state.get('user_id', 1)  # Default to 1 if no user_id
+                        database.create_patient_assignment(
+                            patient_id=patient_id,
+                            provider_id=provider_id,
+                            coordinator_id=coordinator_id,
+                            assignment_type="onboarding",
+                            status="active",
+                            created_by=current_user_id
+                        )
 
-                        # Now check for assignments in the patient_assignments table
-                        provider_result = conn.execute("""
-                            SELECT provider_id FROM patient_assignments
-                            WHERE patient_id = ? AND provider_id IS NOT NULL AND status = 'active'
-                        """, (patient_id,)).fetchall()
-                        regional_provider_assigned = len(provider_result) > 0
+                    # Now check for assignments in the patient_assignments table
+                    provider_result = conn.execute("""
+                        SELECT provider_id FROM patient_assignments
+                        WHERE patient_id = ? AND provider_id IS NOT NULL AND status = 'active'
+                    """, (patient_id,)).fetchall()
+                    regional_provider_assigned = len(provider_result) > 0
 
-                        coordinator_result = conn.execute("""
-                            SELECT coordinator_id FROM patient_assignments
-                            WHERE patient_id = ? AND coordinator_id IS NOT NULL AND status = 'active'
-                        """, (patient_id,)).fetchall()
-                        coordinator_assigned_in_patient_table = len(coordinator_result) > 0
-                    finally:
-                        conn.close()
-                else:
-                    st.error("Patient ID not found. Please ensure Stage 4 was completed first.")
+                    coordinator_result = conn.execute("""
+                        SELECT coordinator_id FROM patient_assignments
+                        WHERE patient_id = ? AND coordinator_id IS NOT NULL AND status = 'active'
+                    """, (patient_id,)).fetchall()
+                    coordinator_assigned_in_patient_table = len(coordinator_result) > 0
+                finally:
+                    conn.close()
 
                 assignments_complete = regional_provider_assigned and coordinator_assigned_in_patient_table
 
