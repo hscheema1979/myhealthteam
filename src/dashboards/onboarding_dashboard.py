@@ -1286,9 +1286,15 @@ def show_tv_scheduling_form(patient_details, current_user_id):
                         st.error(f"Error creating patient record: {e}")
                         st.stop()
 
-                # Get selections from tv_form_data (not session_state directly to avoid stale values)
-                regional_provider_selection = st.session_state.tv_form_data.get('assigned_regional_provider', 'Select Regional Provider...')
-                coordinator_selection = st.session_state.tv_form_data.get('assigned_coordinator', 'Select Coordinator...')
+                # Get selections - try tv_form_data first, then fall back to session_state directly
+                # This handles the case where the form was submitted before tv_form_data was updated
+                regional_provider_selection = st.session_state.tv_form_data.get('assigned_regional_provider') or st.session_state.get('assigned_regional_provider', 'Select Regional Provider...')
+                coordinator_selection = st.session_state.tv_form_data.get('assigned_coordinator') or st.session_state.get('assigned_coordinator', 'Select Coordinator...')
+
+                # Debug logging
+                st.write(f"DEBUG: patient_id = {patient_id}")
+                st.write(f"DEBUG: regional_provider_selection = {regional_provider_selection}")
+                st.write(f"DEBUG: coordinator_selection = {coordinator_selection}")
 
                 conn = database.get_db_connection()
                 try:
@@ -1303,6 +1309,7 @@ def show_tv_scheduling_form(patient_details, current_user_id):
                             provider_users = database.get_users_by_role("CP")
                             provider_map = {f"{u['full_name']} ({u['username']})": u['user_id'] for u in provider_users}
                             provider_id = provider_map.get(regional_provider_selection)
+                            st.write(f"DEBUG: provider_id found = {provider_id}")
                         except Exception as e:
                             st.warning(f"Provider lookup error: {e}")
 
@@ -1313,6 +1320,7 @@ def show_tv_scheduling_form(patient_details, current_user_id):
                             coordinator_users = database.get_users_by_role("CC")
                             coordinator_map = {f"{u['full_name']} ({u['username']})": u['user_id'] for u in coordinator_users}
                             coordinator_id = coordinator_map.get(coordinator_selection)
+                            st.write(f"DEBUG: coordinator_id found = {coordinator_id}")
                         except Exception as e:
                             st.warning(f"Coordinator lookup error: {e}")
 
