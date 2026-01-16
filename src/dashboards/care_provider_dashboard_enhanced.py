@@ -1004,32 +1004,32 @@ def show_patient_list_section(user_id, section_id=None, has_cpm_role=False):
         if f"{key_prefix}_patient_type" not in st.session_state:
             st.session_state[f"{key_prefix}_patient_type"] = "New"
 
-        # Row 1: Date of Service
-        task_date = st.date_input(
-            "Date of Service",
-            value=pd.to_datetime("today"),
-            key=f"{key_prefix}_date",
-        )
+        # All fields in one row: Date | Patient | Patient Type | Location
+        col_date, col_patient, col_type, col_location = st.columns([0.7, 3, 1.2, 1])
 
-        # Row 2: Patient Name (full width)
-        patient_options = ["Select one"] + patient_names
-        selected_patient_name = st.selectbox(
-            "Select Patient", patient_options, key=f"{key_prefix}_patient"
-        )
+        with col_date:
+            task_date = st.date_input(
+                "DOS",
+                value=pd.to_datetime("today"),
+                key=f"{key_prefix}_date",
+            )
 
-        # Row 3: Patient Type and Location (2 columns)
-        col_type, col_location = st.columns([1, 1])
+        with col_patient:
+            patient_options = ["Select one"] + patient_names
+            selected_patient_name = st.selectbox(
+                "Patient", patient_options, key=f"{key_prefix}_patient"
+            )
+
         with col_type:
-            # Patient type dropdown for billing code selection
             patient_type_options = ["Select one", "New", "Acute", "Cognitive", "Follow Up", "TCM-7", "TCM-14"]
             selected_patient_type = st.selectbox(
-                "Patient Type",
+                "Type",
                 patient_type_options,
-                index=1,  # Default to "New" for onboarding queue
+                index=1,
                 key=f"{key_prefix}_patient_type",
             )
+
         with col_location:
-            # Dynamic location options based on patient type
             current_patient_type = selected_patient_type
             if current_patient_type == "Acute":
                 location_options = ["Select one", "Tele", "Office"]
@@ -1037,12 +1037,11 @@ def show_patient_list_section(user_id, section_id=None, has_cpm_role=False):
                 location_options = ["Select one", "Home", "Tele", "Office"]
 
             task_location = st.selectbox(
-                "Visit Location",
+                "Location",
                 location_options,
                 index=0,
                 key=f"{key_prefix}_location",
             )
-            # Convert placeholder to None so upstream lookups don't receive the placeholder string
             task_location_val = (
                 None if (task_location == "Select one") else task_location
             )
