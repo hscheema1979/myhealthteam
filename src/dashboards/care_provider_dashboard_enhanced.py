@@ -999,6 +999,11 @@ def show_patient_list_section(user_id, section_id=None, has_cpm_role=False):
     else:
         # Single, compact form for one task at a time
         key_prefix = f"single_task_{user_id}_{section_id or 'main'}"
+
+        # Initialize patient type in session state for dynamic location options
+        if f"{key_prefix}_patient_type" not in st.session_state:
+            st.session_state[f"{key_prefix}_patient_type"] = "New"
+
         col_date, col_location = st.columns([1, 1])
         with col_date:
             task_date = st.date_input(
@@ -1007,9 +1012,16 @@ def show_patient_list_section(user_id, section_id=None, has_cpm_role=False):
                 key=f"{key_prefix}_date",
             )
         with col_location:
+            # Dynamic location options based on patient type
+            current_patient_type = st.session_state.get(f"{key_prefix}_patient_type", "New")
+            if current_patient_type == "Acute":
+                location_options = ["Select one", "Tele", "Office"]
+            else:
+                location_options = ["Select one", "Home", "Tele", "Office"]
+
             task_location = st.selectbox(
                 "Visit Location",
-                ["Select one", "Home", "Tele", "Office"],
+                location_options,
                 index=0,
                 key=f"{key_prefix}_location",
             )
@@ -1032,7 +1044,8 @@ def show_patient_list_section(user_id, section_id=None, has_cpm_role=False):
                 "Patient Type",
                 patient_type_options,
                 index=1,  # Default to "New" for onboarding queue
-                key=f"{key_prefix}_patient_type"
+                key=f"{key_prefix}_patient_type",
+                on_change=lambda: st.session_state.update({f"{key_prefix}_location": "Select one"}) if st.session_state.get(f"{key_prefix}_location") == "Home" and st.session_state.get(f"{key_prefix}_patient_type") == "Acute" else None
             )
         with col_task:
             # Auto-assign billing code based on visit location and type
