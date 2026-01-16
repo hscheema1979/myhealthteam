@@ -462,24 +462,82 @@ def show_coordinator_tasks_tab(
                             except Exception:
                                 st.dataframe(greenblue_df, use_container_width=True)
                     
-                    # Add billing code breakdown section
+                    # Add coordinator patient count section
                     st.markdown("---")
-                    st.markdown("**Billing Code Breakdown:**")
-                    
-                    # Show detailed breakdown by billing code
-                    df_billing_display = df_patients[
-                        ["patient_name", "billing_code", "total_minutes"]
-                    ].copy()
-                    df_billing_display.rename(
-                        columns={
-                            "patient_name": "Patient Name",
-                            "billing_code": "Billing Code",
-                            "total_minutes": "Total Minutes",
-                        },
-                        inplace=True,
+                    st.markdown("**Coordinator Patient Counts:**")
+
+                    # Get available patient statuses from patients table
+                    conn = database.get_db_connection()
+                    status_query = """
+                        SELECT DISTINCT status
+                        FROM patients
+                        WHERE status IS NOT NULL
+                        ORDER BY status
+                    """
+                    status_rows = conn.execute(status_query).fetchall()
+                    available_statuses = [row[0] for row in status_rows]
+
+                    # Default to "Active*" + "Hospice" (Active statuses and Hospice)
+                    default_statuses = [s for s in available_statuses if s.startswith("Active") or s == "Hospice"]
+
+                    # Multi-select filter for patient status
+                    selected_statuses = st.multiselect(
+                        "Filter by Patient Status:",
+                        options=available_statuses,
+                        default=default_statuses if default_statuses else available_statuses,
+                        key="coord_patient_status_filter",
                     )
-                    
-                    st.dataframe(df_billing_display, use_container_width=True)
+
+                    # Build WHERE clause for status filter
+                    if selected_statuses:
+                        status_placeholders = ",".join(["?" for _ in selected_statuses])
+                        status_filter = f"AND p.status IN ({status_placeholders})"
+                    else:
+                        status_filter = ""
+
+                    # Get patient counts by coordinator with status filter
+                    # Use COALESCE to show "Unassigned" for coordinator_id = 0 or NULL names
+                    coord_patient_query = f"""
+                        SELECT
+                            pa.coordinator_id,
+                            COALESCE(u.full_name, 'Unassigned') as coordinator_name,
+                            COUNT(DISTINCT pa.patient_id) as patient_count
+                        FROM patient_assignments pa
+                        LEFT JOIN users u ON pa.coordinator_id = u.user_id
+                        JOIN patients p ON pa.patient_id = p.patient_id
+                        WHERE pa.coordinator_id IS NOT NULL
+                            AND pa.status = 'active'
+                            {status_filter}
+                        GROUP BY pa.coordinator_id, u.full_name
+                        ORDER BY patient_count DESC
+                    """
+
+                    if selected_statuses:
+                        coord_patient_rows = conn.execute(coord_patient_query, selected_statuses).fetchall()
+                    else:
+                        # If no status selected, get all
+                        coord_patient_query_all = coord_patient_query.replace(status_filter, "")
+                        coord_patient_rows = conn.execute(coord_patient_query_all).fetchall()
+
+                    conn.close()
+
+                    if coord_patient_rows:
+                        df_coord_patients = pd.DataFrame(
+                            coord_patient_rows,
+                            columns=["coordinator_id", "coordinator_name", "patient_count"],
+                        )
+                        df_coord_patients.rename(
+                            columns={
+                                "coordinator_name": "Coordinator",
+                                "patient_count": "Patient Count",
+                            },
+                            inplace=True,
+                        )
+                        # Drop coordinator_id from display
+                        df_display = df_coord_patients[["Coordinator", "Patient Count"]]
+                        st.dataframe(df_display, use_container_width=True)
+                    else:
+                        st.info("No coordinator patient data available for the selected status filter.")
                     
                 else:
                     st.info("No patient data available for this month.")
