@@ -1169,11 +1169,10 @@ def show_patient_list_section(user_id, section_id=None, has_cpm_role=False):
         if (
             not selected_patient_name
             or selected_patient_name == "Select one"
-            or not selected_billing
         ):
-            st.warning(
-                "Please select a patient and ensure a billing code is available before saving."
-            )
+            st.warning("Please select a patient before saving.")
+        elif not selected_billing:
+            st.error("Cannot log task: Patient Type and Location combination is not valid. Please correct the selection above.")
         else:
             selected_patient = patient_map.get(selected_patient_name)
             if not selected_patient:
