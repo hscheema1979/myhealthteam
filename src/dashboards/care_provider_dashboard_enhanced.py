@@ -1025,7 +1025,7 @@ def show_patient_list_section(user_id, section_id=None, has_cpm_role=False):
             selected_patient_type = st.selectbox(
                 "Type",
                 patient_type_options,
-                index=1,
+                index=4,  # Default to "Follow Up"
                 key=f"{key_prefix}_patient_type",
             )
 
