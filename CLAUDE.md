@@ -136,6 +136,19 @@ Located in `scripts/` (PowerShell) and `src/utils/` (Python):
 - Session state is used for user authentication (`user_id`, `user_role_ids`, `authenticated_user`)
 - Use `st.rerun()` after authentication state changes
 
+**Widget Key Conflict Pattern**: When creating Streamlit widgets with keys, avoid the common error "widget was created with a default value but also had its value set via the Session State API":
+
+```python
+# WRONG - causes conflict
+st.session_state[f"{key}_patient_type"] = "Follow Up"  # Pre-sets session state
+st.selectbox("Type", options, index=1, key=f"{key}_patient_type")  # Also has index
+
+# CORRECT - let the widget manage its own state
+st.selectbox("Type", options, key=f"{key}_patient_type")  # No index, no pre-set
+```
+
+If you need to initialize session state before widget creation, do NOT provide an `index` parameter - the session state value becomes the default.
+
 ### Patient ID Normalization
 
 Patient IDs can be integers or strings. Use `normalize_patient_id(patient_id, conn)` from `src.database` to ensure consistent string representation in database operations.
@@ -266,9 +279,33 @@ python src/workflows/daily_summary_update.py
 
 ### Tables
 
+- `task_billing_codes`: Master table for billing codes with location/patient type mappings, min/max minutes
 - `provider_task_billing_status`: Main billing tracking table with flags for each status
 - `billing_status_history`: Audit trail of all status changes
 - `provider_weekly_summary_with_billing`: Aggregated weekly summaries by provider and billing code
+
+### Billing Code Query Pattern
+
+```python
+# Simplified billing lookup - only location_type and patient_type needed
+billing_options = database.get_billing_codes(
+    location_type="Home",      # Home, Office, or Telehealth
+    patient_type="Follow Up"   # Follow Up, New, Acute, Cognitive, TCM-7, TCM-14
+)
+```
+
+**Note**: The `service_type` parameter was removed - `patient_type` is sufficient for lookups.
+
+### Patient Type / Location Constraints
+
+| Patient Type | Valid Locations | Notes |
+|--------------|----------------|-------|
+| Follow Up | Home, Office, Telehealth | Default |
+| New | Home, Office, Telehealth | Default |
+| Acute | Telehealth, Office | Home NOT allowed |
+| Cognitive | Home, Office | Telehealth NOT allowed |
+| TCM-7 | Home, Office, Telehealth | Code: 99496 |
+| TCM-14 | Home, Office, Telehealth | Code: 99495 |
 
 ### Processing Flow
 
@@ -286,6 +323,13 @@ processor = WeeklyBillingProcessor()
 processor.setup_billing_system()  # First time only
 result = processor.process_weekly_billing()
 ```
+
+### Reference Data for Min/Max Minutes
+
+When updating billing codes, reference data is available in the backup database:
+- Path: `db-sync/backups/production_backup_before_table_sync_20260113_124312.db`
+- Table: `reference_task_billing_codes`
+- Contains authoritative min_minutes and max_minutes for CPT codes
 
 ## UI Styling Conventions
 
@@ -374,8 +418,10 @@ Historical and utility SQL scripts are in `src/sql/archive/`. Active SQL scripts
 - `add_notes_columns.sql`: Adds labs_notes, imaging_notes, general_notes to patient tables
 - `add_next_appointment_date.sql`: Adds next_appointment_date column
 - `add_appointment_contact_columns.sql`: Adds appointment-related columns
+- `add_is_active_to_task_billing_codes.sql`: Adds is_active flag to billing codes
 - `migrate_add_billing_columns.sql`: Adds billing-related columns
 - `migrate_billing_codes.sql`: Billing code migration
+- `update_billing_codes_with_home_locations.sql`: Adds Home/Telehealth for TCM/Cognitive, updates min/max minutes
 
 **Workflow Scripts:**
 - `populate_workflow_templates_from_csv.sql`: Imports workflow templates
