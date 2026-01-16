@@ -1039,59 +1039,40 @@ def show_patient_list_section(user_id, section_id=None, has_cpm_role=False):
             selected_billing_code = None
             selected_billing_desc = ""
 
-            # Special handling for TCM codes (TCM-7 = 99496, TCM-14 = 99495)
-            if selected_patient_type == "TCM-7":
-                # TCM 7-day codes - use location to determine specific code
-                if task_location_val == "Home":
-                    selected_billing_code = "99496"  # PCP-TCM 7 days (HO)
-                elif task_location_val == "Tele":
-                    selected_billing_code = "99496"  # PCP-TCM 7 days (TE)
-                elif task_location_val == "Office":
-                    selected_billing_code = "99496"  # PCP-TCM 7 days (OF)
-                selected_billing_desc = "TCM 7-day"
-            elif selected_patient_type == "TCM-14":
-                # TCM 14-day codes - use location to determine specific code
-                if task_location_val == "Home":
-                    selected_billing_code = "99495"  # PCP-TCM 14 days (HO)
-                elif task_location_val == "Tele":
-                    selected_billing_code = "99495"  # PCP-TCM 14 days (TE)
-                elif task_location_val == "Office":
-                    selected_billing_code = "99495"  # PCP-TCM 14 days (OF)
-                selected_billing_desc = "TCM 14-day"
-            elif task_location_val == "Home":
-                selected_billing_code = "99345"  # NEW HOME VISIT: 75min-99345 - default biller
-                selected_billing_desc = "Home Visit (75 min)"
-            elif task_location_val == "Tele":
-                selected_billing_code = "99024"  # NEW TELEVISIT VISIT: 45min-99024 - default biller
-                selected_billing_desc = "Telehealth Visit (45 min)"
-            elif task_location_val == "Office":
-                selected_billing_code = "99024"  # NEW OFFICE VISIT: 45min-99024 - default biller
-                selected_billing_desc = "Office Visit (45 min)"
+            # Determine base patient type for billing lookup
+            patient_type_for_billing = (
+                selected_patient_type if selected_patient_type != "Select one"
+                else "New"
+            )
+
+            # Map UI location to database location type
+            location_map = {
+                "Home": "Home",
+                "Tele": "Telehealth",
+                "Office": "Office"
+            }
+            db_location_type = location_map.get(task_location_val)
+
+            # Look up billing code from database
+            billing_options = database.get_billing_codes(
+                service_type=patient_type_for_billing,
+                location_type=db_location_type,
+                patient_type=patient_type_for_billing,
+            )
+
+            if billing_options:
+                selected_billing_code = billing_options[0].get("billing_code", "Unknown")
+                selected_billing_desc = billing_options[0].get("description", "")
             else:
-                # Fallback to first available billing code if location unknown
-                # Special handling for TCM codes (they have fixed billing codes regardless of location)
+                # TCM specific fallbacks if lookup fails (should not happen if DB is correct)
                 if selected_patient_type == "TCM-7":
-                    selected_billing_code = "99496"  # TCM 7-day
+                    selected_billing_code = "99496"
                     selected_billing_desc = "TCM 7-day"
                 elif selected_patient_type == "TCM-14":
-                    selected_billing_code = "99495"  # TCM 14-day
+                    selected_billing_code = "99495"
                     selected_billing_desc = "TCM 14-day"
                 else:
-                    # Use selected patient type if specified, otherwise default to "New"
-                    patient_type_for_billing = (
-                        selected_patient_type if selected_patient_type != "Select one"
-                        else "New"
-                    )
-                    billing_options = database.get_billing_codes(
-                        service_type="Primary Care Visit",
-                        location_type=task_location_val,
-                        patient_type=patient_type_for_billing,
-                    )
-                    if billing_options:
-                        selected_billing_code = billing_options[0].get("billing_code", "Unknown")
-                        selected_billing_desc = billing_options[0].get("description", "")
-                    else:
-                        selected_billing_code = None
+                    selected_billing_code = None
 
             # Store the selected billing code (invisible to provider)
             if selected_billing_code:
@@ -2187,18 +2168,21 @@ def show_provider_onboarding_queue(user_id, onboarding_queue):
                 if new_visit_type != current_visit_type:
                     task_entry["visit_type"] = new_visit_type
                     # Map visit type to location_type for billing lookup
-                    location_type = "Home" if new_visit_type == "Home Visit" else "Tele"
-                    patient_type = task_entry.get("patient_type", "New")
+                    location_map = {
+                        "Home Visit": "Home",
+                        "Telehealth Visit": "Telehealth",
+                    }
+                    db_location_type = location_map.get(new_visit_type, "Home")
 
-                    # Look up billing code based on location and patient type
+                    # Look up billing code for new selection, using the current patient type
+                    current_pt_type = task_entry.get("patient_type", "New")
                     billing_options = database.get_billing_codes(
-                        service_type="Primary Care Visit",
-                        location_type=location_type,
-                        patient_type=patient_type,
+                        service_type=current_pt_type,
+                        location_type=db_location_type,
+                        patient_type=current_pt_type,
                     )
-
                     if billing_options:
-                        task_entry["billing_code"] = billing_options[0].get("billing_code", "99345")
+                        task_entry["billing_code"] = billing_options[0].get("billing_code", "Unknown")
                         duration_min = billing_options[0].get("min_minutes", 45)
                         duration_max = billing_options[0].get("max_minutes", 75)
                         task_entry["duration_minutes"] = (duration_min + duration_max) // 2
@@ -2211,11 +2195,11 @@ def show_provider_onboarding_queue(user_id, onboarding_queue):
                             task_entry["billing_code"] = "99201"
                             task_entry["duration_minutes"] = 30
 
-                    # Update task type description
+                    # Update task type description to be dynamic based on selected patient type
                     if new_visit_type == "Home Visit":
-                        task_entry["task_type"] = "PCP-Visit Home Visit (HV) (NEW pt)"
+                        task_entry["task_type"] = f"PCP-Visit Home Visit (HV) ({current_pt_type})"
                     else:
-                        task_entry["task_type"] = "PCP-Visit Telehealth (TE) (NEW pt)"
+                        task_entry["task_type"] = f"PCP-Visit Telehealth (TE) ({current_pt_type})"
 
             with col3:
                 # Patient type selection for billing code lookup
@@ -2234,7 +2218,12 @@ def show_provider_onboarding_queue(user_id, onboarding_queue):
                 if session_key_patient_type in st.session_state and st.session_state[session_key_patient_type] != current_patient_type:
                     # Patient type changed, update billing code
                     visit_type = task_entry.get("visit_type", "Home Visit")
-                    location_type = "Home" if visit_type == "Home Visit" else "Tele"
+                    
+                    location_map = {
+                        "Home Visit": "Home",
+                        "Telehealth Visit": "Telehealth",
+                    }
+                    db_location_type = location_map.get(visit_type, "Home")
 
                     # Special handling for TCM codes (direct code assignment)
                     if current_patient_type == "TCM-7":
@@ -2246,23 +2235,36 @@ def show_provider_onboarding_queue(user_id, onboarding_queue):
                     else:
                         # Regular lookup for other patient types
                         billing_options = database.get_billing_codes(
-                            service_type="Primary Care Visit",
-                            location_type=location_type,
+                            service_type=current_patient_type,
+                            location_type=db_location_type,
                             patient_type=current_patient_type,
                         )
 
                         if billing_options:
-                            task_entry["billing_code"] = billing_options[0].get("billing_code", "99345")
+                            task_entry["billing_code"] = billing_options[0].get("billing_code", "Unknown")
                             duration_min = billing_options[0].get("min_minutes", 45)
                             duration_max = billing_options[0].get("max_minutes", 75)
                             task_entry["duration_minutes"] = (duration_min + duration_max) // 2
+                        else:
+                            # Final fallback
+                            if current_patient_type == "Follow Up":
+                                task_entry["billing_code"] = "99350" if db_location_type == "Home" else "99214"
+                            else:
+                                task_entry["billing_code"] = "99345" if db_location_type == "Home" else "99204"
+                            task_entry["duration_minutes"] = 45
+
+                    # Update task type description to match new patient type
+                    if visit_type == "Home Visit":
+                        task_entry["task_type"] = f"PCP-Visit Home Visit (HV) ({current_patient_type})"
+                    else:
+                        task_entry["task_type"] = f"PCP-Visit Telehealth (TE) ({current_patient_type})"
 
                 st.session_state[session_key_patient_type] = current_patient_type
 
             with col4:
                 st.write(f"**Patient:** {task_entry['patient_name']}")
                 st.write(f"**Task:** {task_entry['task_type']}")
-                st.write(f"**Billing Code:** {task_entry.get('billing_code', '99345')} ({task_entry.get('duration_minutes', 45)} min)")
+                st.write(f"**Billing Code:** {task_entry.get('billing_code', 'Unknown')} ({task_entry.get('duration_minutes', 45)} min)")
                 st.caption(f"Patient Type: {task_entry.get('patient_type', 'New')}")
 
             task_entry["notes"] = st.text_area(

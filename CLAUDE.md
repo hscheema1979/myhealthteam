@@ -179,16 +179,54 @@ Test files are in `src/utils/` with `test_*.py` prefix:
 
 1. **Backup**: Creates timestamped backup of `production.db` in `backups/`
 2. **Download**: Downloads fresh data from Google Sheets via `scripts/1_download_files_complete.ps1`
-3. **Consolidate**: Merges CSV files via `scripts/2_consolidate_files.ps1`
+3. **Consolidate**: Merges and cleans CSV files via `scripts/2_consolidate_files.ps1` (**CRITICAL STEP**)
 4. **Transform**: Runs `transform_production_data_v3_fixed.py` to import data
 5. **Post-Process**: Runs `src/sql/post_import_processing.sql` to rebuild views and summaries
 6. **Sync** (optional): Smart sync to VPS2 via `db-sync/bin/sync_csv_data.ps1`
+
+### CRITICAL: The Consolidation Step
+
+**The consolidation step (`2_consolidate_files.ps1`) is REQUIRED and CANNOT be skipped.**
+
+This step performs essential data cleaning that the ETL depends on:
+
+1. **Combines monthly CSV files**: Merges CMLog_*, PSL_ZEN-*, and RVZ_ZEN-* files into single cmlog.csv, psl.csv, and rvz.csv
+2. **Cleans ZMO_Main.csv** via `src/utils/clean_csv.py`:
+   - Removes 178+ "Unnamed:" columns (Google Sheets exports ALL columns that ever existed)
+   - Removes 10+ completely empty columns
+   - Limits to 53 columns (removes extraneous data beyond column 53)
+   - Fixes column names by stripping newlines (e.g., `Assigned \n Reg Prov` → `Assigned  Reg Prov`)
+
+**Why this matters**: Google Sheets CSV exports include every column that has ever existed in the spreadsheet, even if now empty. The raw ZMO_Main.csv download has **248 columns** with malformed column names. The ETL script cannot correctly parse provider/coordinator assignments from the raw file. After cleaning, the file has **53 columns** with properly formatted column names.
+
+**Never skip this step** - running the ETL directly on downloaded files will result in failed provider/coordinator lookups (provider_id = 0, coordinator_id = 0).
+
+### Provider/Coordinator Name Normalization
+
+The ETL (`transform_production_data_v3_fixed.py`) includes a `normalize_name_key()` function that handles provider/coordinator name matching from ZMO data:
+
+**What it does**:
+- Uppercases names
+- Removes punctuation (commas, periods, dashes, underscores)
+- Removes titles/suffixes: NP, PA, MD, DO, ZZ, DDS, RN
+- Normalizes spaces
+
+**Examples of normalized matches**:
+- "Dabalus NP, Eden" → "DABALUS EDEN" → matches user_id 9 ("Dabalus, Eden")
+- "Melara Lara NP, Claudia" → "MELARA LARA CLAUDIA" → matches user_id 7 ("Melara, Claudia")
+- "Melara ZZ, Claudia" → "MELARA CLAUDIA" → matches user_id 7 ("Melara, Claudia")
+
+**Provider mapping sources** (in order of precedence):
+1. Staff codes from `staff_code_mapping` table
+2. User aliases and usernames
+3. Normalized full names from `users` table
+4. 3-character last name codes
 
 ### Important Notes
 
 - The ETL process uses `transform_production_data_v3_fixed.py` which performs a DROP/CREATE cycle on the `patient_panel` table
 - Custom columns (like notes columns) must be mapped in the ETL script to be preserved
-- Always test with `-SkipDownload` first before running full refresh
+- **Never use `-SkipDownload` without manually running the consolidation step first** - the ETL depends on cleaned CSV files
 - The smart sync preserves manual entries on VPS2 (only syncs `source_system = 'CSV_IMPORT'` rows)
 
 ## Scheduled Workflows
