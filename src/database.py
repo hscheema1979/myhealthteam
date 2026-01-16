@@ -1759,9 +1759,11 @@ def get_patient_zip_codes(patient_id):
         conn.close()
 
 
-def get_billing_codes(service_type=None, location_type=None, patient_type=None):
-    """Return billing code rows filtered by service_type, location_type and patient_type.
+def get_billing_codes(location_type=None, patient_type=None):
+    """Return billing code rows filtered by location_type and patient_type.
     Each row is returned as a dict with keys matching the task_billing_codes columns.
+
+    Note: service_type filtering removed - patient_type is sufficient for billing lookups.
     """
     conn = get_db_connection()
     try:
@@ -1778,9 +1780,6 @@ def get_billing_codes(service_type=None, location_type=None, patient_type=None):
 
         conditions = []
         params = []
-        if service_type:
-            conditions.append("service_type = ?")
-            params.append(service_type)
         if location_type:
             conditions.append("location_type = ?")
             params.append(location_type)

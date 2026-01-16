@@ -1051,7 +1051,6 @@ def show_patient_list_section(user_id, section_id=None, has_cpm_role=False):
 
         # Look up billing code from database
         billing_options = database.get_billing_codes(
-            service_type=patient_type_for_billing,
             location_type=db_location_type,
             patient_type=patient_type_for_billing,
         )
@@ -2178,7 +2177,6 @@ def show_provider_onboarding_queue(user_id, onboarding_queue):
                     # Look up billing code for new selection, using the current patient type
                     current_pt_type = task_entry.get("patient_type", "New")
                     billing_options = database.get_billing_codes(
-                        service_type=current_pt_type,
                         location_type=db_location_type,
                         patient_type=current_pt_type,
                     )
@@ -2236,7 +2234,6 @@ def show_provider_onboarding_queue(user_id, onboarding_queue):
                     else:
                         # Regular lookup for other patient types
                         billing_options = database.get_billing_codes(
-                            service_type=current_patient_type,
                             location_type=db_location_type,
                             patient_type=current_patient_type,
                         )
