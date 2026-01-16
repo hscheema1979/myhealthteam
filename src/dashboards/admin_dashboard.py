@@ -771,7 +771,31 @@ def show():
 
     # --- TAB: Provider Tasks ---
     with tab_prov_tasks:
-        st.subheader("Provider Tasks Management")
+        col_header, col_filter = st.columns([3, 2])
+        with col_header:
+            st.subheader("Provider Tasks Management")
+        with col_filter:
+            # Get available patient statuses for filter
+            conn = db.get_db_connection()
+            patient_statuses = conn.execute("""
+                SELECT DISTINCT status FROM patients WHERE status IS NOT NULL ORDER BY status
+            """).fetchall()
+            conn.close()
+            all_statuses = [s[0] for s in patient_statuses]
+
+            # Default to active statuses and hospice
+            default_patient_statuses = [
+                s for s in all_statuses
+                if s in ["Active", "Active-Geri", "Active-PCP", "HOSPICE"]
+            ]
+
+            selected_patient_statuses = st.multiselect(
+                "Patient Status Filter",
+                options=all_statuses,
+                default=default_patient_statuses,
+                key="prov_tasks_patient_status_filter",
+                help="Filter tasks by patient status from patients table"
+            )
 
         # View Mode Selection
         view_mode = st.radio(
@@ -853,8 +877,17 @@ def show():
                 # Load data for selected month
                 try:
                     conn = db.get_db_connection()
-                    df = pd.read_sql_query(f"SELECT * FROM {table_name}", conn)
+                    # Join with patients table to get patient status for filtering
+                    df = pd.read_sql_query(f"""
+                        SELECT pt.*, p.status as patient_status
+                        FROM {table_name} pt
+                        LEFT JOIN patients p ON pt.patient_id = p.patient_id
+                    """, conn)
                     conn.close()
+
+                    # Apply patient status filter
+                    if selected_patient_statuses:
+                        df = df[df["patient_status"].isin(selected_patient_statuses)]
 
                     if not df.empty:
                         # --- Metrics ---
@@ -1025,7 +1058,12 @@ def show():
 
                     for i, t_name in enumerate(tables_for_year):
                         try:
-                            d = pd.read_sql_query(f"SELECT * FROM {t_name}", conn)
+                            # Join with patients table to get patient status for filtering
+                            d = pd.read_sql_query(f"""
+                                SELECT pt.*, p.status as patient_status
+                                FROM {t_name} pt
+                                LEFT JOIN patients p ON pt.patient_id = p.patient_id
+                            """, conn)
                             all_data.append(d)
                         except:
                             pass
@@ -1038,6 +1076,10 @@ def show():
 
                     if all_data:
                         full_df = pd.concat(all_data, ignore_index=True)
+
+                        # Apply patient status filter
+                        if selected_patient_statuses and "patient_status" in full_df.columns:
+                            full_df = full_df[full_df["patient_status"].isin(selected_patient_statuses)]
 
                         # Ensure date column
                         date_col = (
@@ -1297,6 +1339,29 @@ def show():
         # --- Provider Patient Visit Breakdown ---
         st.divider()
         st.subheader("Provider Patient Visit Breakdown")
+
+        # Add patient status filter for provider patient visits
+        conn = db.get_db_connection()
+        status_query = """
+            SELECT DISTINCT status
+            FROM patients
+            WHERE status IS NOT NULL
+            ORDER BY status
+        """
+        status_rows = conn.execute(status_query).fetchall()
+        conn.close()
+        available_statuses = [s[0] for s in status_rows]
+
+        # Default to Active statuses and Hospice
+        default_statuses = [s for s in available_statuses if s.startswith("Active") or s == "Hospice"]
+
+        selected_pv_statuses = st.multiselect(
+            "Filter by Patient Status:",
+            options=available_statuses,
+            default=default_statuses if default_statuses else available_statuses,
+            key="prov_visits_status_filter",
+        )
+
         try:
             # Get patient data for visit breakdown analysis
             patients = (
@@ -1305,6 +1370,10 @@ def show():
                 else []
             )
             patients_df = _fix_dataframe_for_streamlit(pd.DataFrame(patients))
+
+            # Apply patient status filter
+            if selected_pv_statuses and "status" in patients_df.columns:
+                patients_df = patients_df[patients_df["status"].isin(selected_pv_statuses)]
 
             if not patients_df.empty:
                 # Use the same robust date processing logic as Patient Info tab
