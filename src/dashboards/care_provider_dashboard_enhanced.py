@@ -1021,11 +1021,11 @@ def show_patient_list_section(user_id, section_id=None, has_cpm_role=False):
             )
 
         with col_type:
-            patient_type_options = ["Select one", "New", "Acute", "Cognitive", "Follow Up", "TCM-7", "TCM-14"]
+            patient_type_options = ["Select one", "Follow Up", "New", "Acute", "Cognitive", "TCM-7", "TCM-14"]
             selected_patient_type = st.selectbox(
                 "Type",
                 patient_type_options,
-                index=4,  # Default to "Follow Up"
+                index=1,  # Default to "Follow Up"
                 key=f"{key_prefix}_patient_type",
             )
 
