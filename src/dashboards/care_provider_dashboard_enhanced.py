@@ -1000,10 +1000,6 @@ def show_patient_list_section(user_id, section_id=None, has_cpm_role=False):
         # Single, compact form for one task at a time
         key_prefix = f"single_task_{user_id}_{section_id or 'main'}"
 
-        # Initialize patient type in session state for dynamic location options
-        if f"{key_prefix}_patient_type" not in st.session_state:
-            st.session_state[f"{key_prefix}_patient_type"] = "Follow Up"
-
         # All fields in one row: Date | Patient | Patient Type | Location
         col_date, col_patient, col_type, col_location = st.columns([0.7, 3, 1.2, 1])
 
@@ -1021,11 +1017,10 @@ def show_patient_list_section(user_id, section_id=None, has_cpm_role=False):
             )
 
         with col_type:
-            patient_type_options = ["Select one", "Follow Up", "New", "Acute", "Cognitive", "TCM-7", "TCM-14"]
+            patient_type_options = ["Follow Up", "New", "Acute", "Cognitive", "TCM-7", "TCM-14"]
             selected_patient_type = st.selectbox(
                 "Type",
                 patient_type_options,
-                index=1,  # Default to "Follow Up"
                 key=f"{key_prefix}_patient_type",
             )
 
@@ -1042,7 +1037,6 @@ def show_patient_list_section(user_id, section_id=None, has_cpm_role=False):
             task_location = st.selectbox(
                 "Location",
                 location_options,
-                index=0,
                 key=f"{key_prefix}_location",
             )
             task_location_val = (
