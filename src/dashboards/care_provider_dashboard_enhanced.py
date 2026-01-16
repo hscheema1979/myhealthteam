@@ -1033,6 +1033,9 @@ def show_patient_list_section(user_id, section_id=None, has_cpm_role=False):
             current_patient_type = selected_patient_type
             if current_patient_type == "Acute":
                 location_options = ["Select one", "Tele", "Office"]
+                # Reset location to "Select one" if currently "Home" and switching to Acute
+                if st.session_state.get(f"{key_prefix}_location") == "Home":
+                    st.session_state[f"{key_prefix}_location"] = "Select one"
             else:
                 location_options = ["Select one", "Home", "Tele", "Office"]
 
