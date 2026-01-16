@@ -1080,7 +1080,7 @@ def show_patient_list_section(user_id, section_id=None, has_cpm_role=False):
             else:
                 selected_billing = None
                 st.warning(
-                    "No billing codes configured for Primary Care Visit - please contact admin"
+                    f"No billing codes configured for Patient Type: '{patient_type_for_billing}' with Location: '{db_location_type}' - please contact admin"
                 )
 
         st.markdown("#### Patient Risk & Clinical Fields (Optional)")
