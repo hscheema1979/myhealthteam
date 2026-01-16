@@ -1002,7 +1002,7 @@ def show_patient_list_section(user_id, section_id=None, has_cpm_role=False):
 
         # Initialize patient type in session state for dynamic location options
         if f"{key_prefix}_patient_type" not in st.session_state:
-            st.session_state[f"{key_prefix}_patient_type"] = "New"
+            st.session_state[f"{key_prefix}_patient_type"] = "Follow Up"
 
         # All fields in one row: Date | Patient | Patient Type | Location
         col_date, col_patient, col_type, col_location = st.columns([0.7, 3, 1.2, 1])
