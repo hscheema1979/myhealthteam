@@ -132,6 +132,8 @@ class WeeklyBillingProcessor:
         Returns:
             Dictionary with processing results
         """
+
+        conn = None
         try:
             billing_week, week_start, week_end = self.get_current_billing_week(target_date)
             
@@ -144,8 +146,6 @@ class WeeklyBillingProcessor:
             
             # Get summary results
             summary = self.get_billing_summary(billing_week, conn, None, None, None)
-            
-            conn.close()
             
             self.logger.info(f"Weekly billing processed successfully for week {billing_week}")
             return {
@@ -174,6 +174,9 @@ class WeeklyBillingProcessor:
                 'week_end': week_end,
                 'summary': {}
             }
+        finally:
+            if conn:
+                conn.close()
     
     def get_billing_summary(self, billing_week: str, conn: sqlite3.Connection, provider_filter: str = None,
                           year_filter: str = None, status_filter: str = None) -> Dict:
