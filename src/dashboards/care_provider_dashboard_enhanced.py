@@ -1027,20 +1027,17 @@ def show_patient_list_section(user_id, section_id=None, has_cpm_role=False):
         with col_location:
             current_patient_type = selected_patient_type
             if current_patient_type == "Acute":
-                location_options = ["Select one", "Tele", "Office"]
-                # Reset location to "Select one" if currently "Home" and switching to Acute
+                location_options = ["Tele", "Office"]
+                # Reset location to "Tele" if currently "Home" and switching to Acute
                 if st.session_state.get(f"{key_prefix}_location") == "Home":
-                    st.session_state[f"{key_prefix}_location"] = "Select one"
+                    st.session_state[f"{key_prefix}_location"] = "Tele"
             else:
-                location_options = ["Select one", "Home", "Tele", "Office"]
+                location_options = ["Tele", "Home", "Office"]
 
             task_location = st.selectbox(
                 "Location",
                 location_options,
                 key=f"{key_prefix}_location",
-            )
-            task_location_val = (
-                None if (task_location == "Select one") else task_location
             )
 
         # Billing code display (hidden, used for form submission)
@@ -1059,7 +1056,7 @@ def show_patient_list_section(user_id, section_id=None, has_cpm_role=False):
             "Tele": "Telehealth",
             "Office": "Office"
         }
-        db_location_type = location_map.get(task_location_val)
+        db_location_type = location_map.get(task_location)
 
         # Look up billing code from database
         billing_options = database.get_billing_codes(
