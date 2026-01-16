@@ -1004,16 +1004,33 @@ def show_patient_list_section(user_id, section_id=None, has_cpm_role=False):
         if f"{key_prefix}_patient_type" not in st.session_state:
             st.session_state[f"{key_prefix}_patient_type"] = "New"
 
-        col_date, col_location = st.columns([1, 1])
-        with col_date:
-            task_date = st.date_input(
-                "Date of Service",
-                value=pd.to_datetime("today"),
-                key=f"{key_prefix}_date",
+        # Row 1: Date of Service
+        task_date = st.date_input(
+            "Date of Service",
+            value=pd.to_datetime("today"),
+            key=f"{key_prefix}_date",
+        )
+
+        # Row 2: Patient Name (full width)
+        patient_options = ["Select one"] + patient_names
+        selected_patient_name = st.selectbox(
+            "Select Patient", patient_options, key=f"{key_prefix}_patient"
+        )
+
+        # Row 3: Patient Type and Location (2 columns)
+        col_type, col_location = st.columns([1, 1])
+        with col_type:
+            # Patient type dropdown for billing code selection
+            patient_type_options = ["Select one", "New", "Acute", "Cognitive", "Follow Up", "TCM-7", "TCM-14"]
+            selected_patient_type = st.selectbox(
+                "Patient Type",
+                patient_type_options,
+                index=1,  # Default to "New" for onboarding queue
+                key=f"{key_prefix}_patient_type",
             )
         with col_location:
             # Dynamic location options based on patient type
-            current_patient_type = st.session_state.get(f"{key_prefix}_patient_type", "New")
+            current_patient_type = selected_patient_type
             if current_patient_type == "Acute":
                 location_options = ["Select one", "Tele", "Office"]
             else:
@@ -1030,71 +1047,53 @@ def show_patient_list_section(user_id, section_id=None, has_cpm_role=False):
                 None if (task_location == "Select one") else task_location
             )
 
-        col_patient, col_type, col_task = st.columns([2, 1.5, 2])
-        with col_patient:
-            # Add "Select one" option to patient dropdown
-            patient_options = ["Select one"] + patient_names
-            selected_patient_name = st.selectbox(
-                "Select Patient", patient_options, key=f"{key_prefix}_patient"
-            )
-        with col_type:
-            # Patient type dropdown for billing code selection
-            patient_type_options = ["Select one", "New", "Acute", "Cognitive", "Follow Up", "TCM-7", "TCM-14"]
-            selected_patient_type = st.selectbox(
-                "Patient Type",
-                patient_type_options,
-                index=1,  # Default to "New" for onboarding queue
-                key=f"{key_prefix}_patient_type",
-                on_change=lambda: st.session_state.update({f"{key_prefix}_location": "Select one"}) if st.session_state.get(f"{key_prefix}_location") == "Home" and st.session_state.get(f"{key_prefix}_patient_type") == "Acute" else None
-            )
-        with col_task:
-            # Auto-assign billing code based on visit location and type
-            selected_billing_code = None
-            selected_billing_desc = ""
+        # Billing code display (hidden, used for form submission)
+        selected_billing_code = None
+        selected_billing_desc = ""
 
-            # Determine base patient type for billing lookup
-            patient_type_for_billing = (
-                selected_patient_type if selected_patient_type != "Select one"
-                else "New"
-            )
+        # Determine base patient type for billing lookup
+        patient_type_for_billing = (
+            selected_patient_type if selected_patient_type != "Select one"
+            else "New"
+        )
 
-            # Map UI location to database location type
-            location_map = {
-                "Home": "Home",
-                "Tele": "Telehealth",
-                "Office": "Office"
-            }
-            db_location_type = location_map.get(task_location_val)
+        # Map UI location to database location type
+        location_map = {
+            "Home": "Home",
+            "Tele": "Telehealth",
+            "Office": "Office"
+        }
+        db_location_type = location_map.get(task_location_val)
 
-            # Look up billing code from database
-            billing_options = database.get_billing_codes(
-                service_type=patient_type_for_billing,
-                location_type=db_location_type,
-                patient_type=patient_type_for_billing,
-            )
+        # Look up billing code from database
+        billing_options = database.get_billing_codes(
+            service_type=patient_type_for_billing,
+            location_type=db_location_type,
+            patient_type=patient_type_for_billing,
+        )
 
-            if billing_options:
-                selected_billing_code = billing_options[0].get("billing_code", "Unknown")
-                selected_billing_desc = billing_options[0].get("description", "")
+        if billing_options:
+            selected_billing_code = billing_options[0].get("billing_code", "Unknown")
+            selected_billing_desc = billing_options[0].get("description", "")
+        else:
+            # TCM specific fallbacks if lookup fails (should not happen if DB is correct)
+            if selected_patient_type == "TCM-7":
+                selected_billing_code = "99496"
+                selected_billing_desc = "TCM 7-day"
+            elif selected_patient_type == "TCM-14":
+                selected_billing_code = "99495"
+                selected_billing_desc = "TCM 14-day"
             else:
-                # TCM specific fallbacks if lookup fails (should not happen if DB is correct)
-                if selected_patient_type == "TCM-7":
-                    selected_billing_code = "99496"
-                    selected_billing_desc = "TCM 7-day"
-                elif selected_patient_type == "TCM-14":
-                    selected_billing_code = "99495"
-                    selected_billing_desc = "TCM 14-day"
-                else:
-                    selected_billing_code = None
+                selected_billing_code = None
 
-            # Store the selected billing code (invisible to provider)
-            if selected_billing_code:
-                selected_billing = selected_billing_code
-            else:
-                selected_billing = None
-                st.warning(
-                    f"No billing codes configured for Patient Type: '{patient_type_for_billing}' with Location: '{db_location_type}' - please contact admin"
-                )
+        # Store the selected billing code (invisible to provider)
+        if selected_billing_code:
+            selected_billing = selected_billing_code
+        else:
+            selected_billing = None
+            st.warning(
+                f"No billing codes configured for Patient Type: '{patient_type_for_billing}' with Location: '{db_location_type}' - please contact admin"
+            )
 
         st.markdown("#### Patient Risk & Clinical Fields (Optional)")
         col1, col2 = st.columns(2)
