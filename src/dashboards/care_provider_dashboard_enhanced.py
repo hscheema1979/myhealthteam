@@ -1025,18 +1025,9 @@ def show_patient_list_section(user_id, section_id=None, has_cpm_role=False):
             )
 
         with col_location:
-            current_patient_type = selected_patient_type
-            if current_patient_type == "Acute":
-                location_options = ["Tele", "Office"]
-                # Reset location to "Tele" if currently "Home" and switching to Acute
-                if st.session_state.get(f"{key_prefix}_location") == "Home":
-                    st.session_state[f"{key_prefix}_location"] = "Tele"
-            else:
-                location_options = ["Tele", "Home", "Office"]
-
             task_location = st.selectbox(
                 "Location",
-                location_options,
+                ["Tele", "Home", "Office"],
                 key=f"{key_prefix}_location",
             )
 
@@ -1084,9 +1075,15 @@ def show_patient_list_section(user_id, section_id=None, has_cpm_role=False):
             selected_billing = selected_billing_code
         else:
             selected_billing = None
-            st.warning(
-                f"No billing codes configured for Patient Type: '{patient_type_for_billing}' with Location: '{db_location_type}' - please contact admin"
-            )
+            # Provide helpful error message with valid location options
+            if selected_patient_type == "Cognitive":
+                st.error("Cognitive visits must be **Home** or **Office** only (not Telehealth)")
+            elif selected_patient_type == "Acute":
+                st.error("Acute visits must be **Tele** or **Office** only (not Home)")
+            else:
+                st.error(
+                    f"No billing codes configured for Patient Type: '{patient_type_for_billing}' with Location: '{task_location}' - please contact admin"
+                )
 
         st.markdown("#### Patient Risk & Clinical Fields (Optional)")
         col1, col2 = st.columns(2)
