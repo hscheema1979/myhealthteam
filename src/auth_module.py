@@ -12,17 +12,18 @@ import json
 from typing import Optional, Dict, Any, List
 from datetime import datetime
 
-# Setup debug logging to file
-logging.basicConfig(
-    filename='oauth_debug.log',
-    level=logging.DEBUG,
-    format='%(asctime)s - %(message)s'
-)
+# File logging DISABLED - was causing disk to fill (168GB oauth_debug.log)
+# Use journalctl -u myhealthteam -f for production debugging
+# logging.basicConfig(
+#     filename='oauth_debug.log',
+#     level=logging.DEBUG,
+#     format='%(asctime)s - %(message)s'
+# )
 
 def debug_log(message):
-    """Write debug message to file and print to console"""
-    with open('oauth_debug.txt', 'a') as f:
-        f.write(f"{datetime.now().isoformat()} - {message}\n")
+    """Write debug message to console only (file logging disabled to prevent disk fill)"""
+    # File logging disabled due to OAuth double-execution issue causing infinite growth
+    # Use streamlit logging or journalctl for debugging instead
     print(message)
 from src import database
 from src.database import get_db_connection

@@ -1,0 +1,568 @@
+Match Type,Last Name,First Name,DOB,ZMO Status,DB Status,ZMO Facility,DB Facility,ZMO Provider,DB Provider,Provider Match,ZMO Coordinator,DB Coordinator,Coordinator Match,DB Patient ID
+IN_BOTH,AAMOUSE,MICKEY,2001-01-01,ACTIVE,ACTIVE,zFac,zFac,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,,,BOTH_EMPTY,AAMOUSE MICKEY 01/01/2001
+IN_BOTH,ABEJO,MARCELINA,1934-08-04,ACTIVE,ACTIVE-PCP,Compassionate,Compassionate,"Antonio NP, Ethel","Szalas NP, Andrew",MISMATCH,,"Altar, Shirley",ONLY_IN_DB,ABEJO MARCELINA 08/04/1934
+IN_BOTH,ABROLE,VIDYA,1942-12-03,ACTIVE,ACTIVE,Violet,Violet,"Kaur NP, Jaspreet","Kaur, Jaspreet",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,ABROLE VIDYA 12/03/1942
+IN_BOTH,ADAMS,THOMPSON,1940-08-06,ACTIVE-GERI,ACTIVE-GERI,Violet,Violet,None->Andrew,"Szalas NP, Andrew",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,ADAMS THOMPSON 08/06/1940
+ONLY_IN_DB,AGNIHOTRI,SUDESH,1940-01-30,,ACTIVE-GERI,,Bella,,,,,"Thapa, Dilasha",,AGNIHOTRI SUDESH 01/30/1940
+ONLY_IN_DB,AGUILAR,ELIZABETH,1940-12-06,,ACTIVE,,All Access,,"Malhotra MD, Justin",,,,,AGUILAR ELIZABETH 12/06/1940
+ONLY_IN_DB,AGUILAR,GUILLERMO,1937-09-13,,ACTIVE,,All Access,,"Malhotra MD, Justin",,,,,AGUILAR GUILLERMO 09/13/1937
+IN_BOTH,AGUILAR,IRMA,1957-09-05,ACTIVE,ACTIVE,Intra care Home Health,Intra care Home Health,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,AGUILAR IRMA 09/05/1957
+IN_BOTH,AHUJA,ASHA,1955-08-15,ACTIVE-PCP,ACTIVE-PCP,ZenMedicine,ZenMedicine,"Malhotra MD, Justinder","Malhotra MD, Justin",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,AHUJA ASHA 08/15/1955
+IN_BOTH,AKHAVAN,AEMMEH,1944-12-31,ACTIVE,ACTIVE,Hakimi,Hakimi,"Melara ZZ, Claudia","Melara, Claudia",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,AKHAVAN AEMMEH 12/31/1944
+IN_BOTH,ALADDIN,TAHARA,1934-07-19,ACTIVE,ACTIVE,Hakimi,Hakimi,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Altar, Shirley","Altar, Shirley",MATCH,ALADDIN TAHARA 07/19/1934
+IN_BOTH,ALHUSARI,MOHAMMED,1959-10-20,ACTIVE,ACTIVE,Acacia,Acacia,"Dabalus NP, Eden","Dabalus, Eden",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,ALHUSARI MOHAMMED 10/20/1959
+ONLY_IN_DB,ALLAHUDEEN,AROOSDEEN,1969-05-13,,ACTIVE,,New Frontier,,,,,,,ALLAHUDEEN AROOSDEEN 05/13/1969
+IN_BOTH,ALMANZA,EMILIO,1936-05-27,ACTIVE-PCP,ACTIVE-PCP,ZenMedicine,ZenMedicine,"Malhotra MD, Justinder","Malhotra MD, Justin",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,ALMANZA EMILIO 05/27/1936
+IN_BOTH,ALMANZA,MARIA,1944-04-04,ACTIVE-PCP,ACTIVE-PCP,ZenMedicine,ZenMedicine,"Malhotra MD, Justinder","Malhotra MD, Justin",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,ALMANZA MARIA 04/04/1944
+ONLY_IN_DB,ALONZO,MIGUEL,1948-10-27,,ACTIVE,,New Chapter,,,,,,,ALONZO MIGUEL 10/27/1948
+IN_BOTH,ALVARADO PEREZ,REYNALDA,1941-09-15,ACTIVE,ACTIVE,Acacia,Acacia,"Dabalus NP, Eden","Dabalus, Eden",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,ALVARADO PEREZ REYNALDA 09/15/1941
+ONLY_IN_DB,ALVARADO,HUMBERTO,1943-03-25,,ACTIVE-PCP,,ProHealth,,,,,Andrea Rubio,,ALVARADO HUMBERTO 03/25/1943
+IN_BOTH,ALVAREZ,OFELIA,1948-04-02,ACTIVE,ACTIVE,Pure Home Health,Pure Home Health,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,ALVAREZ OFELIA 04/02/1948
+IN_BOTH,AMROMIN,RICHARD,1946-08-08,ACTIVE,ACTIVE,Compassionate,Compassionate,"Antonio NP, Ethel","Antonio, Ethel",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,AMROMIN RICHARD 08/08/1946
+ONLY_IN_DB,ANDERSON,JEFFORIE,1960-04-23,,ACTIVE-GERI,,Acacia,,"Dabalus, Eden",,,Andrea Rubio,,ANDERSON JEFFORIE 04/23/1960
+IN_BOTH,ANDERSON,LIZABETH,1934-09-26,ACTIVE-GERI,ACTIVE-GERI,Sila-V/Phil,Sila-V/Phil,None->Andrew,"Szalas NP, Andrew",MISMATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,ANDERSON LIZABETH 09/26/1934
+IN_BOTH,ANDES,HEATHER,1937-06-15,ACTIVE-PCP,ACTIVE-PCP,Hakimi,Hakimi,"Antonio NP, Ethel","Antonio, Ethel",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,ANDES HEATHER 06/15/1937
+IN_BOTH,ANGLEMYER,DOROTHY,1942-10-03,ACTIVE,ACTIVE-GERI,Hakimi,Hakimi,"Antonio NP, Ethel","Szalas NP, Andrew",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,ANGLEMYER DOROTHY 10/03/1942
+IN_BOTH,ARAGON,NATALIE,1944-07-27,ACTIVE,ACTIVE,Ventura,Ventura,"Diaz NP, Albert","Dabalus, Eden",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,ARAGON NATALIE 07/27/1944
+IN_BOTH,ARAGON,RALPH,1945-03-27,ACTIVE,ACTIVE,Violet,Violet,"Diaz NP, Albert","Dabalus, Eden",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,ARAGON RALPH 03/27/1945
+IN_BOTH,AREVALO,CAROLINE,1932-04-11,ACTIVE-PCP,ACTIVE-PCP,Hakimi,Hakimi,"Antonio NP, Ethel","Antonio, Ethel",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,AREVALO CAROLINE 04/11/1932
+ONLY_IN_DB,ARIF,MAJEED HAMEED,1946-11-08,,ACTIVE,,ProHealth,,"Khristina, Carla",,,,,ARIF MAJEED HAMEED 11/08/1946
+IN_BOTH,ARTHUR,TANYA,1966-03-19,ACTIVE-PCP,ACTIVE-PCP,ZenMedicine,ZenMedicine,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,ARTHUR TANYA 03/19/1966
+IN_BOTH,ATKINS,JANET L,1943-02-19,ACTIVE-GERI,ACTIVE-GERI,Violet,Violet,"Diaz NP, Albert","Szalas NP, Andrew",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,ATKINS JANET L 02/19/1943
+IN_BOTH,AUDISHO SAYADIAN,KHANA,1957-07-01,ACTIVE,ACTIVE,ZenMedicine,ZenMedicine,"Kaur NP, Jaspreet","Kaur, Jaspreet",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,AUDISHO SAYADIAN KHANA 07/01/1957
+IN_BOTH,AVALOS,ARMIDA,1944-06-09,ACTIVE-PCP,ACTIVE-PCP,ZenMedicine,ZenMedicine,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,AVALOS ARMIDA 06/09/1944
+IN_BOTH,AVALOS,JULIAN,1935-08-14,ACTIVE-PCP,ACTIVE-PCP,ZenMedicine,ZenMedicine,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,AVALOS JULIAN 08/14/1935
+IN_BOTH,AVILA,CORAZON,1952-12-10,ACTIVE,ACTIVE,ZenMedicine,ZenMedicine,"Melara ZZ, Claudia","Melara, Claudia",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,AVILA CORAZON 12/10/1952
+IN_BOTH,AVILA,NESTOR,1954-10-08,ACTIVE,ACTIVE,ZenMedicine,ZenMedicine,"Melara ZZ, Claudia","Melara, Claudia",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,AVILA NESTOR 10/08/1954
+IN_BOTH,BADGER,ANDREA,1939-04-03,ACTIVE-GERI,ACTIVE-GERI,Acacia,Acacia,None->Andrew,"Szalas NP, Andrew",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,BADGER ANDREA 04/03/1939
+IN_BOTH,BAGADA,VALJI,1948-02-28,ACTIVE,ACTIVE,Acacia,Acacia,"Dabalus NP, Eden","Dabalus, Eden",MISMATCH,,,BOTH_EMPTY,BAGADA VALJI 02/28/1948
+IN_BOTH,BALAIS,ANDY,1934-03-01,ACTIVE,ACTIVE,Compassionate,Compassionate,"Antonio NP, Ethel","Antonio, Ethel",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,BALAIS ANDY 03/01/1934
+ONLY_IN_DB,BANALES,NORI,1951-01-16,,ACTIVE-PCP,,Welfare HHC,,,,,Andrea Rubio,,BANALES NORI 01/16/1951
+IN_BOTH,BANGS,CAROL,1950-03-03,ACTIVE,ACTIVE,Compassionate,Compassionate,"Antonio NP, Ethel","Antonio, Ethel",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,BANGS CAROL 03/03/1950
+IN_BOTH,BANKER,YAMINI,1949-05-13,ACTIVE,ACTIVE,ZenMedicine,ZenMedicine,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,BANKER YAMINI 05/13/1949
+IN_BOTH,BARRIENTOS,BENJAMIN,1945-06-07,ACTIVE,ACTIVE,New Chapter,New Chapter,"Villasenor NP, Lourdes","Villasenor NP, Lourdes",MATCH,"Altar, Shirley","Altar, Shirley",MATCH,BARRIENTOS BENJAMIN 06/07/1945
+IN_BOTH,BASHIRIAN,ASHRAF,1951-06-30,ACTIVE,ACTIVE,All Access,All Access,"Otebulu NP, Angela","Otegbulu, Angela",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,BASHIRIAN ASHRAF 06/30/1951
+IN_BOTH,BATES,NEIL,1951-10-15,ACTIVE-PCP,ACTIVE-PCP,Assisted Home Health & Hospice,Assisted Home Health & Hospice,"Antonio NP, Ethel","Antonio, Ethel",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,BATES NEIL 10/15/1951
+IN_BOTH,BECERRA,MARIA,1957-08-28,ACTIVE-PCP,ACTIVE-PCP,ZenMedicine,ZenMedicine,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,BECERRA MARIA 08/28/1957
+IN_BOTH,BEEDE,DONALD,1958-09-21,ACTIVE-PCP,ACTIVE-PCP,ProHealth,ProHealth,"Antonio NP, Ethel","Khristina, Carla",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,BEEDE DONALD 09/21/1958
+IN_BOTH,BELL DAVIS,ELAINE,1947-02-12,ACTIVE-PCP,ACTIVE-PCP,ZenMedicine,ZenMedicine,"Jackson PA, Anisha","Melara, Claudia",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,BELL DAVIS ELAINE 02/12/1947
+IN_BOTH,BERCILES,PRISCILA,1943-06-22,ACTIVE-PCP,ACTIVE-PCP,Compassionate,Compassionate,"Antonio NP, Ethel","Antonio, Ethel",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,BERCILES PRISCILA 06/22/1943
+IN_BOTH,BERKO,KIM,1960-02-13,ACTIVE,ACTIVE-GERI,ProHealth,ProHealth,None->Andrew,"Khristina, Carla",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,BERKO KIM 02/13/1960
+IN_BOTH,BERNAL,REMEKA,1988-07-29,ACTIVE,ACTIVE,Acacia,Acacia,"Dabalus NP, Eden","Dabalus, Eden",MISMATCH,"Atencio, Dianela","Atencio, Dianela",MATCH,BERNAL REMEKA 07/29/1988
+ONLY_IN_DB,BESHEARS,MARIE,1950-03-21,,ACTIVE,,ProHealth,,,,,,,BESHEARS MARIE 03/21/1950
+ONLY_IN_DB,BEVER,WILMA,1944-09-01,,ACTIVE-GERI,,ProHealth,,"Khristina, Carla",,,Andrea Rubio,,BEVER WILMA 09/01/1944
+IN_BOTH,BHATIA,JASPAL,1951-05-17,ACTIVE-PCP,ACTIVE-PCP,ZenMedicine,ZenMedicine,"Malhotra MD, Justinder","Malhotra MD, Justin",MISMATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,BHATIA JASPAL 05/17/1951
+IN_BOTH,BICKMORE,CALVIN,1958-02-05,ACTIVE-PCP,ACTIVE-PCP,Hakimi,Hakimi,"Antonio NP, Ethel","Antonio, Ethel",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,BICKMORE CALVIN 02/05/1958
+IN_BOTH,BILG,DALJIT K,1942-10-07,ACTIVE,ACTIVE-GERI,Ventura,Ventura,"Diaz NP, Albert","Dabalus, Eden",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,BILG DALJIT K 10/07/1942
+IN_BOTH,BINNS,DOUGLAS,1959-03-02,ACTIVE,ACTIVE,Attain,Attain,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Altar, Shirley","Altar, Shirley",MATCH,BINNS DOUGLAS 03/02/1959
+IN_BOTH,BLACK,CAROLE,1933-01-07,ACTIVE-GERI,ACTIVE-GERI,Ventura,Ventura,"Diaz NP, Albert","Szalas NP, Andrew",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,BLACK CAROLE 01/07/1933
+IN_BOTH,BLASBAND,NICKI,1931-01-31,ACTIVE-PCP,ACTIVE-PCP,ProHealth,ProHealth,"Antonio NP, Ethel","Khristina, Carla",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,BLASBAND NICKI 01/31/1931
+IN_BOTH,BRADLEY,KAREN,1950-01-30,ACTIVE-PCP,ACTIVE-PCP,Acacia,Acacia,"Dabalus NP, Eden","Dabalus, Eden",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,BRADLEY KAREN 01/30/1950
+IN_BOTH,BRAIS,STEPHEN,1953-04-29,ACTIVE-PCP,ACTIVE-PCP,ZenMedicine,ZenMedicine,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,BRAIS STEPHEN 04/29/1953
+IN_BOTH,BRAR,BALVINDER,1944-04-05,ACTIVE,ACTIVE,ZenMedicine,ZenMedicine,"Davis NP, Genevieve","Szalas NP, Andrew",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,BRAR BALVINDER 04/05/1944
+IN_BOTH,BRONEMANN,AARON,1952-12-23,ACTIVE-PCP,ACTIVE-PCP,ProHealth,ProHealth,"Antonio NP, Ethel","Khristina, Carla",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,BRONEMANN AARON 12/23/1952
+IN_BOTH,BROWN,DIANE,1965-08-05,ACTIVE,ACTIVE,Sila-V/Phil,Sila-V/Phil,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,BROWN DIANE 08/05/1965
+IN_BOTH,BROWN,EDRIS,1921-08-16,ACTIVE-GERI,ACTIVE-GERI,Sila-V/Phil,Sila-V/Phil,"Otebulu NP, Angela","Otegbulu, Angela",MISMATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,BROWN EDRIS 08/16/1921
+IN_BOTH,BROWN,GEORGE,1956-12-30,ACTIVE,ACTIVE,Acacia,Acacia,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,BROWN GEORGE 12/30/1956-1
+IN_BOTH,BROWN,IRENE,1942-10-30,ACTIVE,ACTIVE,Acacia,Acacia,"Dabalus NP, Eden","Dabalus, Eden",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,BROWN IRENE 10/30/1942
+IN_BOTH,BROWN,JULIE,1954-12-31,ACTIVE,ACTIVE,New Frontier,New Frontier,"Jackson PA, Anisha","Melara, Claudia",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,BROWN JULIE 12/31/1954
+IN_BOTH,BROWN,VICKIE,1956-08-11,ACTIVE-PCP,ACTIVE-PCP,ProHealth,ProHealth,"Antonio NP, Ethel","Khristina, Carla",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,BROWN VICKIE 08/11/1956
+IN_BOTH,BRYANT,ADAM,1965-03-31,ACTIVE-PCP,ACTIVE-PCP,Acacia,Acacia,"Szalas NP, Andrew","Dabalus, Eden",MISMATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,BRYANT ADAM 03/31/1965
+ONLY_IN_DB,BURKE,DOROTHY,1941-02-18,,ACTIVE-PCP,,Sequioa,,"Malhotra MD, Justin",,,"Thapa, Dilasha",,BURKE DOROTHY 02/18/1941
+IN_BOTH,BUSH,PATRICK,1963-08-07,ACTIVE,ACTIVE,Attain,Attain,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Altar, Shirley","Altar, Shirley",MATCH,BUSH PATRICK 08/07/1963
+IN_BOTH,BUTTERFIELD,JOAN,1944-02-14,ACTIVE-PCP,ACTIVE-PCP,Tristar/Phil,Tristar/Phil,"Villasenor NP, Lourdes","Villasenor NP, Lourdes",MATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,BUTTERFIELD JOAN 02/14/1944
+IN_BOTH,BYERS,LINDA,1942-01-20,ACTIVE-PCP,ACTIVE-PCP,ProHealth,ProHealth,"Antonio NP, Ethel","Khristina, Carla",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,BYERS LINDA 01/20/1942
+IN_BOTH,CAGER,LINDA,1954-01-22,ACTIVE,ACTIVE,Attain,Attain,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Altar, Shirley","Altar, Shirley",MATCH,CAGER LINDA 01/22/1954
+IN_BOTH,CALDERWOOD,NANCY,1944-09-18,ACTIVE-GERI,ACTIVE-GERI,All Access,All Access,"Otebulu NP, Angela","Otegbulu, Angela",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,CALDERWOOD NANCY 09/18/1944
+ONLY_IN_DB,CAMERON,BRUCE,1944-10-22,,ACTIVE,,Clinicians,,"Szalas NP, Andrew",,,"Altar, Shirley",,CAMERON BRUCE 10/22/1944
+IN_BOTH,CAMPBELLE,CATHERINE,1936-01-30,ACTIVE-PCP,ACTIVE,ZenMedicine,ZenMedicine,"Jackson PA, Anisha","Melara, Claudia",MISMATCH,DUPLICATE,Andrea Rubio,MISMATCH,CAMPBELLE CATHERINE 01/30/1936-1
+IN_BOTH,CANEZ-VEGA,GUADALUPE,1942-02-24,ACTIVE,ACTIVE,All Access,All Access,"Jackson PA, Anisha","Malhotra MD, Justin",MISMATCH,,,BOTH_EMPTY,CANEZ-VEGA GUADALUPE 02/24/1942
+IN_BOTH,CANILAO,EDGARDO P,1954-03-10,ACTIVE-GERI,ACTIVE-GERI,New Chapter,New Chapter,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Altar, Shirley","Altar, Shirley",MATCH,CANILAO EDGARDO P 03/10/1954
+IN_BOTH,CANIZARES,MERCEDES,1938-09-24,ACTIVE-GERI,ACTIVE-GERI,Ventura,Ventura,"Kaur NP, Jaspreet","Kaur, Jaspreet",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,CANIZARES MERCEDES 09/24/1938
+IN_BOTH,CANSECO,JOSE,1958-10-09,ACTIVE-PCP,ACTIVE-PCP,Compassionate,Compassionate,"Antonio NP, Ethel","Antonio, Ethel",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,CANSECO JOSE 10/09/1958
+IN_BOTH,CAPPELLO,GAIL,1941-01-18,ACTIVE,ACTIVE,Acacia,Acacia,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,CAPPELLO GAIL 01/18/1941
+IN_BOTH,CARAH,PETER,1942-06-07,ACTIVE-PCP,ACTIVE-PCP,Compassionate,Compassionate,"Antonio NP, Ethel","Antonio, Ethel",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,CARAH PETER 06/07/1942
+IN_BOTH,CARDENAS MADRID,MANUEL,1964-08-01,ACTIVE-GERI,ACTIVE-GERI,Unique Care Plus,Unique Care Plus,"Kaur NP, Jaspreet","Kaur, Jaspreet",MISMATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,CARDENAS MADRID MANUEL 08/01/1964
+IN_BOTH,CARRAZCO,EDMUNDO,1980-03-06,ACTIVE-PCP,ACTIVE-PCP,Descanso,Descanso,"Antonio NP, Ethel","Antonio, Ethel",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,CARRAZCO EDMUNDO 03/06/1980
+IN_BOTH,CARTER,ARMATHA,1954-08-09,ACTIVE,ACTIVE,Tristar/Phil,Tristar/Phil,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,CARTER ARMATHA 08/09/1954
+IN_BOTH,CARTER,EVELYN,1933-01-09,ACTIVE-GERI,ACTIVE-GERI,Acacia,Acacia,None->Andrew,"Szalas NP, Andrew",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,CARTER EVELYN 01/09/1933
+IN_BOTH,CASEY,BEVERLY,1954-04-09,ACTIVE-GERI,ACTIVE-GERI,New Frontier,New Frontier,"Diaz NP, Albert","Szalas NP, Andrew",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,CASEY BEVERLY 04/09/1954
+IN_BOTH,CASTLE,PATRICK,1956-11-08,ACTIVE-PCP,ACTIVE-PCP,Acacia,Acacia,"Otebulu NP, Angela","Otegbulu, Angela",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,CASTLE PATRICK 11/08/1956
+IN_BOTH,CERVANTES,JOSEFINA,1940-12-21,ACTIVE,ACTIVE,Pure,Pure,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,CERVANTES JOSEFINA 12/21/1940
+IN_BOTH,CERVANTEZ,MARIA,1949-08-22,ACTIVE,ACTIVE,Attain,Attain,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Altar, Shirley","Altar, Shirley",MATCH,CERVANTEZ MARIA 08/22/1949
+IN_BOTH,CHADHA,UMA,1946-12-01,ACTIVE,ACTIVE,Ventura,Ventura,"Diaz NP, Albert","Szalas NP, Andrew",MISMATCH,,,BOTH_EMPTY,CHADHA UMA 12/01/1946
+IN_BOTH,CHEN,LI,1945-01-10,ACTIVE,ACTIVE,Acacia,Acacia,"Dabalus NP, Eden","Dabalus, Eden",MISMATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,CHEN LI 01/10/1945
+IN_BOTH,CHHAY,JOEL,1984-11-13,ACTIVE-GERI,ACTIVE-GERI,Acacia,Acacia,"Dabalus NP, Eden","Dabalus, Eden",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,CHHAY JOEL 11/13/1984
+ONLY_IN_DB,CHOPRA,SANJIV,1956-05-12,,ACTIVE-GERI,,Violet,,,,,"Thapa, Dilasha",,CHOPRA SANJIV 05/12/1956
+IN_BOTH,CHORAK,DAVID,1944-12-05,ACTIVE,ACTIVE,Acacia,Acacia,None->Andrew,"Dabalus, Eden",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,CHORAK DAVID 12/05/1944
+IN_BOTH,CHOW,SHUET,1932-05-19,ACTIVE,ACTIVE,Tristar/Phil,Tristar/Phil,"Antonio NP, Ethel","Antonio, Ethel",MISMATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,CHOW SHUET 05/19/1932
+IN_BOTH,CLARKE,LESTER,1951-03-31,ACTIVE-PCP,ACTIVE-PCP,ZenMedicine,ZenMedicine,"Malhotra MD, Justinder","Malhotra MD, Justin",MISMATCH,"Hernandez, Hector","Sumpay, Laura",MISMATCH,CLARKE LESTER 03/31/1951
+IN_BOTH,CLARKE,LINDA,1953-09-05,ACTIVE-PCP,ACTIVE-PCP,ZenMedicine,ZenMedicine,"Malhotra MD, Justinder","Malhotra MD, Justin",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,CLARKE LINDA 09/05/1953
+IN_BOTH,CLARO,ANDRES,1942-11-28,ACTIVE-GERI,ACTIVE-GERI,All Access,All Access,"Jackson PA, Anisha","Jackson, Anisha",MISMATCH,,,BOTH_EMPTY,CLARO ANDRES 11/28/1942
+IN_BOTH,COBARRUVIAS,JIM,1952-08-16,ACTIVE-GERI,ACTIVE-GERI,Hakimi,Hakimi,"Antonio NP, Ethel","Antonio, Ethel",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,COBARRUVIAS JIM 08/16/1952
+IN_BOTH,COBIAN,JOSE,1944-01-12,ACTIVE,ACTIVE,Acacia,Acacia,"Dabalus NP, Eden","Dabalus, Eden",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,COBIAN JOSE 01/12/1944
+IN_BOTH,COLE,EUGENE,1947-08-28,ACTIVE,ACTIVE,Violet,Violet,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,COLE EUGENE 08/28/1947
+IN_BOTH,COLLINS,SUSAN,1948-02-23,ACTIVE,ACTIVE,Acacia,Acacia,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,COLLINS SUSAN 02/23/1948
+ONLY_IN_DB,COMPAGNO,SEBASTIAN,1941-04-28,,ACTIVE-PCP,,ProHealth,,"Khristina, Carla",,,,,COMPAGNO SEBASTIAN 04/28/1941
+IN_BOTH,CONN,HENRY,1958-05-07,ACTIVE-PCP,ACTIVE-PCP,Hakimi,Hakimi,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Altar, Shirley","Altar, Shirley",MATCH,CONN HENRY 05/07/1958
+IN_BOTH,CONSIDINE,RETT,1941-03-21,ACTIVE-PCP,ACTIVE-PCP,Acacia,Acacia,"Dabalus NP, Eden","Dabalus, Eden",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,CONSIDINE RETT 03/21/1941
+IN_BOTH,CONTRERAS,AMPARO,1960-11-21,ACTIVE,ACTIVE-GERI,New Frontier,New Frontier,None->Andrew,"Szalas NP, Andrew",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,CONTRERAS AMPARO 11/21/1960
+IN_BOTH,CONTRERAS,ANA,1955-06-02,ACTIVE,ACTIVE,All Access,All Access,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,CONTRERAS ANA 06/02/1955
+IN_BOTH,CONTRERAS,JANET H,1958-09-30,ACTIVE-PCP,ACTIVE-PCP,ProHealth,ProHealth,"Antonio NP, Ethel","Khristina, Carla",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,CONTRERAS JANET H 09/30/1958
+IN_BOTH,CONTRERAS,VIRGINIA,1934-04-21,ACTIVE-GERI,ACTIVE-GERI,All Access,All Access,"Jackson PA, Anisha","Jackson, Anisha",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,CONTRERAS VIRGINIA 04/21/1934
+ONLY_IN_DB,COOK,JAMES,1945-02-14,,ACTIVE,,Tristar/Phil,,,,,,,COOK JAMES 02/14/1945
+IN_BOTH,COOPERSMITH,EILEEN,1946-11-28,ACTIVE-PCP,ACTIVE-PCP,ProHealth,ProHealth,Reg Prov,"Khristina, Carla",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,COOPERSMITH EILEEN 11/28/1946
+IN_BOTH,CORONADO,MARTHA,1969-12-08,ACTIVE,ACTIVE,ZenMedicine,ZenMedicine,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,CORONADO MARTHA 12/08/1969
+IN_BOTH,CORONA,VERONICA,1977-11-03,ACTIVE-PCP,ACTIVE-PCP,ZenMedicine,ZenMedicine,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,CORONA VERONICA 11/03/1977
+IN_BOTH,COX,RUSSELL,1929-06-23,ACTIVE,HOSPICE,Acacia,Acacia,"Dabalus NP, Eden","Dabalus, Eden",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,COX RUSSELL 06/23/1929
+IN_BOTH,CRAIG,DARRELL,1951-03-30,ACTIVE,ACTIVE,Compassionate,Compassionate,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Altar, Shirley","Altar, Shirley",MATCH,CRAIG DARRELL 03/30/1951
+IN_BOTH,CRAWFORD JR,CALVIN,1954-02-11,ACTIVE-PCP,ACTIVE-PCP,ZenMedicine,ZenMedicine,"Melara ZZ, Claudia","Szalas NP, Andrew",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,CRAWFORD JR CALVIN 02/11/1954
+ONLY_IN_DB,CRUZ,JUANA,1935-06-12,,ACTIVE-PCP,,Acacia,,,,,,,CRUZ JUANA 06/12/1935
+IN_BOTH,CULLEN,JEFFREY,1960-06-09,ACTIVE-PCP,ACTIVE,Acacia,Acacia,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,DUPLICATE,Andrea Rubio,MISMATCH,CULLEN JEFFREY 06/09/1960-1
+IN_BOTH,CURRERI,AGUSTUS,1941-01-08,ACTIVE,ACTIVE,Violet,Violet,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,CURRERI AGUSTUS 01/08/1941
+ONLY_IN_DB,DALTON,MARYLIN,1943-05-13,,ACTIVE,,Descanso,,"Szalas NP, Andrew",,,"Altar, Shirley",,DALTON MARYLIN 05/13/1943
+IN_BOTH,DANIELS,CAROL,1948-11-24,ACTIVE-PCP,ACTIVE-PCP,Hakimi,Hakimi,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,,,BOTH_EMPTY,DANIELS CAROL 11/24/1948
+IN_BOTH,DANZO,ADELE,1934-02-26,ACTIVE-PCP,ACTIVE-PCP,Access,Access,"Melara ZZ, Claudia","Melara, Claudia",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,DANZO ADELE 02/26/1934
+IN_BOTH,DASS,RAMJI,1942-04-14,ACTIVE,ACTIVE,ventura,ventura,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,DASS RAMJI 04/14/1942
+IN_BOTH,DAVIS,ADELE,1942-11-04,ACTIVE-PCP,ACTIVE-PCP,ZenMedicine,ZenMedicine,"Jackson PA, Anisha","Melara, Claudia",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,DAVIS ADELE 11/04/1942
+ONLY_IN_ZMO,DAVIS,KESHIA,1974-05-04,ACTIVE-GERI,,New Frontier,,None->Andrew,,,"Thapa, Dilasha",,,
+ONLY_IN_ZMO,DE CASTRO,MARIETTA,1941-06-05,ACTIVE-GERI,,All Access,,"Otebulu NP, Angela",,,"Atencio, Dianela",,,
+ONLY_IN_DB,DE FLETES,ELPIDIA,1941-03-04,,ACTIVE-GERI,,ProHealth,,"Khristina, Carla",,,Andrea Rubio,,DE FLETES ELPIDIA 03/04/1941
+IN_BOTH,DE LA CERDA,GEORGINA,1954-04-23,ACTIVE,ACTIVE,All Access,All Access,"Jackson PA, Anisha","Malhotra MD, Justin",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,DE LA CERDA GEORGINA 04/23/1954
+IN_BOTH,DE LA ROSA,ERNESTO,1935-10-27,ACTIVE-GERI,ACTIVE-GERI,All Access,All Access,"Jackson PA, Anisha","Malhotra MD, Justin",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,DE LA ROSA ERNESTO 10/27/1935
+IN_BOTH,DE LA ROSA,HORTENSIA,1951-05-27,ACTIVE-GERI,ACTIVE-GERI,All Access,All Access,"Jackson PA, Anisha","Malhotra MD, Justin",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,DE LA ROSA HORTENSIA 05/27/1951
+IN_BOTH,DE LOS REYES,ANTONIO,1953-02-28,ACTIVE-GERI,ACTIVE-GERI,ZenMedicine,ZenMedicine,"Jackson PA, Anisha","Malhotra MD, Justin",MISMATCH,"Hernandez, Hector",Andrea Rubio,MISMATCH,DE LOS REYES ANTONIO 02/28/1953-1
+IN_BOTH,DEL CARME RANGEL,MARIA,1932-07-16,ACTIVE-PCP,ACTIVE-PCP,Violet,Ventura,"Kaur NP, Jaspreet","Kaur, Jaspreet",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,DEL CARME RANGEL MARIA 07/16/1932
+ONLY_IN_DB,DEL REAL,MAYELA,1969-12-05,,ACTIVE-GERI,,New Frontier,,,,,"Thapa, Dilasha",,DEL REAL MAYELA 12/05/1969
+IN_BOTH,DENTZEL,ELISABETH,1918-06-18,ACTIVE,ACTIVE,New Chapter,New Chapter,"Kaur NP, Jaspreet","Kaur, Jaspreet",MISMATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,DENTZEL ELISABETH 06/18/1918
+IN_BOTH,DHILLONN,DOROTHY,1934-03-30,ACTIVE,ACTIVE,Compassionate,Compassionate,"Villasenor NP, Lourdes","Villasenor NP, Lourdes",MATCH,"Altar, Shirley","Altar, Shirley",MATCH,DHILLONN DOROTHY 03/30/1934
+IN_BOTH,DI MAGGIO,LINDA,1951-11-16,ACTIVE,ACTIVE,ProHealth,ProHealth,Reg Prov,"Khristina, Carla",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,DI MAGGIO LINDA 11/16/1951
+ONLY_IN_DB,DIAZ CALDERON,JOSE,1956-02-12,,ACTIVE-GERI,,Phil-Unknown,,"Szalas NP, Andrew",,,"Sumpay, Laura",,DIAZ CALDERON JOSE 02/12/1956
+IN_BOTH,DIAZ,CECILIA,1937-01-07,ACTIVE-GERI,ACTIVE-GERI,All Access,All Access,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,DIAZ CECILIA 01/07/1937
+IN_BOTH,DIAZ,VILMA,1940-06-24,ACTIVE-GERI,ACTIVE-GERI,Hakimi,Hakimi,"Antonio NP, Ethel","Szalas NP, Andrew",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,DIAZ VILMA 06/24/1940
+IN_BOTH,DICKENS,CYNDI,1969-08-24,ACTIVE-GERI,ACTIVE-GERI,Metropolitan,Metropolitan,"Dabalus NP, Eden","Dabalus, Eden",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,DICKENS CYNDI 08/24/1969
+ONLY_IN_DB,DORBIN,KATIE,1934-01-11,,ACTIVE-GERI,,Attain,,"Szalas NP, Andrew",,,"Altar, Shirley",,DORBIN KATIE 01/11/1934
+IN_BOTH,DUARTE,JOSEFINA,1948-03-29,ACTIVE,ACTIVE,All Access,All Access,"Jackson PA, Anisha","Jackson, Anisha",MISMATCH,,,BOTH_EMPTY,DUARTE JOSEFINA 03/29/1948
+IN_BOTH,DUNBAR,REVA,1944-12-10,ACTIVE,ACTIVE,Violet,Violet,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,DUNBAR REVA 12/10/1944
+IN_BOTH,ECHEGARAY,MARIA,1956-11-28,ACTIVE-PCP,ACTIVE-PCP,ZenMedicine,ZenMedicine,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,ECHEGARAY MARIA 11/28/1956
+IN_BOTH,EKLUND,SHERRI,1946-12-07,ACTIVE,ACTIVE,ZenMedicine,ZenMedicine,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,EKLUND SHERRI 12/07/1946
+IN_BOTH,ELESTERIO,JUANA,1950-09-27,ACTIVE-PCP,ACTIVE-PCP,Access,Access,"Melara ZZ, Claudia","Melara, Claudia",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,ELESTERIO JUANA 09/27/1950
+IN_BOTH,ELOMINA,GARY,1964-10-20,ACTIVE,ACTIVE-GERI,All Access,All Access,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,ELOMINA GARY 10/20/1964
+IN_BOTH,ERNSBERGER,ANITA,1949-08-15,ACTIVE,ACTIVE-PCP,Acacia,Acacia,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,ERNSBERGER ANITA 08/15/1949
+IN_BOTH,ESPINOZA,LORENZO,1934-08-10,ACTIVE,ACTIVE,All Access,All Access,"Jackson PA, Anisha","Malhotra MD, Justin",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,ESPINOZA LORENZO 08/10/1934
+IN_BOTH,ESPINOZA,MARCELA,1936-01-16,ACTIVE,ACTIVE,All Access,All Access,"Jackson PA, Anisha","Malhotra MD, Justin",MISMATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,ESPINOZA MARCELA 01/16/1936
+IN_BOTH,ESPINOZA,MERCEDES,1954-09-24,ACTIVE-GERI,ACTIVE-GERI,All Access,All Access,"Jackson PA, Anisha","Jackson, Anisha",MISMATCH,,,BOTH_EMPTY,ESPINOZA MERCEDES 09/24/1954
+ONLY_IN_DB,ESQUER,CONNIE,1942-02-20,,ACTIVE,,All Access,,"Malhotra MD, Justin",,,,,ESQUER CONNIE 02/20/1942
+IN_BOTH,ESTRADA,MARIA,1943-06-21,ACTIVE-PCP,ACTIVE-PCP,Phil-Unknown,Phil-Unknown,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,ESTRADA MARIA 06/21/1943
+IN_BOTH,ESTRADA,VICTORIA,1947-02-10,ACTIVE,ACTIVE,Affection,Affection,"Otebulu NP, Angela","Otegbulu, Angela",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,ESTRADA VICTORIA 02/10/1947
+IN_BOTH,ESTRELLA,ALDA,1959-07-14,ACTIVE,ACTIVE,Violet,Violet,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,ESTRELLA ALDA 07/14/1959
+IN_BOTH,ETCHEVERRY,RENEE,1953-08-01,ACTIVE,ACTIVE,Violet,Violet,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,,,BOTH_EMPTY,ETCHEVERRY RENEE 08/01/1953
+IN_BOTH,EVANS,DONALD,1933-10-09,ACTIVE,ACTIVE,Affection,Affection,"Otebulu NP, Angela","Szalas NP, Andrew",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,EVANS DONALD 10/09/1933-1
+IN_BOTH,FALLAHZADEH,KAZEM,1949-11-18,ACTIVE-PCP,ACTIVE-PCP,Hakimi,Hakimi,"Melara ZZ, Claudia","Melara, Claudia",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,FALLAHZADEH KAZEM 11/18/1949
+IN_BOTH,FAROKHZAD,FOROUGH,1937-12-27,ACTIVE,ACTIVE,New Frontier,New Frontier,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,FAROKHZAD FOROUGH 12/27/1937
+IN_BOTH,FERNANDEZ,ROBERTO,1932-10-14,ACTIVE-PCP,ACTIVE-PCP,Hakimi,Hakimi,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Altar, Shirley","Altar, Shirley",MATCH,FERNANDEZ ROBERTO 10/14/1932
+IN_BOTH,FIGGERS,CLAUDIA,1951-08-12,ACTIVE-PCP,ACTIVE-PCP,Sila-V/Phil,Sila-V/Phil,None->Andrew,"Szalas NP, Andrew",MISMATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,FIGGERS CLAUDIA 08/12/1951
+IN_BOTH,FIRDOSY,AKBAR,1946-09-16,ACTIVE-PCP,ACTIVE-PCP,ZenMedicine,ZenMedicine,"Malhotra MD, Justinder","Malhotra MD, Justin",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,FIRDOSY AKBAR 09/16/1946
+IN_BOTH,FIRDOSY,INAYAT,1942-11-25,ACTIVE-PCP,ACTIVE-PCP,ZenMedicine,ZenMedicine,"Malhotra MD, Justinder","Malhotra MD, Justin",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,FIRDOSY INAYAT 11/25/1942
+IN_BOTH,FIRDOSY,NISREEN,1954-12-16,ACTIVE-PCP,ACTIVE-PCP,ZenMedicine,ZenMedicine,"Malhotra MD, Justinder","Malhotra MD, Justin",MISMATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,FIRDOSY NISREEN 12/16/1954
+ONLY_IN_DB,FLORES,DIMA,1939-05-18,,ACTIVE-GERI,,Ace Home Health,,"Khristina, Carla",,,Andrea Rubio,,FLORES DIMA 05/18/1939
+IN_BOTH,FOLADPOUR,FERYDOUN,1948-05-23,ACTIVE,ACTIVE,All Access,All Access,"Otebulu NP, Angela","Otegbulu, Angela",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,FOLADPOUR FERYDOUN 05/23/1948
+IN_BOTH,FONSECA,CATHY,1949-04-12,ACTIVE-PCP,ACTIVE-PCP,CareLink,CareLink,"Antonio NP, Ethel","Antonio, Ethel",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,FONSECA CATHY 04/12/1949
+IN_BOTH,FORCADELA,ELENITA,1940-02-02,ACTIVE,ACTIVE,Access,Access,"Jackson PA, Anisha","Melara, Claudia",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,FORCADELA ELENITA 02/02/1940
+ONLY_IN_DB,FRED,ASSADI,1951-12-08,,ACTIVE-GERI,,Bay Health,,"Khristina, Carla",,,Andrea Rubio,,FRED ASSADI 12/08/1951
+IN_BOTH,FREEMAN,VERONICA,1970-11-26,ACTIVE-GERI,ACTIVE-GERI,ProHealth,ProHealth,"Antonio NP, Ethel","Khristina, Carla",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,FREEMAN VERONICA 11/26/1970
+IN_BOTH,FREGOSO,ELISEO,1928-04-28,ACTIVE-PCP,ACTIVE-PCP,Access,Access,"Antonio NP, Ethel","Antonio, Ethel",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,FREGOSO ELISEO 04/28/1928
+IN_BOTH,FRENKEL,YAKOV,1938-06-20,ACTIVE-GERI,ACTIVE-GERI,Bay Health,Bay Health,"Antonio NP, Ethel","Khristina, Carla",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,FRENKEL YAKOV 06/20/1938
+IN_BOTH,FRIESNER,DONNA,1955-08-27,ACTIVE,ACTIVE-PCP,ProHealth,ProHealth,"Antonio NP, Ethel","Khristina, Carla",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,FRIESNER DONNA 08/27/1955
+IN_BOTH,GALAVIZ,REBECA,1956-04-26,ACTIVE-GERI,ACTIVE-GERI,ZenMedicine,ZenMedicine,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,GALAVIZ REBECA 04/26/1956
+IN_BOTH,GALLEGOS,ABEL,1983-12-30,ACTIVE,ACTIVE,New Frontier,New Frontier,"Diaz NP, Albert","Szalas NP, Andrew",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,GALLEGOS ABEL 12/30/1983
+ONLY_IN_DB,GARCIA,LARRY,1956-10-11,,ACTIVE-PCP,,Access,,"Szalas NP, Andrew",,,"Altar, Shirley",,GARCIA LARRY 10/11/1956
+IN_BOTH,GARCIA,MARIA,1958-11-14,ACTIVE,ACTIVE-GERI,Clinicians,Clinicians,None->Andrew,"Szalas NP, Andrew",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,GARCIA MARIA 11/14/1958
+ONLY_IN_ZMO,GARDEA DE ROCH,MARIA R,1953-08-31,ACTIVE-GERI,,Compassionate,,"Antonio NP, Ethel",,,"Altar, Shirley",,,
+ONLY_IN_DB,GEBB,BARBARA,1935-08-04,,ACTIVE-GERI,,Acacia,,"Szalas NP, Andrew",,,Andrea Rubio,,GEBB BARBARA 08/04/1935
+IN_BOTH,GERALD,DEBBIE,1959-10-28,ACTIVE,ACTIVE,Sila-V/Phil,Sila-V/Phil,"Villasenor NP, Lourdes","Villasenor NP, Lourdes",MATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,GERALD DEBBIE 10/28/1959
+IN_BOTH,GHASSEMI,MANSOUR,1937-03-16,ACTIVE-PCP,ACTIVE-PCP,ZenMedicine,ZenMedicine,"Melara ZZ, Claudia","Melara, Claudia",MISMATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,GHASSEMI MANSOUR 03/16/1937
+IN_BOTH,GIBSON,DAVID,1960-07-12,ACTIVE-PCP,ACTIVE-PCP,ProHealth,ProHealth,"Antonio NP, Ethel","Khristina, Carla",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,GIBSON DAVID 07/12/1960
+IN_BOTH,GILL,NARINDER,1958-05-02,ACTIVE-PCP,ACTIVE-PCP,ZenMedicine,ZenMedicine,"Malhotra MD, Justinder","Malhotra MD, Justin",MISMATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,GILL NARINDER 05/02/1958
+IN_BOTH,GIRGIS,FIBI,1949-01-15,ACTIVE-PCP,ACTIVE-PCP,Access,Access,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Altar, Shirley","Altar, Shirley",MATCH,GIRGIS FIBI 01/15/1949
+IN_BOTH,GOMEZ,ANA,1933-04-23,ACTIVE-PCP,ACTIVE-PCP,Access,Access,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Altar, Shirley","Altar, Shirley",MATCH,GOMEZ ANA 04/23/1933
+IN_BOTH,GONZALEZ PINEDA,MARIA,1937-11-26,ACTIVE-GERI,ACTIVE-GERI,ProHealth,ProHealth,None->Andrew,"Khristina, Carla",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,GONZALEZ PINEDA MARIA 11/26/1937
+IN_BOTH,GONZALEZ,DANIEL C,1938-08-21,ACTIVE,ACTIVE,All Access,All Access,"Jackson PA, Anisha","Malhotra MD, Justin",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,GONZALEZ DANIEL C 08/21/1938
+IN_BOTH,GOODLETT SR,JERRY,1959-09-30,ACTIVE-PCP,ACTIVE-PCP,Angeicare,Angeicare,None->Andrew,"Szalas NP, Andrew",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,GOODLETT SR JERRY 09/30/1959
+IN_BOTH,GORELICK,YOLANDA,1948-07-10,ACTIVE-GERI,ACTIVE-GERI,Descanso,Descanso,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Altar, Shirley","Altar, Shirley",MATCH,GORELICK YOLANDA 07/10/1948
+IN_BOTH,GOTTASDANKER,ANNE,1949-10-22,ACTIVE-GERI,ACTIVE-GERI,Tristar/Phil,Tristar/Phil,"Diaz NP, Albert","Villasenor NP, Lourdes",MISMATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,GOTTASDANKER ANNE 10/22/1949
+IN_BOTH,GOVANI,KANTA,1940-03-19,ACTIVE-GERI,ACTIVE-GERI,ZenMedicine,ZenMedicine,"Kaur NP, Jaspreet","Kaur, Jaspreet",MISMATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,GOVANI KANTA 03/19/1940
+IN_BOTH,GOVANI,LALITCHNDR,1935-03-09,ACTIVE-GERI,ACTIVE-GERI,New Frontier,New Frontier,"Kaur NP, Jaspreet","Kaur, Jaspreet",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,GOVANI LALITCHNDR 03/09/1935
+IN_BOTH,GREEN,BUD,1939-02-07,ACTIVE-GERI,ACTIVE-GERI,Bay Health,Bay Health,Reg Prov,"Khristina, Carla",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,GREEN BUD 02/07/1939
+IN_BOTH,GREEN,NATHAN,1954-01-06,ACTIVE-PCP,ACTIVE-PCP,Sila-V/Phil,Sila-V/Phil,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,GREEN NATHAN 01/06/1954
+IN_BOTH,GRIFFITHS,CAROL,1927-01-06,ACTIVE,ACTIVE,Acacia,Acacia,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,GRIFFITHS CAROL 01/06/1927
+IN_BOTH,GROVES,MICHAEL,1950-03-07,ACTIVE,ACTIVE,New Chapter,New Chapter,"Kaur NP, Jaspreet","Kaur, Jaspreet",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,GROVES MICHAEL 03/07/1950
+IN_BOTH,GUTIERREZ,JOSE,1944-02-08,ACTIVE-PCP,ACTIVE-PCP,New Chapter,New Chapter,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Altar, Shirley","Altar, Shirley",MATCH,GUTIERREZ JOSE 02/08/1944
+IN_BOTH,GUTIERREZ,MARLENE,1945-12-20,ACTIVE-PCP,ACTIVE-PCP,ZenMedicine,ZenMedicine,"Antonio NP, Ethel","Antonio, Ethel",MISMATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,GUTIERREZ MARLENE 12/20/1945
+IN_BOTH,GUTIERREZ,RUDOLPH,1945-04-25,ACTIVE-PCP,ACTIVE-PCP,Emanate Home Health,Emanate Home Health,"Antonio NP, Ethel","Antonio, Ethel",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,GUTIERREZ RUDOLPH 04/25/1945
+IN_BOTH,GUY-DAVIS,FRANCES,1948-11-21,ACTIVE-PCP,ACTIVE-PCP,Compassionate,Compassionate,"Villasenor NP, Lourdes","Villasenor NP, Lourdes",MATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,GUY-DAVIS FRANCES 11/21/1948
+ONLY_IN_DB,HAKIM,HAYFA,1953-11-18,,ACTIVE,,Hakimi,,"Szalas NP, Andrew",,,"Altar, Shirley",,HAKIM HAYFA 11/18/1953
+IN_BOTH,HALLADAY,JOHN,1955-07-21,ACTIVE-PCP,ACTIVE-PCP,ProHealth,ProHealth,"Antonio NP, Ethel","Khristina, Carla",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,HALLADAY JOHN 07/21/1955
+IN_BOTH,HALLIN,JOHN,1933-10-29,ACTIVE-GERI,ACTIVE-GERI,Hakimi,Hakimi,"Antonio NP, Ethel","Antonio, Ethel",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,HALLIN JOHN 10/29/1933
+IN_BOTH,HALL,MARION,1951-04-17,ACTIVE-GERI,ACTIVE-GERI,Affection,Affection,"Otebulu NP, Angela","Otegbulu, Angela",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,HALL MARION 04/17/1951
+IN_BOTH,HALL,MARY,1949-06-26,ACTIVE-PCP,ACTIVE-PCP,Attain,Attain,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Altar, Shirley","Altar, Shirley",MATCH,HALL MARY 06/26/1949
+IN_BOTH,HAMBY,JUDY,1939-10-31,ACTIVE-PCP,ACTIVE-PCP,Sila-V/Phil,Sila-V/Phil,"Kaur NP, Jaspreet","Kaur, Jaspreet",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,HAMBY JUDY 10/31/1939
+IN_BOTH,HAMBY,ROBERT,1943-09-06,ACTIVE-PCP,ACTIVE-PCP,Phil-Unknown,Phil-Unknown,"Kaur NP, Jaspreet","Kaur, Jaspreet",MISMATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,HAMBY ROBERT 09/06/1943
+ONLY_IN_ZMO,HAMINI,JULIETTE,1946-07-30,ACTIVE-PCP,,New Chapter,,"Szalas NP, Andrew",,,"Hernandez, Hector",,,
+ONLY_IN_DB,HANAN,RUBY,1949-01-30,,ACTIVE-GERI,,New Frontier,,,,,"Thapa, Dilasha",,HANAN RUBY 01/30/1949
+IN_BOTH,HARRIS,OREALIUS,1964-03-10,ACTIVE-PCP,ACTIVE-PCP,Access,Access,"Antonio NP, Ethel","Antonio, Ethel",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,HARRIS OREALIUS 03/10/1964
+IN_BOTH,HASSEN,KHALED,1943-09-20,ACTIVE-PCP,ACTIVE-PCP,ZenMedicine,ZenMedicine,"Malhotra MD, Justinder","Malhotra MD, Justin",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,HASSEN KHALED 09/20/1943
+IN_BOTH,HASSEN,NADIA,1948-10-02,ACTIVE-PCP,ACTIVE-PCP,ZenMedicine,ZenMedicine,"Malhotra MD, Justinder","Malhotra MD, Justin",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,HASSEN NADIA 10/02/1948
+IN_BOTH,HEDMAN,MICHAEL,1972-10-20,ACTIVE-PCP,ACTIVE-PCP,Tristar/Phil,Tristar/Phil,"Villasenor NP, Lourdes","Villasenor NP, Lourdes",MATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,HEDMAN MICHAEL 10/20/1972
+IN_BOTH,HEFFERNAN,BISMARK,1966-04-21,ACTIVE-PCP,ACTIVE-PCP,ZenMedicine,ZenMedicine,"Malhotra MD, Justinder","Malhotra MD, Justin",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,HEFFERNAN BISMARK 04/21/1966
+IN_BOTH,HEIN,DEBRA,1957-08-08,ACTIVE,ACTIVE-GERI,New Frontier,New Frontier,"Diaz NP, Albert","Melara, Claudia",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,HEIN DEBRA 08/08/1957
+ONLY_IN_ZMO,HELMER,MARK,1950-12-27,ACTIVE-GERI,,New Frontier,,None->Andrew,,,"Thapa, Dilasha",,,
+IN_BOTH,HERNANDEZ,AMALIA,1938-01-24,ACTIVE-PCP,ACTIVE-PCP,CareLink,CareLink,"Jackson PA, Anisha","Melara, Claudia",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,HERNANDEZ AMALIA 01/24/1938
+IN_BOTH,HERRERA PONCE,DAVID,1959-12-14,ACTIVE-GERI,ACTIVE-GERI,Acacia,Acacia,"Dabalus NP, Eden","Dabalus, Eden",MISMATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,HERRERA PONCE DAVID 12/14/1959
+IN_BOTH,HINTON,LILLIE,1943-03-24,ACTIVE,ACTIVE-PCP,Integrity Home Care,Integrity Home Care,None->Andrew,"Dabalus, Eden",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,HINTON LILLIE 03/24/1943
+ONLY_IN_DB,HOCHSTEIN,KEIKO,1937-02-03,,ACTIVE-GERI,,Affection,,"Otegbulu, Angela",,,,,HOCHSTEIN KEIKO 02/03/1937
+ONLY_IN_ZMO,HOFMANN,JEAN,1948-08-24,ACTIVE-PCP,,Acacia,,"Dabalus NP, Eden",,,"Hernandez, Hector",,,
+IN_BOTH,HOLBERT,DAVID,1939-08-29,ACTIVE-GERI,ACTIVE-GERI,ZenMedicine,ZenMedicine,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,HOLBERT DAVID 08/29/1939
+IN_BOTH,HOLMES,LISA,1985-06-29,ACTIVE-PCP,ACTIVE-PCP,Tristar/Phil,Tristar/Phil,"Villasenor NP, Lourdes","Villasenor NP, Lourdes",MATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,HOLMES LISA 06/29/1985
+IN_BOTH,HONARFAR,MARJANEH,1959-03-01,ACTIVE-GERI,ACTIVE-GERI,New Frontier,New Frontier,"Davis NP, Genevieve","Szalas NP, Andrew",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,HONARFAR MARJANEH 03/01/1959
+ONLY_IN_DB,HOOPER,JAMES,1939-02-11,,ACTIVE,,Acacia,,,,,,,HOOPER JAMES 02/11/1939
+IN_BOTH,HORACIO,RAZ,1941-09-23,ACTIVE-GERI,ACTIVE-GERI,All Access,All Access,None->Andrew,"Otegbulu, Angela",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,HORACIO RAZ 09/23/1941
+IN_BOTH,HOVANESSIAN,ELMA,1931-03-17,ACTIVE,ACTIVE-PCP,Clinicians,Clinicians,"Diaz NP, Albert","Szalas NP, Andrew",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,HOVANESSIAN ELMA 03/17/1931
+IN_BOTH,HURST,DAVID A,1960-05-06,ACTIVE-PCP,ACTIVE-PCP,ProHealth,ProHealth,"Antonio NP, Ethel","Khristina, Carla",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,HURST DAVID A 05/06/1960
+IN_BOTH,HYLAND,JEAN,1950-06-21,ACTIVE,ACTIVE,ZenMedicine,ZenMedicine,"Villasenor NP, Lourdes","Villasenor NP, Lourdes",MATCH,"Altar, Shirley","Altar, Shirley",MATCH,HYLAND JEAN 06/21/1950
+IN_BOTH,IBARRA,JULIETTA,1950-08-06,ACTIVE-GERI,ACTIVE-GERI,All Access,All Access,"Jackson PA, Anisha","Malhotra MD, Justin",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,IBARRA JULIETTA 08/06/1950
+IN_BOTH,ISKENDERIAN,FLOYD,1957-11-22,ACTIVE-PCP,ACTIVE-PCP,Hakimi,Hakimi,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Altar, Shirley","Altar, Shirley",MATCH,ISKENDERIAN FLOYD 11/22/1957
+IN_BOTH,JACKSON,JACQUELINE,1964-02-05,ACTIVE-PCP,ACTIVE-PCP,ZenMedicine,ZenMedicine,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,JACKSON JACQUELINE 02/05/1964
+IN_BOTH,JACOBSEN,RUTH,1942-11-10,ACTIVE-PCP,ACTIVE-PCP,Bay Health,Bay Health,None->Andrew,"Khristina, Carla",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,JACOBSEN RUTH 11/10/1942
+ONLY_IN_DB,JACOBSON,KEVIN LEE,1957-09-15,,ACTIVE-PCP,,ProHealth,,"Khristina, Carla",,,Andrea Rubio,,JACOBSON KEVIN LEE 09/15/1957
+IN_BOTH,JAEGER,IRVIN,1931-09-18,ACTIVE-GERI,ACTIVE-GERI,New Frontier,New Frontier,"Diaz NP, Albert","Szalas NP, Andrew",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,JAEGER IRVIN 09/18/1931
+IN_BOTH,JAUSSEN,MARTINE,1948-07-28,ACTIVE,ACTIVE-GERI,Ventura,Ventura,"Diaz NP, Albert","Dabalus, Eden",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,JAUSSEN MARTINE 07/28/1948
+ONLY_IN_DB,JAVID,SALIM,1943-03-01,,ACTIVE-GERI,,Ventura,,"Szalas NP, Andrew",,,"Thapa, Dilasha",,JAVID SALIM 03/01/1943
+IN_BOTH,JAVIER,VIRGILIO,1932-05-31,ACTIVE-PCP,ACTIVE-PCP,Acacia,Acacia,"Dabalus NP, Eden","Dabalus, Eden",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,JAVIER VIRGILIO 05/31/1932
+IN_BOTH,JIMENEZ ZAVALA,JOEL,1949-05-20,ACTIVE-GERI,ACTIVE-GERI,New Frontier,New Frontier,"Diaz NP, Albert","Szalas NP, Andrew",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,JIMENEZ ZAVALA JOEL 05/20/1949
+IN_BOTH,JOHNSON,GLORIA,1934-03-30,ACTIVE-PCP,ACTIVE-PCP,ProHealth,ProHealth,"Antonio NP, Ethel","Khristina, Carla",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,JOHNSON GLORIA 03/30/1934
+IN_BOTH,JONES JR,JOE,1942-04-03,ACTIVE-PCP,ACTIVE-PCP,Bay Health,Bay Health,"Szalas NP, Andrew","Khristina, Carla",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,JONES JR JOE 04/03/1942
+IN_BOTH,JORDAN,LATANIA,1964-02-24,ACTIVE,ACTIVE,New Frontier,New Frontier,None->Andrew,"Dabalus, Eden",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,JORDAN LATANIA 02/24/1964
+IN_BOTH,JUAREZ,ESMERALDA,1987-03-26,ACTIVE,ACTIVE,Unique Care Plus,Unique Care Plus,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,JUAREZ ESMERALDA 03/26/1987
+IN_BOTH,KARAPETIAN,ARSHALVYS,1931-03-31,ACTIVE-GERI,ACTIVE-GERI,AKA,AKA,"Diaz NP, Albert","Szalas NP, Andrew",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,KARAPETIAN ARSHALVYS 03/31/1931
+IN_BOTH,KAUR,AVTAR,1956-05-04,ACTIVE-GERI,ACTIVE-GERI,Violet,Violet,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,KAUR AVTAR 05/04/1956
+IN_BOTH,KAUR,BALBIR,1957-01-01,ACTIVE,ACTIVE-GERI,New Frontier,New Frontier,"Diaz NP, Albert",,ONLY_IN_ZMO,"Thapa, Dilasha","Thapa, Dilasha",MATCH,KAUR BALBIR 01/01/1957
+IN_BOTH,KAUR,BALJIT,1952-08-20,ACTIVE-GERI,ACTIVE-GERI,Violet,Violet,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,KAUR BALJIT 08/20/1952
+IN_BOTH,KAUR,DALJEET,1956-06-18,ACTIVE,ACTIVE-GERI,Ventura,Ventura,None->Andrew,"Szalas NP, Andrew",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,KAUR DALJEET 06/18/1956
+IN_BOTH,KAUR,HARJINDER,1945-08-20,ACTIVE-GERI,ACTIVE-GERI,ventura,ventura,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,KAUR HARJINDER 08/20/1945
+IN_BOTH,KAUR,HARJIT,1958-01-01,ACTIVE-GERI,ACTIVE-GERI,Violet,Violet,"Diaz NP, Albert","Szalas NP, Andrew",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,KAUR HARJIT 01/01/1958
+IN_BOTH,KAUR,JAGIR,1950-06-30,ACTIVE-GERI,ACTIVE-GERI,Violet,Violet,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,KAUR JAGIR 06/30/1950
+ONLY_IN_DB,KAUR,KASHMIR,1959-03-04,,ACTIVE-GERI,,Ventura,,"Szalas NP, Andrew",,,"Thapa, Dilasha",,KAUR KASHMIR 03/04/1959
+IN_BOTH,KAUR,KIRPAL,1944-07-31,ACTIVE,ACTIVE-GERI,Ventura,Ventura,"Diaz NP, Albert","Szalas NP, Andrew",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,KAUR KIRPAL 07/31/1944
+IN_BOTH,KAUR,NIRMAL,1952-11-19,ACTIVE,ACTIVE,Violet,Violet,"Kaur NP, Jaspreet","Kaur, Jaspreet",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,KAUR NIRMAL 11/19/1952
+IN_BOTH,KAUR,PARAMJIT,1959-04-16,ACTIVE,ACTIVE,Violet,Violet,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,KAUR PARAMJIT 04/16/1959
+IN_BOTH,KAUR,PARAMJIT,1960-06-25,ACTIVE-GERI,ACTIVE-GERI,Violet,Violet,"Diaz NP, Albert","Szalas NP, Andrew",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,KAUR PARAMJIT 06/25/1960
+ONLY_IN_ZMO,KAUR,PIAR,1945-06-10,ACTIVE-GERI,,Ventura,,"Diaz NP, Albert",,,"Thapa, Dilasha",,,
+IN_BOTH,KAUR,RANJIT,1947-03-10,ACTIVE-GERI,ACTIVE-GERI,Violet,Violet,"Diaz NP, Albert","Szalas NP, Andrew",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,KAUR RANJIT 03/10/1947
+IN_BOTH,KILPATRICK,BEVERLY,1941-07-21,ACTIVE,ACTIVE,Access,Access,"Dabalus NP, Eden","Dabalus, Eden",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,KILPATRICK BEVERLY 07/21/1941
+IN_BOTH,KIM,KYONG,1957-07-28,ACTIVE-PCP,ACTIVE-PCP,ProHealth,ProHealth,"Antonio NP, Ethel","Khristina, Carla",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,KIM KYONG 07/28/1957
+IN_BOTH,KING,DAVID,1964-08-23,ACTIVE,ACTIVE,Compassionate,Compassionate,"Villasenor NP, Lourdes","Villasenor NP, Lourdes",MATCH,"Altar, Shirley","Altar, Shirley",MATCH,KING DAVID 08/23/1964
+IN_BOTH,KINSEY,ROBERT,1942-03-10,ACTIVE-PCP,ACTIVE-PCP,Tristar/Phil,Tristar/Phil,"Villasenor NP, Lourdes","Villasenor NP, Lourdes",MATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,KINSEY ROBERT 03/10/1942
+IN_BOTH,KINSEY,SHARON,1942-05-21,ACTIVE-PCP,ACTIVE-PCP,Tristar/Phil,Tristar/Phil,"Villasenor NP, Lourdes","Villasenor NP, Lourdes",MATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,KINSEY SHARON 05/21/1942
+IN_BOTH,KOSOFSKY,MICHAEL,1954-11-24,ACTIVE,ACTIVE,Angelicare,Angelicare,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,KOSOFSKY MICHAEL 11/24/1954
+IN_BOTH,KRISHNA,JITENDRA,1970-11-08,ACTIVE-PCP,ACTIVE-PCP,ProHealth,ProHealth,Reg Prov,"Khristina, Carla",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,KRISHNA JITENDRA 11/08/1970
+IN_BOTH,KUYUMCU,LUIZ,1930-06-14,ACTIVE-PCP,ACTIVE-PCP,Acacia,Acacia,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,KUYUMCU LUIZ 06/14/1930
+IN_BOTH,KUZYK,VOLODAR,1943-03-02,ACTIVE,ACTIVE,Phil-Unknown,Phil-Unknown,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,KUZYK VOLODAR 03/02/1943
+IN_BOTH,KUZYK,ZORYSLAVA,1945-07-02,ACTIVE,ACTIVE,Phil-Unknown,Phil-Unknown,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,KUZYK ZORYSLAVA 07/02/1945
+IN_BOTH,LA CHAPELLE,JOHN,1947-04-22,ACTIVE-PCP,ACTIVE-PCP,ZenMedicine,ZenMedicine,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,LA CHAPELLE JOHN 04/22/1947
+IN_BOTH,LAFARGE,CHRISTINE,1952-11-08,ACTIVE,ACTIVE,Hakimi,Hakimi,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Altar, Shirley","Altar, Shirley",MATCH,LAFARGE CHRISTINE 11/08/1952
+IN_BOTH,LAGMAN,RAUL,1950-07-17,ACTIVE-GERI,ACTIVE-GERI,All Access,All Access,"Diaz NP, Albert","Antonio, Ethel",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,LAGMAN RAUL 07/17/1950
+ONLY_IN_DB,LAMBERT,LOIS,1942-09-08,,ACTIVE-GERI,,Ventura,,,,,"Thapa, Dilasha",,LAMBERT LOIS 09/08/1942
+ONLY_IN_DB,LANGE,CHRISTOPHER,1960-06-02,,ACTIVE,,New Frontier,,,,,,,LANGE CHRISTOPHER 06/02/1960
+IN_BOTH,LARSON,JENNIFER,1946-03-01,ACTIVE-PCP,ACTIVE-PCP,Compassionate,Compassionate,"Diaz NP, Albert","Villasenor NP, Lourdes",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,LARSON JENNIFER 03/01/1946
+IN_BOTH,LASTRA,ROSA,1948-01-19,ACTIVE-PCP,ACTIVE-PCP,Access,Access,"Antonio NP, Ethel","Antonio, Ethel",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,LASTRA ROSA 01/19/1948
+IN_BOTH,LA,HUN,1943-01-01,ACTIVE-PCP,ACTIVE-PCP,Violet,Violet,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,LA HUN 01/01/1943
+ONLY_IN_DB,LEAL,ROSAURA,1931-03-15,,ACTIVE,,All Access,,"Malhotra MD, Justin",,,,,LEAL ROSAURA 03/15/1931
+IN_BOTH,LEAVER-PAYNE,SHERRI,1961-09-21,ACTIVE-PCP,ACTIVE-PCP,Sila-V/Phil,Sila-V/Phil,"Villasenor NP, Lourdes","Villasenor NP, Lourdes",MATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,LEAVER-PAYNE SHERRI 09/21/1961
+IN_BOTH,LEAVER,SONYA,1941-07-29,ACTIVE-PCP,ACTIVE-PCP,Sila-V/Phil,Sila-V/Phil,"Villasenor NP, Lourdes","Villasenor NP, Lourdes",MATCH,"Hernandez, Hector","Sumpay, Laura",MISMATCH,LEAVER SONYA 07/29/1941
+IN_BOTH,LEDDY,BARBARA,1947-12-15,ACTIVE-PCP,ACTIVE-PCP,ZenMedicine,ZenMedicine,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,LEDDY BARBARA 12/15/1947
+IN_BOTH,LEDDY,WILLIAM,1944-12-13,ACTIVE-PCP,ACTIVE-PCP,ZenMedicine,ZenMedicine,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,LEDDY WILLIAM 12/13/1944
+IN_BOTH,LEFFRIDGE,MARGINE,1931-11-09,ACTIVE-PCP,ACTIVE-PCP,Descanso,Descanso,"Jackson PA, Anisha","Melara, Claudia",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,LEFFRIDGE MARGINE 11/09/1931
+IN_BOTH,LEHAL,AMAR,1945-04-04,ACTIVE-PCP,ACTIVE-PCP,ZenMedicine,ZenMedicine,"Malhotra MD, Justinder","Malhotra MD, Justin",MISMATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,LEHAL AMAR 04/04/1945
+IN_BOTH,LEHAL,KULWANT,1942-12-06,ACTIVE-PCP,ACTIVE-PCP,ZenMedicine,ZenMedicine,"Malhotra MD, Justinder","Malhotra MD, Justin",MISMATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,LEHAL KULWANT 12/06/1942
+IN_BOTH,LEVITT,DEANNA,1944-10-06,ACTIVE-PCP,ACTIVE-PCP,Violet,Violet,"Kaur NP, Jaspreet","Kaur, Jaspreet",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,LEVITT DEANNA 10/06/1944
+ONLY_IN_DB,LEWIS,CARRIE,1958-07-26,,ACTIVE-GERI,,Access,,"Szalas NP, Andrew",,,"Altar, Shirley",,LEWIS CARRIE 07/26/1958
+ONLY_IN_ZMO,LINEHAN,MELISSA,1955-01-08,ACTIVE,,Ventura,,"Diaz NP, Albert",,,"Thapa, Dilasha",,,
+IN_BOTH,LLACER,JORGE,1933-08-04,ACTIVE-PCP,ACTIVE-PCP,Acacia,Acacia,"Dabalus NP, Eden","Dabalus, Eden",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,LLACER JORGE 08/04/1933
+ONLY_IN_ZMO,LOGAN,ANTHONY,1954-08-20,ACTIVE-PCP,,Attain,,None->Andrew,,,"Altar, Shirley",,,
+IN_BOTH,LOPEZ,JUAN,1945-05-13,ACTIVE-PCP,ACTIVE-PCP,Sila-V/Phil,Sila-V/Phil,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,LOPEZ JUAN 05/13/1945
+ONLY_IN_DB,LORA RAMIREZ,LUCILA,1950-07-13,,ACTIVE-GERI,,Descanso,,,,,,,LORA RAMIREZ LUCILA 07/13/1950
+IN_BOTH,LOVELY,JOHN,1945-02-07,ACTIVE-PCP,ACTIVE-PCP,Acacia,Acacia,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,LOVELY JOHN 02/07/1945
+ONLY_IN_ZMO,LU,SUSAN,1945-03-10,ACTIVE-PCP,,Acacia,,"Dabalus NP, Eden",,,"Atencio, Dianela",,,
+ONLY_IN_DB,MACDONALD,ANGUS,1939-11-16,,ACTIVE-GERI,,Acacia,,"Dabalus, Eden",,,Andrea Rubio,,MACDONALD ANGUS 11/16/1939
+IN_BOTH,MACDONALD,NORMAN,1944-07-01,ACTIVE-PCP,ACTIVE-PCP,Matrix Home Health,Matrix Home Health,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,MACDONALD NORMAN 07/01/1944
+IN_BOTH,MACIAS,LORENA,1959-08-13,ACTIVE-PCP,ACTIVE-PCP,New Chapter,New Chapter,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,INACTIVE,,ONLY_IN_ZMO,MACIAS LORENA 08/13/1959
+ONLY_IN_DB,MAGBANUA,ROMANA,1942-05-10,,ACTIVE-PCP,,Violet,,,,,"Thapa, Dilasha",,MAGBANUA ROMANA 05/10/1942
+ONLY_IN_DB,MAH,JUANITA DOROTHEA,1951-02-06,,ACTIVE,,Bay Health,,"Khristina, Carla",,,Andrea Rubio,,MAH JUANITA DOROTHEA 02/06/1951
+IN_BOTH,MALDONADO BARAJAS,JOSE,1946-03-13,ACTIVE,ACTIVE,Hakimi,Hakimi,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Altar, Shirley","Altar, Shirley",MATCH,MALDONADO BARAJAS JOSE 03/13/1946
+IN_BOTH,MALHOTRA,AMIR,1946-02-06,ACTIVE-PCP,ACTIVE-PCP,ZenMedicine,ZenMedicine,"Malhotra MD, Justinder","Malhotra MD, Justin",MISMATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,MALHOTRA AMIR 02/06/1946
+IN_BOTH,MALHOTRA,GURDEEP,1944-10-26,ACTIVE-PCP,ACTIVE-PCP,ZenMedicine,ZenMedicine,"Malhotra MD, Justinder","Malhotra MD, Justin",MISMATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,MALHOTRA GURDEEP 10/26/1944
+IN_BOTH,MALLOY,TIMOTHY,1957-09-14,ACTIVE-PCP,ACTIVE-PCP,Compassionate,Compassionate,"Otebulu NP, Angela","Otegbulu, Angela",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,MALLOY TIMOTHY 09/14/1957
+IN_BOTH,MANCHANDIA,MAHESH,1952-06-01,ACTIVE-PCP,ACTIVE-PCP,ZenMedicine,ZenMedicine,"Malhotra MD, Justinder","Malhotra MD, Justin",MISMATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,MANCHANDIA MAHESH 06/01/1952
+IN_BOTH,MARLOWE,CAROLIE,1936-08-07,ACTIVE,ACTIVE,New Chapter,New Chapter,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Altar, Shirley","Altar, Shirley",MATCH,MARLOWE CAROLIE 08/07/1936
+IN_BOTH,MARTENS-MEROLLE,ANNIE,1946-10-07,ACTIVE,ACTIVE-GERI,ProHealth,ProHealth,None->Andrew,"Khristina, Carla",MISMATCH,"Atencio, Dianela","Atencio, Dianela",MATCH,MARTENS-MEROLLE ANNIE 10/07/1946
+IN_BOTH,MARTIN-BAZANT,MARY,1941-02-28,ACTIVE-PCP,ACTIVE-PCP,Acacia,Acacia,"Dabalus NP, Eden","Dabalus, Eden",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,MARTIN-BAZANT MARY 02/28/1941
+ONLY_IN_DB,MARTINEZ,ALEJANDRA,1982-09-10,,ACTIVE-GERI,,New Frontier,,"Szalas NP, Andrew",,,"Thapa, Dilasha",,MARTINEZ ALEJANDRA 09/10/1982
+IN_BOTH,MARTINEZ,MARIA,1953-05-09,ACTIVE,ACTIVE,Violet,Violet,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,MARTINEZ MARIA 05/09/1953
+IN_BOTH,MARTINEZ,MARTA,1938-06-30,ACTIVE-PCP,ACTIVE-PCP,Hakimi,Hakimi,"Szalas NP, Andrew","Melara, Claudia",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,MARTINEZ MARTA 06/30/1938
+ONLY_IN_DB,MARTINEZ,MARTHA,1944-04-23,,ACTIVE,,All Access,,"Malhotra MD, Justin",,,,,MARTINEZ MARTHA 04/23/1944
+IN_BOTH,MARTINEZ,OLGA,1948-01-15,ACTIVE-GERI,ACTIVE-GERI,Tristar/Phil,Tristar/Phil,"Diaz NP, Albert","Szalas NP, Andrew",MISMATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,MARTINEZ OLGA 01/15/1948
+ONLY_IN_ZMO,MARTINEZ,ORLANDO,1944-02-13,ACTIVE-PCP,,Descanso,,"Antonio NP, Ethel",,,"Hernandez, Hector",,,
+ONLY_IN_ZMO,MARTIN,CORA,1945-05-03,ACTIVE-PCP,,New Chapter,,"Antonio NP, Ethel",,,"Perez, Jorge",,,
+IN_BOTH,MASON,LEVI,1957-03-15,ACTIVE-PCP,ACTIVE-PCP,ProHealth,ProHealth,"Antonio NP, Ethel","Khristina, Carla",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,MASON LEVI 03/15/1957
+IN_BOTH,MASON,WENDY,1963-07-16,ACTIVE-GERI,ACTIVE-GERI,ProHealth,ProHealth,Reg Prov,"Khristina, Carla",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,MASON WENDY 07/16/1963
+IN_BOTH,MATTSON,ALYSIA,1962-07-12,ACTIVE-PCP,ACTIVE-PCP,ProHealth,ProHealth,"Antonio NP, Ethel","Khristina, Carla",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,MATTSON ALYSIA 07/12/1962
+IN_BOTH,MATULICH,DAN,1931-05-31,ACTIVE-GERI,ACTIVE-GERI,Affection,Affection,None->Andrew,"Szalas NP, Andrew",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,MATULICH DAN 05/31/1931
+IN_BOTH,MCARTHUR,RONA,1956-12-21,ACTIVE-PCP,ACTIVE-PCP,ZenMedicine,ZenMedicine,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,MCARTHUR RONA 12/21/1956
+IN_BOTH,MCCANN,MELINDA M,1952-07-16,ACTIVE-GERI,ACTIVE-GERI,Violet,Violet,"Kaur NP, Jaspreet","Kaur, Jaspreet",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,MCCANN MELINDA M 07/16/1952
+IN_BOTH,MCFALL,SHERRY,1958-10-03,ACTIVE-GERI,ACTIVE-GERI,VENTURA,VENTURA,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,MCFALL SHERRY 10/03/1958
+IN_BOTH,MCNAB,ILDIKO,1943-06-22,ACTIVE-PCP,ACTIVE-PCP,Hakimi,Hakimi,"Antonio NP, Ethel","Antonio, Ethel",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,MCNAB ILDIKO 06/22/1943
+IN_BOTH,MCNAB,MALCOLM,1943-03-25,ACTIVE-GERI,ACTIVE-GERI,Hakimi,Hakimi,"Antonio NP, Ethel","Antonio, Ethel",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,MCNAB MALCOLM 03/25/1943
+IN_BOTH,MCNEILL,MICHELE,1953-06-08,ACTIVE-PCP,ACTIVE-PCP,Access,Access,"Melara ZZ, Claudia","Melara, Claudia",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,MCNEILL MICHELE 06/08/1953
+IN_BOTH,MEDEL,ANGELICA,1969-09-17,ACTIVE-GERI,ACTIVE-GERI,Compassionate,Compassionate,"Villasenor NP, Lourdes","Villasenor NP, Lourdes",MATCH,"Altar, Shirley","Altar, Shirley",MATCH,MEDEL ANGELICA 09/17/1969
+IN_BOTH,MEDINA,MARIA,1925-09-09,ACTIVE,ACTIVE,All Access,All Access,"Jackson PA, Anisha","Malhotra MD, Justin",MISMATCH,,,BOTH_EMPTY,MEDINA MARIA 09/09/1925
+IN_BOTH,MEDRANO,JOSEFINA,1942-02-20,ACTIVE-PCP,ACTIVE-PCP,Violet,Violet,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,MEDRANO JOSEFINA 02/20/1942
+IN_BOTH,MERCADO,ESTHER,1968-11-29,ACTIVE-PCP,ACTIVE-PCP,ZenMedicine,ZenMedicine,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,MERCADO ESTHER 11/29/1968
+ONLY_IN_DB,MESSENGER,DERINDA LYNNE,1952-08-26,,ACTIVE-PCP,,ProHealth,,"Khristina, Carla",,,Andrea Rubio,,MESSENGER DERINDA LYNNE 08/26/1952
+IN_BOTH,MEURER,SONIA C,1959-10-05,ACTIVE,ACTIVE,Violet,Violet,"Diaz NP, Albert",,ONLY_IN_ZMO,"Thapa, Dilasha","Thapa, Dilasha",MATCH,MEURER SONIA C 10/05/1959
+IN_BOTH,MILLER,JANICE,1957-10-08,ACTIVE-PCP,ACTIVE-PCP,Sila-V/Phil,Sila-V/Phil,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,MILLER JANICE 10/08/1957
+IN_BOTH,MILLER,NANCY,1943-01-17,ACTIVE-PCP,ACTIVE-PCP,Clinicians,Clinicians,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Altar, Shirley","Altar, Shirley",MATCH,MILLER NANCY 01/17/1943
+IN_BOTH,MIWA,HIROKO,1936-08-17,ACTIVE-PCP,ACTIVE-PCP,Hakimi,Hakimi,"Antonio NP, Ethel","Antonio, Ethel",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,MIWA HIROKO 08/17/1936
+IN_BOTH,MOAZEZ,SOROUR,1940-08-11,ACTIVE-GERI,ACTIVE-GERI,New Frontier,New Frontier,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,MOAZEZ SOROUR 08/11/1940
+ONLY_IN_DB,MOHAMMED,ANJUMAN,1952-06-08,,ACTIVE-GERI,,Ventura,,,,,"Thapa, Dilasha",,MOHAMMED ANJUMAN 06/08/1952
+IN_BOTH,MOLINA SOTO,EDNA L,1953-04-11,ACTIVE,ACTIVE,All Access,All Access,"Jackson PA, Anisha","Malhotra MD, Justin",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,MOLINA SOTO EDNA L 04/11/1953
+IN_BOTH,MONTAGHAMI,THOMAS,1965-09-09,ACTIVE-PCP,ACTIVE-PCP,United Integrity Home Health,United Integrity Home Health,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,MONTAGHAMI THOMAS 09/09/1965
+IN_BOTH,MONTANO,DIANA,1959-03-09,ACTIVE-GERI,ACTIVE-GERI,Descanso,Descanso,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Altar, Shirley","Altar, Shirley",MATCH,MONTANO DIANA 03/09/1959
+IN_BOTH,MONTOYA,ELEANOR,1934-01-28,ACTIVE-GERI,ACTIVE-GERI,Compassionate,Compassionate,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Altar, Shirley","Altar, Shirley",MATCH,MONTOYA ELEANOR 01/28/1934
+IN_BOTH,MORALES,MARTHA,1951-08-17,ACTIVE-GERI,ACTIVE-GERI,Attain,Attain,"Otebulu NP, Angela","Otegbulu, Angela",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,MORALES MARTHA 08/17/1951
+IN_BOTH,MORELAND,JAMES,1939-08-24,ACTIVE-GERI,ACTIVE-GERI,Affection,Affection,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Altar, Shirley","Altar, Shirley",MATCH,MORELAND JAMES 08/24/1939
+IN_BOTH,MORRIS,WILLIE,1944-09-26,ACTIVE-PCP,ACTIVE-PCP,Attain,Attain,None->Andrew,"Szalas NP, Andrew",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,MORRIS WILLIE 09/26/1944
+IN_BOTH,MORSY,TAREK,1959-01-02,ACTIVE-GERI,ACTIVE-GERI,ProHealth,ProHealth,"Antonio NP, Ethel","Khristina, Carla",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,MORSY TAREK 01/02/1959
+IN_BOTH,MOTAMEDI,FARAH,1958-01-21,ACTIVE-GERI,ACTIVE-GERI,All Access,All Access,"Otebulu NP, Angela","Otegbulu, Angela",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,MOTAMEDI FARAH 01-21-1958
+ONLY_IN_ZMO,MOURAD,MOHAMED AHMED,,ACTIVE-PCP,,Swift Swan Home Health,,None->Andrew,,,"Thapa, Dilasha",,,
+IN_BOTH,MUNEVAR,FERNANDO,1947-10-13,ACTIVE-PCP,ACTIVE-PCP,ZenMedicine,ZenMedicine,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,MUNEVAR FERNANDO 10/13/1947
+IN_BOTH,MURPHY,DENNIS,1939-10-08,ACTIVE-PCP,ACTIVE-PCP,Acacia,Acacia,"Dabalus NP, Eden","Dabalus, Eden",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,MURPHY DENNIS 10/08/1939
+IN_BOTH,NAIMAT,TASSAWUR,1951-10-27,ACTIVE-GERI,ACTIVE-GERI,HOAG Home Health,HOAG Home Health,"Dabalus NP, Eden","Dabalus, Eden",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,NAIMAT TASSAWUR 10/27/1951
+IN_BOTH,NAND,PARMA,1954-08-25,ACTIVE-PCP,ACTIVE-PCP,Hakimi,Hakimi,"Antonio NP, Ethel","Antonio, Ethel",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,NAND PARMA 08/25/1954
+IN_BOTH,NARANG,SURINDER,1959-02-28,ACTIVE,ACTIVE,New Frontier,New Frontier,"Kaur NP, Jaspreet","Kaur, Jaspreet",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,NARANG SURINDER 02/28/1959
+IN_BOTH,NAVARRO,MARTHA,1952-09-02,ACTIVE-PCP,ACTIVE-PCP,ARS,ARS,"Antonio NP, Ethel","Antonio, Ethel",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,NAVARRO MARTHA 09/02/1952
+IN_BOTH,NAZARI NEJAD,PARVIN,1954-08-29,ACTIVE-PCP,ACTIVE-PCP,ZenMedicine,ZenMedicine,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,NAZARI NEJAD PARVIN 08/29/1954
+ONLY_IN_DB,NAZARI,KHATOON,1941-05-07,,ACTIVE-PCP,,Hakimi,,"Otegbulu, Angela",,,"Altar, Shirley",,NAZARI KHATOON 05/07/1941
+IN_BOTH,NEAL,SHIRLEY,1938-12-07,ACTIVE-PCP,ACTIVE-PCP,Clinicians,Clinicians,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Altar, Shirley","Altar, Shirley",MATCH,NEAL SHIRLEY 12/07/1938
+IN_BOTH,NEWMAN,ANDREW,1954-02-07,ACTIVE-PCP,ACTIVE-PCP,Sila-V/Phil,Sila-V/Phil,"Diaz NP, Albert","Villasenor NP, Lourdes",MISMATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,NEWMAN ANDREW 02/07/1954
+IN_BOTH,NGUYEN,KIM,1955-04-18,ACTIVE-PCP,ACTIVE-PCP,ProHealth,ProHealth,"Antonio NP, Ethel","Khristina, Carla",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,NGUYEN KIM 04/18/1955
+IN_BOTH,NGUYEN,NGA,1933-07-23,ACTIVE-PCP,ACTIVE-PCP,Bay Health,Bay Health,"Szalas NP, Andrew","Khristina, Carla",MISMATCH,,,BOTH_EMPTY,NGUYEN NGA 07/23/1933
+IN_BOTH,NGUYEN,SONNY,1961-10-12,ACTIVE,ACTIVE,ZenMedicine,ZenMedicine,"Jackson PA, Anisha","Melara, Claudia",MISMATCH,,,BOTH_EMPTY,Nguyen SONNY 10/12/1961
+ONLY_IN_DB,NIKOLA,CLAUDE,1970-07-03,,ACTIVE-PCP,,Unique Care Plus,,,,,"Thapa, Dilasha",,NIKOLA CLAUDE 07/03/1970
+IN_BOTH,NOWZARI,ZAHRA,1936-07-02,ACTIVE-PCP,ACTIVE-PCP,Hakimi,Hakimi,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Altar, Shirley","Altar, Shirley",MATCH,NOWZARI ZAHRA 07/02/1936
+ONLY_IN_DB,OAK,JAMES,1938-03-20,,ACTIVE,,American,,,,,,,OAK JAMES 03/20/1938
+IN_BOTH,OEI,SWIE,1935-07-28,ACTIVE-PCP,ACTIVE-PCP,New Frontier,New Frontier,"Kaur NP, Jaspreet","Kaur, Jaspreet",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,OEI SWIE 07/28/1935
+ONLY_IN_DB,ORTEGA,MAGDA,1941-10-23,,ACTIVE,,New Frontier,,"Kaur, Jaspreet",,,"Thapa, Dilasha",,ORTEGA MAGDA 10/23/1941
+IN_BOTH,PAGE,NANCY,1934-04-24,ACTIVE-GERI,ACTIVE-GERI,Descanso,Descanso,"Jackson PA, Anisha","Melara, Claudia",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,PAGE NANCY 04/24/1934
+IN_BOTH,PALMA,ANNA,1943-02-22,ACTIVE-PCP,ACTIVE-PCP,ProHealth,ProHealth,"Antonio NP, Ethel","Khristina, Carla",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,PALMA ANNA 02/22/1943
+IN_BOTH,PAL,JOGINDER,1948-05-07,ACTIVE-GERI,ACTIVE-GERI,Violet,Violet,"Kaur NP, Jaspreet","Kaur, Jaspreet",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,PAL JOGINDER 05/07/1948
+IN_BOTH,PANOSIAN,VAROUJAN,1956-07-01,ACTIVE-PCP,ACTIVE-PCP,ZenMedicine,ZenMedicine,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,PANOSIAN VAROUJAN 07/01/1956
+ONLY_IN_DB,PANTOJA DE JIMENEZ,CECILIA,1954-04-19,,ACTIVE,,New Frontier,,,,,,,PANTOJA DE JIMENEZ CECILIA 04/19/1954
+IN_BOTH,PATEL,KANAIYALAL,1941-05-08,ACTIVE-GERI,ACTIVE-GERI,New Frontier,New Frontier,"Kaur NP, Jaspreet","Kaur, Jaspreet",MISMATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,PATEL KANAIYALAL 05/08/1941
+IN_BOTH,PATEL,KAPILABEN,1951-06-01,ACTIVE-GERI,ACTIVE-GERI,New Frontier,New Frontier,"Kaur NP, Jaspreet","Kaur, Jaspreet",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,PATEL KAPILABEN 06/01/1951
+ONLY_IN_DB,PATTERSON,MICHELLE,1966-10-17,,ACTIVE-PCP,,ProHealth,,"Khristina, Carla",,,Andrea Rubio,,PATTERSON MICHELLE 10/17/1966
+IN_BOTH,PAYNE,RICK,1958-10-09,ACTIVE-PCP,ACTIVE-PCP,Sila-V/Phil,Sila-V/Phil,"Villasenor NP, Lourdes","Villasenor NP, Lourdes",MATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,PAYNE RICK 10/09/1958
+IN_BOTH,PEREZ URENA,MIGUEL,1956-10-01,ACTIVE-PCP,ACTIVE-PCP,Descanso,Descanso,"Dabalus NP, Eden","Dabalus, Eden",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,PEREZ URENA MIGUEL 10/01/1956
+IN_BOTH,PEREZ,ERNESTO,1953-02-24,ACTIVE,ACTIVE,All Access,All Access,"Jackson PA, Anisha","Malhotra MD, Justin",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,PEREZ ERNESTO 02/24/1953
+IN_BOTH,PEREZ,MARIA,1962-12-18,ACTIVE-PCP,ACTIVE-PCP,ZenMedicine,ZenMedicine,"Jackson PA, Anisha","Melara, Claudia",MISMATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,PEREZ MARIA 12/18/1962
+IN_BOTH,PERKINS,FREDERICK,1956-01-20,ACTIVE,ACTIVE,Compassionate,Compassionate,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Altar, Shirley","Altar, Shirley",MATCH,PERKINS FREDERICK 01/20/1956
+IN_BOTH,PESNILYAN,MELIK,1944-03-30,ACTIVE,ACTIVE,All Access,All Access,"Antonio NP, Ethel","Antonio, Ethel",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,PESNILYAN MELIK 03/30/1944
+ONLY_IN_DB,PETERS,DIANE,1954-08-02,,ACTIVE,,Affection,,,,,,,PETERS DIANE 08/02/1954
+IN_BOTH,PHAM,TUONG,1932-03-13,ACTIVE-PCP,ACTIVE-PCP,ProHealth,ProHealth,"Antonio NP, Ethel","Khristina, Carla",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,PHAM TUONG 03/13/1932
+IN_BOTH,PHARAR,VIJAY,1957-02-14,ACTIVE-PCP,ACTIVE-PCP,ZenMedicine,ZenMedicine,"Malhotra MD, Justinder","Malhotra MD, Justin",MISMATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,PHARAR VIJAY 02/14/1957
+IN_BOTH,PIERCE,MARGARET,1944-08-22,ACTIVE-PCP,ACTIVE-PCP,ZenMedicine,ZenMedicine,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,PIERCE MARGARET 08/22/1944
+IN_BOTH,PLUNKETT,DAVID,1958-05-27,ACTIVE-PCP,ACTIVE-PCP,ProHealth,ProHealth,"Antonio NP, Ethel","Khristina, Carla",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,PLUNKETT DAVID 05/27/1958
+IN_BOTH,POLLARD,DIANCA,1956-09-11,ACTIVE-PCP,ACTIVE-PCP,Sila-V/Phil,Sila-V/Phil,"Villasenor NP, Lourdes","Villasenor NP, Lourdes",MATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,POLLARD DIANCA 09/11/1956
+IN_BOTH,PORCH,SHIRLEY,1951-07-12,ACTIVE-GERI,ACTIVE-GERI,Angelicare,Angelicare,"Antonio NP, Ethel","Szalas NP, Andrew",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,PORCH SHIRLEY 07/12/1951
+IN_BOTH,PORTILLO-RAYAN,SOCORRO,1942-02-14,ACTIVE-PCP,ACTIVE-PCP,ZenMedicine,ZenMedicine,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,PORTILLO-RAYAN SOCORRO 02/14/1942
+IN_BOTH,PORTILLO,ERCILIA,1946-11-18,ACTIVE-PCP,ACTIVE-PCP,ZenMedicine,ZenMedicine,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,PORTILLO ERCILIA 11/18/1946
+IN_BOTH,POWELL,CHARLES,1958-11-29,ACTIVE-PCP,ACTIVE-PCP,ZenMedicine,ZenMedicine,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,POWELL CHARLES 11/29/1958
+IN_BOTH,PRATT,JANET,1950-06-25,ACTIVE-GERI,ACTIVE-GERI,Violet,Violet,"Diaz NP, Albert",,ONLY_IN_ZMO,"Thapa, Dilasha","Thapa, Dilasha",MATCH,PRATT JANET 06/25/1950
+ONLY_IN_DB,PRUDHOLM,GAIL,1956-04-02,,ACTIVE-PCP,,Clinicians,,"Melara, Claudia",,,"Altar, Shirley",,PRUDHOLM GAIL 04/02/1956
+IN_BOTH,PUENTE DE AL,CARMEN,1933-06-08,ACTIVE-PCP,ACTIVE-PCP,Descanso,Descanso,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Altar, Shirley","Altar, Shirley",MATCH,PUENTE DE AL CARMEN 06/08/1933
+IN_BOTH,QUINTERO,VIRGINIA,1939-05-30,ACTIVE-GERI,ACTIVE-GERI,All Access,All Access,"Jackson PA, Anisha","Malhotra MD, Justin",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,QUINTERO VIRGINIA 05/30/1939
+IN_BOTH,QUINTOS,EPIFANIA,1953-10-06,ACTIVE-PCP,ACTIVE-PCP,Access,Access,"Melara ZZ, Claudia","Melara, Claudia",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,QUINTOS EPIFANIA 10/06/1953
+IN_BOTH,RAAZI,NOORANIEH,1936-10-24,ACTIVE-PCP,ACTIVE-PCP,Hakimi,Hakimi,"Otebulu NP, Angela","Otegbulu, Angela",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,RAAZI NOORANIEH 10/24/1936
+ONLY_IN_ZMO,RAFOLS,ISAGANI,1949-09-23,ACTIVE-PCP,,Tristar/Phil,,"Szalas NP, Andrew",,,"Sumpay, Laura",,,
+IN_BOTH,RAI,NIRANJAN,1932-07-16,ACTIVE-GERI,ACTIVE-GERI,Ventura,Ventura,"Davis NP, Genevieve","Szalas NP, Andrew",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,RAI NIRANJAN 07/16/1932
+IN_BOTH,RAMIREZ DE MONTUFAR,ROSA,1950-03-13,ACTIVE,ACTIVE,ventura,ventura,"Kaur NP, Jaspreet","Kaur, Jaspreet",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,RAMIREZ DE MONTUFAR ROSA 03/13/1950
+ONLY_IN_DB,RAMIREZ ZAVALA,NABOR,1946-12-20,,ACTIVE-GERI,,ProHealth,,"Khristina, Carla",,,Andrea Rubio,,RAMIREZ ZAVALA NABOR 12/20/1946
+IN_BOTH,RAMIREZ,JOSEPHINE,1965-08-21,ACTIVE-GERI,ACTIVE-GERI,All Access,All Access,"Jackson PA, Anisha","Jackson, Anisha",MISMATCH,,,BOTH_EMPTY,RAMIREZ JOSEPHINE 08-21-1965
+IN_BOTH,RAMIREZ,MARY,1944-12-05,ACTIVE-PCP,ACTIVE-PCP,Bay Health,Bay Health,"Szalas NP, Andrew","Khristina, Carla",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,RAMIREZ MARY 12/05/1944
+IN_BOTH,RANGEL,MARIA,1957-02-11,ACTIVE-PCP,ACTIVE-PCP,Ventura,Ventura,"Kaur NP, Jaspreet","Kaur, Jaspreet",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,RANGEL MARIA 02/11/1957
+IN_BOTH,RASMUSSEN,JOHN,1963-04-09,ACTIVE-PCP,ACTIVE-PCP,Warm Springs,Warm Springs,"Antonio NP, Ethel","Khristina, Carla",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,RASMUSSEN JOHN 04/09/1963
+IN_BOTH,REDDING,RONICA,1957-07-01,ACTIVE-PCP,ACTIVE-PCP,ZenMedicine,ZenMedicine,"Dabalus NP, Eden","Dabalus, Eden",MISMATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,REDDING RONICA 07/01/1957
+IN_BOTH,REILLY,PATRICK,1953-12-06,ACTIVE-GERI,ACTIVE-GERI,Ventura,Ventura,"Diaz NP, Albert",,ONLY_IN_ZMO,"Thapa, Dilasha","Thapa, Dilasha",MATCH,REILLY PATRICK 12/06/1953
+IN_BOTH,REZVAN,TAYEBEH,1942-01-13,ACTIVE-PCP,ACTIVE-PCP,Hakimi,Hakimi,"Melara ZZ, Claudia","Melara, Claudia",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,REZVAN TAYEBEH 01/13/1942
+IN_BOTH,RHODES,JASON MATTHEW,1975-03-24,ACTIVE-GERI,ACTIVE-GERI,Bay Health,Bay Health,None->Andrew,"Khristina, Carla",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,RHODES JASON MATTHEW 03/24/1975
+ONLY_IN_DB,RICHARDS,LINDA LOUISE,1945-03-14,,ACTIVE-PCP,,ProHealth,,"Khristina, Carla",,,,,RICHARDS LINDA LOUISE 03/14/1945
+IN_BOTH,RIEDENAUER,SHARON,1942-01-13,ACTIVE-GERI,ACTIVE-GERI,Sila-V/Phil,Sila-V/Phil,"Diaz NP, Albert","Villasenor NP, Lourdes",MISMATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,RIEDENAUER SHARON 01/13/1942
+IN_BOTH,RIVAS,GLORYBELL,1945-08-16,ACTIVE-PCP,ACTIVE-PCP,Acacia,Acacia,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,RIVAS GLORYBELL 08/16/1945
+IN_BOTH,ROBERTS,MELANIE,1960-03-27,ACTIVE-PCP,ACTIVE-PCP,Angelicare,Angelicare,"Jackson PA, Anisha","Melara, Claudia",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,ROBERTS MELANIE 03/27/1960
+IN_BOTH,ROBINSON,ALISA R,1977-09-21,ACTIVE-PCP,ACTIVE-PCP,Compassionate,Compassionate,"Diaz NP, Albert","Villasenor NP, Lourdes",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,ROBINSON ALISA R 09/21/1977
+IN_BOTH,ROBINSON,DOMENICA,1937-05-04,ACTIVE-PCP,ACTIVE-PCP,Acacia,Acacia,None->Andrew,"Dabalus, Eden",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,ROBINSON DOMENICA 05/04/1937
+IN_BOTH,ROBLES ANAYA,RAMON,1942-11-28,ACTIVE-PCP,ACTIVE-PCP,Descanso,Descanso,"Antonio NP, Ethel","Antonio, Ethel",MISMATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,ROBLES ANAYA RAMON 11/28/1942
+IN_BOTH,ROBLES,CHRISTOPHER,1956-08-10,ACTIVE-PCP,ACTIVE-PCP,,,"Antonio NP, Ethel","Szalas NP, Andrew",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,ROBLES CHRISTOPHER 08/10/1956
+ONLY_IN_DB,ROBLES,PATRICIA,1938-10-19,,ACTIVE-GERI,,Access,,"Szalas NP, Andrew",,,"Altar, Shirley",,ROBLES PATRICIA 10/19/1938
+IN_BOTH,ROBLES,ROSARIO,1944-12-24,ACTIVE-PCP,ACTIVE-PCP,Descanso,Descanso,"Antonio NP, Ethel","Antonio, Ethel",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,ROBLES ROSARIO 12/24/1944
+IN_BOTH,RODRIGUEZ ALTAMIRANO,ELVIRA,1942-07-03,ACTIVE,ACTIVE,All Access,All Access,"Jackson PA, Anisha","Malhotra MD, Justin",MISMATCH,,,BOTH_EMPTY,RODRIGUEZ ALTAMIRANO ELVIRA 07/03/1942
+IN_BOTH,RODRIGUEZ,ROBERTO,1948-11-10,ACTIVE,ACTIVE,Acacia,Acacia,"Dabalus NP, Eden","Dabalus, Eden",MISMATCH,"Atencio, Dianela","Atencio, Dianela",MATCH,RODRIGUEZ ROBERTO 11/10/1948
+ONLY_IN_DB,RODRIGUEZ,TONY,1956-01-16,,ACTIVE-PCP,,ProHealth,,"Khristina, Carla",,,Andrea Rubio,,RODRIGUEZ TONY 01/16/1956
+ONLY_IN_DB,ROGERS,CHRISTINE,1960-07-13,,ACTIVE-PCP,,New Frontier,,,,,"Thapa, Dilasha",,ROGERS CHRISTINE 07/13/1960
+IN_BOTH,ROMERO DE SANCHEZ,SOFIA,1963-09-18,ACTIVE-PCP,ACTIVE-PCP,Acacia,Acacia,"Dabalus NP, Eden","Dabalus, Eden",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,ROMERO DE SANCHEZ SOFIA 09/18/1963
+IN_BOTH,ROMERO,ALMA,1951-06-28,ACTIVE,ACTIVE,All Access,All Access,"Jackson PA, Anisha","Malhotra MD, Justin",MISMATCH,,,BOTH_EMPTY,ROMERO ALMA 06/28/1951
+ONLY_IN_DB,ROMERO,ISRAEL,1970-01-22,,ACTIVE,,New Frontier,,,,,,,ROMERO ISRAEL 01/22/1970
+ONLY_IN_DB,ROMO,GONZALO,1959-11-06,,ACTIVE,,All Access,,"Malhotra MD, Justin",,,,,ROMO GONZALO 11/06/1959
+IN_BOTH,ROSALES,JOSE,1944-10-20,ACTIVE-PCP,ACTIVE-PCP,Attain,Attain,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Altar, Shirley","Altar, Shirley",MATCH,ROSALES JOSE 10/20/1944
+ONLY_IN_DB,ROSARIO,VICKIE ANN,1954-02-21,,ACTIVE,,Tristar/Phil,,"Villasenor NP, Lourdes",,,"Sumpay, Laura",,ROSARIO VICKIE ANN 02/21/1954
+IN_BOTH,ROSE,ALEXANDRA,1951-05-18,ACTIVE,ACTIVE,Ventura,Ventura,"Diaz NP, Albert","Szalas NP, Andrew",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,ROSE ALEXANDRA 05/18/1951
+IN_BOTH,ROSS,MIMI,1935-02-12,ACTIVE-GERI,ACTIVE-GERI,Ventura,Ventura,"Diaz NP, Albert","Szalas NP, Andrew",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,ROSS MIMI 02/12/1935
+IN_BOTH,ROTERING,DAVID,1949-08-20,ACTIVE-PCP,ACTIVE-PCP,Acacia,Acacia,"Dabalus NP, Eden","Dabalus, Eden",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,ROTERING DAVID 08/20/1949
+IN_BOTH,RUBIN,IRENE,1941-05-01,ACTIVE,ACTIVE,New Frontier,New Frontier,"Davis NP, Genevieve","Davis, Genevieve",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,RUBIN IRENE 05/01/1941
+IN_BOTH,RUVALCABA,AGUSTINA,1955-08-28,ACTIVE-GERI,ACTIVE-GERI,Attain,Attain,None->Andrew,"Szalas NP, Andrew",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,RUVALCABA AGUSTINA 08/28/1955
+ONLY_IN_DB,SABUS,ROBERT,1933-11-22,,ACTIVE-GERI,,Acacia,,,,,,,SABUS ROBERT 11/22/1933
+ONLY_IN_DB,SAEIDNIA,AMIR,1950-08-03,,ACTIVE,,Hakimi,,,,,,,SAEIDNIA AMIR 08/03/1950
+IN_BOTH,SAFARYAN,NARINDZH,1938-02-10,ACTIVE-GERI,ACTIVE-GERI,New Chapter,New Chapter,"Diaz NP, Albert","Szalas NP, Andrew",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,SAFARYAN NARINDZH 02/10/1938
+IN_BOTH,SALAS,MARIA,1949-07-18,ACTIVE-PCP,ACTIVE-PCP,ZenMedicine,ZenMedicine,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,SALAS MARIA 07/18/1949
+ONLY_IN_DB,SALAZAR,GUADALUPE,1946-05-11,,ACTIVE,,All Access,,"Malhotra MD, Justin",,,,,SALAZAR GUADALUPE 05/11/1946
+IN_BOTH,SALBINYAN,ANAHIT,1949-07-04,ACTIVE,ACTIVE-PCP,New Chapter,New Chapter,"Diaz NP, Albert","Szalas NP, Andrew",MISMATCH,,,BOTH_EMPTY,SALBINYAN ANAHIT 07/04/1949
+IN_BOTH,SALMON,EILEEN,1942-02-19,ACTIVE-GERI,ACTIVE-GERI,Ventura,Ventura,"Diaz NP, Albert",,ONLY_IN_ZMO,"Thapa, Dilasha","Thapa, Dilasha",MATCH,SALMON EILEEN 02/19/1942
+ONLY_IN_DB,SAMPONG,ESTHER,1936-03-10,,ACTIVE-PCP,,Integrity,,,,,,,SAMPONG ESTHER 03/10/1936
+IN_BOTH,SAMSON,ETHEL,1948-05-13,ACTIVE-PCP,ACTIVE-PCP,New Chapter,New Chapter,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Altar, Shirley","Altar, Shirley",MATCH,SAMSON ETHEL 05/13/1948
+IN_BOTH,SAMVALIAN,ANNAHID,1950-10-21,ACTIVE,ACTIVE,All Access,All Access,"Szalas NP, Andrew","Antonio, Ethel",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,SAMVALIAN ANNAHID 10/21/1950
+ONLY_IN_DB,SAM,HOSSEIN,1940-04-03,,ACTIVE,,ProHealth,,,,,,,SAM HOSSEIN 04/03/1940
+IN_BOTH,SANCHEZ ZAVALA,FRANCISCO,1949-10-19,ACTIVE,ACTIVE,All Access,All Access,"Jackson PA, Anisha","Malhotra MD, Justin",MISMATCH,,,BOTH_EMPTY,SANCHEZ ZAVALA FRANCISCO 10/19/1949
+IN_BOTH,SANCHEZ,ANGEL,1963-01-22,ACTIVE-GERI,ACTIVE-GERI,Unique Care Plus,Unique Care Plus,"Diaz NP, Albert","Szalas NP, Andrew",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,SANCHEZ ANGEL 01/22/1963
+IN_BOTH,SANCHEZ,MARIE,1927-07-15,ACTIVE-PCP,ACTIVE-PCP,New Chapter,New Chapter,"Otebulu NP, Angela","Otegbulu, Angela",MISMATCH,"Perez, Jorge","Altar, Shirley",MISMATCH,SANCHEZ MARIE 07/15/1927
+IN_BOTH,SANDERSON,DONNA,1954-03-11,ACTIVE-PCP,ACTIVE-PCP,ZenMedicine,ZenMedicine,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,SANDERSON DONNA 03/11/1954
+IN_BOTH,SANDERSON,JAMES,1953-09-08,ACTIVE-PCP,ACTIVE-PCP,ZenMedicine,ZenMedicine,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,SANDERSON JAMES 09/08/1953
+IN_BOTH,SANDOVAL BARRIOS,JUAN,1954-04-26,ACTIVE-PCP,ACTIVE-PCP,Compassionate,Compassionate,"Villasenor NP, Lourdes","Villasenor NP, Lourdes",MATCH,"Altar, Shirley","Altar, Shirley",MATCH,SANDOVAL BARRIOS JUAN 04/26/1954-1
+IN_BOTH,SANDOVAL PARRAS,MIGUEL,1948-08-19,ACTIVE-GERI,ACTIVE-GERI,New Frontier,New Frontier,None->Andrew,"Szalas NP, Andrew",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,SANDOVAL PARRAS MIGUEL 08/19/1948
+IN_BOTH,SARNECKI,CLAUDIA,1956-01-25,ACTIVE-PCP,ACTIVE-PCP,ZenMedicine,ZenMedicine,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,SARNECKI CLAUDIA 01/25/1956
+ONLY_IN_DB,SARRAZIN,LILLIAN,1930-11-14,,ACTIVE,,Access,,"Szalas NP, Andrew",,,"Altar, Shirley",,SARRAZIN LILLIAN 11/14/1930
+IN_BOTH,SAUCEDO,DELORES,1960-11-20,ACTIVE-PCP,ACTIVE-PCP,Attain,Attain,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Altar, Shirley","Altar, Shirley",MATCH,SAUCEDO DELORES 11/20/1960
+IN_BOTH,SCHONLAUB,GABY,1958-08-29,ACTIVE-PCP,ACTIVE-PCP,ZenMedicine,ZenMedicine,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,SCHONLAUB GABY 08/29/1958
+IN_BOTH,SCHULZ,DORIS,1935-04-18,ACTIVE-PCP,ACTIVE-PCP,Descanso,Descanso,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Altar, Shirley","Altar, Shirley",MATCH,SCHULZ DORIS 04/18/1935
+IN_BOTH,SEBEK,LINDA,1940-05-20,ACTIVE-PCP,ACTIVE-PCP,ZenMedicine,ZenMedicine,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,SEBEK LINDA 05/20/1940
+IN_BOTH,SEHRA,NARINDERKAUR,1954-06-20,ACTIVE-PCP,ACTIVE-PCP,ZenMedicine,ZenMedicine,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,SEHRA NARINDERKAUR 06/20/1954
+IN_BOTH,SERNA JR,MARTIN,1937-05-22,ACTIVE-PCP,ACTIVE-PCP,Descanso,Descanso,"Antonio NP, Ethel","Antonio, Ethel",MISMATCH,"Perez, Jorge","Altar, Shirley",MISMATCH,SERNA JR MARTIN 05/22/1937
+IN_BOTH,SERNA,HELEN,1941-08-04,ACTIVE-PCP,ACTIVE-PCP,Descanso,Descanso,"Antonio NP, Ethel","Antonio, Ethel",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,SERNA HELEN 08/04/1941
+IN_BOTH,SHAHIN,RIFQA,1931-12-12,ACTIVE-GERI,ACTIVE-GERI,Acacia,Acacia,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,SHAHIN RIFQA 12/12/1931
+IN_BOTH,SHAKNISAN,MORVARID,1923-04-08,ACTIVE,ACTIVE,All Access,All Access,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,SHAKNISAN MORVARID 04/08/1923
+ONLY_IN_DB,SHANKS,LEWIS,1943-04-19,,ACTIVE,,ProHealth,,,,,,,SHANKS LEWIS 04/19/1943
+IN_BOTH,SHARIF,TAHEREH,1935-01-01,ACTIVE-PCP,ACTIVE-PCP,Hakimi,Hakimi,"Otebulu NP, Angela","Otegbulu, Angela",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,SHARIF TAHEREH 01/01/1935
+IN_BOTH,SHELLEY,KATHLEEN,1948-12-14,ACTIVE-GERI,ACTIVE-GERI,Ventura,Ventura,,,BOTH_EMPTY,"Thapa, Dilasha","Thapa, Dilasha",MATCH,SHELLEY KATHLEEN 12/14/1948
+IN_BOTH,SIDHU,GURBHAGAT,1947-12-02,ACTIVE,ACTIVE,Ventura,Ventura,"Diaz NP, Albert",,ONLY_IN_ZMO,"Thapa, Dilasha","Thapa, Dilasha",MATCH,SIDHU GURBHAGAT 12/02/1947
+IN_BOTH,SIDHU,JANGIR,1949-01-15,ACTIVE,ACTIVE,Ventura,Ventura,"Diaz NP, Albert","Szalas NP, Andrew",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,SIDHU JANGIR 01/15/1949
+IN_BOTH,SIKES,VIRGINIA,1933-12-12,ACTIVE-PCP,ACTIVE-PCP,Acacia,Acacia,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,SIKES VIRGINIA 12/12/1933
+ONLY_IN_DB,SILVANIA,KERRY G,1958-02-15,,ACTIVE,,ProHealth,,"Khristina, Carla",,,,,SILVANIA KERRY G 02/15/1958
+ONLY_IN_DB,SILVERSTEIN,SYLVIA,1944-09-05,,ACTIVE-GERI,,New Frontier,,,,,"Thapa, Dilasha",,SILVERSTEIN SYLVIA 09/05/1944
+IN_BOTH,SIMANTOB,FLORA,1951-05-08,ACTIVE-GERI,ACTIVE-GERI,Violet,Violet,"Diaz NP, Albert","Szalas NP, Andrew",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,SIMANTOB FLORA 05/08/1951
+IN_BOTH,SIMS,CATALINA,1935-02-01,ACTIVE,ACTIVE-GERI,Violet,Violet,"Diaz NP, Albert","Szalas NP, Andrew",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,SIMS CATALINA 02/01/1935
+IN_BOTH,SINGH,AJIT,1951-03-01,ACTIVE,ACTIVE-GERI,Ventura,Ventura,"Diaz NP, Albert","Szalas NP, Andrew",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,SINGH AJIT 03/01/1951
+IN_BOTH,SINGH,BALBIR,1942-11-20,ACTIVE-GERI,ACTIVE-GERI,Ventura,Ventura,"Villasenor NP, Lourdes","Villasenor NP, Lourdes",MATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,SINGH BALBIR 11/20/1942
+IN_BOTH,SINGH,GURDARSHAN,1952-02-08,ACTIVE,ACTIVE-GERI,New Frontier,New Frontier,"Diaz NP, Albert",,ONLY_IN_ZMO,"Thapa, Dilasha","Thapa, Dilasha",MATCH,SINGH GURDARSHAN 02/08/1952
+IN_BOTH,SINGH,HARBHAJAN,1948-01-29,ACTIVE,ACTIVE,Violet,Violet,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,SINGH HARBHAJAN 01/29/1948
+IN_BOTH,SINGH,KHANWALJIT,1957-12-31,ACTIVE,ACTIVE,Violet,Violet,"Davis NP, Genevieve","Szalas NP, Andrew",MISMATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,SINGH KHANWALJIT 12/31/1957
+IN_BOTH,SINGH,MANOHAR,1956-10-07,ACTIVE-PCP,ACTIVE-PCP,ZenMedicine,ZenMedicine,"Malhotra MD, Justinder","Malhotra MD, Justin",MISMATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,SINGH MANOHAR 10/07/1956
+IN_BOTH,SINGH,MOHAN,1934-01-05,ACTIVE,ACTIVE,Violet,Violet,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,SINGH MOHAN 01/05/1934
+IN_BOTH,SINGH,MUKHTIAR,1946-12-01,ACTIVE-GERI,ACTIVE-GERI,Violet,Violet,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,SINGH MUKHTIAR 12/01/1946
+IN_BOTH,SINGH,RANJEET,1953-01-01,ACTIVE,ACTIVE,Violet,Violet,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,SINGH RANJEET 01/01/1953
+ONLY_IN_DB,SINGH,ROOP,1957-04-01,,ACTIVE-GERI,,Ventura,,"Szalas NP, Andrew",,,"Thapa, Dilasha",,SINGH ROOP 04/01/1957
+IN_BOTH,SINGH,SUKHDEV,1957-03-12,ACTIVE-GERI,ACTIVE-GERI,Violet,Violet,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,SINGH SUKHDEV 03/12/1957
+ONLY_IN_DB,SINGH,SURINDER,1954-04-09,,ACTIVE-GERI,,Ventura,,,,,"Thapa, Dilasha",,SINGH SURINDER 04/09/1954
+ONLY_IN_DB,SLEDGE,TONY,1958-03-14,,ACTIVE-PCP,,Clinicians,,"Melara, Claudia",,,"Altar, Shirley",,SLEDGE TONY 03/14/1958
+IN_BOTH,SMITH III,EVERETT,1948-06-08,ACTIVE-GERI,ACTIVE-GERI,Violet,Violet,"Kaur NP, Jaspreet","Kaur, Jaspreet",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,SMITH III EVERETT 06/08/1948
+ONLY_IN_DB,SMITH-SOTO,CARLOS,1936-08-08,,ACTIVE,,Ace HH,,,,,,,SMITH-SOTO CARLOS 08/08/1936
+IN_BOTH,SMITH,ERICA,1963-03-16,ACTIVE-PCP,ACTIVE-PCP,Acacia,Acacia,"Dabalus NP, Eden","Dabalus, Eden",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,SMITH ERICA 03/16/1963
+IN_BOTH,SMITH,LYNNE,1938-12-30,ACTIVE-GERI,ACTIVE-GERI,Acacia,Acacia,None->Andrew,"Szalas NP, Andrew",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,SMITH LYNNE 12/30/1938
+IN_BOTH,SMITH,RAMONA,1955-11-28,ACTIVE,ACTIVE,Violet,Violet,"Kaur NP, Jaspreet","Kaur, Jaspreet",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,SMITH RAMONA 11/28/1955
+IN_BOTH,SODHI,DATAR,1951-09-02,ACTIVE,ACTIVE,ZenMedicine,ZenMedicine,"Malhotra MD, Justinder","Malhotra MD, Justin",MISMATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,SODHI DATAR 09/02/1951
+IN_BOTH,SODHI,JATINDER,1958-04-04,ACTIVE,ACTIVE,ZenMedicine,ZenMedicine,"Malhotra MD, Justinder","Malhotra MD, Justin",MISMATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,SODHI JATINDER 4/4/1958
+IN_BOTH,SOGNALIAN,RONALD,1933-10-02,ACTIVE,ACTIVE,Acacia,Acacia,"Dabalus NP, Eden","Dabalus, Eden",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,SOGNALIAN RONALD 10/02/1933
+IN_BOTH,SOLANO PACHECO,LUCIANO,1960-08-29,ACTIVE-GERI,ACTIVE-GERI,All Access,All Access,"Jackson PA, Anisha","Jackson, Anisha",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,SOLANO PACHECO LUCIANO 08/29/1960
+ONLY_IN_DB,SOLIS,CRAIG,1959-10-18,,ACTIVE-PCP,,Access,,"Szalas NP, Andrew",,,"Altar, Shirley",,SOLIS CRAIG 10/18/1959
+IN_BOTH,SOLT,ROBERT,1931-01-05,ACTIVE,ACTIVE,Acacia,Acacia,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,SOLT ROBERT 01/05/1931
+IN_BOTH,SPENCE,SUSAN,1957-09-05,ACTIVE,ACTIVE-PCP,Hakimi,Hakimi,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Altar, Shirley","Altar, Shirley",MATCH,SPENCE SUSAN 09/05/1957
+IN_BOTH,STAIGHT,ELIZABETH,1936-12-02,ACTIVE-GERI,ACTIVE-GERI,Descanso,Descanso,"Melara ZZ, Claudia","Melara, Claudia",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,STAIGHT ELIZABETH 12/02/1936
+IN_BOTH,STEINMETZ,EVA,1936-11-02,ACTIVE-PCP,ACTIVE-PCP,Connect Healthcare,Connect Healthcare,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Altar, Shirley","Altar, Shirley",MATCH,STEINMETZ EVA 11/02/1936
+IN_BOTH,STEWART,KAREN,1948-07-27,ACTIVE-PCP,ACTIVE-PCP,Attain,Attain,None->Andrew,"Otegbulu, Angela",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,STEWART KAREN 07/27/1948
+IN_BOTH,STOCUM,LOIS,1935-03-27,ACTIVE-PCP,ACTIVE-PCP,Attain,Attain,None->Andrew,"Otegbulu, Angela",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,STOCUM LOIS 03/27/1935
+IN_BOTH,STOLTE,ROBERT,1940-01-19,ACTIVE-GERI,ACTIVE-GERI,Acacia,Acacia,None->Andrew,"Dabalus, Eden",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,STOLTE ROBERT 01/19/1940
+IN_BOTH,STRIBLING,YVONNE,1939-02-16,ACTIVE-PCP,ACTIVE-PCP,Access,Access,"Jackson PA, Anisha","Melara, Claudia",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,STRIBLING YVONNE 02/16/1939
+ONLY_IN_DB,SZYMANSKI,JOYCE,1949-01-11,,ACTIVE,,Ventura,,,,,"Thapa, Dilasha",,SZYMANSKI JOYCE 01/11/1949
+IN_BOTH,TABITA,ERNESTINA,1936-11-07,ACTIVE-GERI,ACTIVE-GERI,All Access,All Access,"Jackson PA, Anisha","Malhotra MD, Justin",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,TABITA ERNESTINA 11/07/1936
+IN_BOTH,TACAZON,FERMIN,1949-04-07,ACTIVE-PCP,ACTIVE-PCP,Compassionate,Compassionate,"Antonio NP, Ethel","Antonio, Ethel",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,TACAZON FERMIN 04/07/1949
+IN_BOTH,TAGAYUNA,ERLINDA,1945-08-07,ACTIVE-GERI,ACTIVE-GERI,All Access,All Access,"Otebulu NP, Angela","Otegbulu, Angela",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,TAGAYUNA ERLINDA 08/07/1945
+IN_BOTH,TAGGART,MARY,1954-11-21,ACTIVE-PCP,ACTIVE-PCP,Access,Access,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Altar, Shirley","Altar, Shirley",MATCH,TAGGART MARY 11/21/1954
+IN_BOTH,TAJ,NAVID,1950-09-06,ACTIVE-GERI,ACTIVE-GERI,Hakimi,Hakimi,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,TAJ NAVID 09/06/1950
+IN_BOTH,TANNER,KAVON,1993-08-10,ACTIVE,ACTIVE-GERI,New Frontier,New Frontier,"Diaz NP, Albert",,ONLY_IN_ZMO,"Thapa, Dilasha","Thapa, Dilasha",MATCH,TANNER KAVON 08/10/1993
+IN_BOTH,TELFER,DENNIS,1946-10-05,HOSPICE,HOSPICE,Acacia,Acacia,"Dabalus NP, Eden","Dabalus, Eden",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,TELFER DENNIS 10/05/1946
+IN_BOTH,TERREL,PHILLIP J,1960-05-03,ACTIVE-PCP,ACTIVE-PCP,Healing Garden Home Health,Healing Garden Home Health,"Diaz NP, Albert","Szalas NP, Andrew",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,TERREL PHILLIP J 05/03/1960
+IN_BOTH,THAN,KHANH,1940-08-21,ACTIVE,ACTIVE,Acacia,Acacia,"Dabalus NP, Eden","Dabalus, Eden",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,THAN KHANH 08/21/1940
+ONLY_IN_DB,THOMPSON,SANDRA,1941-11-14,,ACTIVE-GERI,,ProHealth,,"Khristina, Carla",,,Andrea Rubio,,THOMPSON SANDRA 11/14/1941
+IN_BOTH,TOBAR,ERNESTINA,1945-09-04,ACTIVE,ACTIVE,ZenMedicine,ZenMedicine,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,TOBAR ERNESTINA 09/04/1945
+ONLY_IN_DB,TOKAR,LEONTIY,1951-09-09,,ACTIVE-GERI,,Violet,,"Szalas NP, Andrew",,,"Thapa, Dilasha",,TOKAR LEONTIY 09/09/1951
+IN_BOTH,TOOFIGHI,MAHIN,1938-01-14,ACTIVE,ACTIVE,Hakimi,Hakimi,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Altar, Shirley","Altar, Shirley",MATCH,TOOFIGHI MAHIN 01/14/1938
+ONLY_IN_ZMO,TORRES,MARIA,1956-11-28,ACTIVE,,Acacia,,"Dabalus NP, Eden",,,"Hernandez, Hector",,,
+IN_BOTH,TRADER,LEONARD,1956-02-29,ACTIVE,ACTIVE,Vanura,Vanura,"Melara ZZ, Claudia","Melara, Claudia",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,TRADER LEONARD 02/29/1956
+IN_BOTH,TRANG,HUA,1952-12-11,ACTIVE,ACTIVE,ZenMedicine,ZenMedicine,"Malhotra MD, Justinder","Malhotra MD, Justin",MISMATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,TRANG HUA 12/11/1952
+IN_BOTH,TRAPANI,CAROLE,1943-02-28,ACTIVE-GERI,ACTIVE-GERI,Ventura,Ventura,"Diaz NP, Albert","Szalas NP, Andrew",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,TRAPANI CAROLE 02/28/1943
+IN_BOTH,TREMAINE,JOE,1938-12-20,ACTIVE,ACTIVE,Descanso,Descanso,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Altar, Shirley","Altar, Shirley",MATCH,TREMAINE JOE 12/20/1938
+IN_BOTH,TUITELELEAPAGA,RUTH,1957-07-26,ACTIVE,ACTIVE,Acacia,Acacia,"Dabalus NP, Eden","Dabalus, Eden",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,TUITELELEAPAGA RUTH 07/26/1957
+ONLY_IN_DB,UBAYY,MUHAMMAD,1944-12-09,,ACTIVE,,New Frontier,,,,,,,UBAYY MUHAMMAD 12/09/1944
+IN_BOTH,UDRY,SUSAN,1945-12-12,ACTIVE,ACTIVE,ZenMedicine,ZenMedicine,"Malhotra MD, Justinder","Malhotra MD, Justin",MISMATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,UDRY SUSAN 12/12/1945
+IN_BOTH,UGBOR,NNENNA,1949-12-04,ACTIVE,ACTIVE,Attain,Attain,"Otebulu NP, Angela","Otegbulu, Angela",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,UGBOR NNENNA 12/04/1949
+IN_BOTH,URFALIAN,PETROS,1939-09-07,ACTIVE,ACTIVE,ZenMedicine,ZenMedicine,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,URFALIAN PETROS 09/07/1939
+IN_BOTH,VALENTE,ELFIN D,1950-12-09,ACTIVE-GERI,ACTIVE-GERI,All Access,All Access,None->Andrew,"Szalas NP, Andrew",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,VALENTE ELFIN D 12/09/1950
+IN_BOTH,VAL,MARIA,1955-08-28,ACTIVE,ACTIVE,All Access,All Access,"Jackson PA, Anisha","Malhotra MD, Justin",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,VAL MARIA 08/28/1955
+IN_BOTH,VANLINGEN,THEODOOR,1939-01-18,ACTIVE,ACTIVE,Hakimi,Hakimi,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Altar, Shirley","Altar, Shirley",MATCH,VANLINGEN THEODOOR 01/18/1939
+ONLY_IN_DB,VASWANI,GOPI,1933-06-18,,ACTIVE,,ZenMedicine,,"Szalas NP, Andrew",,,"Sumpay, Laura",,VASWANI GOPI 06/18/1933
+IN_BOTH,VAZQUEZ,ARTURO,1947-11-08,ACTIVE,ACTIVE,f,f,"Dabalus NP, Eden","Dabalus, Eden",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,VAZQUEZ ARTURO 11/08/1947
+IN_BOTH,VELASCO,MARIA,1937-07-25,ACTIVE,ACTIVE,All Access,All Access,"Jackson PA, Anisha","Malhotra MD, Justin",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,VELASCO MARIA 07/25/1937
+IN_BOTH,VELAZQUEZ DE,MARIA,1951-03-14,ACTIVE,ACTIVE,ZenMedicine,ZenMedicine,"Dabalus NP, Eden","Dabalus, Eden",MISMATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,VELAZQUEZ DE MARIA 03/14/1951
+IN_BOTH,VELAZQUEZ,RAMON,1958-02-03,ACTIVE,ACTIVE-GERI,New Frontier,New Frontier,"Antonio NP, Ethel","Szalas NP, Andrew",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,VELAZQUEZ RAMON 02/03/1958
+IN_BOTH,VENEGAS,MARIA,1959-01-14,ACTIVE,ACTIVE,All Access,All Access,"Jackson PA, Anisha","Jackson, Anisha",MISMATCH,,,BOTH_EMPTY,VENEGAS MARIA 01/14/1959
+IN_BOTH,VERGARA,JAIME,1945-08-01,ACTIVE-PCP,ACTIVE-PCP,ProHealth,ProHealth,"Antonio NP, Ethel","Khristina, Carla",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,VERGARA JAIME 08/01/1945
+IN_BOTH,VILLARREAL,EDWARD,1954-06-26,ACTIVE-PCP,ACTIVE-PCP,Evercare Home Health,Evercare Home Health,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,VILLARREAL EDWARD 06/26/1954
+ONLY_IN_DB,VILLA,LUISA,1929-08-25,,ACTIVE-GERI,,Ace HHC,,"Khristina, Carla",,,Andrea Rubio,,VILLA LUISA 08/25/1929
+ONLY_IN_DB,VIRULA CARDO,HECTOR,1939-07-05,,ACTIVE,,Unique,,"Szalas NP, Andrew",,,"Thapa, Dilasha",,VIRULA CARDO HECTOR 07/05/1939
+IN_BOTH,WADHWANI,NARAYAN,1941-01-23,ACTIVE-GERI,ACTIVE-GERI,ventura,ventura,"Diaz NP, Albert","Szalas NP, Andrew",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,WADHWANI NARAYAN 01/23/1941
+ONLY_IN_DB,WAGNER,JANICE,1951-09-12,,ACTIVE-PCP,,Acacia,,"Szalas NP, Andrew",,,Andrea Rubio,,WAGNER JANICE 09/12/1951
+IN_BOTH,WALIA,AMARPAUL,1946-07-15,ACTIVE,ACTIVE,ZenMedicine,ZenMedicine,"Malhotra MD, Justinder","Malhotra MD, Justin",MISMATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,WALIA AMARPAUL 07/15/1946
+IN_BOTH,WALIA,PARAMJIT,1932-11-07,ACTIVE-GERI,ACTIVE-GERI,Ventura,Ventura,"Kaur NP, Jaspreet","Kaur, Jaspreet",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,WALIA PARAMJIT 11/07/1932
+IN_BOTH,WALIA,RAJINDER,1944-05-11,ACTIVE,ACTIVE,ZenMedicine,ZenMedicine,"Malhotra MD, Justinder","Malhotra MD, Justin",MISMATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,WALIA RAJINDER 05/11/1944
+IN_BOTH,WALIA,SARAN,1947-01-02,ACTIVE,ACTIVE,ZenMedicine,ZenMedicine,"Malhotra MD, Justinder","Malhotra MD, Justin",MISMATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,WALIA SARAN 01/02/1947
+IN_BOTH,WALKER,SAMYLL,1980-05-24,ACTIVE,ACTIVE,MGA Home Health,MGA Home Health,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,WALKER SAMYLL 05/24/1980
+IN_BOTH,WARD,MICHAEL,1943-09-10,ACTIVE-GERI,ACTIVE-GERI,Ventura,Ventura,"Diaz NP, Albert","Szalas NP, Andrew",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,WARD MICHAEL 09/10/1943
+IN_BOTH,WARNER,SALLY,1946-12-21,ACTIVE,ACTIVE,ZenMedicine,ZenMedicine,"Melara ZZ, Claudia","Melara, Claudia",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,WARNER SALLY 12/21/1946
+IN_BOTH,WATKINS,LOLA,1946-01-08,ACTIVE-GERI,ACTIVE-GERI,Angelicare,Angelicare,None->Andrew,"Melara, Claudia",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,WATKINS LOLA 01/08/1946
+IN_BOTH,WATSON,MARCIA,1944-03-07,ACTIVE-GERI,ACTIVE-GERI,Ventura,Ventura,"Diaz NP, Albert","Szalas NP, Andrew",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,WATSON MARCIA 03/07/1944
+IN_BOTH,WATSON,MARCUS,1962-01-29,ACTIVE,ACTIVE,Clinicians,Clinicians,"Jackson PA, Anisha","Melara, Claudia",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,WATSON MARCUS 01/29/1962
+IN_BOTH,WELLER,KATHRYN,1960-03-18,ACTIVE-PCP,ACTIVE-PCP,ProHealth,ProHealth,Reg Prov,"Khristina, Carla",MISMATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,WELLER KATHRYN 03/18/1960
+IN_BOTH,WICKSMAN,DAVIDA M,1937-04-07,ACTIVE-GERI,ACTIVE-GERI,Ventura,Ventura,"Diaz NP, Albert","Szalas NP, Andrew",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,WICKSMAN DAVIDA M 04/07/1937
+IN_BOTH,WILLIAMS,JANET,1941-08-02,ACTIVE,ACTIVE,Hakimi,Hakimi,"Villasenor NP, Lourdes","Villasenor NP, Lourdes",MATCH,"Altar, Shirley","Altar, Shirley",MATCH,WILLIAMS JANET 08/02/1941
+IN_BOTH,WILLIAMS,PAULINE,1953-05-05,ACTIVE-PCP,ACTIVE-PCP,Compassionate,Compassionate,"Villasenor NP, Lourdes","Villasenor NP, Lourdes",MATCH,"Altar, Shirley","Altar, Shirley",MATCH,WILLIAMS PAULINE 05/05/1953
+IN_BOTH,WILLIAMS,SANDRA,1938-06-04,ACTIVE-GERI,ACTIVE-GERI,Acacia,Acacia,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Atencio, Dianela",Andrea Rubio,MISMATCH,WILLIAMS SANDRA 06/04/1938
+IN_BOTH,WILSON,VALERIE,1956-09-18,ACTIVE-PCP,ACTIVE-PCP,ZenMedicine,ZenMedicine,"Antonio NP, Ethel","Antonio, Ethel",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,WILSON VALERIE 09/18/1956
+IN_BOTH,WILSON,WYNONA,1949-01-15,ACTIVE-PCP,ACTIVE-PCP,Tristar/Phil,Tristar/Phil,"Villasenor NP, Lourdes","Villasenor NP, Lourdes",MATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,WILSON WYNONA 01/15/1949
+IN_BOTH,WOODS,ELEANORA,1935-09-04,ACTIVE-PCP,ACTIVE-PCP,new chapter,new chapter,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Altar, Shirley","Altar, Shirley",MATCH,WOODS ELEANORA 09/04/1935
+IN_BOTH,WOOD,LORILEE,1959-03-24,ACTIVE,ACTIVE,H&A Dedicated,H&A Dedicated,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,WOOD LORILEE 03/24/1959
+IN_BOTH,YASHAR,FARIDEH,1956-09-03,ACTIVE-GERI,ACTIVE-GERI,New Frontier,New Frontier,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,YASHAR FARIDEH 09/03/1956
+IN_BOTH,YE,SHANG,1948-11-10,ACTIVE-PCP,ACTIVE-PCP,ZenMedicine,ZenMedicine,"Malhotra MD, Justinder","Malhotra MD, Justin",MISMATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,YE SHANG 11/10/1948
+IN_BOTH,YU,JIAN,1951-08-25,ACTIVE-PCP,ACTIVE-PCP,ZenMedicine,ZenMedicine,"Malhotra MD, Justinder","Malhotra MD, Justin",MISMATCH,"Sumpay, Laura","Sumpay, Laura",MATCH,YU JIAN 08/25/1951
+IN_BOTH,ZAMORA GUZMAN,MARIA,1943-06-26,ACTIVE,ACTIVE,Access,Access,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Altar, Shirley","Altar, Shirley",MATCH,ZAMORA GUZMAN MARIA 06/26/1943
+IN_BOTH,ZAVALA LOPEZ,MARIA LUISA,1945-05-01,ACTIVE-GERI,ACTIVE-GERI,New Frontier,New Frontier,"Diaz NP, Albert","Szalas NP, Andrew",MISMATCH,"Thapa, Dilasha","Thapa, Dilasha",MATCH,ZAVALA LOPEZ MARIA LUISA 05/01/1945
+IN_BOTH,ZELAYA CORTEZ,LUIS,1979-07-18,ACTIVE-PCP,ACTIVE-PCP,ZenMedicine,ZenMedicine,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Altar, Shirley","Altar, Shirley",MATCH,ZELAYA CORTEZ LUIS 07/18/1979
+IN_BOTH,ZELAYA DIAZ,BLANCA,1955-04-16,ACTIVE-PCP,ACTIVE-PCP,Hakimi,Hakimi,"Szalas NP, Andrew","Szalas NP, Andrew",MATCH,"Altar, Shirley","Altar, Shirley",MATCH,ZELAYA DIAZ BLANCA 04/16/1955
+IN_BOTH,ZUBIN,DELARA,1930-08-24,ACTIVE,ACTIVE,Hakimi,Hakimi,"Otebulu NP, Angela","Otegbulu, Angela",MISMATCH,"Altar, Shirley","Altar, Shirley",MATCH,ZUBIN DELARA 08/24/1930

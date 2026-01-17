@@ -1,0 +1,823 @@
+
+2026-01-13T20:33:59.333250 - APP: is_authenticated = False
+2026-01-13T20:33:59.334516 - APP: User NOT authenticated - showing login page
+2026-01-13T20:33:59.335368 - APP:   session_state.authenticated_user: None
+2026-01-13T20:33:59.336314 - APP:   session_state.user_id: None
+2026-01-13T20:34:00.257778 - APP: is_authenticated = False
+2026-01-13T20:34:00.258563 - APP: User NOT authenticated - showing login page
+2026-01-13T20:34:00.259386 - APP:   session_state.authenticated_user: None
+2026-01-13T20:34:00.260155 - APP:   session_state.user_id: None
+2026-01-13T20:34:06.414119 - === OAuth callback detected ===
+2026-01-13T20:34:06.414917 -   state: 9MHRnbEtCTptVbN_XurAu5hy1qoGH0D4HLD6z8R1n1Y
+2026-01-13T20:34:06.415975 -   is_authenticated at entry: False
+2026-01-13T20:34:06.575300 - === OAuth callback detected ===
+2026-01-13T20:34:06.576639 -   state: 9MHRnbEtCTptVbN_XurAu5hy1qoGH0D4HLD6z8R1n1Y
+2026-01-13T20:34:06.578371 -   is_authenticated at entry: False
+2026-01-13T20:34:06.588119 - APP: is_authenticated = False
+2026-01-13T20:34:06.590213 - APP: User NOT authenticated - showing login page
+2026-01-13T20:34:06.591059 - APP:   session_state.authenticated_user: None
+2026-01-13T20:34:06.591996 - APP:   session_state.user_id: None
+2026-01-13T20:34:06.831422 - === Google login successful ===
+2026-01-13T20:34:06.832427 -   email: harpreet@myhealthteam.org
+2026-01-13T20:34:06.833967 -   user_id: 12
+2026-01-13T20:34:06.835082 -   full_name: Harpreet Cheema
+2026-01-13T20:34:06.836437 -   oauth_provider: google
+2026-01-13T20:34:06.838765 -   About to call setup_user_session
+2026-01-13T20:34:06.839772 -   setup_user_session: START
+2026-01-13T20:34:06.840707 -     user_id: 12, user_full_name: Harpreet Cheema
+2026-01-13T20:34:06.842712 -     Wrote INITIAL session data to temp file
+2026-01-13T20:34:06.846110 -     user_role_ids: [34]
+2026-01-13T20:34:06.848159 -     Updated temp file with user_role_ids
+2026-01-13T20:34:07.452873 - GLOBAL: Found temp session file - restoring...
+2026-01-13T20:34:07.462328 - GLOBAL: Session restored from temp file
+2026-01-13T20:34:07.464596 - GLOBAL: is_authenticated after restore: True
+2026-01-13T20:34:07.591914 - APP: is_authenticated = True
+2026-01-13T20:34:07.593908 - APP: user_id=12, user_role_ids=[34]
+2026-01-13T20:34:19.457684 - APP: is_authenticated = False
+2026-01-13T20:34:19.459289 - APP: User NOT authenticated - showing login page
+2026-01-13T20:34:19.462440 - APP:   session_state.authenticated_user: None
+2026-01-13T20:34:19.465081 - APP:   session_state.user_id: None
+2026-01-13T20:34:26.399664 - === OAuth callback detected ===
+2026-01-13T20:34:26.400490 -   state: jFyfh8MN-FRSDC_3svvYLmMDDbcBr8cQqmo6u0IIthk
+2026-01-13T20:34:26.401639 -   is_authenticated at entry: False
+2026-01-13T20:34:26.556394 - === OAuth callback detected ===
+2026-01-13T20:34:26.557858 -   state: jFyfh8MN-FRSDC_3svvYLmMDDbcBr8cQqmo6u0IIthk
+2026-01-13T20:34:26.559331 -   is_authenticated at entry: False
+2026-01-13T20:34:26.567880 - APP: is_authenticated = False
+2026-01-13T20:34:26.568971 - APP: User NOT authenticated - showing login page
+2026-01-13T20:34:26.571152 - APP:   session_state.authenticated_user: None
+2026-01-13T20:34:26.572451 - APP:   session_state.user_id: None
+2026-01-13T20:34:26.816290 - === Google login successful ===
+2026-01-13T20:34:26.817292 -   email: harpreet@myhealthteam.org
+2026-01-13T20:34:26.818209 -   user_id: 12
+2026-01-13T20:34:26.819170 -   full_name: Harpreet Cheema
+2026-01-13T20:34:26.819967 -   oauth_provider: google
+2026-01-13T20:34:26.821437 -   About to call setup_user_session
+2026-01-13T20:34:26.822461 -   setup_user_session: START
+2026-01-13T20:34:26.823787 -     user_id: 12, user_full_name: Harpreet Cheema
+2026-01-13T20:34:26.825780 -     Wrote INITIAL session data to temp file
+2026-01-13T20:34:26.831217 -     user_role_ids: [34]
+2026-01-13T20:34:26.833108 -     Updated temp file with user_role_ids
+2026-01-13T20:34:27.449775 - GLOBAL: Found temp session file - restoring...
+2026-01-13T20:34:27.457991 - GLOBAL: Session restored from temp file
+2026-01-13T20:34:27.459422 - GLOBAL: is_authenticated after restore: True
+2026-01-13T20:34:27.605999 - APP: is_authenticated = True
+2026-01-13T20:34:27.607926 - APP: user_id=12, user_role_ids=[34]
+2026-01-13T20:37:41.966955 -   setup_user_session: START
+2026-01-13T20:37:41.968617 -     user_id: 25, user_full_name: Altar, Shirley
+2026-01-13T20:37:41.970379 -     Wrote INITIAL session data to temp file
+2026-01-13T20:37:41.975428 -     user_role_ids: [36]
+2026-01-13T20:37:41.976940 -     Updated temp file with user_role_ids
+2026-01-13T20:37:41.978191 -     Applied all data to session_state
+2026-01-13T20:37:41.979140 -     Cleaned up temp file
+2026-01-13T20:37:41.979771 -   setup_user_session: COMPLETE
+2026-01-13T20:37:42.112910 - APP: is_authenticated = True
+2026-01-13T20:37:42.114160 - APP: user_id=25, user_role_ids=[36]
+2026-01-13T20:37:46.831149 -   setup_user_session: START
+2026-01-13T20:37:46.831948 -     user_id: 12, user_full_name: Harpreet Cheema
+2026-01-13T20:37:46.834727 -     Wrote INITIAL session data to temp file
+2026-01-13T20:37:46.842802 -     user_role_ids: [34]
+2026-01-13T20:37:46.844627 -     Updated temp file with user_role_ids
+2026-01-13T20:37:46.846167 -     Applied all data to session_state
+2026-01-13T20:37:46.847303 -     Cleaned up temp file
+2026-01-13T20:37:46.848093 -   setup_user_session: COMPLETE
+2026-01-13T20:37:47.138424 - APP: is_authenticated = True
+2026-01-13T20:37:47.140603 - APP: user_id=12, user_role_ids=[34]
+2026-01-13T20:37:49.911270 - APP: is_authenticated = True
+2026-01-13T20:37:50.001479 - APP: user_id=12, user_role_ids=[34]
+2026-01-13T20:37:53.064999 -   setup_user_session: START
+2026-01-13T20:37:53.065961 -     user_id: 10, user_full_name: Antonio, Ethel
+2026-01-13T20:37:53.067924 -     Wrote INITIAL session data to temp file
+2026-01-13T20:37:53.072980 -     user_role_ids: [33]
+2026-01-13T20:37:53.074594 -     Updated temp file with user_role_ids
+2026-01-13T20:37:53.075846 -     Applied all data to session_state
+2026-01-13T20:37:53.076850 -     Cleaned up temp file
+2026-01-13T20:37:53.077503 -   setup_user_session: COMPLETE
+2026-01-13T20:37:53.211519 - APP: is_authenticated = True
+2026-01-13T20:37:53.212785 - APP: user_id=10, user_role_ids=[33]
+2026-01-14T16:20:14.796395 -   setup_user_session: START
+2026-01-14T16:20:14.797285 -     user_id: 12, user_full_name: Harpreet Cheema
+2026-01-14T16:20:14.798508 -     Wrote INITIAL session data to temp file
+2026-01-14T16:20:14.803265 -     user_role_ids: [34]
+2026-01-14T16:20:14.804876 -     Updated temp file with user_role_ids
+2026-01-14T16:20:14.805899 -     Applied all data to session_state
+2026-01-14T16:20:14.806711 -     Cleaned up temp file
+2026-01-14T16:20:14.807199 -   setup_user_session: COMPLETE
+2026-01-14T16:20:14.999237 - APP: is_authenticated = True
+2026-01-14T16:20:15.000054 - APP: user_id=12, user_role_ids=[34]
+2026-01-14T16:20:21.077766 - APP: is_authenticated = False
+2026-01-14T16:20:21.078423 - APP: User NOT authenticated - showing login page
+2026-01-14T16:20:21.079151 - APP:   session_state.authenticated_user: None
+2026-01-14T16:20:21.079740 - APP:   session_state.user_id: None
+2026-01-14T16:20:21.881697 - APP: is_authenticated = False
+2026-01-14T16:20:21.882382 - APP: User NOT authenticated - showing login page
+2026-01-14T16:20:21.883127 - APP:   session_state.authenticated_user: None
+2026-01-14T16:20:21.883771 - APP:   session_state.user_id: None
+2026-01-14T16:20:21.978616 - APP: is_authenticated = False
+2026-01-14T16:20:21.979299 - APP: User NOT authenticated - showing login page
+2026-01-14T16:20:21.980026 - APP:   session_state.authenticated_user: None
+2026-01-14T16:20:21.980586 - APP:   session_state.user_id: None
+2026-01-14T16:20:31.352042 - === OAuth callback detected ===
+2026-01-14T16:20:31.353961 -   state: 51fPZcHXkegcOE-j383kWJHTSyv2OjzNRapcVPkjGW0
+2026-01-14T16:20:31.354609 -   is_authenticated at entry: False
+2026-01-14T16:20:31.504209 - === OAuth callback detected ===
+2026-01-14T16:20:31.508378 -   state: 51fPZcHXkegcOE-j383kWJHTSyv2OjzNRapcVPkjGW0
+2026-01-14T16:20:31.509878 -   is_authenticated at entry: False
+2026-01-14T16:20:31.518010 - APP: is_authenticated = False
+2026-01-14T16:20:31.524621 - APP: User NOT authenticated - showing login page
+2026-01-14T16:20:31.525338 - APP:   session_state.authenticated_user: None
+2026-01-14T16:20:31.526057 - APP:   session_state.user_id: None
+2026-01-14T16:20:31.764964 - === Google login successful ===
+2026-01-14T16:20:31.769982 -   email: harpreet@myhealthteam.org
+2026-01-14T16:20:31.770898 -   user_id: 12
+2026-01-14T16:20:31.771629 -   full_name: Harpreet Cheema
+2026-01-14T16:20:31.772425 -   oauth_provider: google
+2026-01-14T16:20:31.773222 -   About to call setup_user_session
+2026-01-14T16:20:31.774339 -   setup_user_session: START
+2026-01-14T16:20:31.775094 -     user_id: 12, user_full_name: Harpreet Cheema
+2026-01-14T16:20:31.776929 -     Wrote INITIAL session data to temp file
+2026-01-14T16:20:31.781259 -     user_role_ids: [34]
+2026-01-14T16:20:31.784836 -     Updated temp file with user_role_ids
+2026-01-14T16:20:32.222429 - GLOBAL: Found temp session file - restoring...
+2026-01-14T16:20:32.242780 - GLOBAL: Session restored from temp file
+2026-01-14T16:20:32.249453 - GLOBAL: is_authenticated after restore: True
+2026-01-14T16:20:32.352302 - APP: is_authenticated = True
+2026-01-14T16:20:32.353007 - APP: user_id=12, user_role_ids=[34]
+2026-01-14T16:20:37.522437 - APP: is_authenticated = True
+2026-01-14T16:20:37.523183 - APP: user_id=12, user_role_ids=[34]
+2026-01-14T16:20:38.620846 -   setup_user_session: START
+2026-01-14T16:20:38.624041 -     user_id: 21, user_full_name: Maningas, Sherwin
+2026-01-14T16:20:38.625729 -     Wrote INITIAL session data to temp file
+2026-01-14T16:20:38.632687 -     user_role_ids: [35]
+2026-01-14T16:20:38.641559 -     Updated temp file with user_role_ids
+2026-01-14T16:20:38.642877 -     Applied all data to session_state
+2026-01-14T16:20:38.643932 -     Cleaned up temp file
+2026-01-14T16:20:38.644693 -   setup_user_session: COMPLETE
+2026-01-14T16:20:38.771457 - APP: is_authenticated = True
+2026-01-14T16:20:38.778051 - APP: user_id=21, user_role_ids=[35]
+2026-01-14T16:20:45.777060 - APP: is_authenticated = True
+2026-01-14T16:20:45.778038 - APP: user_id=21, user_role_ids=[35]
+2026-01-14T16:20:45.884936 - APP: is_authenticated = True
+2026-01-14T16:20:45.885651 - APP: user_id=21, user_role_ids=[35]
+2026-01-14T16:21:44.219805 -   setup_user_session: START
+2026-01-14T16:21:44.222786 -     user_id: 12, user_full_name: Harpreet Cheema
+2026-01-14T16:21:44.224986 -     Wrote INITIAL session data to temp file
+2026-01-14T16:21:44.228230 -     user_role_ids: [34]
+2026-01-14T16:21:44.229847 -     Updated temp file with user_role_ids
+2026-01-14T16:21:44.230810 -     Applied all data to session_state
+2026-01-14T16:21:44.231930 -     Cleaned up temp file
+2026-01-14T16:21:44.232595 -   setup_user_session: COMPLETE
+2026-01-14T16:21:44.449370 - APP: is_authenticated = True
+2026-01-14T16:21:44.457891 - APP: user_id=12, user_role_ids=[34]
+2026-01-14T16:22:14.482547 - APP: is_authenticated = True
+2026-01-14T16:22:14.483554 - APP: user_id=12, user_role_ids=[34]
+2026-01-14T16:22:15.410923 -   setup_user_session: START
+2026-01-14T16:22:15.414824 -     user_id: 21, user_full_name: Maningas, Sherwin
+2026-01-14T16:22:15.416770 -     Wrote INITIAL session data to temp file
+2026-01-14T16:22:15.421821 -     user_role_ids: [35]
+2026-01-14T16:22:15.423476 -     Updated temp file with user_role_ids
+2026-01-14T16:22:15.424437 -     Applied all data to session_state
+2026-01-14T16:22:15.425360 -     Cleaned up temp file
+2026-01-14T16:22:15.425970 -   setup_user_session: COMPLETE
+2026-01-14T16:22:15.531337 - APP: is_authenticated = True
+2026-01-14T16:22:15.532057 - APP: user_id=21, user_role_ids=[35]
+2026-01-14T16:22:20.058965 -   setup_user_session: START
+2026-01-14T16:22:20.060237 -     user_id: 12, user_full_name: Harpreet Cheema
+2026-01-14T16:22:20.061402 -     Wrote INITIAL session data to temp file
+2026-01-14T16:22:20.064650 -     user_role_ids: [34]
+2026-01-14T16:22:20.065874 -     Updated temp file with user_role_ids
+2026-01-14T16:22:20.066798 -     Applied all data to session_state
+2026-01-14T16:22:20.067707 -     Cleaned up temp file
+2026-01-14T16:22:20.068290 -   setup_user_session: COMPLETE
+2026-01-14T16:22:20.279437 - APP: is_authenticated = True
+2026-01-14T16:22:20.285585 - APP: user_id=12, user_role_ids=[34]
+2026-01-14T16:22:22.182895 - APP: is_authenticated = True
+2026-01-14T16:22:22.184610 - APP: user_id=12, user_role_ids=[34]
+2026-01-14T16:22:23.117958 -   setup_user_session: START
+2026-01-14T16:22:23.121985 -     user_id: 10, user_full_name: Antonio, Ethel
+2026-01-14T16:22:23.123387 -     Wrote INITIAL session data to temp file
+2026-01-14T16:22:23.126153 -     user_role_ids: [33]
+2026-01-14T16:22:23.127319 -     Updated temp file with user_role_ids
+2026-01-14T16:22:23.128612 -     Applied all data to session_state
+2026-01-14T16:22:23.129687 -     Cleaned up temp file
+2026-01-14T16:22:23.130238 -   setup_user_session: COMPLETE
+2026-01-14T16:22:23.240531 - APP: is_authenticated = True
+2026-01-14T16:22:23.241520 - APP: user_id=10, user_role_ids=[33]
+2026-01-14T16:37:47.263587 - APP: is_authenticated = True
+2026-01-14T16:37:47.264359 - APP: user_id=10, user_role_ids=[33]
+2026-01-14T16:37:50.627690 - APP: is_authenticated = True
+2026-01-14T16:37:50.628746 - APP: user_id=10, user_role_ids=[33]
+2026-01-14T16:38:20.231148 - APP: is_authenticated = True
+2026-01-14T16:38:20.234684 - APP: user_id=10, user_role_ids=[33]
+2026-01-14T16:38:23.149283 - APP: is_authenticated = True
+2026-01-14T16:38:23.150374 - APP: user_id=10, user_role_ids=[33]
+2026-01-14T16:53:02.125185 -   setup_user_session: START
+2026-01-14T16:53:02.125990 -     user_id: 12, user_full_name: Harpreet Cheema
+2026-01-14T16:53:02.127811 -     Wrote INITIAL session data to temp file
+2026-01-14T16:53:02.132285 -     user_role_ids: [34]
+2026-01-14T16:53:02.133826 -     Updated temp file with user_role_ids
+2026-01-14T16:53:02.135098 -     Applied all data to session_state
+2026-01-14T16:53:02.136304 -     Cleaned up temp file
+2026-01-14T16:53:02.137124 -   setup_user_session: COMPLETE
+2026-01-14T16:53:02.371859 - APP: is_authenticated = True
+2026-01-14T16:53:02.372745 - APP: user_id=12, user_role_ids=[34]
+2026-01-14T16:53:07.651858 -   setup_user_session: START
+2026-01-14T16:53:07.652764 -     user_id: 25, user_full_name: Altar, Shirley
+2026-01-14T16:53:07.654299 -     Wrote INITIAL session data to temp file
+2026-01-14T16:53:07.661132 -     user_role_ids: [36]
+2026-01-14T16:53:07.662469 -     Updated temp file with user_role_ids
+2026-01-14T16:53:07.663505 -     Applied all data to session_state
+2026-01-14T16:53:07.664492 -     Cleaned up temp file
+2026-01-14T16:53:07.665321 -   setup_user_session: COMPLETE
+2026-01-14T16:53:07.813105 - APP: is_authenticated = True
+2026-01-14T16:53:07.823611 - APP: user_id=25, user_role_ids=[36]
+2026-01-14T16:53:13.478165 -   setup_user_session: START
+2026-01-14T16:53:13.479707 -     user_id: 12, user_full_name: Harpreet Cheema
+2026-01-14T16:53:13.481520 -     Wrote INITIAL session data to temp file
+2026-01-14T16:53:13.490150 -     user_role_ids: [34]
+2026-01-14T16:53:13.491558 -     Updated temp file with user_role_ids
+2026-01-14T16:53:13.492456 -     Applied all data to session_state
+2026-01-14T16:53:13.493414 -     Cleaned up temp file
+2026-01-14T16:53:13.493989 -   setup_user_session: COMPLETE
+2026-01-14T16:53:13.707522 - APP: is_authenticated = True
+2026-01-14T16:53:13.708244 - APP: user_id=12, user_role_ids=[34]
+2026-01-14T16:53:23.855906 - APP: is_authenticated = True
+2026-01-14T16:53:23.857363 - APP: user_id=12, user_role_ids=[34]
+2026-01-14T16:53:25.280392 -   setup_user_session: START
+2026-01-14T16:53:25.281081 -     user_id: 14, user_full_name: Estomo, Jan
+2026-01-14T16:53:25.282858 -     Wrote INITIAL session data to temp file
+2026-01-14T16:53:25.289156 -     user_role_ids: [36, 40]
+2026-01-14T16:53:25.294425 -     Updated temp file with user_role_ids
+2026-01-14T16:53:25.295405 -     Applied all data to session_state
+2026-01-14T16:53:25.296347 -     Cleaned up temp file
+2026-01-14T16:53:25.296879 -   setup_user_session: COMPLETE
+2026-01-14T16:53:25.398947 - APP: is_authenticated = True
+2026-01-14T16:53:25.400181 - APP: user_id=14, user_role_ids=[36, 40]
+2026-01-15T00:17:57.602896 - APP: is_authenticated = False
+2026-01-15T00:17:57.603664 - APP: User NOT authenticated - showing login page
+2026-01-15T00:17:57.604776 - APP:   session_state.authenticated_user: None
+2026-01-15T00:17:57.606555 - APP:   session_state.user_id: None
+2026-01-15T00:17:58.534942 - APP: is_authenticated = False
+2026-01-15T00:17:58.535601 - APP: User NOT authenticated - showing login page
+2026-01-15T00:17:58.537766 - APP:   session_state.authenticated_user: None
+2026-01-15T00:17:58.538458 - APP:   session_state.user_id: None
+2026-01-15T00:29:43.262454 - APP: is_authenticated = False
+2026-01-15T00:29:43.262843 - APP: is_authenticated = False
+2026-01-15T00:29:43.263337 - APP: User NOT authenticated - showing login page
+2026-01-15T00:29:43.263989 - APP: User NOT authenticated - showing login page
+2026-01-15T00:29:43.264431 - APP:   session_state.authenticated_user: None
+2026-01-15T00:29:43.265029 - APP:   session_state.authenticated_user: None
+2026-01-15T00:29:43.265678 - APP:   session_state.user_id: None
+2026-01-15T00:29:43.265796 - APP:   session_state.user_id: None
+2026-01-15T00:29:44.467886 - APP: is_authenticated = False
+2026-01-15T00:29:44.468787 - APP: User NOT authenticated - showing login page
+2026-01-15T00:29:44.469926 - APP:   session_state.authenticated_user: None
+2026-01-15T00:29:44.471771 - APP:   session_state.user_id: None
+2026-01-15T00:29:44.482555 - APP: is_authenticated = False
+2026-01-15T00:29:44.569742 - APP: User NOT authenticated - showing login page
+2026-01-15T00:29:44.570940 - APP:   session_state.authenticated_user: None
+2026-01-15T00:29:44.571681 - APP:   session_state.user_id: None
+2026-01-15T00:30:47.168700 - === OAuth callback detected ===
+2026-01-15T00:30:47.169530 -   state: sXgpKcYbb0keJBXsSGlaMY39owIaVjSAWzPhgA4hUmg
+2026-01-15T00:30:47.170130 -   is_authenticated at entry: False
+2026-01-15T00:30:47.283715 - === OAuth callback detected ===
+2026-01-15T00:30:47.284434 -   state: sXgpKcYbb0keJBXsSGlaMY39owIaVjSAWzPhgA4hUmg
+2026-01-15T00:30:47.285047 -   is_authenticated at entry: False
+2026-01-15T00:30:47.292119 - APP: is_authenticated = False
+2026-01-15T00:30:47.293393 - APP: User NOT authenticated - showing login page
+2026-01-15T00:30:47.294176 - APP:   session_state.authenticated_user: None
+2026-01-15T00:30:47.294758 - APP:   session_state.user_id: None
+2026-01-15T00:30:47.700315 - === Google login successful ===
+2026-01-15T00:30:47.700993 -   email: harpreet@myhealthteam.org
+2026-01-15T00:30:47.703012 -   user_id: 12
+2026-01-15T00:30:47.703867 -   full_name: Harpreet Cheema
+2026-01-15T00:30:47.704790 -   oauth_provider: google
+2026-01-15T00:30:47.705361 -   About to call setup_user_session
+2026-01-15T00:30:47.705887 -   setup_user_session: START
+2026-01-15T00:30:47.706566 -     user_id: 12, user_full_name: Harpreet Cheema
+2026-01-15T00:30:47.708210 -     Wrote INITIAL session data to temp file
+2026-01-15T00:30:47.713052 -     user_role_ids: [34]
+2026-01-15T00:30:47.714507 -     Updated temp file with user_role_ids
+2026-01-15T00:30:47.891870 - GLOBAL: Found temp session file - restoring...
+2026-01-15T00:30:47.904656 - GLOBAL: Session restored from temp file
+2026-01-15T00:30:47.905433 - GLOBAL: is_authenticated after restore: True
+2026-01-15T00:30:47.990320 - APP: is_authenticated = True
+2026-01-15T00:30:47.992445 - APP: user_id=12, user_role_ids=[34]
+2026-01-15T00:31:07.551608 -   setup_user_session: START
+2026-01-15T00:31:07.554918 -     user_id: 25, user_full_name: Altar, Shirley
+2026-01-15T00:31:07.560024 -     Wrote INITIAL session data to temp file
+2026-01-15T00:31:07.563352 -     user_role_ids: [36]
+2026-01-15T00:31:07.564459 -     Updated temp file with user_role_ids
+2026-01-15T00:31:07.565273 -     Applied all data to session_state
+2026-01-15T00:31:07.566026 -     Cleaned up temp file
+2026-01-15T00:31:07.566758 -   setup_user_session: COMPLETE
+2026-01-15T00:31:07.685824 - APP: is_authenticated = True
+2026-01-15T00:31:07.686916 - APP: user_id=25, user_role_ids=[36]
+2026-01-15T00:31:11.838894 -   setup_user_session: START
+2026-01-15T00:31:11.839660 -     user_id: 12, user_full_name: Harpreet Cheema
+2026-01-15T00:31:11.841289 -     Wrote INITIAL session data to temp file
+2026-01-15T00:31:11.844324 -     user_role_ids: [34]
+2026-01-15T00:31:11.845505 -     Updated temp file with user_role_ids
+2026-01-15T00:31:11.846324 -     Applied all data to session_state
+2026-01-15T00:31:11.847040 -     Cleaned up temp file
+2026-01-15T00:31:11.847522 -   setup_user_session: COMPLETE
+2026-01-15T00:31:12.057452 - APP: is_authenticated = True
+2026-01-15T00:31:12.058744 - APP: user_id=12, user_role_ids=[34]
+2026-01-15T00:31:16.092263 - APP: is_authenticated = True
+2026-01-15T00:31:16.179562 - APP: user_id=12, user_role_ids=[34]
+2026-01-15T00:31:16.492108 -   setup_user_session: START
+2026-01-15T00:31:16.492825 -     user_id: 21, user_full_name: Maningas, Sherwin
+2026-01-15T00:31:16.495860 -     Wrote INITIAL session data to temp file
+2026-01-15T00:31:16.499164 -     user_role_ids: [35]
+2026-01-15T00:31:16.500504 -     Updated temp file with user_role_ids
+2026-01-15T00:31:16.501355 -     Applied all data to session_state
+2026-01-15T00:31:16.502069 -     Cleaned up temp file
+2026-01-15T00:31:16.502491 -   setup_user_session: COMPLETE
+2026-01-15T00:31:16.596046 - APP: is_authenticated = True
+2026-01-15T00:31:16.596654 - APP: user_id=21, user_role_ids=[35]
+2026-01-15T00:31:21.169525 - APP: is_authenticated = True
+2026-01-15T00:31:21.170603 - APP: user_id=21, user_role_ids=[35]
+2026-01-15T00:31:21.303576 - APP: is_authenticated = True
+2026-01-15T00:31:21.305953 - APP: user_id=21, user_role_ids=[35]
+2026-01-15T14:48:05.993685 - APP: is_authenticated = False
+2026-01-15T14:48:05.997308 - APP: User NOT authenticated - showing login page
+2026-01-15T14:48:05.997936 - APP:   session_state.authenticated_user: None
+2026-01-15T14:48:05.998481 - APP:   session_state.user_id: None
+2026-01-15T14:48:08.543664 - APP: is_authenticated = False
+2026-01-15T14:48:08.545292 - APP: User NOT authenticated - showing login page
+2026-01-15T14:48:08.546061 - APP:   session_state.authenticated_user: None
+2026-01-15T14:48:08.546629 - APP:   session_state.user_id: None
+2026-01-15T23:10:29.204491 - APP: is_authenticated = False
+2026-01-15T23:10:29.205884 - APP: User NOT authenticated - showing login page
+2026-01-15T23:10:29.207068 - APP:   session_state.authenticated_user: None
+2026-01-15T23:10:29.207790 - APP:   session_state.user_id: None
+2026-01-15T23:10:33.977071 - APP: is_authenticated = False
+2026-01-15T23:10:33.977763 - APP: User NOT authenticated - showing login page
+2026-01-15T23:10:33.978333 - APP:   session_state.authenticated_user: None
+2026-01-15T23:10:33.978792 - APP:   session_state.user_id: None
+2026-01-15T23:10:50.036988 - APP: is_authenticated = False
+2026-01-15T23:10:50.037769 - APP: User NOT authenticated - showing login page
+2026-01-15T23:10:50.038320 - APP:   session_state.authenticated_user: None
+2026-01-15T23:10:50.038745 - APP:   session_state.user_id: None
+2026-01-15T23:10:50.627405 - APP: is_authenticated = False
+2026-01-15T23:10:50.628060 - APP: User NOT authenticated - showing login page
+2026-01-15T23:10:50.628590 - APP:   session_state.authenticated_user: None
+2026-01-15T23:10:50.629116 - APP:   session_state.user_id: None
+2026-01-15T23:10:50.713708 - APP: is_authenticated = False
+2026-01-15T23:10:50.714438 - APP: User NOT authenticated - showing login page
+2026-01-15T23:10:50.714968 - APP:   session_state.authenticated_user: None
+2026-01-15T23:10:50.715462 - APP:   session_state.user_id: None
+2026-01-15T23:10:58.767310 -   setup_user_session: START
+2026-01-15T23:10:58.768100 -     user_id: 12, user_full_name: Harpreet Cheema
+2026-01-15T23:10:58.769468 -     Wrote INITIAL session data to temp file
+2026-01-15T23:10:58.773555 -     user_role_ids: [34]
+2026-01-15T23:10:58.774945 -     Updated temp file with user_role_ids
+2026-01-15T23:10:58.776150 -     Applied all data to session_state
+2026-01-15T23:10:58.777056 -     Cleaned up temp file
+2026-01-15T23:10:59.163396 -     Persistent login saved
+2026-01-15T23:10:59.164140 -   setup_user_session: COMPLETE
+2026-01-15T23:10:59.287759 - APP: is_authenticated = True
+2026-01-15T23:10:59.289831 - APP: user_id=12, user_role_ids=[34]
+2026-01-16T00:10:52.224564 -   setup_user_session: START
+2026-01-16T00:10:52.225937 -     user_id: 25, user_full_name: Altar, Shirley
+2026-01-16T00:10:52.228155 -     Wrote INITIAL session data to temp file
+2026-01-16T00:10:52.235276 -     user_role_ids: [36]
+2026-01-16T00:10:52.237260 -     Updated temp file with user_role_ids
+2026-01-16T00:10:52.241013 -     Applied all data to session_state
+2026-01-16T00:10:52.242164 -     Cleaned up temp file
+2026-01-16T00:10:52.242778 -   setup_user_session: COMPLETE
+2026-01-16T00:10:52.428603 - APP: is_authenticated = True
+2026-01-16T00:10:52.432594 - APP: user_id=25, user_role_ids=[36]
+2026-01-16T00:50:44.999123 - APP: is_authenticated = False
+2026-01-16T00:50:45.000753 - APP: is_authenticated = False
+2026-01-16T00:50:45.001346 - APP: User NOT authenticated - showing login page
+2026-01-16T00:50:45.002223 - APP: User NOT authenticated - showing login page
+2026-01-16T00:50:45.002556 - APP:   session_state.authenticated_user: None
+2026-01-16T00:50:45.003285 - APP:   session_state.authenticated_user: None
+2026-01-16T00:50:45.004070 - APP:   session_state.user_id: None
+2026-01-16T00:50:45.004641 - APP:   session_state.user_id: None
+2026-01-16T00:50:47.058991 - APP: is_authenticated = False
+2026-01-16T00:50:47.061228 - APP: User NOT authenticated - showing login page
+2026-01-16T00:50:47.064268 - APP:   session_state.authenticated_user: None
+2026-01-16T00:50:47.065504 - APP:   session_state.user_id: None
+2026-01-16T00:50:48.001829 - APP: is_authenticated = False
+2026-01-16T00:50:48.003233 - APP: User NOT authenticated - showing login page
+2026-01-16T00:50:48.004871 - APP:   session_state.authenticated_user: None
+2026-01-16T00:50:48.007193 - APP:   session_state.user_id: None
+2026-01-16T00:51:26.790626 - === OAuth callback detected ===
+2026-01-16T00:51:26.818118 -   state: -4qjyGfebew4V3vfNjLhxYAKnIPLvlZXO4vuO5W4T_w
+2026-01-16T00:51:26.821786 -   is_authenticated at entry: False
+2026-01-16T00:51:27.030376 - === OAuth callback detected ===
+2026-01-16T00:51:27.032615 -   state: -4qjyGfebew4V3vfNjLhxYAKnIPLvlZXO4vuO5W4T_w
+2026-01-16T00:51:27.034573 -   is_authenticated at entry: False
+2026-01-16T00:51:27.049158 - APP: is_authenticated = False
+2026-01-16T00:51:27.066388 - APP: User NOT authenticated - showing login page
+2026-01-16T00:51:27.067916 - APP:   session_state.authenticated_user: None
+2026-01-16T00:51:27.069437 - APP:   session_state.user_id: None
+2026-01-16T00:51:27.394960 - === Google login successful ===
+2026-01-16T00:51:27.396586 -   email: harpreet@myhealthteam.org
+2026-01-16T00:51:27.398351 -   user_id: 12
+2026-01-16T00:51:27.401659 -   full_name: Harpreet Cheema
+2026-01-16T00:51:27.403529 -   oauth_provider: google
+2026-01-16T00:51:27.405437 -   About to call setup_user_session
+2026-01-16T00:51:27.406811 -   setup_user_session: START
+2026-01-16T00:51:27.407707 -     user_id: 12, user_full_name: Harpreet Cheema
+2026-01-16T00:51:27.409620 -     Wrote INITIAL session data to temp file
+2026-01-16T00:51:27.417654 -     user_role_ids: [34]
+2026-01-16T00:51:27.419459 -     Updated temp file with user_role_ids
+2026-01-16T00:51:28.833297 - GLOBAL: Found temp session file - restoring...
+2026-01-16T00:51:28.853178 - GLOBAL: Session restored from temp file
+2026-01-16T00:51:28.854120 - GLOBAL: is_authenticated after restore: True
+2026-01-16T00:51:28.990594 - APP: is_authenticated = True
+2026-01-16T00:51:28.991690 - APP: user_id=12, user_role_ids=[34]
+2026-01-16T00:57:52.383677 -   setup_user_session: START
+2026-01-16T00:57:52.385106 -     user_id: 25, user_full_name: Altar, Shirley
+2026-01-16T00:57:52.387467 -     Wrote INITIAL session data to temp file
+2026-01-16T00:57:52.394738 -     user_role_ids: [36]
+2026-01-16T00:57:52.402074 -     Updated temp file with user_role_ids
+2026-01-16T00:57:52.403806 -     Applied all data to session_state
+2026-01-16T00:57:52.405651 -     Cleaned up temp file
+2026-01-16T00:57:52.409886 -   setup_user_session: COMPLETE
+2026-01-16T00:57:52.670414 - APP: is_authenticated = True
+2026-01-16T00:57:52.682680 - APP: user_id=25, user_role_ids=[36]
+2026-01-16T00:57:57.397486 - APP: is_authenticated = True
+2026-01-16T00:57:57.401287 - APP: user_id=25, user_role_ids=[36]
+2026-01-16T00:58:01.672550 - APP: is_authenticated = True
+2026-01-16T00:58:01.674009 - APP: user_id=25, user_role_ids=[36]
+2026-01-16T00:58:04.252411 - APP: is_authenticated = True
+2026-01-16T00:58:04.253426 - APP: user_id=25, user_role_ids=[36]
+2026-01-16T00:58:06.289661 - APP: is_authenticated = True
+2026-01-16T00:58:06.292050 - APP: user_id=25, user_role_ids=[36]
+2026-01-16T00:58:08.741908 - APP: is_authenticated = True
+2026-01-16T00:58:08.743732 - APP: user_id=25, user_role_ids=[36]
+2026-01-16T00:58:11.264441 - APP: is_authenticated = True
+2026-01-16T00:58:11.270258 - APP: user_id=25, user_role_ids=[36]
+2026-01-16T00:58:18.022072 - APP: is_authenticated = True
+2026-01-16T00:58:18.023334 - APP: user_id=25, user_role_ids=[36]
+2026-01-16T00:58:19.922080 - APP: is_authenticated = True
+2026-01-16T00:58:19.923969 - APP: user_id=25, user_role_ids=[36]
+2026-01-16T01:02:59.963785 -   setup_user_session: START
+2026-01-16T01:02:59.964774 -     user_id: 12, user_full_name: Harpreet Cheema
+2026-01-16T01:02:59.967666 -     Wrote INITIAL session data to temp file
+2026-01-16T01:02:59.972269 -     user_role_ids: [34]
+2026-01-16T01:02:59.974169 -     Updated temp file with user_role_ids
+2026-01-16T01:02:59.975278 -     Applied all data to session_state
+2026-01-16T01:02:59.976315 -     Cleaned up temp file
+2026-01-16T01:02:59.976970 -   setup_user_session: COMPLETE
+2026-01-16T01:03:00.231985 - APP: is_authenticated = True
+2026-01-16T01:03:00.232823 - APP: user_id=12, user_role_ids=[34]
+2026-01-16T01:14:21.703413 - APP: is_authenticated = True
+2026-01-16T01:14:21.704286 - APP: user_id=12, user_role_ids=[34]
+2026-01-16T01:14:23.432174 - APP: is_authenticated = True
+2026-01-16T01:14:23.435995 - APP: user_id=12, user_role_ids=[34]
+2026-01-16T01:20:22.753642 - APP: is_authenticated = True
+2026-01-16T01:20:22.754593 - APP: user_id=12, user_role_ids=[34]
+2026-01-16T01:20:23.755267 - APP: is_authenticated = True
+2026-01-16T01:20:23.756159 - APP: user_id=12, user_role_ids=[34]
+2026-01-16T01:20:35.396408 - APP: is_authenticated = True
+2026-01-16T01:20:35.397347 - APP: user_id=12, user_role_ids=[34]
+2026-01-16T01:55:12.696600 - APP: is_authenticated = True
+2026-01-16T01:55:12.700220 - APP: user_id=12, user_role_ids=[34]
+2026-01-16T01:55:14.357049 - APP: is_authenticated = True
+2026-01-16T01:55:14.358513 - APP: user_id=12, user_role_ids=[34]
+2026-01-16T02:02:39.613617 - APP: is_authenticated = True
+2026-01-16T02:02:39.614641 - APP: user_id=12, user_role_ids=[34]
+2026-01-16T02:02:40.722731 - APP: is_authenticated = True
+2026-01-16T02:02:40.723667 - APP: user_id=12, user_role_ids=[34]
+2026-01-16T09:38:13.051222 - APP: is_authenticated = True
+2026-01-16T09:38:13.053820 - APP: user_id=12, user_role_ids=[34]
+2026-01-16T09:38:14.094346 -   setup_user_session: START
+2026-01-16T09:38:14.097523 -     user_id: 10, user_full_name: Antonio, Ethel
+2026-01-16T09:38:14.099364 -     Wrote INITIAL session data to temp file
+2026-01-16T09:38:14.103595 -     user_role_ids: [33]
+2026-01-16T09:38:14.105405 -     Updated temp file with user_role_ids
+2026-01-16T09:38:14.106589 -     Applied all data to session_state
+2026-01-16T09:38:14.107534 -     Cleaned up temp file
+2026-01-16T09:38:14.108658 -   setup_user_session: COMPLETE
+2026-01-16T09:38:14.217605 - APP: is_authenticated = True
+2026-01-16T09:38:14.218682 - APP: user_id=10, user_role_ids=[33]
+2026-01-16T09:38:27.987243 - APP: is_authenticated = True
+2026-01-16T09:38:27.988770 - APP: user_id=10, user_role_ids=[33]
+2026-01-16T09:38:38.023627 - APP: is_authenticated = True
+2026-01-16T09:38:38.024907 - APP: user_id=10, user_role_ids=[33]
+2026-01-16T09:38:41.012099 - APP: is_authenticated = True
+2026-01-16T09:38:41.013599 - APP: user_id=10, user_role_ids=[33]
+2026-01-16T09:38:46.091395 - APP: is_authenticated = True
+2026-01-16T09:38:46.092775 - APP: user_id=10, user_role_ids=[33]
+2026-01-16T09:38:48.497365 - APP: is_authenticated = True
+2026-01-16T09:38:48.498629 - APP: user_id=10, user_role_ids=[33]
+2026-01-16T09:38:52.781740 - APP: is_authenticated = True
+2026-01-16T09:38:52.782514 - APP: user_id=10, user_role_ids=[33]
+2026-01-16T09:38:53.476761 - APP: is_authenticated = True
+2026-01-16T09:38:53.586737 - APP: user_id=10, user_role_ids=[33]
+2026-01-16T09:38:57.500597 - APP: is_authenticated = True
+2026-01-16T09:38:57.501278 - APP: user_id=10, user_role_ids=[33]
+2026-01-16T09:39:15.529558 - APP: is_authenticated = True
+2026-01-16T09:39:15.530754 - APP: user_id=10, user_role_ids=[33]
+2026-01-16T09:39:24.416792 - APP: is_authenticated = True
+2026-01-16T09:39:24.418603 - APP: user_id=10, user_role_ids=[33]
+2026-01-16T09:39:26.950227 - APP: is_authenticated = True
+2026-01-16T09:39:26.965377 - APP: user_id=10, user_role_ids=[33]
+2026-01-16T09:39:33.962373 - APP: is_authenticated = True
+2026-01-16T09:39:33.963245 - APP: user_id=10, user_role_ids=[33]
+2026-01-16T10:05:59.552077 - APP: is_authenticated = False
+2026-01-16T10:05:59.553126 - APP: User NOT authenticated - showing login page
+2026-01-16T10:05:59.555590 - APP:   session_state.authenticated_user: None
+2026-01-16T10:05:59.558091 - APP:   session_state.user_id: None
+2026-01-16T10:06:00.222807 - APP: is_authenticated = False
+2026-01-16T10:06:00.226021 - APP: User NOT authenticated - showing login page
+2026-01-16T10:06:00.227711 - APP:   session_state.authenticated_user: None
+2026-01-16T10:06:00.228756 - APP:   session_state.user_id: None
+2026-01-16T10:18:17.065469 - === OAuth callback detected ===
+2026-01-16T10:18:17.067110 -   state: XEi_bKhIDF0H5lH_gy2s1060nytsQyD-6bLR5ak1lkY
+2026-01-16T10:18:17.067977 -   is_authenticated at entry: False
+2026-01-16T10:18:17.147607 - === OAuth callback detected ===
+2026-01-16T10:18:17.150603 -   state: XEi_bKhIDF0H5lH_gy2s1060nytsQyD-6bLR5ak1lkY
+2026-01-16T10:18:17.151625 -   is_authenticated at entry: False
+2026-01-16T10:18:17.160338 - APP: is_authenticated = False
+2026-01-16T10:18:17.161614 - APP: User NOT authenticated - showing login page
+2026-01-16T10:18:17.162879 - APP:   session_state.authenticated_user: None
+2026-01-16T10:18:17.163846 - APP:   session_state.user_id: None
+2026-01-16T10:18:17.651148 - === Google login successful ===
+2026-01-16T10:18:17.651917 -   email: harpreet@myhealthteam.org
+2026-01-16T10:18:17.652798 -   user_id: 12
+2026-01-16T10:18:17.653578 -   full_name: Harpreet Cheema
+2026-01-16T10:18:17.654303 -   oauth_provider: google
+2026-01-16T10:18:17.655006 -   About to call setup_user_session
+2026-01-16T10:18:17.655659 -   setup_user_session: START
+2026-01-16T10:18:17.656288 -     user_id: 12, user_full_name: Harpreet Cheema
+2026-01-16T10:18:17.657730 -     Wrote INITIAL session data to temp file
+2026-01-16T10:18:17.662684 -     user_role_ids: [34]
+2026-01-16T10:18:17.668154 -     Updated temp file with user_role_ids
+2026-01-16T10:18:17.759909 - GLOBAL: Found temp session file - restoring...
+2026-01-16T10:18:17.765611 - GLOBAL: Session restored from temp file
+2026-01-16T10:18:17.766655 - GLOBAL: is_authenticated after restore: True
+2026-01-16T10:18:17.872008 - APP: is_authenticated = True
+2026-01-16T10:18:17.873384 - APP: user_id=12, user_role_ids=[34]
+2026-01-16T10:18:22.372941 -   setup_user_session: START
+2026-01-16T10:18:22.374898 -     user_id: 10, user_full_name: Antonio, Ethel
+2026-01-16T10:18:22.478345 -     Wrote INITIAL session data to temp file
+2026-01-16T10:18:22.482301 -     user_role_ids: [33]
+2026-01-16T10:18:22.489684 -     Updated temp file with user_role_ids
+2026-01-16T10:18:22.490692 -     Applied all data to session_state
+2026-01-16T10:18:22.491655 -     Cleaned up temp file
+2026-01-16T10:18:22.492393 -   setup_user_session: COMPLETE
+2026-01-16T10:18:22.589810 - APP: is_authenticated = True
+2026-01-16T10:18:22.591110 - APP: user_id=10, user_role_ids=[33]
+2026-01-16T10:18:24.621301 - APP: is_authenticated = True
+2026-01-16T10:18:24.622400 - APP: user_id=10, user_role_ids=[33]
+2026-01-16T10:18:28.761014 - APP: is_authenticated = True
+2026-01-16T10:18:28.762340 - APP: user_id=10, user_role_ids=[33]
+2026-01-16T10:18:36.846533 - APP: is_authenticated = True
+2026-01-16T10:18:36.847443 - APP: user_id=10, user_role_ids=[33]
+2026-01-16T10:34:39.705465 -   setup_user_session: START
+2026-01-16T10:34:39.707226 -     user_id: 12, user_full_name: Harpreet Cheema
+2026-01-16T10:34:39.709208 -     Wrote INITIAL session data to temp file
+2026-01-16T10:34:39.713328 -     user_role_ids: [34]
+2026-01-16T10:34:39.714955 -     Updated temp file with user_role_ids
+2026-01-16T10:34:39.716024 -     Applied all data to session_state
+2026-01-16T10:34:39.717228 -     Cleaned up temp file
+2026-01-16T10:34:39.718059 -   setup_user_session: COMPLETE
+2026-01-16T10:34:39.940107 - APP: is_authenticated = True
+2026-01-16T10:34:39.941253 - APP: user_id=12, user_role_ids=[34]
+2026-01-16T10:34:48.740893 -   setup_user_session: START
+2026-01-16T10:34:48.741838 -     user_id: 25, user_full_name: Altar, Shirley
+2026-01-16T10:34:48.743920 -     Wrote INITIAL session data to temp file
+2026-01-16T10:34:48.748508 -     user_role_ids: [36]
+2026-01-16T10:34:48.758999 -     Updated temp file with user_role_ids
+2026-01-16T10:34:48.760902 -     Applied all data to session_state
+2026-01-16T10:34:48.762883 -     Cleaned up temp file
+2026-01-16T10:34:48.764149 -   setup_user_session: COMPLETE
+2026-01-16T10:34:48.881135 - APP: is_authenticated = True
+2026-01-16T10:34:48.883481 - APP: user_id=25, user_role_ids=[36]
+2026-01-16T10:34:55.476254 -   setup_user_session: START
+2026-01-16T10:34:55.477476 -     user_id: 12, user_full_name: Harpreet Cheema
+2026-01-16T10:34:55.479540 -     Wrote INITIAL session data to temp file
+2026-01-16T10:34:55.484210 -     user_role_ids: [34]
+2026-01-16T10:34:55.487275 -     Updated temp file with user_role_ids
+2026-01-16T10:34:55.489017 -     Applied all data to session_state
+2026-01-16T10:34:55.490467 -     Cleaned up temp file
+2026-01-16T10:34:55.491325 -   setup_user_session: COMPLETE
+2026-01-16T10:34:55.721454 - APP: is_authenticated = True
+2026-01-16T10:34:55.722438 - APP: user_id=12, user_role_ids=[34]
+2026-01-16T10:35:00.497026 -   setup_user_session: START
+2026-01-16T10:35:00.502016 -     user_id: 10, user_full_name: Antonio, Ethel
+2026-01-16T10:35:00.503903 -     Wrote INITIAL session data to temp file
+2026-01-16T10:35:00.508026 -     user_role_ids: [33]
+2026-01-16T10:35:00.509735 -     Updated temp file with user_role_ids
+2026-01-16T10:35:00.511115 -     Applied all data to session_state
+2026-01-16T10:35:00.512442 -     Cleaned up temp file
+2026-01-16T10:35:00.513186 -   setup_user_session: COMPLETE
+2026-01-16T10:35:00.642110 - APP: is_authenticated = True
+2026-01-16T10:35:00.643487 - APP: user_id=10, user_role_ids=[33]
+2026-01-16T10:39:31.685487 -   setup_user_session: START
+2026-01-16T10:39:31.689012 -     user_id: 12, user_full_name: Harpreet Cheema
+2026-01-16T10:39:31.690853 -     Wrote INITIAL session data to temp file
+2026-01-16T10:39:31.695697 -     user_role_ids: [34]
+2026-01-16T10:39:31.697961 -     Updated temp file with user_role_ids
+2026-01-16T10:39:31.699202 -     Applied all data to session_state
+2026-01-16T10:39:31.700458 -     Cleaned up temp file
+2026-01-16T10:39:31.701124 -   setup_user_session: COMPLETE
+2026-01-16T10:39:31.921475 - APP: is_authenticated = True
+2026-01-16T10:39:31.922381 - APP: user_id=12, user_role_ids=[34]
+2026-01-16T10:39:37.369218 - APP: is_authenticated = True
+2026-01-16T10:39:37.372404 - APP: user_id=12, user_role_ids=[34]
+2026-01-16T10:39:38.232555 -   setup_user_session: START
+2026-01-16T10:39:38.233843 -     user_id: 10, user_full_name: Antonio, Ethel
+2026-01-16T10:39:38.236798 -     Wrote INITIAL session data to temp file
+2026-01-16T10:39:38.242070 -     user_role_ids: [33]
+2026-01-16T10:39:38.243677 -     Updated temp file with user_role_ids
+2026-01-16T10:39:38.244927 -     Applied all data to session_state
+2026-01-16T10:39:38.246026 -     Cleaned up temp file
+2026-01-16T10:39:38.247215 -   setup_user_session: COMPLETE
+2026-01-16T10:39:38.372570 - APP: is_authenticated = True
+2026-01-16T10:39:38.373805 - APP: user_id=10, user_role_ids=[33]
+2026-01-16T10:39:44.356030 - APP: is_authenticated = True
+2026-01-16T10:39:44.357146 - APP: user_id=10, user_role_ids=[33]
+2026-01-16T10:45:00.337385 - APP: is_authenticated = False
+2026-01-16T10:45:00.338471 - APP: User NOT authenticated - showing login page
+2026-01-16T10:45:00.340529 - APP:   session_state.authenticated_user: None
+2026-01-16T10:45:00.341310 - APP:   session_state.user_id: None
+2026-01-16T10:45:00.989558 - APP: is_authenticated = False
+2026-01-16T10:45:00.990496 - APP: User NOT authenticated - showing login page
+2026-01-16T10:45:00.991594 - APP:   session_state.authenticated_user: None
+2026-01-16T10:45:00.992402 - APP:   session_state.user_id: None
+2026-01-16T10:45:01.119805 - APP: is_authenticated = False
+2026-01-16T10:45:01.121072 - APP: User NOT authenticated - showing login page
+2026-01-16T10:45:01.122133 - APP:   session_state.authenticated_user: None
+2026-01-16T10:45:01.123115 - APP:   session_state.user_id: None
+2026-01-16T10:45:07.726308 - === OAuth callback detected ===
+2026-01-16T10:45:07.728594 -   state: xiDH8TPmae72lgMxXroH5_pN-jJ3ihQxqvvbN90BmGg
+2026-01-16T10:45:07.730322 -   is_authenticated at entry: False
+2026-01-16T10:45:07.836364 - === OAuth callback detected ===
+2026-01-16T10:45:07.839613 -   state: xiDH8TPmae72lgMxXroH5_pN-jJ3ihQxqvvbN90BmGg
+2026-01-16T10:45:07.840757 -   is_authenticated at entry: False
+2026-01-16T10:45:07.850081 - APP: is_authenticated = False
+2026-01-16T10:45:07.851147 - APP: User NOT authenticated - showing login page
+2026-01-16T10:45:07.852295 - APP:   session_state.authenticated_user: None
+2026-01-16T10:45:07.853695 - APP:   session_state.user_id: None
+2026-01-16T10:45:08.113378 - === Google login successful ===
+2026-01-16T10:45:08.114205 -   email: harpreet@myhealthteam.org
+2026-01-16T10:45:08.115068 -   user_id: 12
+2026-01-16T10:45:08.115749 -   full_name: Harpreet Cheema
+2026-01-16T10:45:08.116420 -   oauth_provider: google
+2026-01-16T10:45:08.117239 -   About to call setup_user_session
+2026-01-16T10:45:08.118059 -   setup_user_session: START
+2026-01-16T10:45:08.118800 -     user_id: 12, user_full_name: Harpreet Cheema
+2026-01-16T10:45:08.126941 -     Wrote INITIAL session data to temp file
+2026-01-16T10:45:08.130000 -     user_role_ids: [34]
+2026-01-16T10:45:08.131733 -     Updated temp file with user_role_ids
+2026-01-16T10:45:08.482075 - GLOBAL: Found temp session file - restoring...
+2026-01-16T10:45:08.487611 - GLOBAL: Session restored from temp file
+2026-01-16T10:45:08.488949 - GLOBAL: is_authenticated after restore: True
+2026-01-16T10:45:08.605803 - APP: is_authenticated = True
+2026-01-16T10:45:08.607180 - APP: user_id=12, user_role_ids=[34]
+2026-01-16T10:45:12.945762 - APP: is_authenticated = True
+2026-01-16T10:45:13.211958 -   setup_user_session: START
+2026-01-16T10:45:13.219744 -     user_id: 10, user_full_name: Antonio, Ethel
+2026-01-16T10:45:13.221670 -     Wrote INITIAL session data to temp file
+2026-01-16T10:45:13.226897 -     user_role_ids: [33]
+2026-01-16T10:45:13.233177 -     Updated temp file with user_role_ids
+2026-01-16T10:45:13.234537 -     Applied all data to session_state
+2026-01-16T10:45:13.235860 -     Cleaned up temp file
+2026-01-16T10:45:13.236841 -   setup_user_session: COMPLETE
+2026-01-16T10:45:13.377980 - APP: is_authenticated = True
+2026-01-16T10:45:13.379652 - APP: user_id=10, user_role_ids=[33]
+2026-01-16T10:45:23.715276 -   setup_user_session: START
+2026-01-16T10:45:23.717030 -     user_id: 12, user_full_name: Harpreet Cheema
+2026-01-16T10:45:23.719542 -     Wrote INITIAL session data to temp file
+2026-01-16T10:45:23.722996 -     user_role_ids: [34]
+2026-01-16T10:45:23.724875 -     Updated temp file with user_role_ids
+2026-01-16T10:45:23.726190 -     Applied all data to session_state
+2026-01-16T10:45:23.727315 -     Cleaned up temp file
+2026-01-16T10:45:23.728754 -   setup_user_session: COMPLETE
+2026-01-16T10:45:23.962585 - APP: is_authenticated = True
+2026-01-16T10:45:23.968614 - APP: user_id=12, user_role_ids=[34]
+2026-01-16T10:45:28.136196 -   setup_user_session: START
+2026-01-16T10:45:28.297373 -     user_id: 10, user_full_name: Antonio, Ethel
+2026-01-16T10:45:28.561740 -     Wrote INITIAL session data to temp file
+2026-01-16T10:45:28.662743 -     user_role_ids: [33]
+2026-01-16T10:45:28.808444 -     Updated temp file with user_role_ids
+2026-01-16T10:45:28.821263 -     Applied all data to session_state
+2026-01-16T10:45:28.831650 -     Cleaned up temp file
+2026-01-16T10:45:28.945825 -   setup_user_session: COMPLETE
+2026-01-16T10:45:29.091208 - APP: is_authenticated = True
+2026-01-16T10:45:29.092927 - APP: user_id=10, user_role_ids=[33]
+2026-01-16T10:45:41.662504 - APP: is_authenticated = True
+2026-01-16T10:45:41.663533 - APP: user_id=10, user_role_ids=[33]
+2026-01-16T10:47:16.638610 -   setup_user_session: START
+2026-01-16T10:47:16.639523 -     user_id: 12, user_full_name: Harpreet Cheema
+2026-01-16T10:47:16.641877 -     Wrote INITIAL session data to temp file
+2026-01-16T10:47:16.646396 -     user_role_ids: [34]
+2026-01-16T10:47:16.648202 -     Updated temp file with user_role_ids
+2026-01-16T10:47:16.650889 -     Applied all data to session_state
+2026-01-16T10:47:16.659260 -     Cleaned up temp file
+2026-01-16T10:47:16.660185 -   setup_user_session: COMPLETE
+2026-01-16T10:47:16.889305 - APP: is_authenticated = True
+2026-01-16T10:47:16.890378 - APP: user_id=12, user_role_ids=[34]
+2026-01-16T10:47:25.598902 -   setup_user_session: START
+2026-01-16T10:47:25.605322 -     user_id: 25, user_full_name: Altar, Shirley
+2026-01-16T10:47:25.606967 -     Wrote INITIAL session data to temp file
+2026-01-16T10:47:25.610816 -     user_role_ids: [36]
+2026-01-16T10:47:25.612546 -     Updated temp file with user_role_ids
+2026-01-16T10:47:25.613714 -     Applied all data to session_state
+2026-01-16T10:47:25.621069 -     Cleaned up temp file
+2026-01-16T10:47:25.621977 -   setup_user_session: COMPLETE
+2026-01-16T10:47:25.730919 - APP: is_authenticated = True
+2026-01-16T10:47:25.732174 - APP: user_id=25, user_role_ids=[36]
+2026-01-16T10:47:29.077821 -   setup_user_session: START
+2026-01-16T10:47:29.081390 -     user_id: 12, user_full_name: Harpreet Cheema
+2026-01-16T10:47:29.083135 -     Wrote INITIAL session data to temp file
+2026-01-16T10:47:29.086698 -     user_role_ids: [34]
+2026-01-16T10:47:29.088867 -     Updated temp file with user_role_ids
+2026-01-16T10:47:29.091189 -     Applied all data to session_state
+2026-01-16T10:47:29.098989 -     Cleaned up temp file
+2026-01-16T10:47:29.099787 -   setup_user_session: COMPLETE
+2026-01-16T10:47:29.315423 - APP: is_authenticated = True
+2026-01-16T10:47:29.316193 - APP: user_id=12, user_role_ids=[34]
+2026-01-16T10:47:33.850125 -   setup_user_session: START
+2026-01-16T10:47:33.856390 -     user_id: 10, user_full_name: Antonio, Ethel
+2026-01-16T10:47:33.858510 -     Wrote INITIAL session data to temp file
+2026-01-16T10:47:33.862352 -     user_role_ids: [33]
+2026-01-16T10:47:33.864075 -     Updated temp file with user_role_ids
+2026-01-16T10:47:33.865149 -     Applied all data to session_state
+2026-01-16T10:47:33.866221 -     Cleaned up temp file
+2026-01-16T10:47:33.866985 -   setup_user_session: COMPLETE
+2026-01-16T10:47:33.988285 - APP: is_authenticated = True
+2026-01-16T10:47:33.989578 - APP: user_id=10, user_role_ids=[33]
+2026-01-16T10:47:40.176976 - APP: is_authenticated = True
+2026-01-16T10:47:40.178203 - APP: user_id=10, user_role_ids=[33]
+2026-01-16T10:48:03.410462 -   setup_user_session: START
+2026-01-16T10:48:03.411706 -     user_id: 12, user_full_name: Harpreet Cheema
+2026-01-16T10:48:03.415695 -     Wrote INITIAL session data to temp file
+2026-01-16T10:48:03.423448 -     user_role_ids: [34]
+2026-01-16T10:48:03.432070 -     Updated temp file with user_role_ids
+2026-01-16T10:48:03.434666 -     Applied all data to session_state
+2026-01-16T10:48:03.437591 -     Cleaned up temp file
+2026-01-16T10:48:03.438794 -   setup_user_session: COMPLETE
+2026-01-16T10:48:03.671705 - APP: is_authenticated = True
+2026-01-16T10:48:03.672641 - APP: user_id=12, user_role_ids=[34]
+2026-01-16T10:48:08.779016 - APP: is_authenticated = True
+2026-01-16T10:48:08.786514 - APP: user_id=12, user_role_ids=[34]
+2026-01-16T10:48:10.008261 -   setup_user_session: START
+2026-01-16T10:48:10.009153 -     user_id: 9, user_full_name: Dabalus, Eden
+2026-01-16T10:48:10.011284 -     Wrote INITIAL session data to temp file
+2026-01-16T10:48:10.022637 -     user_role_ids: [33]
+2026-01-16T10:48:10.024640 -     Updated temp file with user_role_ids
+2026-01-16T10:48:10.026056 -     Applied all data to session_state
+2026-01-16T10:48:10.033743 -     Cleaned up temp file
+2026-01-16T10:48:10.034583 -   setup_user_session: COMPLETE
+2026-01-16T10:48:10.195039 - APP: is_authenticated = True
+2026-01-16T10:48:10.197118 - APP: user_id=9, user_role_ids=[33]
+2026-01-16T10:48:31.238439 -   setup_user_session: START
+2026-01-16T10:48:31.241151 -     user_id: 12, user_full_name: Harpreet Cheema
+2026-01-16T10:48:31.243591 -     Wrote INITIAL session data to temp file
+2026-01-16T10:48:31.248358 -     user_role_ids: [34]
+2026-01-16T10:48:31.250111 -     Updated temp file with user_role_ids
+2026-01-16T10:48:31.251321 -     Applied all data to session_state
+2026-01-16T10:48:31.252556 -     Cleaned up temp file
+2026-01-16T10:48:31.253517 -   setup_user_session: COMPLETE
+2026-01-16T10:48:31.487400 - APP: is_authenticated = True
+2026-01-16T10:48:31.488251 - APP: user_id=12, user_role_ids=[34]
+2026-01-16T10:48:37.534534 - APP: is_authenticated = True
+2026-01-16T10:48:37.535365 - APP: user_id=12, user_role_ids=[34]
+2026-01-16T10:48:38.606940 -   setup_user_session: START
+2026-01-16T10:48:38.608913 -     user_id: 10, user_full_name: Antonio, Ethel
+2026-01-16T10:48:38.610543 -     Wrote INITIAL session data to temp file
+2026-01-16T10:48:38.617955 -     user_role_ids: [33]
+2026-01-16T10:48:38.619697 -     Updated temp file with user_role_ids
+2026-01-16T10:48:38.620835 -     Applied all data to session_state
+2026-01-16T10:48:38.622050 -     Cleaned up temp file
+2026-01-16T10:48:38.622833 -   setup_user_session: COMPLETE
+2026-01-16T10:48:38.751957 - APP: is_authenticated = True
+2026-01-16T10:48:38.752926 - APP: user_id=10, user_role_ids=[33]
+2026-01-16T10:48:46.930230 - APP: is_authenticated = True
+2026-01-16T10:48:46.931796 - APP: user_id=10, user_role_ids=[33]
+2026-01-16T10:48:51.795972 - APP: is_authenticated = True
+2026-01-16T10:48:51.797863 - APP: user_id=10, user_role_ids=[33]
+2026-01-16T11:47:03.552208 - APP: is_authenticated = True
+2026-01-16T11:47:03.553114 - APP: user_id=10, user_role_ids=[33]
+2026-01-16T11:47:09.270306 - APP: is_authenticated = True
+2026-01-16T11:47:09.279448 - APP: user_id=10, user_role_ids=[33]
+2026-01-16T11:47:15.823002 - APP: is_authenticated = True
+2026-01-16T11:47:15.826452 - APP: user_id=10, user_role_ids=[33]
+2026-01-16T11:50:25.574533 - APP: is_authenticated = True
+2026-01-16T11:50:25.575394 - APP: user_id=10, user_role_ids=[33]
+2026-01-16T11:50:30.029846 - APP: is_authenticated = True
+2026-01-16T11:50:30.031065 - APP: user_id=10, user_role_ids=[33]
+2026-01-16T11:50:38.058596 - APP: is_authenticated = True
+2026-01-16T11:50:38.059804 - APP: user_id=10, user_role_ids=[33]
+2026-01-16T11:50:44.746905 - APP: is_authenticated = True
+2026-01-16T11:50:44.748014 - APP: user_id=10, user_role_ids=[33]
+2026-01-16T12:03:07.595625 - APP: is_authenticated = True
+2026-01-16T12:03:07.596833 - APP: user_id=10, user_role_ids=[33]
+2026-01-16T12:03:16.274715 - APP: is_authenticated = True
+2026-01-16T12:03:16.275653 - APP: user_id=10, user_role_ids=[33]
+2026-01-16T12:03:22.103827 - APP: is_authenticated = True
+2026-01-16T12:03:22.105159 - APP: user_id=10, user_role_ids=[33]
+2026-01-16T12:03:50.036180 - APP: is_authenticated = True
+2026-01-16T12:03:50.037491 - APP: user_id=10, user_role_ids=[33]
+2026-01-16T12:03:55.491696 - APP: is_authenticated = True
+2026-01-16T12:03:55.493300 - APP: user_id=10, user_role_ids=[33]
+2026-01-16T12:04:01.012088 - APP: is_authenticated = True
+2026-01-16T12:04:01.013216 - APP: user_id=10, user_role_ids=[33]
