@@ -7,24 +7,31 @@ It supports both email/password and OAuth authentication methods.
 
 import streamlit as st
 import logging
+from logging.handlers import RotatingFileHandler
 import sqlite3
 import json
 from typing import Optional, Dict, Any, List
 from datetime import datetime
+import os
 
-# File logging DISABLED - was causing disk to fill (168GB oauth_debug.log)
-# Use journalctl -u myhealthteam -f for production debugging
-# logging.basicConfig(
-#     filename='oauth_debug.log',
-#     level=logging.DEBUG,
-#     format='%(asctime)s - %(message)s'
-# )
+# Setup rotating file logger - max 10MB per file, keeps 3 backup files (40MB total)
+# This prevents disk fill while preserving debug logs for troubleshooting
+_log_handler = RotatingFileHandler(
+    'oauth_debug.log',
+    maxBytes=10 * 1024 * 1024,  # 10MB
+    backupCount=3,
+    encoding='utf-8'
+)
+_log_handler.setFormatter(logging.Formatter('%(asctime)s - %(message)s'))
+_logger = logging.getLogger('oauth_debug')
+_logger.setLevel(logging.DEBUG)
+_logger.addHandler(_log_handler)
 
 def debug_log(message):
-    """Write debug message to console only (file logging disabled to prevent disk fill)"""
-    # File logging disabled due to OAuth double-execution issue causing infinite growth
-    # Use streamlit logging or journalctl for debugging instead
-    print(message)
+    """Write debug message to rotating log file and console"""
+    msg = f"{datetime.now().isoformat()} - {message}"
+    _logger.debug(message)  # Goes to rotating file
+    print(msg)  # Console output
 from src import database
 from src.database import get_db_connection
 from src.core_utils import get_user_role_ids
