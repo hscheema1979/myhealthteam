@@ -270,34 +270,38 @@ def save_progress_step(
             (combined_notes, instance_id),
         )
 
-        # Optionally record duration in coordinator_tasks if duration > 0
-        if duration_minutes > 0:
-            workflow_info = conn.execute(
-                "SELECT patient_id FROM workflow_instances WHERE instance_id = ?",
-                (instance_id,),
-            ).fetchone()
-            if workflow_info:
-                now = pd.Timestamp.now()
-                # Convert to PST timezone (UTC-8 in winter, UTC-7 in summer)
-                now_pst = now.tz_localize('UTC').tz_convert('America/Los_Angeles')
-                table_name = ensure_monthly_coordinator_tasks_table(
-                    year=now.year, month=now.month, conn=conn
-                )
+        # Record progress in coordinator_tasks (including duration=0 entries for visibility)
+        # Include microsecond timestamp in task_type to ensure uniqueness for the UNIQUE constraint
+        workflow_info = conn.execute(
+            "SELECT patient_id FROM workflow_instances WHERE instance_id = ?",
+            (instance_id,),
+        ).fetchone()
+        if workflow_info:
+            now = pd.Timestamp.now()
+            # Convert to PST timezone (UTC-8 in winter, UTC-7 in summer)
+            now_pst = now.tz_localize('UTC').tz_convert('America/Los_Angeles')
+            table_name = ensure_monthly_coordinator_tasks_table(
+                year=now.year, month=now.month, conn=conn
+            )
 
-                # Insert duration record with unique PST timestamp
-                conn.execute(
-                    f"""
-                    INSERT INTO {table_name} (
-                        coordinator_id, patient_id, task_date, duration_minutes,
-                        task_type, notes, source_system, imported_at, created_at_pst
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
+            # Include microseconds in task_type to avoid UNIQUE constraint violations
+            # Format: WORKFLOW_PROGRESS|{instance_id}|{step_id}|{HHMMSSffffff}
+            time_suffix = now.strftime("%H%M%S%f")
+            task_type_unique = f"WORKFLOW_PROGRESS|{instance_id}|{step_id}|{time_suffix}"
+
+            conn.execute(
+                f"""
+                INSERT INTO {table_name} (
+                    coordinator_id, patient_id, task_date, duration_minutes,
+                    task_type, notes, source_system, imported_at, created_at_pst
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
                     (
                         coordinator_id,
                         workflow_info["patient_id"],
                         now.strftime("%Y-%m-%d"),
                         duration_minutes,
-                        f"WORKFLOW_PROGRESS|{instance_id}|{step_id}",
+                        task_type_unique,
                         f"Progress on {step_info['task_name']}: {notes}",
                         "workflow_module",
                         now.strftime("%Y-%m-%d %H:%M:%S"),
