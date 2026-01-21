@@ -805,11 +805,12 @@ def show():
             key="provider_tasks_view_mode",
         )
 
-        # Helper to get available provider task tables
+        # Helper to get available provider task tables and import views
         def get_provider_tables(conn):
             tables = conn.execute("""
                 SELECT name FROM sqlite_master
-                WHERE type='table' AND name LIKE 'provider_tasks_20%'
+                WHERE (type='table' AND name LIKE 'provider_tasks_20%')
+                   OR (type='view' AND name LIKE 'provider_monthly_202%_import')
                 ORDER BY name DESC
             """).fetchall()
             return [t[0] for t in tables]
@@ -825,34 +826,45 @@ def show():
             col_sel1, col_sel2 = st.columns([1, 3])
 
             with col_sel1:
-                # Parse years and months from tables
+                # Parse years and months from tables and views
                 available_months = []
                 for table_name in available_tables:
                     try:
-                        # provider_tasks_YYYY_MM
+                        # provider_tasks_YYYY_MM or provider_monthly_YYYY_MM_import
                         parts = table_name.split("_")
-                        if len(parts) >= 3:
-                            year = int(parts[2])
-                            month = int(parts[3])
-                            available_months.append((year, month))
+                        if len(parts) >= 4:
+                            if "monthly" in table_name:
+                                # provider_monthly_YYYY_MM_import
+                                year = int(parts[2])
+                                month = int(parts[3])
+                                data_type = "IMPORT"
+                            else:
+                                # provider_tasks_YYYY_MM
+                                year = int(parts[2])
+                                month = int(parts[3])
+                                data_type = "LIVE"
+                            available_months.append((year, month, data_type))
                     except:
                         continue
 
-                available_months.sort(reverse=True)
+                available_months.sort(key=lambda x: (x[0], x[1]), reverse=True)
 
                 # Create options
                 month_options = []
                 month_values = []
-                for year, month in available_months:
+                for year, month, data_type in available_months:
                     month_name = calendar.month_name[month]
-                    month_options.append(f"{month_name} {year}")
-                    month_values.append((year, month))
+                    if data_type == "IMPORT":
+                        month_options.append(f"{month_name} {year} (CSV Import)")
+                    else:
+                        month_options.append(f"{month_name} {year} (Live)")
+                    month_values.append((year, month, data_type))
 
                 # Default selection
                 current_date = pd.Timestamp.now()
                 default_idx = 0
-                for i, (y, m) in enumerate(month_values):
-                    if y == current_date.year and m == current_date.month:
+                for i, (y, m, dt) in enumerate(month_values):
+                    if y == current_date.year and m == current_date.month and dt == "LIVE":
                         default_idx = i
                         break
 
@@ -866,28 +878,67 @@ def show():
             if not month_options:
                 st.warning("No provider task data found.")
             else:
-                sel_year, sel_month = month_values[
+                sel_year, sel_month, data_type = month_values[
                     month_options.index(selected_month_text)
                 ]
-                table_name = f"provider_tasks_{sel_year}_{sel_month:02d}"
 
-                with col_sel2:
-                    st.markdown(f"### {selected_month_text} Overview")
+                # For IMPORT data, show monthly summary view
+                if data_type == "IMPORT":
+                    view_name = f"provider_monthly_{sel_year}_{sel_month:02d}_import"
 
-                # Load data for selected month
-                try:
+                    with col_sel2:
+                        st.markdown(f"### {selected_month_text}")
+                        st.caption("Monthly summary from CSV import data")
+
+                    # Load and display monthly summary
                     conn = db.get_db_connection()
-                    # Join with patients table to get patient status for filtering
-                    df = pd.read_sql_query(f"""
-                        SELECT pt.*, p.status as patient_status
-                        FROM {table_name} pt
-                        LEFT JOIN patients p ON pt.patient_id = p.patient_id
-                    """, conn)
+                    query = f"""
+                    SELECT
+                        provider_name,
+                        billing_code,
+                        task_type,
+                        SUM(total_tasks) as total_tasks,
+                        SUM(total_minutes) as total_minutes,
+                        ROUND(SUM(total_minutes) / 60.0, 2) as total_hours,
+                        SUM(unique_patients) as unique_patients
+                    FROM {view_name}
+                    GROUP BY provider_id, provider_name, billing_code, task_type
+                    ORDER BY SUM(total_minutes) DESC
+                    """
+                    df = pd.read_sql_query(query, conn)
                     conn.close()
 
-                    # Apply patient status filter
-                    if selected_patient_statuses:
-                        df = df[df["patient_status"].isin(selected_patient_statuses)]
+                    if not df.empty:
+                        st.dataframe(df, use_container_width=True, hide_index=True)
+                    else:
+                        st.info("No data available for this period")
+
+                # For LIVE data, show detailed task view
+                else:
+                    table_name = f"provider_tasks_{sel_year}_{sel_month:02d}"
+
+                    with col_sel2:
+                        st.markdown(f"### {selected_month_text}")
+
+                    # Load data for selected month
+                    try:
+                        conn = db.get_db_connection()
+                        # Join with patients table to get patient status for filtering
+                        df = pd.read_sql_query(f"""
+                            SELECT pt.*, p.status as patient_status
+                            FROM {table_name} pt
+                            LEFT JOIN patients p ON pt.patient_id = p.patient_id
+                        """, conn)
+                        conn.close()
+
+                    except Exception as e:
+                        st.error(f"Error loading data: {e}")
+                        df = pd.DataFrame()
+
+                    if not df.empty:
+                        # Apply patient status filter
+                        if selected_patient_statuses:
+                            df = df[df["patient_status"].isin(selected_patient_statuses)]
 
                     if not df.empty:
                         # --- Metrics ---
@@ -1017,9 +1068,6 @@ def show():
                         )
                     else:
                         st.info(f"No records found in {table_name}")
-
-                except Exception as e:
-                    st.error(f"Error loading data: {e}")
 
         else:
             # --- Weekly View Logic ---
@@ -2736,7 +2784,7 @@ def show():
                     "Track coordinator billing by month using patient minutes and billing codes"
                 )
                 try:
-                    from src.dashboards.monthly_coordinator_billing_dashboard import (
+                    from src.dashboards.monthly_coordinator_billing_dashboard_v2 import (
                         display_monthly_coordinator_billing_dashboard,
                     )
 
@@ -2755,7 +2803,7 @@ def show():
                     "Track provider billing by week using provider tasks and billing status"
                 )
                 try:
-                    from src.dashboards.weekly_provider_billing_dashboard import (
+                    from src.dashboards.weekly_provider_billing_dashboard_v2 import (
                         display_weekly_provider_billing_dashboard,
                     )
 

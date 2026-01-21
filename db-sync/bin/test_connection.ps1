@@ -58,25 +58,25 @@ if ($sqliteTest -match '^\d+$') {
     exit 1
 }
 
-# Test 4: Check task tables
-Write-Host "[4/4] Checking task tables..." -ForegroundColor Yellow
+# Test 4: Check csv_* billing tables
+Write-Host "[4/4] Checking csv_* billing tables..." -ForegroundColor Yellow
 $currentMonth = Get-Date -Format "yyyy_MM"
-$providerTable = "provider_tasks_$currentMonth"
-$coordTable = "coordinator_tasks_$currentMonth"
+$csvProviderTable = "csv_provider_tasks_$currentMonth"
+$csvCoordTable = "csv_coordinator_tasks_$currentMonth"
 
-$providerCount = ssh $masterHost "sqlite3 '$masterDbPath' 'SELECT COUNT(*) FROM $providerTable;'" 2>$null
-$coordCount = ssh $masterHost "sqlite3 '$masterDbPath' 'SELECT COUNT(*) FROM $coordTable;'" 2>$null
+$csvProviderCount = ssh $masterHost "sqlite3 '$masterDbPath' 'SELECT COUNT(*) FROM $csvProviderTable;'" 2>$null
+$csvCoordCount = ssh $masterHost "sqlite3 '$masterDbPath' 'SELECT COUNT(*) FROM $csvCoordTable;'" 2>$null
 
-if ($providerCount -match '^\d+$') {
-    Write-Host "  $providerTable : $providerCount rows" -ForegroundColor Green
+if ($csvProviderCount -match '^\d+$') {
+    Write-Host "  $csvProviderTable : $csvProviderCount rows" -ForegroundColor Green
 } else {
-    Write-Host "  $providerTable : NOT FOUND (may not exist yet)" -ForegroundColor Yellow
+    Write-Host "  $csvProviderTable : NOT FOUND (may not exist yet)" -ForegroundColor Yellow
 }
 
-if ($coordCount -match '^\d+$') {
-    Write-Host "  $coordTable : $coordCount rows" -ForegroundColor Green
+if ($csvCoordCount -match '^\d+$') {
+    Write-Host "  $csvCoordTable : $csvCoordCount rows" -ForegroundColor Green
 } else {
-    Write-Host "  $coordTable : NOT FOUND (may not exist yet)" -ForegroundColor Yellow
+    Write-Host "  $csvCoordTable : NOT FOUND (may not exist yet)" -ForegroundColor Yellow
 }
 
 Write-Host ""
@@ -84,6 +84,10 @@ Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "  All tests passed!" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "You can now run:" -ForegroundColor White
-Write-Host "  .\sync_csv_data.ps1 -DryRun    # Test sync without changes" -ForegroundColor Gray
-Write-Host "  .\sync_csv_data.ps1            # Run actual sync" -ForegroundColor Gray
+Write-Host "You can now run the safe csv_* billing tables sync:" -ForegroundColor White
+Write-Host "  .\sync_csv_billing_tables.ps1 -DryRun    # Test sync without changes" -ForegroundColor Gray
+Write-Host "  .\sync_csv_billing_tables.ps1            # Run actual sync (current month)" -ForegroundColor Gray
+Write-Host "  .\sync_csv_billing_tables.ps1 -All       # Sync ALL csv_* tables" -ForegroundColor Gray
+Write-Host ""
+Write-Host "NOTE: This sync ONLY touches csv_* tables (billing data)" -ForegroundColor Green
+Write-Host "      Operational tables with live user data are NEVER affected" -ForegroundColor Green

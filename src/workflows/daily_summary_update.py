@@ -46,8 +46,10 @@ logger = logging.getLogger(__name__)
 DB_PATH = os.path.join(project_root, 'production.db')
 
 def get_connection():
-    """Get database connection"""
-    return sqlite3.connect(DB_PATH)
+    """Get database connection with row factory for dict-like access"""
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
 
 def get_week_dates(target_date=None):
     """Get the week start (Monday) and end (Sunday) dates for a given date"""
@@ -107,7 +109,7 @@ def update_weekly_provider_billing_summary(conn):
         cursor.execute(f"""
             SELECT DISTINCT provider_id, provider_name
             FROM {table_name}
-            WHERE date >= ? AND date <= ?
+            WHERE task_date >= ? AND task_date <= ?
         """, (week_start_str, week_end_str))
         
         providers = cursor.fetchall()
@@ -118,28 +120,27 @@ def update_weekly_provider_billing_summary(conn):
             
             # Calculate summary metrics
             cursor.execute(f"""
-                SELECT 
+                SELECT
                     COUNT(*) as total_tasks,
                     COALESCE(SUM(minutes_of_service), 0) as total_minutes,
                     COUNT(DISTINCT patient_id) as unique_patients,
                     billing_code,
                     billing_code_description
                 FROM {table_name}
-                WHERE provider_id = ? AND date >= ? AND date <= ?
+                WHERE provider_id = ? AND task_date >= ? AND task_date <= ?
                 GROUP BY billing_code, billing_code_description
             """, (provider_id, week_start_str, week_end_str))
             
             billing_data = cursor.fetchall()
             
             for billing_row in billing_data:
-                # Upsert into summary table
+                # Upsert into summary table (match actual schema)
                 cursor.execute("""
                     INSERT OR REPLACE INTO provider_weekly_summary_with_billing
-                    (provider_id, provider_name, week_start_date, week_end_date, 
+                    (provider_id, provider_name, week_start_date, week_end_date,
                      year, week_number, total_tasks_completed, total_time_spent_minutes,
-                     unique_patients_served, billing_code, billing_code_description,
-                     updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+                     billing_code, billing_code_description, updated_date)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
                 """, (
                     provider_id,
                     provider_name,
@@ -148,8 +149,7 @@ def update_weekly_provider_billing_summary(conn):
                     year,
                     week_number,
                     billing_row['total_tasks'],
-                    billing_row['total_minutes'],
-                    billing_row['unique_patients'],
+                    int(billing_row['total_minutes']),
                     billing_row['billing_code'],
                     billing_row['billing_code_description']
                 ))
@@ -236,7 +236,7 @@ def update_weekly_provider_payroll_summary(conn):
         cursor.execute(f"""
             SELECT DISTINCT provider_id, provider_name
             FROM {table_name}
-            WHERE date >= ? AND date <= ?
+            WHERE task_date >= ? AND task_date <= ?
         """, (week_start_str, week_end_str))
         
         providers = cursor.fetchall()
@@ -247,22 +247,22 @@ def update_weekly_provider_payroll_summary(conn):
             
             # Calculate payroll metrics (convert minutes to hours)
             cursor.execute(f"""
-                SELECT 
+                SELECT
                     COUNT(*) as total_tasks,
                     COALESCE(SUM(minutes_of_service), 0) / 60.0 as total_hours
                 FROM {table_name}
-                WHERE provider_id = ? AND date >= ? AND date <= ?
+                WHERE provider_id = ? AND task_date >= ? AND task_date <= ?
             """, (provider_id, week_start_str, week_end_str))
             
             payroll_data = cursor.fetchone()
-            
+
             if payroll_data['total_tasks'] > 0:
-                # Upsert into payroll summary table
+                # Upsert into payroll summary table (match actual schema)
                 cursor.execute("""
                     INSERT OR REPLACE INTO provider_weekly_payroll_status
-                    (provider_id, provider_name, week_start_date, week_end_date,
-                     year, week_number, total_hours, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
+                    (provider_id, provider_name, pay_week_start_date, pay_week_end_date,
+                     pay_year, pay_week_number, task_count, total_minutes_of_service, updated_date)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
                 """, (
                     provider_id,
                     provider_name,
@@ -270,7 +270,8 @@ def update_weekly_provider_payroll_summary(conn):
                     week_end_str,
                     year,
                     week_number,
-                    payroll_data['total_hours']
+                    payroll_data['total_tasks'],
+                    int(payroll_data['total_hours'] * 60)  # Convert hours back to minutes
                 ))
                 
                 total_updated += 1
@@ -330,7 +331,7 @@ def update_monthly_coordinator_billing_summary(conn):
         cursor.execute(f"""
             SELECT DISTINCT coordinator_id, coordinator_name
             FROM {table_name}
-            WHERE date >= ? AND date <= ?
+            WHERE task_date >= ? AND task_date <= ?
         """, (month_start_str, month_end_str))
         
         coordinators = cursor.fetchall()
@@ -341,7 +342,7 @@ def update_monthly_coordinator_billing_summary(conn):
             
             # Calculate summary metrics
             cursor.execute(f"""
-                SELECT 
+                SELECT
                     COUNT(*) as total_tasks,
                     COALESCE(SUM(minutes_of_service), 0) as total_minutes,
                     COUNT(DISTINCT patient_id) as unique_patients,
@@ -349,7 +350,7 @@ def update_monthly_coordinator_billing_summary(conn):
                     SUM(CASE WHEN is_paid = 1 THEN 1 ELSE 0 END) as paid_tasks,
                     SUM(CASE WHEN is_carried_over = 1 THEN 1 ELSE 0 END) as carried_over_tasks
                 FROM {table_name}
-                WHERE coordinator_id = ? AND date >= ? AND date <= ?
+                WHERE coordinator_id = ? AND task_date >= ? AND task_date <= ?
             """, (coordinator_id, month_start_str, month_end_str))
             
             summary_data = cursor.fetchone()

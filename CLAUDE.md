@@ -106,11 +106,36 @@ These columns are editable in:
 
 ### Database Synchronization (db-sync/)
 
-The `db-sync/` directory contains scripts for syncing `production.db` between dev (SRVR/Windows) and production (VPS2/Linux) via SSH:
+The `db-sync/` directory contains scripts for syncing `production.db` between dev (SRVR/Windows) and production (VPS2/Linux) via SSH.
 
-- `bin/sync_csv_data.ps1`: Smart CSV sync - only syncs rows with `source_system = 'CSV_IMPORT'`, preserves manual entries
-- `bin/test_connection.ps1`: Verify SSH and database access
-- `bin/setup_scheduled_task.ps1`: Configure automatic 15-min sync
+**IMPORTANT - New Architecture (2026-01-20):**
+
+With the new `csv_*` billing tables, the sync strategy has changed completely:
+
+- **`bin/sync_csv_billing_tables.ps1`**: **USE THIS SCRIPT** - Safely syncs ONLY csv_* tables to VPS2
+  - Only syncs csv_* tables (billing source of truth from CSV imports)
+  - NEVER touches operational tables (coordinator_tasks_*, provider_tasks_*)
+  - **Live user data on VPS2 is completely protected** - Laura's entries starting 1/19 are safe
+
+- **`bin/sync_csv_data.ps1`**: **DEPRECATED** - Old sync script that synced operational tables
+  - Only kept for reference; do not use with new architecture
+
+**Usage:**
+```powershell
+# Sync current month's csv_* tables to VPS2
+.\db-sync\bin\sync_csv_billing_tables.ps1
+
+# Sync ALL csv_* tables to VPS2
+.\db-sync\bin\sync_csv_billing_tables.ps1 -All
+
+# Preview what would be synced (dry run)
+.\db-sync\bin\sync_csv_billing_tables.ps1 -DryRun
+```
+
+**Why This Is Safe:**
+- csv_* tables: Read-only billing data, synced from dev to VPS2
+- Operational tables: Live user data, NEVER synced, completely isolated on VPS2
+- No risk of overwriting Laura's (or any user's) live entries
 
 SSH alias `server2` is used (configured in `~/.ssh/config`).
 
@@ -184,7 +209,7 @@ Test files are in `src/utils/` with `test_*.py` prefix:
 # Skip backup (faster, use with caution)
 .\refresh_production_data.ps1 -SkipBackup
 
-# Sync CSV data to production VPS2 after import
+# Sync csv_* billing tables to production VPS2 after import
 .\refresh_production_data.ps1 -SyncToProduction
 ```
 

@@ -247,47 +247,60 @@ def show_coordinator_tasks_tab(
         current_year = int(now.year)
         current_month = int(now.month)
         
-        # Get available months from coordinator_tasks tables
+        # Get available months from both coordinator_tasks tables and import views
         conn = database.get_db_connection()
         available_tables = conn.execute("""
             SELECT name FROM sqlite_master
-            WHERE type='table' AND name LIKE 'coordinator_tasks_20%'
+            WHERE (type='table' AND name LIKE 'coordinator_tasks_20%')
+               OR (type='view' AND name LIKE 'coordinator_monthly_202%_import')
             ORDER BY name DESC
         """).fetchall()
         conn.close()
-        
+
         available_months = []
         for table in available_tables:
             table_name = table[0]
             try:
-                # Extract year and month from table name (coordinator_tasks_YYYY_MM)
+                # Extract year and month from table name
+                # Handles: coordinator_tasks_YYYY_MM and coordinator_monthly_YYYY_MM_import
                 parts = table_name.split("_")
-                if len(parts) >= 3:
-                    year = int(parts[2])
-                    month = int(parts[3])
-                    available_months.append((year, month))
+                if len(parts) >= 4:
+                    if "monthly" in table_name:
+                        # coordinator_monthly_YYYY_MM_import
+                        year = int(parts[2])
+                        month = int(parts[3])
+                        data_type = "IMPORT"
+                    else:
+                        # coordinator_tasks_YYYY_MM
+                        year = int(parts[2])
+                        month = int(parts[3])
+                        data_type = "LIVE"
+                    available_months.append((year, month, data_type))
             except:
                 continue
-        
-        # Sort by year, month descending (most recent first)
-        available_months.sort(reverse=True)
+
+        # Sort by year, month descending (most recent first), live before import
+        available_months.sort(key=lambda x: (x[0], x[1]), reverse=True)
         
         # Create month options for selectbox
         month_options = []
         month_values = []
-        for year, month in available_months:
+        for year, month, data_type in available_months:
             month_name = calendar.month_name[month]
-            option_text = f"{month_name} {year}"
+            if data_type == "IMPORT":
+                option_text = f"{month_name} {year} (CSV Import)"
+            else:
+                option_text = f"{month_name} {year} (Live)"
             month_options.append(option_text)
-            month_values.append((year, month))
-        
+            month_values.append((year, month, data_type))
+
         # Default to current month if available, otherwise first available
         default_index = 0
-        for i, (year, month) in enumerate(month_values):
-            if year == current_year and month == current_month:
+        for i, (year, month, data_type) in enumerate(month_values):
+            if year == current_year and month == current_month and data_type == "LIVE":
                 default_index = i
                 break
-        
+
         if month_options:
             selected_month_text = st.selectbox(
                 "Select Month:",
@@ -295,22 +308,65 @@ def show_coordinator_tasks_tab(
                 index=default_index,
                 key="coord_tasks_month_select"
             )
-            selected_year, selected_month = month_values[month_options.index(selected_month_text)]
+            selected_year, selected_month, data_type = month_values[month_options.index(selected_month_text)]
         else:
             st.warning("No coordinator tasks data available")
             selected_year, selected_month = current_year, current_month
     
     with col2:
-        st.markdown(f"### Coordinator Tasks - {calendar.month_name[selected_month]} {selected_year}")
-    
-    # --- Coordinator Tasks: Total Minutes Selected Month Header ---
+        data_source_label = "CSV Import" if data_type == "IMPORT" else "Live Data"
+        st.markdown(f"### Coordinator Tasks - {calendar.month_name[selected_month]} {selected_year} ({data_source_label})")
+
+    # --- For IMPORT data type, show aggregated summary view ---
+    if data_type == "IMPORT":
+        view_name = f"coordinator_monthly_{selected_year}_{selected_month:02d}_import"
+        conn = database.get_db_connection()
+
+        # Get total minutes
+        total_result = conn.execute(
+            f"SELECT SUM(total_minutes) as total FROM {view_name}"
+        ).fetchone()
+        total_minutes = total_result[0] if total_result and total_result[0] else 0
+
+        st.markdown(f"### Total Minutes: **{int(total_minutes):,}**")
+        st.caption("Note: CSV Import shows aggregated monthly summary, not individual task records")
+
+        conn.close()
+
+        # Show coordinator monthly summary for import data
+        st.divider()
+        st.subheader("Coordinator Monthly Summary (CSV Import)")
+
+        conn = database.get_db_connection()
+        query = f"""
+        SELECT
+            coordinator_name,
+            task_type,
+            total_tasks,
+            total_minutes,
+            total_hours,
+            unique_patients
+        FROM {view_name}
+        ORDER BY total_minutes DESC
+        """
+        df = pd.read_sql_query(query, conn)
+        conn.close()
+
+        if not df.empty:
+            st.dataframe(df, use_container_width=True, hide_index=True)
+        else:
+            st.info("No data available for this period")
+
+        return  # Exit early for import data - detailed views not available
+
+    # --- For LIVE data type, continue with existing detailed view ---
     table_name = f"coordinator_tasks_{selected_year}_{selected_month:02d}"
     conn = database.get_db_connection()
     table_exists = conn.execute(
         "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
         (table_name,),
     ).fetchone()
-    
+
     if table_exists:
         total_minutes_query = f"SELECT SUM(duration_minutes) as total FROM {table_name} WHERE duration_minutes IS NOT NULL"
         total_result = conn.execute(total_minutes_query).fetchone()
@@ -322,7 +378,7 @@ def show_coordinator_tasks_tab(
         st.markdown(
             f"### Total Minutes {calendar.month_name[selected_month]} {selected_year}: _No data available_"
         )
-    
+
     conn.close()
     
     # --- Patient and Coordinator Monthly Summary Tables Side-by-Side ---

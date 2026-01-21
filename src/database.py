@@ -1795,6 +1795,31 @@ def get_billing_codes(location_type=None, patient_type=None):
         conn.close()
 
 
+def get_billing_code_for_location_patient_type(conn, location_type: str, patient_type: str) -> str:
+    """
+    Find the appropriate billing_code for a given location_type and patient_type combination.
+
+    Args:
+        conn: Database connection (must be passed in to use existing connection)
+        location_type: Home, Office, or Telehealth
+        patient_type: Follow Up, New, Acute, Cognitive, TCM-7, or TCM-14
+
+    Returns:
+        The billing_code (e.g., '99350', '99214') or None if not found
+    """
+    try:
+        query = """
+        SELECT billing_code FROM task_billing_codes
+        WHERE location_type = ? AND patient_type = ? AND is_active = 1
+        LIMIT 1
+        """
+        row = conn.execute(query, (location_type, patient_type)).fetchone()
+        return row['billing_code'] if row else None
+    except Exception as e:
+        print(f"Error finding billing code for {location_type}/{patient_type}: {e}")
+        return None
+
+
 def set_default_billing_codes(billing_codes):
     """Set the is_default flag on task_billing_codes.
     This will clear is_default for all rows, then set is_default=1 for any billing_code in the provided list.

@@ -96,14 +96,15 @@ else {
 
 # Step 5: Sync to production (optional)
 if ($SyncToProduction) {
-    Write-Host "[5/5] Syncing CSV data to production (VPS2)..." -ForegroundColor Yellow
-    Write-Host "  Using smart sync (preserves manual entries on VPS2)" -ForegroundColor Gray
+    Write-Host "[5/5] Syncing CSV billing tables to production (VPS2)..." -ForegroundColor Yellow
+    Write-Host "  Using safe sync (ONLY syncs csv_* tables, preserves ALL live user data)" -ForegroundColor Gray
+    Write-Host "  Live operational data on VPS2 (Laura's entries, etc.) is NOT touched" -ForegroundColor Green
 
-    $syncScript = "db-sync\bin\sync_csv_data.ps1"
+    $syncScript = "db-sync\bin\sync_csv_billing_tables.ps1"
     if (Test-Path $syncScript) {
-        & $syncScript
+        & $syncScript -All
         if ($LASTEXITCODE -eq 0) {
-            Write-Host "  [OK] CSV data synced to production`n" -ForegroundColor Green
+            Write-Host "  [OK] CSV billing tables synced to production`n" -ForegroundColor Green
         }
         else {
             Write-Host "  [WARN] Sync had issues - check db-sync/logs/`n" -ForegroundColor Yellow
@@ -138,6 +139,6 @@ Write-Host "  1. Launch Streamlit: .\run_and_monitor.ps1" -ForegroundColor Gray
 Write-Host "  2. Check dashboards for fresh data" -ForegroundColor Gray
 Write-Host "  3. If issues, rollback: Copy-Item '$backupPath' 'production.db' -Force" -ForegroundColor Gray
 if (-not $SyncToProduction) {
-    Write-Host "  4. To sync to production: .\db-sync\bin\sync_csv_data.ps1" -ForegroundColor Gray
+    Write-Host "  4. To sync csv_* billing tables to production: .\db-sync\bin\sync_csv_billing_tables.ps1 -All" -ForegroundColor Gray
 }
 Write-Host "" -ForegroundColor White

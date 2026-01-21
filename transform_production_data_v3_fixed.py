@@ -91,20 +91,172 @@ def create_coordinator_table(conn, year, month):
     conn.execute(f"""
         CREATE TABLE IF NOT EXISTS {table_name} (
             coordinator_task_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            coordinator_id TEXT,
+            coordinator_id INTEGER,
             coordinator_name TEXT,
-            patient_id TEXT, -- Acts as Patient Name for now based on Dashboard usage
+            patient_id TEXT,
             task_date DATE,
             duration_minutes REAL,
             task_type TEXT,
             notes TEXT,
             source_system TEXT DEFAULT 'CSV_IMPORT',
             imported_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE(coordinator_id, patient_id, task_date, task_type)
+            submission_status TEXT DEFAULT 'pending',
+            created_at_pst TEXT
         )
     """)
     conn.execute(
         f"CREATE INDEX IF NOT EXISTS idx_{table_name}_coordinator ON {table_name}(coordinator_id)"
+    )
+    return table_name
+
+
+def create_csv_coordinator_table(conn, year, month):
+    """Create csv_coordinator_tasks_YYYY_MM table for billing source of truth"""
+    table_name = f"csv_coordinator_tasks_{year}_{str(month).zfill(2)}"
+    conn.execute(f"""
+        CREATE TABLE IF NOT EXISTS {table_name} (
+            csv_task_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            -- Staff identification
+            staff_code TEXT NOT NULL,
+            staff_id INTEGER,
+            staff_name TEXT,
+            -- Patient identification
+            patient_id TEXT NOT NULL,
+            patient_dob TEXT,
+            -- Task details
+            task_date DATE NOT NULL,
+            duration_minutes REAL NOT NULL,
+            mins_b_value REAL DEFAULT 0,
+            zen_value REAL DEFAULT 0,
+            total_mins_value REAL DEFAULT 0,
+            task_type TEXT,
+            notes TEXT,
+            current_status TEXT,
+            -- Time tracking
+            start_time_b TEXT,
+            stop_time_b TEXT,
+            start_time_a TEXT,
+            stop_time_a TEXT,
+            -- Source tracking
+            source_file TEXT NOT NULL,
+            source_system TEXT DEFAULT 'CSV_IMPORT',
+            source_type TEXT NOT NULL,
+            imported_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            -- Billing workflow fields
+            billing_status TEXT DEFAULT 'Pending',
+            is_billed INTEGER DEFAULT 0,
+            billed_date DATE,
+            billed_by INTEGER,
+            invoice_id TEXT,
+            is_paid INTEGER DEFAULT 0,
+            paid_date DATE,
+            billing_notes TEXT
+        )
+    """)
+    conn.execute(
+        f"CREATE INDEX IF NOT EXISTS idx_{table_name}_staff_date ON {table_name}(staff_id, task_date)"
+    )
+    conn.execute(
+        f"CREATE INDEX IF NOT EXISTS idx_{table_name}_status ON {table_name}(billing_status)"
+    )
+    return table_name
+
+
+def create_csv_provider_table(conn, year, month):
+    """Create csv_provider_tasks_YYYY_MM table for billing source of truth"""
+    table_name = f"csv_provider_tasks_{year}_{str(month).zfill(2)}"
+    conn.execute(f"""
+        CREATE TABLE IF NOT EXISTS {table_name} (
+            csv_task_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            -- Staff identification
+            staff_code TEXT NOT NULL,
+            staff_id INTEGER,
+            staff_name TEXT,
+            -- Patient identification
+            patient_id TEXT NOT NULL,
+            patient_dob TEXT,
+            -- Task details
+            task_date DATE NOT NULL,
+            duration_minutes REAL NOT NULL,
+            raw_minutes TEXT,
+            task_type TEXT,
+            billing_code TEXT,
+            -- Billing status from CSV
+            billed_date_notes TEXT,
+            hospice TEXT DEFAULT 'No',
+            paid_by_patient TEXT,
+            -- Notes
+            notes TEXT,
+            -- Wound care fields
+            wc_size TEXT,
+            wc_diagnosis TEXT,
+            graft_info TEXT,
+            wound_number TEXT,
+            session_number TEXT,
+            multiple_grafts TEXT,
+            -- Source tracking
+            source_file TEXT NOT NULL,
+            source_system TEXT DEFAULT 'CSV_IMPORT',
+            imported_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            -- Billing workflow fields
+            billing_status TEXT DEFAULT 'Pending',
+            is_billed INTEGER DEFAULT 0,
+            billed_date DATE,
+            billed_by INTEGER,
+            invoice_id TEXT,
+            is_paid INTEGER DEFAULT 0,
+            paid_date DATE,
+            billing_notes TEXT
+        )
+    """)
+    conn.execute(
+        f"CREATE INDEX IF NOT EXISTS idx_{table_name}_staff_date ON {table_name}(staff_id, task_date)"
+    )
+    conn.execute(
+        f"CREATE INDEX IF NOT EXISTS idx_{table_name}_status ON {table_name}(billing_status)"
+    )
+    conn.execute(
+        f"CREATE INDEX IF NOT EXISTS idx_{table_name}_billing_code ON {table_name}(billing_code)"
+    )
+    return table_name
+
+
+def create_csv_rvz_table(conn, year, month):
+    """Create csv_provider_rvzs_YYYY_MM table for RVZ audit trail"""
+    table_name = f"csv_provider_rvzs_{year}_{str(month).zfill(2)}"
+    conn.execute(f"""
+        CREATE TABLE IF NOT EXISTS {table_name} (
+            csv_rvz_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            -- Staff identification
+            staff_code TEXT NOT NULL,
+            staff_id INTEGER,
+            staff_name TEXT,
+            -- Patient identification
+            patient_id TEXT NOT NULL,
+            patient_dob TEXT,
+            -- Task details
+            task_date DATE NOT NULL,
+            duration_minutes REAL,
+            mins_b_value REAL DEFAULT 0,
+            zen_value REAL DEFAULT 0,
+            total_mins_value REAL DEFAULT 0,
+            task_type TEXT,
+            notes TEXT,
+            current_status TEXT,
+            notzen_flag TEXT,
+            -- Time tracking
+            start_time_a TEXT,
+            stop_time_a TEXT,
+            start_time_b TEXT,
+            stop_time_b TEXT,
+            -- Source tracking
+            source_file TEXT NOT NULL,
+            source_system TEXT DEFAULT 'CSV_IMPORT',
+            imported_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    conn.execute(
+        f"CREATE INDEX IF NOT EXISTS idx_{table_name}_staff_date ON {table_name}(staff_id, task_date)"
     )
     return table_name
 
@@ -339,6 +491,10 @@ def build_first_name_provider_map(conn):
 
 
 def process_psl(file_path, conn, provider_map, id_to_name):
+    """
+    Process PSL files (provider PCP visits).
+    Populates both operational tables (provider_tasks_YYYY_MM) and billing CSV tables.
+    """
     log_print(f"Processing PSL: {os.path.basename(file_path)}")
     try:
         df = pd.read_csv(file_path, encoding="utf-8", on_bad_lines="skip")
@@ -349,7 +505,8 @@ def process_psl(file_path, conn, provider_map, id_to_name):
             return 0
 
         count = 0
-        records_by_table = {}
+        records_by_table = {}          # For operational provider_tasks table
+        csv_prov_records_by_table = {} # For csv_provider_tasks table (billing)
 
         # Extract Provider from filename if possible
         filename = os.path.basename(file_path)
@@ -364,8 +521,12 @@ def process_psl(file_path, conn, provider_map, id_to_name):
                 continue
 
             table = f"provider_tasks_{dos.year}_{str(dos.month).zfill(2)}"
+            csv_prov_table = f"csv_provider_tasks_{dos.year}_{str(dos.month).zfill(2)}"
+
             if table not in records_by_table:
                 records_by_table[table] = []
+            if csv_prov_table not in csv_prov_records_by_table:
+                csv_prov_records_by_table[csv_prov_table] = []
 
             # Provider
             p_code_raw = str(row.get("Prov", "")).strip().upper()
@@ -384,6 +545,15 @@ def process_psl(file_path, conn, provider_map, id_to_name):
             pat_name = normalize_patient_id(row.get("Patient Last, First DOB", ""))
             if not pat_name:
                 continue
+
+            # Extract DOB from patient name if present
+            patient_dob = ""
+            if '/' in pat_name:
+                parts = pat_name.split()
+                for part in parts:
+                    if '/' in part:
+                        patient_dob = part
+                        break
 
             # FIXED: Normalize patient_id to match patients table format (LAST FIRST DOB)
             # This prevents duplicates when CSVs have different formats
@@ -417,6 +587,21 @@ def process_psl(file_path, conn, provider_map, id_to_name):
             csv_billing_code = str(row.get("Coding", "")).strip()
             final_billing_code = csv_billing_code if csv_billing_code else "PENDING"
 
+            # For csv tables, preserve the ZEN- prefix in staff_code
+            csv_staff_code = f"ZEN-{p_code}" if p_code and not p_code.startswith("ZEN-") else (p_code or f"ZEN-{prov_code_file}")
+
+            # Get additional PSL columns for csv table
+            billed_date_notes = str(row.get("Billed Date \nNotes", "")).strip() if "Billed Date \nNotes" in df.columns else ""
+            hospice = str(row.get("Hospice", "")).strip() if "Hospice" in df.columns else "No"
+            paid_by_patient = str(row.get("Paid by\nPatient", "")).strip() if "Paid by\nPatient" in df.columns else ""
+            wc_size = str(row.get("WC Size \n(sqcm)", "")).strip() if "WC Size \n(sqcm)" in df.columns else ""
+            wc_diagnosis = str(row.get("WC Diagnosis (HH-OK to free type)", "")).strip() if "WC Diagnosis (HH-OK to free type)" in df.columns else ""
+            graft_info = str(row.get("Graft Info", "")).strip() if "Graft Info" in df.columns else ""
+            wound_num = str(row.get("Wound#", "")).strip() if "Wound#" in df.columns else ""
+            session_num = str(row.get("Session#", "")).strip() if "Session#" in df.columns else ""
+            multiple_grafts = str(row.get("Multiple\nGrafts", "")).strip() if "Multiple\nGrafts" in df.columns else ""
+
+            # Record for operational provider_tasks table (existing behavior)
             records_by_table[table].append(
                 (
                     p_id,
@@ -431,24 +616,68 @@ def process_psl(file_path, conn, provider_map, id_to_name):
                 )
             )
 
+            # Record for csv_provider_tasks table (billing source of truth)
+            csv_prov_records_by_table[csv_prov_table].append(
+                (
+                    csv_staff_code,          # staff_code
+                    p_id,                    # staff_id
+                    provider_name,           # staff_name
+                    pat_name,                # patient_id
+                    patient_dob,             # patient_dob
+                    dos.strftime("%Y-%m-%d"), # task_date
+                    processed_minutes,       # duration_minutes
+                    raw_minutes,             # raw_minutes (preserve original range format)
+                    service_description,     # task_type
+                    final_billing_code,      # billing_code
+                    billed_date_notes,       # billed_date_notes
+                    hospice,                 # hospice
+                    paid_by_patient,         # paid_by_patient
+                    str(row.get("Notes", "")), # notes
+                    wc_size,                 # wc_size
+                    wc_diagnosis,            # wc_diagnosis
+                    graft_info,              # graft_info
+                    wound_num,               # wound_number
+                    session_num,             # session_number
+                    multiple_grafts,         # multiple_grafts
+                    filename,                # source_file
+                )
+            )
+
+        # Insert into operational provider_tasks table (existing behavior)
         for table, recs in records_by_table.items():
             parts = table.split("_")
             create_provider_table(conn, int(parts[2]), int(parts[3]))
 
-            # FIXED: Use INSERT OR IGNORE instead of DELETE + INSERT
-            # This makes the process truly incremental and prevents data loss
-            # The table should have a UNIQUE constraint on (provider_id, patient_id, task_date, task_description)
-            # to prevent duplicates while preserving existing data
             inserted = conn.executemany(
                 f"INSERT OR IGNORE INTO {table} (provider_id, provider_name, patient_id, patient_name, task_date, task_description, notes, minutes_of_service, billing_code) VALUES (?,?,?,?,?,?,?,?,?)",
                 recs,
             ).rowcount
             count += inserted
             if inserted < len(recs):
-                log_print(f"    Skipped {len(recs) - inserted} duplicate records")
+                log_print(f"    Skipped {len(recs) - inserted} duplicate records in {table}")
+
+        # Insert into csv_provider_tasks table (billing source of truth)
+        for table, recs in csv_prov_records_by_table.items():
+            parts = table.split("_")
+            create_csv_provider_table(conn, int(parts[3]), int(parts[4]))
+
+            inserted = conn.executemany(
+                f"""INSERT OR IGNORE INTO {table}
+                   (staff_code, staff_id, staff_name, patient_id, patient_dob, task_date,
+                    duration_minutes, raw_minutes, task_type, billing_code,
+                    billed_date_notes, hospice, paid_by_patient, notes,
+                    wc_size, wc_diagnosis, graft_info, wound_number, session_number, multiple_grafts,
+                    source_file)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                recs,
+            ).rowcount
+            log_print(f"    csv_provider_tasks: {inserted} records inserted")
+
         return count
     except Exception as e:
         log_print(f"  Error: {e}")
+        import traceback
+        log_print(traceback.format_exc())
         return 0
 
 
@@ -738,14 +967,19 @@ def populate_provider_weekly_payroll(conn, year, month):
 
 
 def process_rvz(file_path, conn, provider_map, id_to_name):
-    log_print(f"Processing RVZ: {os.path.basename(file_path)}")
+    """
+    Process CMLog and RVZ files.
+    Populates both operational tables (coordinator_tasks_YYYY_MM) and billing CSV tables.
+    """
+    log_print(f"Processing: {os.path.basename(file_path)}")
     try:
         # RVZ header is weird. Row 1: A,Provider... Row 2: "Last, First DOB"... Row 3: Data.
         # But 'Date Only' is in Row 1.
         df = pd.read_csv(file_path, encoding="utf-8", on_bad_lines="skip")
 
         col_date = "Date Only"
-        col_mins = "Mins B"  # Per LIVING_REFERENCE_DOC.MD - use Mins B, not Total Mins
+        col_mins = "Mins B"  # Primary column for minutes
+        col_mins_fallback = "ZEN"  # Fallback for RVZ files (ZEN column has actual minutes)
         col_pt = "Pt Name"
         col_type = "Type"
         col_notes = "Notes"
@@ -755,11 +989,14 @@ def process_rvz(file_path, conn, provider_map, id_to_name):
             return 0
 
         count = 0
-        records_by_table = {}
+        records_by_table = {}          # For operational coordinator_tasks table
+        csv_coord_records_by_table = {} # For csv_coordinator_tasks table (billing)
+        csv_rvz_records_by_table = {}   # For csv_provider_rvzs table (RVZ audit)
 
         filename = os.path.basename(file_path)
         prov_code_file = None
         coordinator_from_filename = None
+        is_rvz_file = False
 
         # Check if this is a CMLog file - use filename-based coordinator
         match_cm = re.search(r"CMLog_([A-Za-z0-9]+)\.csv", filename)
@@ -773,6 +1010,8 @@ def process_rvz(file_path, conn, provider_map, id_to_name):
             match = re.search(r"RVZ_ZEN-([A-Z]+)", filename)
             if match:
                 prov_code_file = match.group(1)
+                is_rvz_file = True
+                log_print(f"  RVZ file detected - provider code: {prov_code_file}")
 
         for _, row in df.iterrows():
             pt_name = normalize_patient_id(row.get(col_pt, ""))
@@ -793,8 +1032,15 @@ def process_rvz(file_path, conn, provider_map, id_to_name):
                 continue
 
             table = f"coordinator_tasks_{dos.year}_{str(dos.month).zfill(2)}"
+            csv_coord_table = f"csv_coordinator_tasks_{dos.year}_{str(dos.month).zfill(2)}"
+            csv_rvz_table = f"csv_provider_rvzs_{dos.year}_{str(dos.month).zfill(2)}"
+
             if table not in records_by_table:
                 records_by_table[table] = []
+            if csv_coord_table not in csv_coord_records_by_table:
+                csv_coord_records_by_table[csv_coord_table] = []
+            if csv_rvz_table not in csv_rvz_records_by_table:
+                csv_rvz_records_by_table[csv_rvz_table] = []
 
             # For CMLog files, use coordinator from filename instead of CSV rows
             if coordinator_from_filename:
@@ -810,6 +1056,12 @@ def process_rvz(file_path, conn, provider_map, id_to_name):
             if not p_code and prov_code_file:
                 p_code = prov_code_file
 
+            # For RVZ files, ensure ZEN- prefix is part of staff_code for csv tables
+            if is_rvz_file and not p_code.startswith("ZEN-"):
+                csv_staff_code = f"ZEN-{p_code}" if p_code else f"ZEN-{prov_code_file}"
+            else:
+                csv_staff_code = p_code if p_code else coordinator_from_filename
+
             # Use the comprehensive provider_map which now includes staff_code_mapping entries
             p_id = provider_map.get(p_code.upper())  # Try uppercase exact match
             # If not found, try with ZEN- prefix (for codes like ZEN-ANE vs ANE)
@@ -819,45 +1071,155 @@ def process_rvz(file_path, conn, provider_map, id_to_name):
             if not p_id and p_code and len(p_code) >= 3:
                 p_id = provider_map.get(p_code[:3].upper())  # Try 3-char fallback
 
-            mins = row.get(col_mins, 0)
-            try:
-                mins = float(mins)
-            except:
-                mins = 0
-
             coordinator_name = id_to_name.get(p_id, p_code)
 
+            # Get minute values from all three columns for audit
+            mins_b = row.get(col_mins, 0)
+            try:
+                mins_b = float(mins_b) if pd.notna(mins_b) else 0
+            except:
+                mins_b = 0
+
+            zen_val = row.get(col_mins_fallback, 0)
+            try:
+                zen_val = float(zen_val) if pd.notna(zen_val) else 0
+            except:
+                zen_val = 0
+
+            total_mins = row.get("Total Mins", 0)
+            try:
+                total_mins = float(total_mins) if pd.notna(total_mins) else 0
+            except:
+                total_mins = 0
+
+            # Final duration: use max of all three columns
+            final_mins = max(mins_b, zen_val, total_mins)
+
+            # Get other raw CSV values
+            start_time_a = str(row.get("Start Time A", "")).strip() if "Start Time A" in df.columns else ""
+            stop_time_a = str(row.get("Stop Time A", "")).strip() if "Stop Time A" in df.columns else ""
+            start_time_b = str(row.get("Start Time B", "")).strip() if "Start Time B" in df.columns else ""
+            stop_time_b = str(row.get("Stop Time B", "")).strip() if "Stop Time B" in df.columns else ""
+            current_status = str(row.get("Current", "")).strip() if "Current" in df.columns else ""
+            patient_dob = str(row.get("Last, First DOB", "")).strip() if "Last, First DOB" in df.columns else ""
+            notzen_flag = str(row.get("NotZEN", "")).strip() if "NotZEN" in df.columns else ""
+
+            # Record for operational coordinator_tasks table (existing behavior)
             records_by_table[table].append(
                 (
                     p_id,
                     coordinator_name,
                     pt_name,
                     dos.strftime("%Y-%m-%d"),
-                    mins,
+                    final_mins,
                     str(row.get(col_type, "")),
                     str(row.get(col_notes, "")),
                 )
             )
 
+            # Record for csv_coordinator_tasks table (billing source of truth)
+            source_type = "RVZ" if is_rvz_file else "CMLOG"
+            # Build tuple explicitly to ensure exactly 19 values
+            coord_record = (
+                csv_staff_code,          # 1 staff_code
+                p_id,                    # 2 staff_id
+                coordinator_name,        # 3 staff_name
+                pt_name,                 # 4 patient_id
+                patient_dob,             # 5 patient_dob
+                dos.strftime("%Y-%m-%d"), # 6 task_date
+                final_mins,              # 7 duration_minutes
+                mins_b,                  # 8 mins_b_value
+                zen_val,                 # 9 zen_value
+                total_mins,              # 10 total_mins_value
+                str(row.get(col_type, "")), # 11 task_type
+                str(row.get(col_notes, "")), # 12 notes
+                current_status,          # 13 current_status
+                start_time_b,            # 14 start_time_b
+                stop_time_b,             # 15 stop_time_b
+                start_time_a,            # 16 start_time_a
+                stop_time_a,             # 17 stop_time_a
+                filename,                # 18 source_file
+                source_type,             # 19 source_type
+            )
+            csv_coord_records_by_table[csv_coord_table].append(coord_record)
+
+            # For RVZ files only, also add to csv_provider_rvzs for audit trail
+            if is_rvz_file:
+                csv_rvz_records_by_table[csv_rvz_table].append(
+                    (
+                        csv_staff_code,          # staff_code
+                        p_id,                    # staff_id
+                        coordinator_name,        # staff_name
+                        pt_name,                 # patient_id
+                        patient_dob,             # patient_dob
+                        dos.strftime("%Y-%m-%d"), # task_date
+                        final_mins,              # duration_minutes
+                        mins_b,                  # mins_b_value
+                        zen_val,                 # zen_value
+                        total_mins,              # total_mins_value
+                        str(row.get(col_type, "")), # task_type
+                        str(row.get(col_notes, "")), # notes
+                        current_status,          # current_status
+                        notzen_flag,             # notzen_flag
+                        start_time_a,            # start_time_a
+                        stop_time_a,             # stop_time_a
+                        start_time_b,            # start_time_b
+                        stop_time_b,             # stop_time_b
+                        filename,                # source_file
+                    )
+                )
+
+        # Insert into operational coordinator_tasks table (existing behavior)
         for table, recs in records_by_table.items():
             parts = table.split("_")
             create_coordinator_table(conn, int(parts[2]), int(parts[3]))
 
-            # FIXED: Use INSERT OR IGNORE instead of DELETE + INSERT
-            # This makes the process truly incremental and prevents data loss
-            # The table should have a UNIQUE constraint on (coordinator_id, patient_id, task_date, task_type)
-            # to prevent duplicates while preserving existing data
             inserted = conn.executemany(
                 f"INSERT OR IGNORE INTO {table} (coordinator_id, coordinator_name, patient_id, task_date, duration_minutes, task_type, notes) VALUES (?,?,?,?,?,?,?)",
                 recs,
             ).rowcount
             count += inserted
             if inserted < len(recs):
-                log_print(f"    Skipped {len(recs) - inserted} duplicate records")
+                log_print(f"    Skipped {len(recs) - inserted} duplicate records in {table}")
+
+        # Insert into csv_coordinator_tasks table (billing source of truth)
+        for table, recs in csv_coord_records_by_table.items():
+            parts = table.split("_")
+            create_csv_coordinator_table(conn, int(parts[3]), int(parts[4]))
+
+            inserted = conn.executemany(
+                f"""INSERT OR IGNORE INTO {table}
+                   (staff_code, staff_id, staff_name, patient_id, patient_dob, task_date,
+                    duration_minutes, mins_b_value, zen_value, total_mins_value, task_type,
+                    notes, current_status, start_time_b, stop_time_b, start_time_a, stop_time_a,
+                    source_file, source_type)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                recs,
+            ).rowcount
+            log_print(f"    csv_coordinator_tasks: {inserted} records inserted")
+
+        # Insert into csv_provider_rvzs table (RVZ audit trail)
+        for table, recs in csv_rvz_records_by_table.items():
+            parts = table.split("_")
+            create_csv_rvz_table(conn, int(parts[3]), int(parts[4]))
+
+            inserted = conn.executemany(
+                f"""INSERT OR IGNORE INTO {table}
+                   (staff_code, staff_id, staff_name, patient_id, patient_dob, task_date,
+                    duration_minutes, mins_b_value, zen_value, total_mins_value, task_type,
+                    notes, current_status, notzen_flag, start_time_a, stop_time_a,
+                    start_time_b, stop_time_b, source_file)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                recs,
+            ).rowcount
+            log_print(f"    csv_provider_rvzs: {inserted} records inserted")
+
         return count
 
     except Exception as e:
         log_print(f"  Error: {e}")
+        import traceback
+        log_print(traceback.format_exc())
         return 0
 
 
