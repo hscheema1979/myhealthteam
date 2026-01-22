@@ -364,16 +364,16 @@ def show_coordinator_tasks_tab(
                 
                 # Get patient data - use total_minutes for import views, duration_minutes for live tables
                 if data_type == "IMPORT":
+                    # Import views: patient_id is already the full name string, no JOIN needed
                     patient_query = f"""
                     SELECT
                         ct.patient_id,
-                        (p.first_name || ' ' || p.last_name) as patient_name,
+                        ct.patient_id as patient_name,
                         ct.task_type as billing_code,
                         ct.total_minutes
                     FROM {table_name} ct
-                    JOIN patients p ON ct.patient_id = p.patient_id
                     WHERE ct.total_minutes IS NOT NULL
-                    ORDER BY p.patient_id, ct.task_type
+                    ORDER BY ct.patient_id, ct.task_type
                     """
                 else:
                     patient_query = f"""
