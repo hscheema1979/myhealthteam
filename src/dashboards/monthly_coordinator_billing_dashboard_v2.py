@@ -23,10 +23,10 @@ def get_available_months():
     try:
         months = []
 
-        # Get months from CSV monthly billing summaries
+        # Get months from CSV coordinator task tables (for per-patient billing)
         cursor = conn.execute("""
             SELECT name FROM sqlite_master
-            WHERE type='table' AND name LIKE 'csv_monthly_billing_summary_%'
+            WHERE type='table' AND name LIKE 'csv_coordinator_tasks_20%'
             ORDER BY name DESC
         """)
         tables = cursor.fetchall()
@@ -34,32 +34,18 @@ def get_available_months():
         for table in tables:
             table_name = table[0]
             parts = table_name.split("_")
-            if len(parts) >= 5:
+            if len(parts) >= 4:
                 try:
-                    year = int(parts[4])
-                    month = int(parts[5])
+                    year = int(parts[3])
+                    month = int(parts[4])
                     month_name = calendar.month_name[month]
-
-                    # For January 2026, show as CSV Import
-                    if year == 2026 and month == 1:
-                        display_name = f"{month_name} {year} (CSV Import)"
-                        data_type = "CSV_IMPORT"
-                        view_name = "coordinator_monthly_2026_01_import"
-                    elif year >= 2026:
-                        display_name = f"{month_name} {year} (CSV)"
-                        data_type = "CSV"
-                        view_name = f"csv_monthly_billing_summary_{year}_{month:02d}"
-                    else:
-                        display_name = f"{month_name} {year}"
-                        data_type = "CSV"
-                        view_name = f"csv_monthly_billing_summary_{year}_{month:02d}"
 
                     months.append({
                         "year": year,
                         "month": month,
-                        "display": display_name,
-                        "data_type": data_type,
-                        "view": view_name
+                        "display": f"{month_name} {year} (CSV Import)",
+                        "data_type": "CSV_IMPORT",
+                        "view": f"coordinator_billing_{year}_{month:02d}"
                     })
                 except (ValueError, IndexError):
                     continue
@@ -78,15 +64,7 @@ def get_available_months():
                     "month": 1,
                     "display": "January 2026 (Live)",
                     "data_type": "LIVE",
-                    "view": "coordinator_monthly_2026_01"
-                })
-                # Combined option
-                months.append({
-                    "year": 2026,
-                    "month": 1,
-                    "display": "January 2026 (Combined)",
-                    "data_type": "COMBINED",
-                    "view": "coordinator_monthly_2026_01_combined"
+                    "view": "coordinator_tasks_2026_01"
                 })
 
         return sorted(months, key=lambda x: (x["year"], x["month"]), reverse=True)
@@ -98,7 +76,7 @@ def get_available_months():
 
 
 def get_coordinator_billing_data(selected_month):
-    """Get coordinator billing data based on selected month"""
+    """Get per-patient billing data (billing is by patient, not coordinator)"""
     conn = get_db_connection()
     try:
         data_type = selected_month.get("data_type", "")
@@ -106,66 +84,39 @@ def get_coordinator_billing_data(selected_month):
         year = selected_month["year"]
         month = selected_month["month"]
 
-        if data_type == "CSV" or data_type == "CSV_IMPORT":
-            # Query CSV monthly billing summary
-            table_name = f"csv_monthly_billing_summary_{year}_{month:02d}"
-
+        if data_type == "CSV_IMPORT":
+            # Query per-patient billing view from CSV data
             query = f"""
                 SELECT
-                    staff_id as coordinator_id,
-                    staff_name as coordinator_name,
-                    task_type,
-                    SUM(total_tasks) as total_tasks,
-                    SUM(total_minutes) as total_minutes,
-                    ROUND(SUM(total_minutes) / 60.0, 2) as total_hours,
-                    SUM(unique_patients) as unique_patients
-                FROM {table_name}
-                WHERE staff_type = 'coordinator'
-                GROUP BY staff_id, staff_name, task_type
-                ORDER BY total_minutes DESC
+                    cb.patient_id,
+                    (p.first_name || ' ' || p.last_name) as patient_name,
+                    p.facility,
+                    cb.total_minutes
+                FROM {view_name} cb
+                LEFT JOIN patients p ON cb.patient_id = p.patient_id
+                ORDER BY cb.total_minutes DESC
             """
             df = pd.read_sql_query(query, conn)
 
         elif data_type == "LIVE":
-            # Query live operational table
+            # Query live operational table - per-patient aggregation
             query = """
                 SELECT
-                    c.coordinator_id,
-                    u.full_name as coordinator_name,
-                    c.task_type,
-                    COUNT(*) as total_tasks,
-                    SUM(c.duration_minutes) as total_minutes,
-                    ROUND(SUM(c.duration_minutes) / 60.0, 2) as total_hours,
-                    COUNT(DISTINCT c.patient_id) as unique_patients
-                FROM coordinator_tasks_2026_01 c
-                LEFT JOIN users u ON CAST(c.coordinator_id AS TEXT) = CAST(u.user_id AS TEXT)
-                WHERE c.coordinator_id IS NOT NULL
-                GROUP BY c.coordinator_id, u.full_name, c.task_type
+                    ct.patient_id,
+                    (p.first_name || ' ' || p.last_name) as patient_name,
+                    p.facility,
+                    SUM(ct.duration_minutes) as total_minutes
+                FROM coordinator_tasks_2026_01 ct
+                LEFT JOIN patients p ON ct.patient_id = p.patient_id
+                WHERE ct.duration_minutes IS NOT NULL
+                GROUP BY ct.patient_id, p.first_name, p.last_name, p.facility
                 ORDER BY total_minutes DESC
             """
             df = pd.read_sql_query(query, conn)
-
-        elif data_type == "COMBINED":
-            # Query the combined view
-            query = """
-                SELECT
-                    coordinator_id,
-                    coordinator_name,
-                    task_type,
-                    SUM(total_tasks) as total_tasks,
-                    SUM(total_minutes) as total_minutes,
-                    ROUND(SUM(total_minutes) / 60.0, 2) as total_hours,
-                    SUM(unique_patients) as unique_patients,
-                    data_source
-                FROM coordinator_monthly_2026_01_combined
-                GROUP BY coordinator_id, coordinator_name, task_type, data_source
-                ORDER BY total_minutes DESC
-            """
-            df = pd.read_sql_query(query, conn)
-
         else:
-            return pd.DataFrame()
+            df = pd.DataFrame()
 
+        conn.close()
         return df
 
     except Exception as e:
@@ -180,45 +131,35 @@ def get_coordinator_summary(selected_month):
     conn = get_db_connection()
     try:
         data_type = selected_month.get("data_type", "")
+        view_name = selected_month.get("view", "")
         year = selected_month["year"]
         month = selected_month["month"]
 
-        if data_type == "CSV" or data_type == "CSV_IMPORT":
-            table_name = f"csv_monthly_billing_summary_{year}_{month:02d}"
+        if data_type == "CSV_IMPORT":
             query = f"""
                 SELECT
-                    SUM(total_tasks) as total_tasks,
-                    SUM(total_minutes) as total_minutes,
-                    SUM(unique_patients) as total_patients
-                FROM {table_name}
-                WHERE staff_type = 'coordinator'
+                    COUNT(*) as total_patients,
+                    SUM(total_minutes) as total_minutes
+                FROM {view_name}
             """
 
         elif data_type == "LIVE":
             query = """
                 SELECT
-                    COUNT(*) as total_tasks,
-                    SUM(duration_minutes) as total_minutes,
-                    COUNT(DISTINCT patient_id) as total_patients
+                    COUNT(DISTINCT patient_id) as total_patients,
+                    SUM(duration_minutes) as total_minutes
                 FROM coordinator_tasks_2026_01
                 WHERE coordinator_id IS NOT NULL
             """
 
-        elif data_type == "COMBINED":
-            query = """
-                SELECT
-                    SUM(total_tasks) as total_tasks,
-                    SUM(total_minutes) as total_minutes,
-                    SUM(unique_patients) as total_patients
-                FROM coordinator_monthly_2026_01_combined
-            """
+        else:
+            return None
 
         result = conn.execute(query).fetchone()
         if result and result[0]:
             return {
-                "total_tasks": result[0] or 0,
+                "total_patients": result[0] or 0,
                 "total_minutes": result[1] or 0,
-                "total_patients": result[2] or 0,
             }
         return None
 
@@ -267,13 +208,11 @@ def display_monthly_coordinator_billing_dashboard():
 
             if summary:
                 st.subheader("Monthly Summary")
-                col1, col2, col3 = st.columns(3)
+                col1, col2 = st.columns(2)
 
                 with col1:
-                    st.metric("Total Tasks", summary["total_tasks"])
-                with col2:
                     st.metric("Total Minutes", f"{summary['total_minutes']:,}")
-                with col3:
+                with col2:
                     st.metric("Total Patients", summary["total_patients"])
 
             # Get detailed billing data
