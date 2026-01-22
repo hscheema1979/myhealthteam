@@ -12,16 +12,20 @@ def show(user_id):
     """Display monthly task review for providers with editing enabled"""
     st.subheader("Monthly Task Review")
 
-    if st.button("🔄 Refresh Data", key="refresh_provider_monthly_data"):
+    if st.button("Refresh Data", key="refresh_provider_monthly_data"):
         st.rerun()
 
     conn = database.get_db_connection()
     try:
+        # Get both live and CSV import tables
         query = """
-        SELECT name
+        SELECT name, 'LIVE' as data_type
         FROM sqlite_master
-        WHERE type='table'
-        AND name LIKE 'provider_tasks_%'
+        WHERE type='table' AND name LIKE 'provider_tasks_%'
+        UNION ALL
+        SELECT name, 'CSV_IMPORT' as data_type
+        FROM sqlite_master
+        WHERE type='table' AND name LIKE 'csv_provider_tasks_%'
         ORDER BY name DESC
         """
 
@@ -33,14 +37,18 @@ def show(user_id):
         available_months = []
         for row in result:
             table_name = row[0]
+            data_type = row[1]
             parts = table_name.split('_')
             if len(parts) >= 4:
                 year = parts[2]
                 month = parts[3]
                 try:
                     month_name = calendar.month_name[int(month)]
-                    display_name = f"{month_name} {year}"
-                    available_months.append((display_name, table_name, int(year), int(month)))
+                    if data_type == "CSV_IMPORT":
+                        display_name = f"{month_name} {year} (CSV Import)"
+                    else:
+                        display_name = f"{month_name} {year} (Live)"
+                    available_months.append((display_name, table_name, int(year), int(month), data_type))
                 except (ValueError, IndexError):
                     continue
 
@@ -56,96 +64,129 @@ def show(user_id):
         )
 
         if selected_option:
-            display_name, table_name, year, month = selected_option
+            display_name, table_name, year, month, data_type = selected_option
             st.caption(f"Showing tasks for {display_name}")
+            st.caption(f"Data Source: {data_type}")
 
-            query = f"""
-            SELECT
-                pt.provider_task_id,
-                pt.patient_name,
-                pt.task_date,
-                p.date_of_birth,
-                COALESCE(tbc.location_type, 'Home') as location_type,
-                COALESCE(tbc.patient_type, 'Follow Up') as patient_type,
-                COALESCE(pt.notes, '') as notes,
-                pt.billing_code
-            FROM {table_name} pt
-            LEFT JOIN patients p ON pt.patient_id = p.patient_id
-            LEFT JOIN task_billing_codes tbc ON pt.billing_code = tbc.billing_code
-            WHERE pt.provider_id = ?
-            ORDER BY pt.task_date DESC
-            """
+            # Different queries for CSV import vs live data
+            if data_type == "CSV_IMPORT":
+                # CSV tables: staff_id, patient_id (text), different column names
+                query = f"""
+                SELECT
+                    pt.csv_task_id as _task_id,
+                    pt.patient_id as patient_name,
+                    pt.task_date,
+                    '' as date_of_birth,
+                    'Home' as location_type,
+                    'Follow Up' as patient_type,
+                    COALESCE(pt.notes, '') as notes,
+                    pt.billing_code as _billing_code,
+                    'CSV_IMPORT' as data_source
+                FROM {table_name} pt
+                WHERE pt.staff_id = ?
+                ORDER BY pt.task_date DESC
+                """
+            else:
+                # Live tables: standard columns
+                query = f"""
+                SELECT
+                    pt.provider_task_id as _task_id,
+                    pt.patient_name,
+                    pt.task_date,
+                    p.date_of_birth,
+                    COALESCE(tbc.location_type, 'Home') as location_type,
+                    COALESCE(tbc.patient_type, 'Follow Up') as patient_type,
+                    COALESCE(pt.notes, '') as notes,
+                    pt.billing_code as _billing_code,
+                    'LIVE' as data_source
+                FROM {table_name} pt
+                LEFT JOIN patients p ON pt.patient_id = p.patient_id
+                LEFT JOIN task_billing_codes tbc ON pt.billing_code = tbc.billing_code
+                WHERE pt.provider_id = ?
+                ORDER BY pt.task_date DESC
+                """
+
             rows = conn.execute(query, (user_id,)).fetchall()
 
             if rows:
                 tasks_df = pd.DataFrame([dict(r) for r in rows])
 
                 tasks_df = tasks_df.rename(columns={
-                    'provider_task_id': '_task_id',
                     'patient_name': 'Patient Name',
                     'task_date': 'Date of Service',
                     'date_of_birth': 'Patient DOB',
                     'location_type': 'Location of Service',
                     'patient_type': 'Patient Type',
                     'notes': 'Notes',
-                    'billing_code': '_billing_code'
                 })
 
-                tasks_df['Date of Service'] = pd.to_datetime(tasks_df['Date of Service']).dt.strftime('%Y-%m-%d')
+                tasks_df['Date of Service'] = pd.to_datetime(tasks_df['Date of Service'], errors='coerce').dt.strftime('%Y-%m-%d')
 
                 total_tasks = len(tasks_df)
                 st.metric("Total Tasks", total_tasks)
 
-                st.caption("Edit Location, Patient Type, or Notes if corrections are needed. Changes save automatically.")
+                # CSV import data is read-only
+                if data_type == "CSV_IMPORT":
+                    st.info("CSV Import data is read-only. Editing is only available for live data.")
+                    st.dataframe(
+                        tasks_df[["Patient Name", "Date of Service", "Location of Service", "Patient Type", "Notes"]],
+                        use_container_width=True,
+                        hide_index=True
+                    )
+                else:
+                    st.caption("Edit Location, Patient Type, or Notes if corrections are needed. Changes save automatically.")
 
-                # Use data_editor for editable columns
-                edited_df = st.data_editor(
-                    tasks_df,
-                    use_container_width=True,
-                    hide_index=True,
-                    column_config={
-                        "_task_id": st.column_config.TextColumn("Task ID", disabled=True, hidden=True),
-                        "_billing_code": st.column_config.TextColumn("Billing Code", disabled=True, hidden=True),
-                        "Patient Name": st.column_config.TextColumn("Patient Name", disabled=True, width="medium"),
-                        "Date of Service": st.column_config.TextColumn("Date of Service", disabled=True, width="small"),
-                        "Patient DOB": st.column_config.TextColumn("Patient DOB", disabled=True, width="small"),
-                        "Location of Service": st.column_config.SelectboxColumn(
-                            "Location",
-                            options=LOCATION_TYPES,
-                            required=True,
-                            width="small"
-                        ),
-                        "Patient Type": st.column_config.SelectboxColumn(
-                            "Patient Type",
-                            options=PATIENT_TYPES,
-                            required=True,
-                            width="small"
-                        ),
-                        "Notes": st.column_config.TextColumn("Notes", width="large"),
-                    },
-                    num_rows="dynamic"
-                )
+                    # Use data_editor for editable columns
+                    edited_df = st.data_editor(
+                        tasks_df,
+                        use_container_width=True,
+                        hide_index=True,
+                        column_config={
+                            "_task_id": st.column_config.TextColumn("Task ID", disabled=True, hidden=True),
+                            "_billing_code": st.column_config.TextColumn("Billing Code", disabled=True, hidden=True),
+                            "data_source": st.column_config.TextColumn("Source", disabled=True, hidden=True),
+                            "Patient Name": st.column_config.TextColumn("Patient Name", disabled=True, width="medium"),
+                            "Date of Service": st.column_config.TextColumn("Date of Service", disabled=True, width="small"),
+                            "Patient DOB": st.column_config.TextColumn("Patient DOB", disabled=True, width="small"),
+                            "Location of Service": st.column_config.SelectboxColumn(
+                                "Location",
+                                options=LOCATION_TYPES,
+                                required=True,
+                                width="small"
+                            ),
+                            "Patient Type": st.column_config.SelectboxColumn(
+                                "Patient Type",
+                                options=PATIENT_TYPES,
+                                required=True,
+                                width="small"
+                            ),
+                            "Notes": st.column_config.TextColumn("Notes", width="large"),
+                        },
+                        num_rows="dynamic"
+                    )
 
-                # Check for edits and save changes
-                if not edited_df.equals(tasks_df):
-                    _save_task_changes(conn, table_name, tasks_df, edited_df, user_id, year, month)
-                    st.success("Changes saved successfully!")
-                    st.rerun()
+                    # Check for edits and save changes
+                    if not edited_df.equals(tasks_df):
+                        _save_task_changes(conn, table_name, tasks_df, edited_df, user_id, year, month)
+                        st.success("Changes saved successfully!")
+                        st.rerun()
 
-                # Prepare CSV for download (without hidden columns)
-                download_df = edited_df[["Patient Name", "Date of Service", "Patient DOB", "Location of Service", "Patient Type", "Notes"]].copy()
-                csv = download_df.to_csv(index=False)
-                st.download_button(
-                    label="Download CSV",
-                    data=csv,
-                    file_name=f"provider_tasks_{user_id}_monthly_{year}_{month}.csv",
-                    mime="text/csv"
-                )
+                    # Prepare CSV for download (without hidden columns)
+                    download_df = edited_df[["Patient Name", "Date of Service", "Patient DOB", "Location of Service", "Patient Type", "Notes"]].copy()
+                    csv = download_df.to_csv(index=False)
+                    st.download_button(
+                        label="Download CSV",
+                        data=csv,
+                        file_name=f"provider_tasks_{user_id}_monthly_{year}_{month}.csv",
+                        mime="text/csv"
+                    )
             else:
                 st.info(f"No tasks found for {display_name}.")
 
     except Exception as e:
         st.error(f"Error loading monthly task review: {e}")
+        import traceback
+        traceback.print_exc()
     finally:
         conn.close()
 
@@ -193,7 +234,6 @@ def _save_task_changes(conn, table_name, original_df, edited_df, provider_id, ye
                         """, (new_billing_code, new_notes, task_id))
 
                         # Track affected week for billing summary update
-                        from datetime import datetime
                         dt = datetime.strptime(task_date, '%Y-%m-%d')
                         week_start = (dt - pd.Timedelta(days=dt.weekday())).strftime('%Y-%m-%d')
                         affected_weeks.add(week_start)
