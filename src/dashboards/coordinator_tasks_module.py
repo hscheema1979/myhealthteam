@@ -317,58 +317,22 @@ def show_coordinator_tasks_tab(
         data_source_label = "CSV Import" if data_type == "IMPORT" else "Live Data"
         st.markdown(f"### Coordinator Tasks - {calendar.month_name[selected_month]} {selected_year} ({data_source_label})")
 
-    # --- For IMPORT data type, show aggregated summary view ---
+    # --- For IMPORT data type, use import view (same structure as live) ---
     if data_type == "IMPORT":
-        view_name = f"coordinator_monthly_{selected_year}_{selected_month:02d}_import"
-        conn = database.get_db_connection()
+        table_name = f"coordinator_monthly_{selected_year}_{selected_month:02d}_import"
+        st.caption("CSV Import data - aggregated from source files")
+    else:
+        table_name = f"coordinator_tasks_{selected_year}_{selected_month:02d}"
 
-        # Get total minutes
-        total_result = conn.execute(
-            f"SELECT SUM(total_minutes) as total FROM {view_name}"
-        ).fetchone()
-        total_minutes = total_result[0] if total_result and total_result[0] else 0
-
-        st.markdown(f"### Total Minutes: **{int(total_minutes):,}**")
-        st.caption("Note: CSV Import shows aggregated monthly summary, not individual task records")
-
-        conn.close()
-
-        # Show coordinator monthly summary for import data
-        st.divider()
-        st.subheader("Coordinator Monthly Summary (CSV Import)")
-
-        conn = database.get_db_connection()
-        query = f"""
-        SELECT
-            coordinator_name,
-            task_type,
-            total_tasks,
-            total_minutes,
-            total_hours,
-            unique_patients
-        FROM {view_name}
-        ORDER BY total_minutes DESC
-        """
-        df = pd.read_sql_query(query, conn)
-        conn.close()
-
-        if not df.empty:
-            st.dataframe(df, use_container_width=True, hide_index=True)
-        else:
-            st.info("No data available for this period")
-
-        return  # Exit early for import data - detailed views not available
-
-    # --- For LIVE data type, continue with existing detailed view ---
-    table_name = f"coordinator_tasks_{selected_year}_{selected_month:02d}"
+    # Get total minutes
     conn = database.get_db_connection()
     table_exists = conn.execute(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+        "SELECT name FROM sqlite_master WHERE type='table' OR type='view' AND name=?",
         (table_name,),
     ).fetchone()
 
     if table_exists:
-        total_minutes_query = f"SELECT SUM(duration_minutes) as total FROM {table_name} WHERE duration_minutes IS NOT NULL"
+        total_minutes_query = f"SELECT SUM(total_minutes) as total FROM {table_name} WHERE total_minutes IS NOT NULL"
         total_result = conn.execute(total_minutes_query).fetchone()
         total_minutes = total_result[0] if total_result and total_result[0] else 0
         st.markdown(
@@ -380,7 +344,7 @@ def show_coordinator_tasks_tab(
         )
 
     conn.close()
-    
+
     # --- Patient and Coordinator Monthly Summary Tables Side-by-Side ---
     st.divider()
     col_patient, col_coord = st.columns(2)
@@ -394,19 +358,32 @@ def show_coordinator_tasks_tab(
             if table_exists:
                 conn = database.get_db_connection()
                 
-                # Get patient data with billing codes for selected month
-                patient_query = f"""
-                SELECT
-                    p.patient_id,
-                    (p.first_name || ' ' || p.last_name) as patient_name,
-                    ct.task_type as billing_code,
-                    SUM(ct.duration_minutes) as total_minutes
-                FROM {table_name} ct
-                JOIN patients p ON ct.patient_id = p.patient_id
-                WHERE ct.duration_minutes IS NOT NULL
-                GROUP BY p.patient_id, p.first_name, p.last_name, ct.task_type
-                ORDER BY p.patient_id, ct.task_type
-                """
+                # Get patient data - use total_minutes for import views, duration_minutes for live tables
+                if data_type == "IMPORT":
+                    patient_query = f"""
+                    SELECT
+                        ct.patient_id,
+                        (p.first_name || ' ' || p.last_name) as patient_name,
+                        ct.task_type as billing_code,
+                        ct.total_minutes
+                    FROM {table_name} ct
+                    JOIN patients p ON ct.patient_id = p.patient_id
+                    WHERE ct.total_minutes IS NOT NULL
+                    ORDER BY p.patient_id, ct.task_type
+                    """
+                else:
+                    patient_query = f"""
+                    SELECT
+                        p.patient_id,
+                        (p.first_name || ' ' || p.last_name) as patient_name,
+                        ct.task_type as billing_code,
+                        SUM(ct.duration_minutes) as total_minutes
+                    FROM {table_name} ct
+                    JOIN patients p ON ct.patient_id = p.patient_id
+                    WHERE ct.duration_minutes IS NOT NULL
+                    GROUP BY p.patient_id, p.first_name, p.last_name, ct.task_type
+                    ORDER BY p.patient_id, ct.task_type
+                    """
                 
                 patient_rows = conn.execute(patient_query).fetchall()
                 conn.close()
@@ -609,63 +586,82 @@ def show_coordinator_tasks_tab(
             if table_exists:
                 conn = database.get_db_connection()
                 
-                # Get coordinator summary for selected month
-                coordinator_query = f"""
-                SELECT
-                    ct.coordinator_id,
-                    SUM(ct.duration_minutes) as total_minutes
-                FROM {table_name} ct
-                WHERE ct.duration_minutes IS NOT NULL
-                GROUP BY ct.coordinator_id
-                ORDER BY total_minutes ASC
-                """
+                # Get coordinator summary - use _coord view for import, regular table for live
+                if data_type == "IMPORT":
+                    coord_table_name = f"{table_name}_coord"
+                    coordinator_query = f"""
+                    SELECT
+                        coordinator_id,
+                        coordinator_name,
+                        total_minutes
+                    FROM {coord_table_name}
+                    ORDER BY total_minutes DESC
+                    """
+                else:
+                    coordinator_query = f"""
+                    SELECT
+                        ct.coordinator_id,
+                        SUM(ct.duration_minutes) as total_minutes
+                    FROM {table_name} ct
+                    WHERE ct.duration_minutes IS NOT NULL
+                    GROUP BY ct.coordinator_id
+                    ORDER BY total_minutes ASC
+                    """
                 
                 coordinator_rows = conn.execute(coordinator_query).fetchall()
-                
+
                 if coordinator_rows:
-                    df_summary = pd.DataFrame(
-                        coordinator_rows,
-                        columns=["coordinator_id", "total_minutes"],
-                    )
-                    
-                    # Build coordinator name mapping
-                    # Start with names from tasks table (where available and not empty)
-                    id_to_name = {}
-                    try:
-                        tasks_df = pd.read_sql_query(
-                            f"SELECT coordinator_id, coordinator_name FROM {table_name} WHERE coordinator_name IS NOT NULL AND coordinator_name != ''",
-                            conn,
+                    # Import views already have coordinator_name, live views need lookup
+                    if data_type == "IMPORT":
+                        df_summary = pd.DataFrame(
+                            coordinator_rows,
+                            columns=["coordinator_id", "coordinator_name", "total_minutes"],
                         )
-                        if not tasks_df.empty:
-                            mapping = tasks_df.drop_duplicates("coordinator_id")
-                            for _, row in mapping.iterrows():
-                                key = _safe_key(row["coordinator_id"])
-                                name = row["coordinator_name"]
-                                if key and name and str(name).strip():
-                                    id_to_name[key] = name
-                    except Exception:
-                        pass
-                    
-                    conn.close()
-                    
-                    # Always supplement from users table for any missing coordinator names
-                    for coord_id, name in users_id_to_name.items():
-                        if coord_id not in id_to_name:
-                            id_to_name[coord_id] = name
-                    
-                    # Map coordinator names
-                    df_summary["coord_key"] = df_summary["coordinator_id"].apply(
-                        lambda x: _safe_key(x) if pd.notna(x) else None
-                    )
-                    df_summary["Coordinator"] = (
-                        df_summary["coord_key"]
-                        .map(id_to_name)
-                        .fillna(df_summary["coord_key"])
-                    )
-                    df_summary = df_summary[["Coordinator", "total_minutes"]]
-                    df_summary = df_summary.rename(
-                        columns={"total_minutes": "Sum of Minutes"}
-                    )
+                        df_summary = df_summary.rename(columns={"coordinator_name": "Coordinator"})
+                        df_summary = df_summary[["Coordinator", "total_minutes"]]
+                        df_summary = df_summary.rename(columns={"total_minutes": "Sum of Minutes"})
+                    else:
+                        df_summary = pd.DataFrame(
+                            coordinator_rows,
+                            columns=["coordinator_id", "total_minutes"],
+                        )
+
+                        # Build coordinator name mapping
+                        id_to_name = {}
+                        try:
+                            tasks_df = pd.read_sql_query(
+                                f"SELECT coordinator_id, coordinator_name FROM {table_name} WHERE coordinator_name IS NOT NULL AND coordinator_name != ''",
+                                conn,
+                            )
+                            if not tasks_df.empty:
+                                mapping = tasks_df.drop_duplicates("coordinator_id")
+                                for _, row in mapping.iterrows():
+                                    key = _safe_key(row["coordinator_id"])
+                                    name = row["coordinator_name"]
+                                    if key and name and str(name).strip():
+                                        id_to_name[key] = name
+                        except Exception:
+                            pass
+
+                        # Always supplement from users table for any missing coordinator names
+                        for coord_id, name in users_id_to_name.items():
+                            if coord_id not in id_to_name:
+                                id_to_name[coord_id] = name
+
+                        # Map coordinator names
+                        df_summary["coord_key"] = df_summary["coordinator_id"].apply(
+                            lambda x: _safe_key(x) if pd.notna(x) else None
+                        )
+                        df_summary["Coordinator"] = (
+                            df_summary["coord_key"]
+                            .map(id_to_name)
+                            .fillna(df_summary["coord_key"])
+                        )
+                        df_summary = df_summary[["Coordinator", "total_minutes"]]
+                        df_summary = df_summary.rename(
+                            columns={"total_minutes": "Sum of Minutes"}
+                        )
+
                     df_summary = df_summary.sort_values(
                         "Sum of Minutes", ascending=False
                     )

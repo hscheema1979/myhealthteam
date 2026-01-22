@@ -136,62 +136,22 @@ foreach ($table in $csvTables) {
 
     Write-Log "  Exporting data..." "Gray"
 
-    # Create a safe export script that:
-    # 1. Drops the existing table (if exists)
-    # 2. Recreates it with the correct schema
-    # 3. Inserts all data
+    # Use sqlite3 .dump which generates CREATE TABLE + INSERT statements
+    # We need to prepend DROP TABLE IF EXISTS for clean import
+    $dumpOutput = & sqlite3 $slaveDbPath ".dump $table" 2>$null
 
-    $exportSql = @"
--- ============================================================================
--- CSV Billing Table Sync: $table
--- Exported: $timestamp
--- Source: SRVR (Windows) - Development DB
--- Target: VPS2 (Linux) - Production DB
---
--- IMPORTANT: This is a csv_* table (billing source of truth)
--- Operational tables are NOT affected by this sync
--- ============================================================================
-
-BEGIN TRANSACTION;
-
--- Drop existing table (will be recreated with fresh data)
-DROP TABLE IF EXISTS $table;
-
--- Recreate table with schema from source
-"@
-
-    # Get the CREATE TABLE statement
-    $createTable = sqlite3 $slaveDbPath ".schema $table" 2>$null
-    if ($createTable) {
-        $exportSql += $createTable + "`n"
-    } else {
-        Write-Log "  WARNING: Could not get schema for $table" "Yellow"
+    if (-not $dumpOutput) {
+        Write-Log "  ERROR: Failed to dump $table" "Red"
+        $errors++
+        continue
     }
 
-    $exportSql += @"
+    # Prepend DROP TABLE to handle existing tables on target
+    $dropStatement = "DROP TABLE IF EXISTS $table;"
+    $exportSql = "$dropStatement`n$dumpOutput"
 
--- Insert data (using SQLite's .dump mode for proper escaping)
-"@
-
-    # Export schema and data using SQLite's dump command
-    $tempSqlFile = Join-Path $tempDir "${table}_export.sql"
-
-    # Use sqlite3 .dump to export both schema and data
-    $dumpOutput = & sqlite3 $slaveDbPath ".schema $table" 2>$null
-    $dumpOutput | Out-File -FilePath $tempSqlFile -Encoding UTF8
-
-    # Append data export
-    $dataOutput = & sqlite3 $slaveDbPath "SELECT * FROM $table;" 2>$null
-    $dataOutput | Out-File -FilePath $tempSqlFile -Encoding UTF8 -Append
-
-    $exportSql = Get-Content $tempSqlFile -Raw -ErrorAction SilentlyContinue
-    Remove-Item $tempSqlFile -Force -ErrorAction SilentlyContinue
-
-    $exportSql += $dataSql + "`n"
-    $exportSql += "COMMIT;`n"
-
-    # Write export file
-    $exportSql | Out-File -FilePath $exportFile -Encoding UTF8 -NoNewline
+    # Write export file (use UTF8NoBOM to avoid BOM issues)
+    [System.IO.File]::WriteAllText($exportFile, $exportSql, [System.Text.Encoding]::UTF8)
 
     $fileSize = [math]::Round((Get-Item $exportFile).Length / 1KB, 1)
     Write-Log "  Export file: $fileSize KB" "Gray"

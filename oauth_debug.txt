@@ -821,3 +821,57 @@
 2026-01-16T12:03:55.493300 - APP: user_id=10, user_role_ids=[33]
 2026-01-16T12:04:01.012088 - APP: is_authenticated = True
 2026-01-16T12:04:01.013216 - APP: user_id=10, user_role_ids=[33]
+2026-01-21T18:07:48.249808 - APP: is_authenticated = False
+2026-01-21T18:07:48.251015 - APP: User NOT authenticated - showing login page
+2026-01-21T18:07:48.251826 - APP:   session_state.authenticated_user: None
+2026-01-21T18:07:48.252677 - APP:   session_state.user_id: None
+2026-01-21T18:07:49.319872 - APP: is_authenticated = False
+2026-01-21T18:07:49.320642 - APP: User NOT authenticated - showing login page
+2026-01-21T18:07:49.321305 - APP:   session_state.authenticated_user: None
+2026-01-21T18:07:49.321944 - APP:   session_state.user_id: None
+2026-01-21T18:08:15.443844 - APP: is_authenticated = False
+2026-01-21T18:08:15.444846 - APP: User NOT authenticated - showing login page
+2026-01-21T18:08:15.445779 - APP:   session_state.authenticated_user: None
+2026-01-21T18:08:15.446498 - APP:   session_state.user_id: None
+2026-01-21T18:08:16.243662 - APP: is_authenticated = False
+2026-01-21T18:08:16.244885 - APP: User NOT authenticated - showing login page
+2026-01-21T18:08:16.245851 - APP:   session_state.authenticated_user: None
+2026-01-21T18:08:16.247148 - APP:   session_state.user_id: None
+2026-01-21T18:08:22.464136 - APP: is_authenticated = False
+2026-01-21T18:08:22.465226 - APP: User NOT authenticated - showing login page
+2026-01-21T18:08:22.466430 - APP:   session_state.authenticated_user: None
+2026-01-21T18:08:22.467556 - APP:   session_state.user_id: None
+2026-01-21T18:08:23.390655 - APP: is_authenticated = True
+2026-01-21T18:08:23.391486 - APP: user_id=12, user_role_ids=[34]
+2026-01-21T18:08:36.822776 - APP: is_authenticated = True
+2026-01-21T18:08:36.823817 - APP: user_id=12, user_role_ids=[34]
+2026-01-21T22:58:03.147649 - APP: is_authenticated = False
+2026-01-21T22:58:03.148447 - APP: User NOT authenticated - showing login page
+2026-01-21T22:58:03.150169 - APP:   session_state.authenticated_user: None
+2026-01-21T22:58:03.150777 - APP:   session_state.user_id: None
+2026-01-21T22:58:04.163382 - APP: is_authenticated = False
+2026-01-21T22:58:04.164495 - APP: User NOT authenticated - showing login page
+2026-01-21T22:58:04.165552 - APP:   session_state.authenticated_user: None
+2026-01-21T22:58:04.169148 - APP:   session_state.user_id: None
+2026-01-21T22:58:04.274390 - APP: is_authenticated = False
+2026-01-21T22:58:04.275071 - APP: User NOT authenticated - showing login page
+2026-01-21T22:58:04.275829 - APP:   session_state.authenticated_user: None
+2026-01-21T22:58:04.276380 - APP:   session_state.user_id: None
+2026-01-21T22:58:26.255552 - APP: is_authenticated = False
+2026-01-21T22:58:26.256467 - APP: User NOT authenticated - showing login page
+2026-01-21T22:58:26.257145 - APP:   session_state.authenticated_user: None
+2026-01-21T22:58:26.257835 - APP:   session_state.user_id: None
+2026-01-21T22:58:26.819380 - APP: is_authenticated = False
+2026-01-21T22:58:26.820401 - APP: User NOT authenticated - showing login page
+2026-01-21T22:58:26.821169 - APP:   session_state.authenticated_user: None
+2026-01-21T22:58:26.821721 - APP:   session_state.user_id: None
+2026-01-21T22:58:33.667212 - APP: is_authenticated = True
+2026-01-21T22:58:33.668080 - APP: user_id=12, user_role_ids=[34]
+2026-01-21T22:58:34.965199 - APP: is_authenticated = True
+2026-01-21T22:58:34.966707 - APP: user_id=12, user_role_ids=[34]
+2026-01-21T22:58:42.103777 - APP: is_authenticated = True
+2026-01-21T22:58:42.104789 - APP: user_id=12, user_role_ids=[34]
+2026-01-21T23:00:45.946581 - APP: is_authenticated = True
+2026-01-21T23:00:45.947445 - APP: user_id=12, user_role_ids=[34]
+2026-01-21T23:02:53.708849 - APP: is_authenticated = True
+2026-01-21T23:02:53.709725 - APP: user_id=12, user_role_ids=[34]
