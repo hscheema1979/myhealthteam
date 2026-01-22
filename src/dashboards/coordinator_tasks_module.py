@@ -332,7 +332,11 @@ def show_coordinator_tasks_tab(
     ).fetchone()
 
     if table_exists:
-        total_minutes_query = f"SELECT SUM(total_minutes) as total FROM {table_name} WHERE total_minutes IS NOT NULL"
+        # Import views use total_minutes, live tables use duration_minutes
+        if data_type == "IMPORT":
+            total_minutes_query = f"SELECT SUM(total_minutes) as total FROM {table_name} WHERE total_minutes IS NOT NULL"
+        else:
+            total_minutes_query = f"SELECT SUM(duration_minutes) as total FROM {table_name} WHERE duration_minutes IS NOT NULL"
         total_result = conn.execute(total_minutes_query).fetchone()
         total_minutes = total_result[0] if total_result and total_result[0] else 0
         st.markdown(
