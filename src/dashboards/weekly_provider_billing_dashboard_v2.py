@@ -303,25 +303,28 @@ def get_provider_billing_data(selected_period, week_number, provider_filter=None
             query += " ORDER BY provider_name, billing_code"
 
         elif data_type == "LIVE":
-            # For live data, get from provider_task_billing_status
-            # with additional provider_weekly_summary_with_billing details
+            # For live data, get individual tasks from provider_task_billing_status
+            # Provider billing is per patient - each task billed to the patient
             query = """
                 SELECT
-                    ptbs.provider_id,
-                    ptbs.provider_name,
+                    ptbs.patient_id,
+                    ptbs.patient_name,
+                    u.full_name as provider_full_name,
+                    COALESCE(p.facility, '') as facility,
+                    ptbs.minutes_of_service as total_minutes,
+                    ptbs.billing_code,
+                    ptbs.billing_code_description,
+                    ptbs.task_description as task_type,
+                    ptbs.billing_status,
+                    ptbs.task_date,
                     ptbs.week_start_date,
                     ptbs.week_end_date,
                     STRFTIME('%Y', ptbs.week_start_date) as year,
                     CAST(STRFTIME('%W', ptbs.week_start_date) AS INTEGER) as week_number,
-                    ptbs.billing_code,
-                    ptbs.billing_code_description,
-                    ptbs.task_description as task_type,
-                    COUNT(*) as total_tasks,
-                    SUM(ptbs.minutes_of_service) as total_minutes,
-                    ROUND(SUM(ptbs.minutes_of_service) / 60.0, 2) as total_hours,
-                    COUNT(DISTINCT ptbs.patient_name) as unique_patients,
                     'LIVE' as data_source
                 FROM provider_task_billing_status ptbs
+                LEFT JOIN users u ON ptbs.provider_id = u.user_id
+                LEFT JOIN patients p ON ptbs.patient_id = p.patient_id
                 WHERE STRFTIME('%Y', ptbs.week_start_date) = ?
                     AND STRFTIME('%m', ptbs.week_start_date) = ?
                     AND CAST(STRFTIME('%W', ptbs.week_start_date) AS INTEGER) = ?
@@ -332,8 +335,7 @@ def get_provider_billing_data(selected_period, week_number, provider_filter=None
                 query += " AND ptbs.provider_name = ?"
                 params.append(provider_filter)
 
-            query += " GROUP BY ptbs.provider_id, ptbs.provider_name, ptbs.billing_code, ptbs.task_description"
-            query += " ORDER BY ptbs.provider_name, ptbs.billing_code"
+            query += " ORDER BY ptbs.patient_name, u.full_name, ptbs.task_date"
 
         elif data_type == "COMBINED":
             query = """

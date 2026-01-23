@@ -139,7 +139,6 @@ def get_coordinator_billing_data(selected_month):
         query = f"""
         SELECT
             ct.patient_id,
-            COUNT(DISTINCT ct.coordinator_id || '_' || ct.task_date || '_' || ct.task_type) as task_count,
             SUM(ct.duration_minutes) as total_minutes,
             COALESCE(p.facility, '') as facility
         FROM (
@@ -305,7 +304,6 @@ def display_monthly_coordinator_billing_dashboard():
                     display_cols = [
                         "patient_id",
                         "facility",
-                        "task_count",
                         "total_minutes",
                         "billing_code",
                         "billing_description",
