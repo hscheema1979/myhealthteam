@@ -135,17 +135,18 @@ def get_coordinator_billing_data(selected_month):
         if not cursor.fetchone():
             return pd.DataFrame()
 
-        # CSV tables use different column names: staff_id vs coordinator_id, total_minutes vs duration_minutes
+        # CSV tables use staff_id instead of coordinator_id
+        # Both use duration_minutes for the time column
         if data_type == "CSV_IMPORT":
             # CSV import table column names
             query = f"""
             SELECT
                 ct.patient_id,
                 COUNT(DISTINCT ct.staff_id || '_' || ct.task_date || '_' || ct.task_type) as task_count,
-                SUM(ct.total_minutes) as total_minutes,
+                SUM(ct.duration_minutes) as total_minutes,
                 COALESCE(p.facility, '') as facility
             FROM (
-                SELECT DISTINCT staff_id, patient_id, task_date, task_type, total_minutes
+                SELECT DISTINCT staff_id, patient_id, task_date, task_type, duration_minutes
                 FROM {table_name}
                 WHERE patient_id IS NOT NULL
             ) ct
@@ -212,16 +213,17 @@ def get_coordinator_summary(selected_month):
         if not cursor.fetchone():
             return None
 
-        # CSV tables use different column names: staff_id vs coordinator_id, total_minutes vs duration_minutes
+        # CSV tables use staff_id instead of coordinator_id
+        # Both use duration_minutes for the time column
         if data_type == "CSV_IMPORT":
             # CSV import table column names
             query = f"""
             SELECT
                 COUNT(DISTINCT patient_id) as total_patients,
                 COUNT(*) as total_tasks,
-                SUM(total_minutes) as total_minutes
+                SUM(duration_minutes) as total_minutes
             FROM (
-                SELECT DISTINCT staff_id, patient_id, task_date, task_type, total_minutes
+                SELECT DISTINCT staff_id, patient_id, task_date, task_type, duration_minutes
                 FROM {table_name}
                 WHERE patient_id IS NOT NULL
             )

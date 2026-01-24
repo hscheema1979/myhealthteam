@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 
 from src import database as db
 from src.dashboards.dashboard_display_config import ST_DF_AUTOSIZE_COLUMNS
+from src.utils.write_ahead_logger import log_write_ahead, mark_log_completed, mark_log_failed
 
 
 # ===== PERFORMANCE OPTIMIZATION: Add caching for expensive database queries =====
@@ -129,37 +130,78 @@ def _apply_patient_info_edits_admin(edited_df, original_df):
                     changed[col] = row.get(col)
             if not changed:
                 continue
+
+            # Separate changes by target table
+            patient_changes = {}
+            panel_changes = {}
             patient_cols = [
                 c[1] for c in conn.execute("PRAGMA table_info('patients')").fetchall()
             ]
-            set_parts = []
-            params = []
+            panel_cols = [
+                c[1] for c in conn.execute("PRAGMA table_info('patient_panel')").fetchall()
+            ]
+
             for k, v in changed.items():
                 if k in patient_cols:
-                    set_parts.append(f"{k} = ?")
-                    params.append(v)
-            if set_parts:
-                params.append(pid)
-                conn.execute(
-                    f"UPDATE patients SET {', '.join(set_parts)}, updated_date = CURRENT_TIMESTAMP WHERE patient_id = ?",
-                    tuple(params),
-                )
-            panel_cols = [
-                c[1]
-                for c in conn.execute("PRAGMA table_info('patient_panel')").fetchall()
-            ]
-            set_parts = []
-            params = []
-            for k, v in changed.items():
+                    patient_changes[k] = v
                 if k in panel_cols:
+                    panel_changes[k] = v
+
+            # Update patients table with write-ahead log
+            if patient_changes:
+                update_data = {"patient_id": pid, **patient_changes}
+                log_id = log_write_ahead(
+                    user_id=0,  # Admin edits - no user context available here
+                    target_table="patients",
+                    operation="UPDATE",
+                    data_json=update_data,
+                    source_system="ADMIN_DASHBOARD"
+                )
+
+                set_parts = []
+                params = []
+                for k, v in patient_changes.items():
                     set_parts.append(f"{k} = ?")
                     params.append(v)
-            if set_parts:
                 params.append(pid)
-                conn.execute(
-                    f"UPDATE patient_panel SET {', '.join(set_parts)}, updated_date = CURRENT_TIMESTAMP WHERE patient_id = ?",
-                    tuple(params),
+
+                try:
+                    conn.execute(
+                        f"UPDATE patients SET {', '.join(set_parts)}, updated_date = CURRENT_TIMESTAMP WHERE patient_id = ?",
+                        tuple(params),
+                    )
+                    mark_log_completed(log_id, target_record_id=pid)
+                except Exception as e:
+                    mark_log_failed(log_id, str(e))
+                    raise
+
+            # Update patient_panel table with write-ahead log
+            if panel_changes:
+                update_data = {"patient_id": pid, **panel_changes}
+                log_id = log_write_ahead(
+                    user_id=0,  # Admin edits - no user context available here
+                    target_table="patient_panel",
+                    operation="UPDATE",
+                    data_json=update_data,
+                    source_system="ADMIN_DASHBOARD"
                 )
+
+                set_parts = []
+                params = []
+                for k, v in panel_changes.items():
+                    set_parts.append(f"{k} = ?")
+                    params.append(v)
+                params.append(pid)
+
+                try:
+                    conn.execute(
+                        f"UPDATE patient_panel SET {', '.join(set_parts)}, updated_date = CURRENT_TIMESTAMP WHERE patient_id = ?",
+                        tuple(params),
+                    )
+                    mark_log_completed(log_id, target_record_id=pid)
+                except Exception as e:
+                    mark_log_failed(log_id, str(e))
+                    raise
         conn.commit()
     finally:
         conn.close()
@@ -2784,7 +2826,7 @@ def show():
                     "Track coordinator billing by month using patient minutes and billing codes"
                 )
                 try:
-                    from src.dashboards.monthly_coordinator_billing_dashboard_v2 import (
+                    from src.dashboards.monthly_coordinator_billing_dashboard import (
                         display_monthly_coordinator_billing_dashboard,
                     )
 
