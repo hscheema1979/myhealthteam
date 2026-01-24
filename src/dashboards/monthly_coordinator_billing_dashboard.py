@@ -183,6 +183,9 @@ def get_coordinator_billing_data(selected_month):
         )
         df["billing_status"] = "Pending"
 
+        # Filter out NOT_BILLABLE patients (less than 20 minutes)
+        df = df[df["billing_code"] != "NOT_BILLABLE"].copy()
+
         return df
 
     except Exception as e:
@@ -215,30 +218,41 @@ def get_coordinator_summary(selected_month):
 
         # CSV tables use staff_id instead of coordinator_id
         # Both use duration_minutes for the time column
+        # Only count billable patients (20+ minutes per patient)
         if data_type == "CSV_IMPORT":
             # CSV import table column names
             query = f"""
             SELECT
-                COUNT(DISTINCT patient_id) as total_patients,
-                COUNT(*) as total_tasks,
-                SUM(duration_minutes) as total_minutes
+                COUNT(*) as total_patients,
+                SUM(task_count) as total_tasks,
+                SUM(total_minutes) as total_minutes
             FROM (
-                SELECT DISTINCT staff_id, patient_id, task_date, task_type, duration_minutes
-                FROM {table_name}
-                WHERE patient_id IS NOT NULL
+                SELECT patient_id, COUNT(*) as task_count, SUM(duration_minutes) as total_minutes
+                FROM (
+                    SELECT DISTINCT staff_id, patient_id, task_date, task_type, duration_minutes
+                    FROM {table_name}
+                    WHERE patient_id IS NOT NULL
+                )
+                GROUP BY patient_id
+                HAVING SUM(duration_minutes) >= 20
             )
             """
         else:
             # Live table column names
             query = f"""
             SELECT
-                COUNT(DISTINCT patient_id) as total_patients,
-                COUNT(*) as total_tasks,
-                SUM(duration_minutes) as total_minutes
+                COUNT(*) as total_patients,
+                SUM(task_count) as total_tasks,
+                SUM(total_minutes) as total_minutes
             FROM (
-                SELECT DISTINCT coordinator_id, patient_id, task_date, task_type, duration_minutes
-                FROM {table_name}
-                WHERE patient_id IS NOT NULL
+                SELECT patient_id, COUNT(*) as task_count, SUM(duration_minutes) as total_minutes
+                FROM (
+                    SELECT DISTINCT coordinator_id, patient_id, task_date, task_type, duration_minutes
+                    FROM {table_name}
+                    WHERE patient_id IS NOT NULL
+                )
+                GROUP BY patient_id
+                HAVING SUM(duration_minutes) >= 20
             )
             """
 
