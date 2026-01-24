@@ -18,17 +18,46 @@ def get_db_connection():
 
 
 def get_available_months():
-    """Get list of available months from coordinator_tasks_YYYY_MM tables"""
+    """Get list of available months from both CSV imports and live tables"""
     conn = get_db_connection()
     try:
-        query = """
-        SELECT name FROM sqlite_master
-        WHERE type='table' AND name LIKE 'coordinator_tasks_20%'
-        ORDER BY name DESC
-        """
-        tables = conn.execute(query).fetchall()
-
         months = []
+
+        # Get months from CSV coordinator task tables
+        cursor = conn.execute("""
+            SELECT name FROM sqlite_master
+            WHERE type='table' AND name LIKE 'csv_coordinator_tasks_20%'
+            ORDER BY name DESC
+        """)
+        tables = cursor.fetchall()
+
+        for table in tables:
+            table_name = table[0]
+            parts = table_name.split("_")
+            if len(parts) >= 4:
+                try:
+                    year = int(parts[3])
+                    month = int(parts[4])
+                    month_name = calendar.month_name[month]
+
+                    months.append({
+                        "year": year,
+                        "month": month,
+                        "display": f"{month_name} {year} (CSV Import)",
+                        "data_type": "CSV_IMPORT",
+                        "table": table_name
+                    })
+                except (ValueError, IndexError):
+                    continue
+
+        # Get months from live coordinator_tasks tables
+        cursor = conn.execute("""
+            SELECT name FROM sqlite_master
+            WHERE type='table' AND name LIKE 'coordinator_tasks_20%'
+            ORDER BY name DESC
+        """)
+        tables = cursor.fetchall()
+
         for table in tables:
             table_name = table[0]
             parts = table_name.split("_")
@@ -37,13 +66,14 @@ def get_available_months():
                     year = int(parts[2])
                     month = int(parts[3])
                     month_name = calendar.month_name[month]
-                    months.append(
-                        {
-                            "year": year,
-                            "month": month,
-                            "display": f"{month_name} {year}",
-                        }
-                    )
+
+                    months.append({
+                        "year": year,
+                        "month": month,
+                        "display": f"{month_name} {year} (Live)",
+                        "data_type": "LIVE",
+                        "table": table_name
+                    })
                 except (ValueError, IndexError):
                     continue
 
@@ -84,11 +114,14 @@ def get_billing_codes_for_minutes(minutes):
         conn.close()
 
 
-def get_coordinator_billing_data(year, month):
+def get_coordinator_billing_data(selected_month):
     """Get coordinator billing data aggregated by patient only"""
     conn = get_db_connection()
     try:
-        table_name = f"coordinator_tasks_{year}_{month:02d}"
+        year = selected_month["year"]
+        month = selected_month["month"]
+        data_type = selected_month.get("data_type", "LIVE")
+        table_name = selected_month.get("table", f"coordinator_tasks_{year}_{month:02d}")
 
         cursor = conn.cursor()
         cursor.execute(
@@ -102,21 +135,41 @@ def get_coordinator_billing_data(year, month):
         if not cursor.fetchone():
             return pd.DataFrame()
 
-        query = f"""
-        SELECT
-            ct.patient_id,
-            COUNT(DISTINCT ct.coordinator_id || '_' || ct.task_date || '_' || ct.task_type) as task_count,
-            SUM(ct.duration_minutes) as total_minutes,
-            COALESCE(p.facility, '') as facility
-        FROM (
-            SELECT DISTINCT coordinator_id, patient_id, task_date, task_type, duration_minutes
-            FROM {table_name}
-            WHERE patient_id IS NOT NULL
-        ) ct
-        LEFT JOIN patients p ON ct.patient_id = p.patient_id
-        GROUP BY ct.patient_id
-        ORDER BY total_minutes DESC
-        """
+        # CSV tables use different column names: staff_id vs coordinator_id, total_minutes vs duration_minutes
+        if data_type == "CSV_IMPORT":
+            # CSV import table column names
+            query = f"""
+            SELECT
+                ct.patient_id,
+                COUNT(DISTINCT ct.staff_id || '_' || ct.task_date || '_' || ct.task_type) as task_count,
+                SUM(ct.total_minutes) as total_minutes,
+                COALESCE(p.facility, '') as facility
+            FROM (
+                SELECT DISTINCT staff_id, patient_id, task_date, task_type, total_minutes
+                FROM {table_name}
+                WHERE patient_id IS NOT NULL
+            ) ct
+            LEFT JOIN patients p ON ct.patient_id = p.patient_id
+            GROUP BY ct.patient_id
+            ORDER BY total_minutes DESC
+            """
+        else:
+            # Live table column names
+            query = f"""
+            SELECT
+                ct.patient_id,
+                COUNT(DISTINCT ct.coordinator_id || '_' || ct.task_date || '_' || ct.task_type) as task_count,
+                SUM(ct.duration_minutes) as total_minutes,
+                COALESCE(p.facility, '') as facility
+            FROM (
+                SELECT DISTINCT coordinator_id, patient_id, task_date, task_type, duration_minutes
+                FROM {table_name}
+                WHERE patient_id IS NOT NULL
+            ) ct
+            LEFT JOIN patients p ON ct.patient_id = p.patient_id
+            GROUP BY ct.patient_id
+            ORDER BY total_minutes DESC
+            """
 
         df = pd.read_sql_query(query, conn)
 
@@ -138,11 +191,14 @@ def get_coordinator_billing_data(year, month):
         conn.close()
 
 
-def get_coordinator_summary(year, month):
+def get_coordinator_summary(selected_month):
     """Get summary statistics"""
     conn = get_db_connection()
     try:
-        table_name = f"coordinator_tasks_{year}_{month:02d}"
+        year = selected_month["year"]
+        month = selected_month["month"]
+        data_type = selected_month.get("data_type", "LIVE")
+        table_name = selected_month.get("table", f"coordinator_tasks_{year}_{month:02d}")
 
         cursor = conn.cursor()
         cursor.execute(
@@ -156,17 +212,33 @@ def get_coordinator_summary(year, month):
         if not cursor.fetchone():
             return None
 
-        query = f"""
-        SELECT
-            COUNT(DISTINCT patient_id) as total_patients,
-            COUNT(*) as total_tasks,
-            SUM(duration_minutes) as total_minutes
-        FROM (
-            SELECT DISTINCT coordinator_id, patient_id, task_date, task_type, duration_minutes
-            FROM {table_name}
-            WHERE patient_id IS NOT NULL
-        )
-        """
+        # CSV tables use different column names: staff_id vs coordinator_id, total_minutes vs duration_minutes
+        if data_type == "CSV_IMPORT":
+            # CSV import table column names
+            query = f"""
+            SELECT
+                COUNT(DISTINCT patient_id) as total_patients,
+                COUNT(*) as total_tasks,
+                SUM(total_minutes) as total_minutes
+            FROM (
+                SELECT DISTINCT staff_id, patient_id, task_date, task_type, total_minutes
+                FROM {table_name}
+                WHERE patient_id IS NOT NULL
+            )
+            """
+        else:
+            # Live table column names
+            query = f"""
+            SELECT
+                COUNT(DISTINCT patient_id) as total_patients,
+                COUNT(*) as total_tasks,
+                SUM(duration_minutes) as total_minutes
+            FROM (
+                SELECT DISTINCT coordinator_id, patient_id, task_date, task_type, duration_minutes
+                FROM {table_name}
+                WHERE patient_id IS NOT NULL
+            )
+            """
 
         result = conn.execute(query).fetchone()
         if result:
@@ -213,12 +285,15 @@ def display_monthly_coordinator_billing_dashboard():
         if selected_month:
             year = selected_month["year"]
             month = selected_month["month"]
+            data_type = selected_month.get("data_type", "")
 
             with col2:
-                st.metric("Selected Period", f"{calendar.month_name[month]} {year}")
+                st.metric("Selected Period", selected_month["display"])
+                if data_type:
+                    st.caption(f"Data Source: {data_type}")
 
             # Get summary data
-            summary = get_coordinator_summary(year, month)
+            summary = get_coordinator_summary(selected_month)
 
             if summary:
                 st.subheader("Monthly Summary")
@@ -232,7 +307,7 @@ def display_monthly_coordinator_billing_dashboard():
                     st.metric("Total Minutes", f"{summary['total_minutes']:,.0f}")
 
             # Get detailed data
-            billing_df = get_coordinator_billing_data(year, month)
+            billing_df = get_coordinator_billing_data(selected_month)
 
             if not billing_df.empty:
                 st.subheader("Billing Data by Patient")
@@ -400,7 +475,7 @@ def display_monthly_coordinator_billing_dashboard():
                     month = month_data["month"]
 
                     # Get the data for this month
-                    billing_df = get_coordinator_billing_data(year, month)
+                    billing_df = get_coordinator_billing_data(month_data)
 
                     if not billing_df.empty:
                         csv_data = billing_df.to_csv(index=False).encode('utf-8')

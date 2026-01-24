@@ -136,20 +136,39 @@ def get_coordinator_billing_data(selected_month):
         if not cursor.fetchone():
             return pd.DataFrame()
 
-        query = f"""
-        SELECT
-            ct.patient_id,
-            SUM(ct.duration_minutes) as total_minutes,
-            COALESCE(p.facility, '') as facility
-        FROM (
-            SELECT DISTINCT coordinator_id, patient_id, task_date, task_type, duration_minutes
-            FROM {table_name}
-            WHERE patient_id IS NOT NULL
-        ) ct
-        LEFT JOIN patients p ON ct.patient_id = p.patient_id
-        GROUP BY ct.patient_id
-        ORDER BY total_minutes DESC
-        """
+        # CSV tables use different column names: staff_id vs coordinator_id, total_minutes vs duration_minutes
+        if data_type == "CSV_IMPORT":
+            # CSV import table column names
+            query = f"""
+            SELECT
+                ct.patient_id,
+                SUM(ct.total_minutes) as total_minutes,
+                COALESCE(p.facility, '') as facility
+            FROM (
+                SELECT DISTINCT staff_id, patient_id, task_date, task_type, total_minutes
+                FROM {table_name}
+                WHERE patient_id IS NOT NULL
+            ) ct
+            LEFT JOIN patients p ON ct.patient_id = p.patient_id
+            GROUP BY ct.patient_id
+            ORDER BY total_minutes DESC
+            """
+        else:
+            # Live table column names
+            query = f"""
+            SELECT
+                ct.patient_id,
+                SUM(ct.duration_minutes) as total_minutes,
+                COALESCE(p.facility, '') as facility
+            FROM (
+                SELECT DISTINCT coordinator_id, patient_id, task_date, task_type, duration_minutes
+                FROM {table_name}
+                WHERE patient_id IS NOT NULL
+            ) ct
+            LEFT JOIN patients p ON ct.patient_id = p.patient_id
+            GROUP BY ct.patient_id
+            ORDER BY total_minutes DESC
+            """
 
         df = pd.read_sql_query(query, conn)
 
@@ -177,6 +196,7 @@ def get_coordinator_summary(selected_month):
     try:
         year = selected_month["year"]
         month = selected_month["month"]
+        data_type = selected_month.get("data_type", "LIVE")
         table_name = selected_month.get("table", f"coordinator_tasks_{year}_{month:02d}")
 
         cursor = conn.cursor()
@@ -191,17 +211,33 @@ def get_coordinator_summary(selected_month):
         if not cursor.fetchone():
             return None
 
-        query = f"""
-        SELECT
-            COUNT(DISTINCT patient_id) as total_patients,
-            COUNT(*) as total_tasks,
-            SUM(duration_minutes) as total_minutes
-        FROM (
-            SELECT DISTINCT coordinator_id, patient_id, task_date, task_type, duration_minutes
-            FROM {table_name}
-            WHERE patient_id IS NOT NULL
-        )
-        """
+        # CSV tables use different column names: staff_id vs coordinator_id, total_minutes vs duration_minutes
+        if data_type == "CSV_IMPORT":
+            # CSV import table column names
+            query = f"""
+            SELECT
+                COUNT(DISTINCT patient_id) as total_patients,
+                COUNT(*) as total_tasks,
+                SUM(total_minutes) as total_minutes
+            FROM (
+                SELECT DISTINCT staff_id, patient_id, task_date, task_type, total_minutes
+                FROM {table_name}
+                WHERE patient_id IS NOT NULL
+            )
+            """
+        else:
+            # Live table column names
+            query = f"""
+            SELECT
+                COUNT(DISTINCT patient_id) as total_patients,
+                COUNT(*) as total_tasks,
+                SUM(duration_minutes) as total_minutes
+            FROM (
+                SELECT DISTINCT coordinator_id, patient_id, task_date, task_type, duration_minutes
+                FROM {table_name}
+                WHERE patient_id IS NOT NULL
+            )
+            """
 
         result = conn.execute(query).fetchone()
         if result:
