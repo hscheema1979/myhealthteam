@@ -136,12 +136,12 @@ def get_or_create_user_from_google(user_info: Dict[str, Any]) -> Optional[Dict[s
     """
     Get existing user or create new user from Google profile information.
 
-    Google-only authentication: Trusts Google completely.
-    - Looks up user by google_id only (NOT by email)
+    Enhanced Google authentication:
+    - First looks up user by google_id (returning Google user)
+    - Then looks up user by email (links Google account to existing user)
     - Updates user info from Google on each login
-    - Creates new user if google_id not found
-
-    This keeps Google logins completely separate from email/password logins.
+    - Creates new user if neither found
+    - Assigns default CC role to new users
 
     Args:
         user_info: Google user info dict containing id, email, name, picture
@@ -162,7 +162,7 @@ def get_or_create_user_from_google(user_info: Dict[str, Any]) -> Optional[Dict[s
 
     conn = get_db_connection()
     try:
-        # Look for existing user by google_id ONLY (Google users are independent)
+        # FIRST: Look for existing user by google_id (returning Google user)
         user = conn.execute("""
             SELECT user_id, username, email, first_name, last_name, full_name, status,
                    oauth_provider, google_id, picture_url
@@ -171,7 +171,7 @@ def get_or_create_user_from_google(user_info: Dict[str, Any]) -> Optional[Dict[s
         """, (google_id,)).fetchone()
 
         if user:
-            # User exists - update their info from Google (names, picture might have changed)
+            # User exists with this google_id - update their info from Google
             conn.execute("""
                 UPDATE users
                 SET email = ?,
@@ -192,9 +192,41 @@ def get_or_create_user_from_google(user_info: Dict[str, Any]) -> Optional[Dict[s
                 FROM users
                 WHERE user_id = ?
             """, (user['user_id'],)).fetchone()
+            print(f"Found existing Google user: {email}, user_id: {user['user_id']}")
             return dict(user)
 
-        # User doesn't exist - create new Google-only user
+        # SECOND: Look for existing user by email (link Google account to existing user)
+        # This allows users who were created with password to log in via Google
+        user = conn.execute("""
+            SELECT user_id, username, email, first_name, last_name, full_name, status,
+                   oauth_provider, google_id, picture_url
+            FROM users
+            WHERE email = ? AND status = 'active'
+        """, (email,)).fetchone()
+
+        if user:
+            # User exists with this email - link their Google account
+            conn.execute("""
+                UPDATE users
+                SET google_id = ?,
+                    picture_url = ?,
+                    oauth_provider = 'google',
+                    last_login = CURRENT_TIMESTAMP
+                WHERE user_id = ?
+            """, (google_id, picture_url, user['user_id']))
+            conn.commit()
+
+            # Return updated user
+            user = conn.execute("""
+                SELECT user_id, username, email, first_name, last_name, full_name, status,
+                       oauth_provider, google_id, picture_url
+                FROM users
+                WHERE user_id = ?
+            """, (user['user_id'],)).fetchone()
+            print(f"Linked Google account to existing user: {email}, user_id: {user['user_id']}")
+            return dict(user)
+
+        # THIRD: User doesn't exist - create new Google user with default CC role
         # Generate unique username from email
         username = email.split('@')[0]
         # Ensure username is unique
@@ -211,6 +243,15 @@ def get_or_create_user_from_google(user_info: Dict[str, Any]) -> Optional[Dict[s
             VALUES (?, ?, ?, ?, ?, 'google', ?, ?, 'active')
         """, (username, email, given_name, family_name, full_name, google_id, picture_url))
 
+        # Get the newly created user_id
+        new_user_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+
+        # Assign default CC (Care Coordinator) role to new Google users
+        conn.execute("""
+            INSERT INTO user_roles (user_id, role_id, is_primary)
+            VALUES (?, 36, 1)
+        """, (new_user_id,))
+
         conn.commit()
 
         # Get the newly created user
@@ -218,10 +259,10 @@ def get_or_create_user_from_google(user_info: Dict[str, Any]) -> Optional[Dict[s
             SELECT user_id, username, email, first_name, last_name, full_name, status,
                    oauth_provider, google_id, picture_url
             FROM users
-            WHERE google_id = ?
-        """, (google_id,)).fetchone()
+            WHERE user_id = ?
+        """, (new_user_id,)).fetchone()
 
-        print(f"Created new Google user: {email}, user_id: {user['user_id'] if user else 'None'}")
+        print(f"Created new Google user with default CC role: {email}, user_id: {new_user_id}")
         return dict(user) if user else None
 
     except Exception as e:

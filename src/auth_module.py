@@ -821,9 +821,24 @@ def render_login_sidebar(auth_manager: Optional[AuthenticationManager] = None):
     # Check for OAuth callback FIRST - before persistent login check
     # This prevents persistent login from interrupting OAuth flow
     query_params = st.query_params
-    if 'code' in query_params and 'state' in query_params:
-        code = query_params['code']
-        state = query_params['state']
+
+    # CRITICAL FIX: Immediately extract and clear OAuth params to prevent double-execution
+    # The code must be cleared BEFORE any processing to prevent invalid_grant on rerun
+    oauth_code = None
+    oauth_state = None
+    if 'code' in query_params:
+        oauth_code = query_params['code']
+        # Clear the code immediately to prevent re-processing on rerun
+        del query_params['code']
+    if 'state' in query_params:
+        oauth_state = query_params['state']
+        # Clear the state immediately
+        del query_params['state']
+
+    # Only process if we have both parameters (they were just cleared above)
+    if oauth_code is not None and oauth_state is not None:
+        code = oauth_code
+        state = oauth_state
 
         debug_log(f"=== OAuth callback detected ===")
         debug_log(f"  state: {state}")
@@ -849,7 +864,6 @@ def render_login_sidebar(auth_manager: Optional[AuthenticationManager] = None):
                 debug_log(f"  is_authenticated after restore: {auth_manager.is_authenticated()}")
 
                 # Clear URL and show success
-                query_params.clear()
                 streamlit_js_eval(
                     js_expressions="window.history.replaceState({}, '', window.location.pathname);",
                     key=auth_manager._next_sje_key("oauth_url_cleanup")
@@ -859,14 +873,17 @@ def render_login_sidebar(auth_manager: Optional[AuthenticationManager] = None):
                 return  # Exit after restoring
             except Exception as e:
                 debug_log(f"  Error restoring session: {e}")
-                os.remove('temp_session_data.json')  # Clean up and continue
+                try:
+                    os.remove('temp_session_data.json')
+                except:
+                    pass  # Clean up and continue
 
         # Use a session flag to ensure we only process each OAuth callback once per session
         # This prevents double-processing on st.rerun()
         oauth_state_key = f'_oauth_processed_{state}'
         if auth_manager.session_state.get(oauth_state_key, False):
             # Already processed this callback - just clear URL and continue
-            query_params.clear()
+            debug_log(f"  Already processed this OAuth callback - skipping")
             streamlit_js_eval(
                 js_expressions="window.history.replaceState({}, '', window.location.pathname);",
                 key=auth_manager._next_sje_key("oauth_cleanup_done")
@@ -874,14 +891,14 @@ def render_login_sidebar(auth_manager: Optional[AuthenticationManager] = None):
         elif auth_manager.is_authenticated():
             # User is already authenticated - stale callback from page refresh
             # Just clear URL and continue (user stays logged in via persistent session)
-            query_params.clear()
+            debug_log(f"  User already authenticated - skipping OAuth callback")
             streamlit_js_eval(
                 js_expressions="window.history.replaceState({}, '', window.location.pathname);",
                 key=auth_manager._next_sje_key("oauth_cleanup_authenticated")
             )
         else:
             # New OAuth callback - process it
-            # Mark as processed first to prevent double-processing on rerun
+            # Mark as processed FIRST to prevent double-processing on rerun
             auth_manager.session_state[oauth_state_key] = True
 
             # Process the OAuth callback
@@ -910,8 +927,8 @@ def render_login_sidebar(auth_manager: Optional[AuthenticationManager] = None):
                 debug_log(f"  Checking is_authenticated NOW: {auth_manager.is_authenticated()}")
                 debug_log(f"  session_state.authenticated_user NOW: {st.session_state.get('authenticated_user')}")
 
-                query_params.clear()
                 # Clear browser URL to prevent re-processing on refresh
+                # (query_params already cleared at start of callback handling)
                 streamlit_js_eval(
                     js_expressions="window.history.replaceState({}, '', window.location.pathname);",
                     key=auth_manager._next_sje_key("oauth_url_cleanup")
@@ -930,7 +947,8 @@ def render_login_sidebar(auth_manager: Optional[AuthenticationManager] = None):
             else:
                 debug_log(f"=== Google login FAILED ===")
                 st.sidebar.error("Google authentication failed. Please try again.")
-                query_params.clear()
+                # Clear browser URL
+                # (query_params already cleared at start of callback handling)
                 streamlit_js_eval(
                     js_expressions="window.history.replaceState({}, '', window.location.pathname);",
                     key=auth_manager._next_sje_key("oauth_url_cleanup_error")
