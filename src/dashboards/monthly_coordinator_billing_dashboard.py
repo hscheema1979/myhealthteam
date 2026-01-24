@@ -137,16 +137,17 @@ def get_coordinator_billing_data(selected_month):
 
         # CSV tables use staff_id instead of coordinator_id
         # Both use duration_minutes for the time column
+        # Aggregate all minutes per patient - no DISTINCT to avoid losing duplicate tasks
         if data_type == "CSV_IMPORT":
             # CSV import table column names
             query = f"""
             SELECT
                 ct.patient_id,
-                COUNT(DISTINCT ct.staff_id || '_' || ct.task_date || '_' || ct.task_type) as task_count,
+                COUNT(*) as task_count,
                 SUM(ct.duration_minutes) as total_minutes,
                 COALESCE(p.facility, '') as facility
             FROM (
-                SELECT DISTINCT staff_id, patient_id, task_date, task_type, duration_minutes
+                SELECT staff_id, patient_id, task_date, task_type, duration_minutes
                 FROM {table_name}
                 WHERE patient_id IS NOT NULL
             ) ct
@@ -159,11 +160,11 @@ def get_coordinator_billing_data(selected_month):
             query = f"""
             SELECT
                 ct.patient_id,
-                COUNT(DISTINCT ct.coordinator_id || '_' || ct.task_date || '_' || ct.task_type) as task_count,
+                COUNT(*) as task_count,
                 SUM(ct.duration_minutes) as total_minutes,
                 COALESCE(p.facility, '') as facility
             FROM (
-                SELECT DISTINCT coordinator_id, patient_id, task_date, task_type, duration_minutes
+                SELECT coordinator_id, patient_id, task_date, task_type, duration_minutes
                 FROM {table_name}
                 WHERE patient_id IS NOT NULL
             ) ct
@@ -228,11 +229,8 @@ def get_coordinator_summary(selected_month):
                 SUM(total_minutes) as total_minutes
             FROM (
                 SELECT patient_id, COUNT(*) as task_count, SUM(duration_minutes) as total_minutes
-                FROM (
-                    SELECT DISTINCT staff_id, patient_id, task_date, task_type, duration_minutes
-                    FROM {table_name}
-                    WHERE patient_id IS NOT NULL
-                )
+                FROM {table_name}
+                WHERE patient_id IS NOT NULL
                 GROUP BY patient_id
                 HAVING SUM(duration_minutes) >= 20
             )
@@ -246,11 +244,8 @@ def get_coordinator_summary(selected_month):
                 SUM(total_minutes) as total_minutes
             FROM (
                 SELECT patient_id, COUNT(*) as task_count, SUM(duration_minutes) as total_minutes
-                FROM (
-                    SELECT DISTINCT coordinator_id, patient_id, task_date, task_type, duration_minutes
-                    FROM {table_name}
-                    WHERE patient_id IS NOT NULL
-                )
+                FROM {table_name}
+                WHERE patient_id IS NOT NULL
                 GROUP BY patient_id
                 HAVING SUM(duration_minutes) >= 20
             )
