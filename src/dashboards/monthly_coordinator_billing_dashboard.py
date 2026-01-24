@@ -298,6 +298,12 @@ def display_monthly_coordinator_billing_dashboard():
             month = selected_month["month"]
             data_type = selected_month.get("data_type", "")
 
+            # Clear session state cache when month changes
+            month_key = f"{year}_{month:02d}_{data_type}"
+            if st.session_state.get("last_billing_month_key") != month_key:
+                st.session_state.coordinator_billing_editable_df = None
+                st.session_state.last_billing_month_key = month_key
+
             with col2:
                 st.metric("Selected Period", selected_month["display"])
                 if data_type:

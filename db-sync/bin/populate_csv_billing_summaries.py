@@ -155,8 +155,8 @@ def populate_monthly_summary(conn, year, month):
     if cursor.fetchone():
         print(f"    Processing coordinator data from {coord_source}...")
         cursor.execute(f"""
-            INSERT INTO {summary_table}
-            (staff_id, staff_name, staff_type, year, month,
+            INSERT OR REPLACE INTO {summary_table}
+            (staff_id, staff_name, staff_type, year, month, billing_code,
              task_type, total_tasks, total_minutes, total_hours, unique_patients,
              source_file, updated_date)
             SELECT
@@ -165,6 +165,7 @@ def populate_monthly_summary(conn, year, month):
                 'coordinator' as staff_type,
                 {month} as month,
                 {year} as year,
+                NULL as billing_code,
                 task_type,
                 COUNT(*) as total_tasks,
                 CAST(SUM(duration_minutes) AS INTEGER) as total_minutes,
@@ -186,7 +187,7 @@ def populate_monthly_summary(conn, year, month):
     if cursor.fetchone():
         print(f"    Processing provider data from {prov_source}...")
         cursor.execute(f"""
-            INSERT INTO {summary_table}
+            INSERT OR REPLACE INTO {summary_table}
             (staff_id, staff_name, staff_type, year, month,
              billing_code, task_type, total_tasks, total_minutes, total_hours,
              unique_patients, source_file, updated_date)
@@ -233,46 +234,46 @@ def main():
 
     conn = get_connection()
 
-    # Get all available CSV months
+    # Get all available CSV months - use regex to extract year_month
     cursor = conn.cursor()
 
     # Coordinator tables
     cursor.execute("""
-        SELECT DISTINCT substr(name, 22, 7) as ym
+        SELECT DISTINCT substr(name, 22) as ym
         FROM sqlite_master
         WHERE type='table' AND name LIKE 'csv_coordinator_tasks_%'
         ORDER BY ym DESC
     """)
-    coord_months = [row[0] for row in cursor.fetchall()]
+    coord_tables = [row[0] for row in cursor.fetchall()]
 
     # Provider tables
     cursor.execute("""
-        SELECT DISTINCT substr(name, 20, 7) as ym
+        SELECT DISTINCT substr(name, 20) as ym
         FROM sqlite_master
         WHERE type='table' AND name LIKE 'csv_provider_tasks_%'
         ORDER BY ym DESC
     """)
-    prov_months = [row[0] for row in cursor.fetchall()]
+    prov_tables = [row[0] for row in cursor.fetchall()]
 
-    all_months = sorted(set(coord_months + prov_months))
-    print(f"Found CSV data for months: {all_months}")
-    print()
+    # Parse valid YYYY_MM format
+    def parse_month(ym_str):
+        """Extract YYYY_MM from string, return (year, month) or None"""
+        import re
+        match = re.search(r'(\d{4})_(\d{2})', ym_str)
+        if match:
+            return int(match.group(1)), int(match.group(2))
+        return None
+
+    coord_months = [parse_month(t) for t in coord_tables if parse_month(t)]
+    prov_months = [parse_month(t) for t in prov_tables if parse_month(t)]
+
+    all_months = sorted(set(coord_months + prov_months), reverse=True)
+    print(f"Found {len(all_months)} valid months to process")
 
     total_weekly = 0
     total_monthly = 0
 
-    for ym in all_months:
-        if not ym or not ym.replace('_', '').isdigit():
-            continue
-        parts = ym.split('_')
-        if len(parts) != 2:
-            continue
-        year, month = parts
-        try:
-            year, month = int(year), int(month)
-        except ValueError:
-            continue
-
+    for year, month in all_months:
         weekly, monthly = populate_all_for_month(conn, year, month)
         total_weekly += weekly
         total_monthly += monthly
