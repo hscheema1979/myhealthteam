@@ -191,15 +191,24 @@ def get_action_required_blockers(row):
         # Show the first blocker with count of additional ones
         return f"{blockers[0]} (+{len(blockers)-1} more)"
 
-def show_patient_intake_form(current_user_id, patient_details=None):
+def show_patient_intake_form(current_user_id, patient_details=None, is_edit_mode=False):
     """Show new patient intake form for Stage 1 registration.
     If patient_details is provided, pre-fill the form for editing existing patient.
+
+    Args:
+        current_user_id: Current user ID
+        patient_details: Dictionary with patient data (None for new patient)
+        is_edit_mode: True if editing a previously completed stage
 
     Stage 1: Basic Patient Info + Insurance Information + Eligibility Check
     """
     # Determine if editing existing patient or creating new one
-    is_edit_mode = patient_details is not None
-    onboarding_id = patient_details.get('onboarding_id') if is_edit_mode else None
+    # If is_edit_mode is not explicitly passed, infer from patient_details
+    if patient_details is not None:
+        onboarding_id = patient_details.get('onboarding_id')
+    else:
+        is_edit_mode = False
+        onboarding_id = None
 
     # Helper function to safely parse dates
     def parse_date_value(date_val):
@@ -419,21 +428,33 @@ def show_patient_intake_form(current_user_id, patient_details=None):
                         st.error(f"Error creating onboarding workflow: {e}")
 
 def show_resume_onboarding_form(patient_details, current_user_id):
-    """Show form for resuming existing onboarding with current state"""
-    
+    """Show form for resuming existing onboarding with current state
+
+    Allows navigation to any completed stage for editing data that may not have
+    been available at the time of completion.
+    """
+
     # Patient header info
     patient_name = f"{patient_details['first_name']} {patient_details['last_name']}"
     st.subheader(f"Continue Onboarding: {patient_name}")
-    
+
     # Navigation
-    col1, col2 = st.columns([3, 1])
+    col1, col2, col3 = st.columns([2, 2, 1])
     with col1:
-        st.info("Resume workflow from current stage")
+        st.info("Select a stage to work on")
     with col2:
+        if st.button("Refresh Data", key="refresh_onboarding_data"):
+            # Clear the selected stage and reload patient details
+            if 'selected_stage' in st.session_state:
+                del st.session_state['selected_stage']
+            st.rerun()
+    with col3:
         if st.button("❌ Back to Queue", key="back_to_queue_resume"):
             st.session_state['onboarding_mode'] = None
+            if 'selected_stage' in st.session_state:
+                del st.session_state['selected_stage']
             st.rerun()
-    
+
     # Progress indicator
     stages = ['Registration', 'Patient Details', 'Chart Creation', 'Intake Processing', 'TV Scheduling']
     # Compute how many steps are completed
@@ -441,49 +462,112 @@ def show_resume_onboarding_form(patient_details, current_user_id):
 
     # All stages complete - onboarding workflow finished
     if completed_steps >= len(stages):
-        st.success("🎉 Onboarding Complete! Patient has been successfully onboarded and assigned to regional provider.")
+        st.success("Onboarding Complete! Patient has been successfully onboarded and assigned to regional provider.")
         if st.button("Return to Queue"):
             st.session_state['onboarding_mode'] = None
+            if 'selected_stage' in st.session_state:
+                del st.session_state['selected_stage']
             st.success("Patient successfully handed off to PCPM!")
             st.rerun()
         return
 
-    # Otherwise show next incomplete stage
-    current_stage = completed_steps + 1
+    # Determine which stage to show - allow manual selection of any completed stage
+    # Initialize selected_stage if not set
+    if 'selected_stage' not in st.session_state:
+        st.session_state['selected_stage'] = None
 
-    # Show progress bar
+    # Default to next incomplete stage, but allow selecting any completed stage for editing
+    default_stage = completed_steps + 1
+    current_stage = st.session_state['selected_stage'] if st.session_state['selected_stage'] else default_stage
+
+    # Stage Selection UI - Clickable Stepper
+    st.markdown("### Select Stage to Edit")
+
+    # Build stage options including completed stages
+    stage_options = []
+    stage_descriptions = []
+
+    for i, stage_name in enumerate(stages, 1):
+        stage_num = i
+        is_complete = patient_details.get(f'stage{stage_num}_complete', False)
+        status = "Completed" if is_complete else "In Progress"
+
+        # Allow selecting any completed stage or the current incomplete stage
+        if is_complete or stage_num == default_stage:
+            label = f"Stage {stage_num}: {stage_name} ({status})"
+            stage_options.append(label)
+            stage_descriptions.append(stage_num)
+
+    # Stage selector dropdown
+    selected_index = 0
+    for i, stage_num in enumerate(stage_descriptions):
+        if stage_num == current_stage:
+            selected_index = i
+            break
+
+    selected_stage_label = st.selectbox(
+        "Choose a stage to work on:",
+        options=stage_options,
+        index=selected_index,
+        key="stage_selector_dropdown"
+    )
+
+    # Parse the selected stage number from the label
+    import re
+    match = re.search(r'Stage (\d+):', selected_stage_label)
+    if match:
+        selected_stage_num = int(match.group(1))
+
+        # Update session state if selection changed
+        if st.session_state['selected_stage'] != selected_stage_num:
+            st.session_state['selected_stage'] = selected_stage_num
+            st.rerun()
+
+    # Show the selected stage form
+    current_stage = st.session_state['selected_stage'] if st.session_state['selected_stage'] else default_stage
+
+    # Show progress bar and stage info
     progress_text = f"Stage {current_stage}/5: {stages[current_stage-1]}"
     st.progress((current_stage - 1) / len(stages))
-    st.info(progress_text)
+
+    # Show helpful message based on whether editing completed stage
+    is_editing_completed = patient_details.get(f'stage{current_stage}_complete', False)
+    if is_editing_completed:
+        st.info(f"Editing Stage {current_stage} - You can update data that was not available earlier. Complete the stage again to save changes.")
+    else:
+        st.info(progress_text)
+
+    # Determine if editing a completed stage
+    is_editing_completed = patient_details.get(f'stage{current_stage}_complete', False)
 
     # Stage-specific forms
     if current_stage == 1:
         # Show editable intake form with existing patient data
-        show_patient_intake_form(current_user_id, patient_details)
+        show_patient_intake_form(current_user_id, patient_details, is_edit_mode=is_editing_completed)
     elif current_stage == 2:
         try:
-            show_eligibility_verification_form(patient_details, current_user_id)
+            show_eligibility_verification_form(patient_details, current_user_id, is_edit_mode=is_editing_completed)
         except Exception as e:
             st.error(f"Error loading Stage 2 form: {e}")
             import traceback
             st.code(traceback.format_exc())
     elif current_stage == 3:
         try:
-            show_chart_creation_form(patient_details, current_user_id)
+            show_chart_creation_form(patient_details, current_user_id, is_edit_mode=is_editing_completed)
         except Exception as e:
             st.error(f"Error loading Stage 3 form: {e}")
             import traceback
             st.code(traceback.format_exc())
     elif current_stage == 4:
         try:
-            show_intake_processing_form(patient_details, current_user_id)
+            show_intake_processing_form(patient_details, current_user_id, is_edit_mode=is_editing_completed)
         except Exception as e:
             st.error(f"Error loading Stage 4 form: {e}")
             import traceback
             st.code(traceback.format_exc())
     elif current_stage == 5:
         try:
-            show_tv_scheduling_form(patient_details, current_user_id)
+            show_tv_scheduling_form(patient_details, current_user_id, is_edit_mode=is_editing_completed)
         except Exception as e:
             st.error(f"Error loading Stage 5 form: {e}")
             import traceback
@@ -491,8 +575,14 @@ def show_resume_onboarding_form(patient_details, current_user_id):
     else:
         st.error(f"Unknown stage: {current_stage}")
 
-def show_eligibility_verification_form(patient_details, current_user_id):
-    """Stage 2: Patient Details (Contact, Address, Referral, Facility)"""
+def show_eligibility_verification_form(patient_details, current_user_id, is_edit_mode=False):
+    """Stage 2: Patient Details (Contact, Address, Referral, Facility)
+
+    Args:
+        patient_details: Dictionary with patient data
+        current_user_id: Current user ID
+        is_edit_mode: True if editing a previously completed stage
+    """
     st.markdown("### Stage 2: Patient Details")
 
     col1, col2 = st.columns([3, 1])
@@ -679,8 +769,14 @@ def show_eligibility_verification_form(patient_details, current_user_id):
                 st.session_state['onboarding_mode'] = None
                 st.rerun()
 
-def show_chart_creation_form(patient_details, current_user_id):
-    """Stage 3: EMed Chart Creation"""
+def show_chart_creation_form(patient_details, current_user_id, is_edit_mode=False):
+    """Stage 3: EMed Chart Creation
+
+    Args:
+        patient_details: Dictionary with patient data
+        current_user_id: Current user ID
+        is_edit_mode: True if editing a previously completed stage
+    """
     st.markdown("### Stage 3: EMed Chart Creation")
     
     st.info("Create patient chart in EMed system and assign facility")
@@ -773,8 +869,14 @@ def show_chart_creation_form(patient_details, current_user_id):
                 st.session_state['onboarding_mode'] = None
                 st.rerun()
 
-def show_intake_processing_form(patient_details, current_user_id):
-    """Stage 4: Intake Processing & Documentation"""
+def show_intake_processing_form(patient_details, current_user_id, is_edit_mode=False):
+    """Stage 4: Intake Processing & Documentation
+
+    Args:
+        patient_details: Dictionary with patient data
+        current_user_id: Current user ID
+        is_edit_mode: True if editing a previously completed stage
+    """
     st.markdown("### Stage 4: Intake Processing & Documentation")
     
     st.info("Complete patient intake, collect documentation, and conduct intake call")
@@ -1144,8 +1246,14 @@ def show_intake_processing_form(patient_details, current_user_id):
                 st.session_state['onboarding_mode'] = None
                 st.rerun()
 
-def show_tv_scheduling_form(patient_details, current_user_id):
-    """Stage 5: TV Scheduling & Provider + Coordinator Assignments"""
+def show_tv_scheduling_form(patient_details, current_user_id, is_edit_mode=False):
+    """Stage 5: TV Scheduling & Provider + Coordinator Assignments
+
+    Args:
+        patient_details: Dictionary with patient data
+        current_user_id: Current user ID
+        is_edit_mode: True if editing a previously completed stage
+    """
     st.markdown("### Stage 5: TV Scheduling & Provider + Coordinator Assignments")
     
     # Store form data in session state to persist across form submissions
