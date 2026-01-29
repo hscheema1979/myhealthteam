@@ -121,7 +121,7 @@ def get_weeks_for_period(selected_period):
                     week_number,
                     week_start_date,
                     week_end_date,
-                    billing_week
+                    NULL as billing_week
                 FROM {table_name}
                 ORDER BY week_number ASC
             """
@@ -132,7 +132,7 @@ def get_weeks_for_period(selected_period):
                     "week_number": row[0],
                     "week_start_date": row[1],
                     "week_end_date": row[2],
-                    "billing_week": row[3],
+                    "NULL as billing_week": row[3],
                     "display": f"Week {row[0]} - {row[1]}"
                 })
             return weeks
@@ -144,7 +144,7 @@ def get_weeks_for_period(selected_period):
                     CAST(STRFTIME('%W', week_start_date) AS INTEGER) as week_number,
                     week_start_date,
                     week_end_date,
-                    billing_week
+                    NULL as billing_week
                 FROM provider_task_billing_status
                 WHERE STRFTIME('%Y', week_start_date) = ?
                     AND STRFTIME('%m', week_start_date) = ?
@@ -157,7 +157,7 @@ def get_weeks_for_period(selected_period):
                     "week_number": row[0],
                     "week_start_date": row[1],
                     "week_end_date": row[2],
-                    "billing_week": row[3],
+                    "NULL as billing_week": row[3],
                     "display": f"Week {row[0]} - {row[1]}"
                 })
             return weeks
@@ -169,9 +169,9 @@ def get_weeks_for_period(selected_period):
                     week_number,
                     MIN(week_start_date) as week_start_date,
                     MIN(week_end_date) as week_end_date,
-                    billing_week
+                    NULL as billing_week
                 FROM provider_weekly_2026_01_combined
-                GROUP BY week_number, billing_week
+                GROUP BY week_number, NULL as billing_week
                 ORDER BY week_number ASC
             """
             rows = conn.execute(query).fetchall()
@@ -181,7 +181,7 @@ def get_weeks_for_period(selected_period):
                     "week_number": row[0],
                     "week_start_date": row[1],
                     "week_end_date": row[2],
-                    "billing_week": row[3],
+                    "NULL as billing_week": row[3],
                     "display": f"Week {row[0]} - {row[1]}"
                 })
             return weeks
@@ -273,34 +273,42 @@ def get_provider_billing_data(selected_period, week_number, provider_filter=None
         month = selected_period["month"]
 
         if data_type == "CSV" or data_type == "CSV_IMPORT":
-            table_name = f"csv_weekly_billing_summary_{year}_{month:02d}"
+            # Query individual tasks from source table to get actual task dates
+            source_table = f"csv_provider_tasks_{year}_{month:02d}"
 
             query = f"""
                 SELECT
-                    provider_id,
-                    provider_name,
-                    week_start_date,
-                    week_end_date,
-                    year,
-                    week_number,
-                    billing_code,
-                    billing_code_description,
-                    task_type,
-                    total_tasks,
-                    total_minutes,
-                    total_hours,
-                    unique_patients,
+                    pt.patient_id,
+                    COALESCE(p.last_first_dob, pt.patient_id) as patient_name,
+                    u.full_name as provider_full_name,
+                    COALESCE(pat.facility, '') as facility,
+                    CAST(pt.duration_minutes AS INTEGER) as total_minutes,
+                    pt.billing_code,
+                    '' as billing_code_description,
+                    pt.task_type,
+                    'Pending' as billing_status,
+                    pt.task_date as date_of_service,
+                    date(pt.task_date, 'weekday 0', '-6 days') as week_start_date,
+                    date(pt.task_date, 'weekday 0', '-0 days') as week_end_date,
+                    CAST(strftime('%Y', pt.task_date) AS INTEGER) as year,
+                    CAST(strftime('%W', pt.task_date) AS INTEGER) as week_number,
                     '{data_type}' as data_source
-                FROM {table_name}
-                WHERE week_number = ?
+                FROM {source_table} pt
+                LEFT JOIN users u ON pt.staff_id = u.user_id
+                LEFT JOIN patients p ON CAST(pt.patient_id AS TEXT) = CAST(p.patient_id AS TEXT)
+                LEFT JOIN patient_panel pat ON CAST(pt.patient_id AS TEXT) = CAST(pat.patient_id AS TEXT)
+                WHERE CAST(strftime('%W', pt.task_date) AS INTEGER) = ?
+                    AND pt.staff_id IS NOT NULL
+                    AND pt.duration_minutes > 0
+                    AND LOWER(pt.task_type) NOT LIKE '%phone review%'
             """
             params = [week_number]
 
             if provider_filter and provider_filter != "All Providers":
-                query += " AND provider_name = ?"
+                query += " AND u.full_name = ?"
                 params.append(provider_filter)
 
-            query += " ORDER BY provider_name, billing_code"
+            query += " ORDER BY pt.task_date, p.last_first_dob"
 
         elif data_type == "LIVE":
             # For live data, get individual tasks from provider_task_billing_status
@@ -316,11 +324,12 @@ def get_provider_billing_data(selected_period, week_number, provider_filter=None
                     ptbs.billing_code_description,
                     ptbs.task_description as task_type,
                     ptbs.billing_status,
-                    ptbs.task_date,
+                    ptbs.task_date as date_of_service,
                     ptbs.week_start_date,
                     ptbs.week_end_date,
                     STRFTIME('%Y', ptbs.week_start_date) as year,
                     CAST(STRFTIME('%W', ptbs.week_start_date) AS INTEGER) as week_number,
+                    ptbs.icd_codes,
                     'LIVE' as data_source
                 FROM provider_task_billing_status ptbs
                 LEFT JOIN users u ON ptbs.provider_id = u.user_id
@@ -560,14 +569,20 @@ def display_weekly_provider_billing_dashboard(user_id=None, user_role_ids=None):
                             if selected_sources:
                                 df = df[df["data_source"].isin(selected_sources)]
 
+                    # Hide columns that shouldn't be displayed
+                    columns_to_hide = ["billing_code_description", "total_hours", "total_tasks",
+                                      "week_start_date", "week_end_date", "year", "week_number",
+                                      "data_source", "billing_status", "facility", "patient_id"]
+                    display_df = df.drop(columns=[col for col in columns_to_hide if col in df.columns])
+
                     st.dataframe(
-                        df,
+                        display_df,
                         use_container_width=True,
                         hide_index=True
                     )
 
                     # Export option
-                    csv_data = export_to_csv(df, f"provider_billing_{year}_{month:02d}_w{week_number}.csv")
+                    csv_data = export_to_csv(display_df, f"provider_billing_{year}_{month:02d}_w{week_number}.csv")
                     st.download_button(
                         label="Download CSV",
                         data=csv_data,
