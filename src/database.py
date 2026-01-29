@@ -2053,17 +2053,18 @@ def save_daily_task(
                 conn.execute(
                     """
                     INSERT INTO provider_task_billing_status (
-                        provider_task_id, provider_id, provider_name, patient_name, task_date,
+                        provider_task_id, provider_id, provider_name, patient_id, patient_name, task_date,
                         billing_week, week_start_date, week_end_date, task_description,
                         minutes_of_service, billing_code, billing_code_description, icd_codes,
                         billing_status, is_billed, is_invoiced, is_claim_submitted,
                         is_insurance_processed, is_approved_to_pay, is_paid, is_carried_over
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                     (
                         new_provider_task_id,
                         provider_id,
                         provider_name,
+                        pid,
                         patient_name,
                         task_date,
                         billing_week,
