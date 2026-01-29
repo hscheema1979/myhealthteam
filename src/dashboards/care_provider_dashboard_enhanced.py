@@ -594,7 +594,7 @@ def show_patient_list_section(user_id, section_id=None, has_cpm_role=False):
     st.markdown("#### Search and Filter Patients")
 
     # Create filter columns
-    col_search, col_filter = st.columns([2, 1])
+    col_search, col_filter, col_status = st.columns([2, 1, 1])
 
     with col_search:
         search_query = st.text_input(
@@ -654,6 +654,29 @@ def show_patient_list_section(user_id, section_id=None, has_cpm_role=False):
             key="provider_filter",
             default=default_selection,
             help="Select one or more providers to view their patients. Default shows your patients.",
+        )
+
+    with col_status:
+        # Get all unique patient statuses for the filter dropdown
+        all_statuses = sorted(
+            set(
+                (p.get("status", "") or "").strip()
+                for p in patient_data_list
+                if (p.get("status", "") or "").strip()
+            )
+        )
+
+        # Default to common active statuses
+        default_statuses = ["Active", "Active-Geri", "Active-PCP", "HOSPICE"]
+        # Ensure default statuses exist in the available options
+        default_statuses = [s for s in default_statuses if s in all_statuses]
+
+        selected_statuses = st.multiselect(
+            "Filter by Patient Status",
+            all_statuses,
+            key="provider_status_filter",
+            default=default_statuses if default_statuses else None,
+            help="Select one or more patient statuses to filter. Default shows active and hospice patients.",
         )
 
     # Initialize provider map for filtering
@@ -723,6 +746,15 @@ def show_patient_list_section(user_id, section_id=None, has_cpm_role=False):
 
             filtered_patients = filtered_by_provider
 
+    # Filter by patient status
+    if selected_statuses:
+        filtered_by_status = []
+        for p in filtered_patients:
+            patient_status = (p.get("status", "") or "").strip()
+            if patient_status in selected_statuses:
+                filtered_by_status.append(p)
+        filtered_patients = filtered_by_status
+
     # Use filtered results
     patient_data_list = filtered_patients
 
@@ -746,37 +778,38 @@ def show_patient_list_section(user_id, section_id=None, has_cpm_role=False):
             f"Unmapped facilities found in patient data: {sorted(unmapped_facilities)}"
         )
 
-    # Only show patients with status in Active, Active-Geri, Active-PCP, Hospice
-    allowed_statuses = ["Active", "Active-Geri", "Active-PCP", "Hospice"]
-    # filtered_patients = [p for p in patient_data_list if (p.get('status', '') or '').strip() in allowed_statuses]
-    filtered_patients = patient_data_list
+    # Metrics for patient counts by status (based on filtered results)
+    # Count all filtered patients
+    total_filtered = len(filtered_patients)
 
-    # Metrics for active patient counts (show only once, no dropdown)
-    total_active = len(
-        [
-            p
-            for p in patient_data_list
-            if (p.get("status", "") or "").strip() in allowed_statuses
-        ]
-    )
+    # Count by specific statuses
     count_geri = len(
         [
             p
-            for p in patient_data_list
+            for p in filtered_patients
             if (p.get("status", "") or "").strip() == "Active-Geri"
         ]
     )
     count_pcp = len(
         [
             p
-            for p in patient_data_list
+            for p in filtered_patients
             if (p.get("status", "") or "").strip() == "Active-PCP"
         ]
     )
-    col1, col2, col3 = st.columns(3)
-    col1.metric("All Active Patients", total_active)
-    col2.metric("Active-Geri Patients", count_geri)
-    col3.metric("Active-PCP Patients", count_pcp)
+    count_hospice = len(
+        [
+            p
+            for p in filtered_patients
+            if (p.get("status", "") or "").strip() == "HOSPICE"
+        ]
+    )
+
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Filtered Patients", total_filtered)
+    col2.metric("Active-Geri", count_geri)
+    col3.metric("Active-PCP", count_pcp)
+    col4.metric("Hospice", count_hospice)
 
 
     st.divider()
@@ -1000,8 +1033,8 @@ def show_patient_list_section(user_id, section_id=None, has_cpm_role=False):
         # Single, compact form for one task at a time
         key_prefix = f"single_task_{user_id}_{section_id or 'main'}"
 
-        # All fields in one row: Date | Patient | Patient Type | Location
-        col_date, col_patient, col_type, col_location = st.columns([0.7, 3, 1.2, 1])
+        # All fields in one row: Date | Patient | Patient Type | Location | ICD Codes
+        col_date, col_patient, col_type, col_location, col_icd = st.columns([0.7, 3, 1.2, 1, 1.5])
 
         with col_date:
             task_date = st.date_input(
@@ -1029,6 +1062,15 @@ def show_patient_list_section(user_id, section_id=None, has_cpm_role=False):
                 "Location",
                 ["Tele", "Home", "Office"],
                 key=f"{key_prefix}_location",
+            )
+
+        with col_icd:
+            icd_codes = st.text_area(
+                "ICD Codes",
+                placeholder="e.g., J45.909, E11.9",
+                key=f"{key_prefix}_icd_codes",
+                help="Enter ICD-10 codes, comma-separated",
+                height=100
             )
 
         # Billing code display (hidden, used for form submission)
@@ -1188,6 +1230,7 @@ def show_patient_list_section(user_id, section_id=None, has_cpm_role=False):
                         task_description=f"Primary Care Visit - {billing_code_to_use or 'Unknown'}",
                         notes=notes,
                         billing_code=billing_code_to_use,
+                        icd_codes=icd_codes if icd_codes else None,
                     )
 
                     # Directly persist clinical fields without schema validation

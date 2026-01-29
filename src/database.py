@@ -296,6 +296,7 @@ def ensure_monthly_provider_tasks_table(
                     minutes_of_service INTEGER,
                     billing_code TEXT,
                     billing_code_description TEXT,
+                    icd_codes TEXT,
                     source_system TEXT DEFAULT 'CSV_IMPORT',
                     imported_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     status TEXT DEFAULT 'completed',
@@ -322,6 +323,8 @@ def ensure_monthly_provider_tasks_table(
                 conn.execute(f"ALTER TABLE {table_name} ADD COLUMN status TEXT DEFAULT 'completed';")
             if "is_deleted" not in col_names:
                 conn.execute(f"ALTER TABLE {table_name} ADD COLUMN is_deleted INTEGER DEFAULT 0;")
+            if "icd_codes" not in col_names:
+                conn.execute(f"ALTER TABLE {table_name} ADD COLUMN icd_codes TEXT;")
             conn.commit()
         return table_name
     finally:
@@ -1922,10 +1925,11 @@ def sync_patient_last_visit_all_tables(conn, patient_id, last_visit_date, servic
 
 
 def save_daily_task(
-    provider_id, patient_id, task_date, task_description, notes, billing_code=None
+    provider_id, patient_id, task_date, task_description, notes, billing_code=None, icd_codes=None
 ):
     """Save a daily task for a provider to the provider_tasks table.
     If `billing_code` is provided, use it to look up duration and description. Otherwise fallback to lookup by task_description.
+    `icd_codes` is an optional string of ICD-10 codes for billing purposes.
     """
     conn = get_db_connection()
     try:
@@ -2016,8 +2020,8 @@ def save_daily_task(
         cursor = conn.execute(
             f"""
             INSERT INTO {table_name}
-            (provider_id, provider_name, patient_id, patient_name, task_date, notes, minutes_of_service, task_description, billing_code, billing_code_description, source_system, imported_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'DATA_ENTRY', CURRENT_TIMESTAMP)
+            (provider_id, provider_name, patient_id, patient_name, task_date, notes, minutes_of_service, task_description, billing_code, billing_code_description, icd_codes, source_system, imported_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'DATA_ENTRY', CURRENT_TIMESTAMP)
         """,
             (
                 provider_id,
@@ -2030,6 +2034,7 @@ def save_daily_task(
                 clean_task_description,
                 billing_code_val,
                 billing_code_description,
+                icd_codes,
             ),
         )
 
@@ -2050,10 +2055,10 @@ def save_daily_task(
                     INSERT INTO provider_task_billing_status (
                         provider_task_id, provider_id, provider_name, patient_name, task_date,
                         billing_week, week_start_date, week_end_date, task_description,
-                        minutes_of_service, billing_code, billing_code_description,
+                        minutes_of_service, billing_code, billing_code_description, icd_codes,
                         billing_status, is_billed, is_invoiced, is_claim_submitted,
                         is_insurance_processed, is_approved_to_pay, is_paid, is_carried_over
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                     (
                         new_provider_task_id,
@@ -2068,6 +2073,7 @@ def save_daily_task(
                         duration_minutes,
                         billing_code_val,
                         billing_code_description,
+                        icd_codes,
                         "Pending",
                         False,
                         False,
@@ -2236,7 +2242,7 @@ def get_all_patient_status_types():
 
 
 def update_patient_status(patient_id, status):
-    """Update the status of a patient"""
+    """Update the status of a patient (without history tracking - use update_patient_status_with_history for tracking)"""
     conn = get_db_connection()
     try:
         conn.execute(
@@ -2252,6 +2258,116 @@ def update_patient_status(patient_id, status):
     except Exception as e:
         print(f"Error updating patient status: {e}")
         return False
+    finally:
+        conn.close()
+
+
+def update_patient_status_with_history(patient_id, new_status, user_id=None, change_reason=None, source_system="MANUAL"):
+    """
+    Update patient status and record the change in history.
+
+    This is the RECOMMENDED way to change patient status as it maintains
+    a complete audit trail of all status changes over time.
+
+    Args:
+        patient_id: The patient ID to update
+        new_status: The new status value
+        user_id: Optional ID of the user making the change
+        change_reason: Optional reason for the status change
+        source_system: Source system (e.g., 'ZMO_MODULE', 'ADMIN_DASHBOARD', 'CC_DASHBOARD', 'MANUAL')
+
+    Returns:
+        dict: {'success': bool, 'old_status': str, 'new_status': str, 'history_id': int or None}
+    """
+    conn = get_db_connection()
+    try:
+        # Get current status before updating
+        current = conn.execute(
+            "SELECT status FROM patients WHERE patient_id = ?",
+            (patient_id,)
+        ).fetchone()
+
+        if not current:
+            return {'success': False, 'error': 'Patient not found'}
+
+        old_status = current[0]
+
+        # If status isn't actually changing, just return success
+        if old_status == new_status:
+            return {
+                'success': True,
+                'old_status': old_status,
+                'new_status': new_status,
+                'message': 'Status unchanged, no history recorded'
+            }
+
+        # Update the patient status
+        conn.execute(
+            """
+            UPDATE patients
+            SET status = ?, updated_date = CURRENT_TIMESTAMP
+            WHERE patient_id = ?
+        """,
+            (new_status, patient_id),
+        )
+
+        # Record the change in history
+        cursor = conn.execute(
+            """
+            INSERT INTO patient_status_history
+            (patient_id, old_status, new_status, changed_by, change_reason, source_system)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (patient_id, old_status, new_status, user_id, change_reason, source_system)
+        )
+
+        history_id = cursor.lastrowid
+        conn.commit()
+
+        return {
+            'success': True,
+            'old_status': old_status,
+            'new_status': new_status,
+            'history_id': history_id
+        }
+
+    except Exception as e:
+        conn.rollback()
+        print(f"Error updating patient status with history: {e}")
+        return {'success': False, 'error': str(e)}
+    finally:
+        conn.close()
+
+
+def get_patient_status_history(patient_id):
+    """
+    Get the status change history for a patient.
+
+    Args:
+        patient_id: The patient ID to get history for
+
+    Returns:
+        list: Dicts with keys: history_id, old_status, new_status, changed_at, changed_by, change_reason, source_system, changer_name
+    """
+    conn = get_db_connection()
+    try:
+        query = """
+        SELECT
+            h.history_id,
+            h.old_status,
+            h.new_status,
+            h.changed_at,
+            h.changed_by,
+            h.change_reason,
+            h.source_system,
+            u.full_name as changer_name
+        FROM patient_status_history h
+        LEFT JOIN users u ON h.changed_by = u.user_id
+        WHERE h.patient_id = ?
+        ORDER BY h.changed_at DESC
+        """
+        rows = conn.execute(query, (patient_id,)).fetchall()
+        return [dict(row) for row in rows]
     finally:
         conn.close()
 
