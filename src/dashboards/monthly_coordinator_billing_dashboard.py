@@ -17,6 +17,179 @@ def get_db_connection():
     return sqlite3.connect("production.db")
 
 
+def get_cache_staleness(year, month):
+    """Check if cache table is missing or stale compared to source data"""
+    conn = get_db_connection()
+    try:
+        ym = f"{year}_{month:02d}"
+        cache_table = f"coordinator_monthly_billing_cache_{ym}"
+        source_table = f"csv_coordinator_tasks_{ym}"
+
+        cursor = conn.cursor()
+
+        # Check if cache table exists
+        cursor.execute(
+            """
+            SELECT name FROM sqlite_master
+            WHERE type='table' AND name = ?
+        """,
+            (cache_table,),
+        )
+        cache_exists = cursor.fetchone() is not None
+
+        # Check if source table exists
+        cursor.execute(
+            """
+            SELECT name FROM sqlite_master
+            WHERE type='table' AND name = ?
+        """,
+            (source_table,),
+        )
+        source_exists = cursor.fetchone() is not None
+
+        if not source_exists:
+            return "NO_SOURCE"
+        if not cache_exists:
+            return "MISSING"
+
+        # Compare timestamps - check if source is newer than cache
+        # Get max update date from cache
+        cursor.execute(f"SELECT MAX(updated_date) FROM {cache_table}")
+        cache_date = cursor.fetchone()[0]
+
+        # Get max created date from source (which updates on CSV import)
+        cursor.execute(f"SELECT MAX(created_date) FROM {source_table}")
+        source_date = cursor.fetchone()[0]
+
+        if not cache_date or not source_date:
+            return "STALE"
+
+        # If source is newer, cache is stale
+        if source_date > cache_date:
+            return "STALE"
+
+        return "FRESH"
+
+    except Exception as e:
+        print(f"Error checking cache staleness: {e}")
+        return "ERROR"
+    finally:
+        conn.close()
+
+
+def rebuild_billing_cache(year, month):
+    """Rebuild the billing cache for a specific month"""
+    conn = get_db_connection()
+    try:
+        ym = f"{year}_{month:02d}"
+        source_table = f"csv_coordinator_tasks_{ym}"
+        cache_table = f"coordinator_monthly_billing_cache_{ym}"
+
+        cursor = conn.cursor()
+
+        # Check if source table exists
+        cursor.execute(
+            """
+            SELECT name FROM sqlite_master
+            WHERE type='table' AND name = ?
+        """,
+            (source_table,),
+        )
+        if not cursor.fetchone():
+            print(f"Source table {source_table} not found")
+            return False
+
+        # Create cache table if not exists
+        conn.execute(f"""
+            CREATE TABLE IF NOT EXISTS {cache_table} (
+                cache_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                patient_id INTEGER NOT NULL,
+                facility TEXT,
+                task_count INTEGER DEFAULT 0,
+                total_minutes INTEGER DEFAULT 0,
+                billing_code TEXT,
+                billing_description TEXT,
+                billing_status TEXT DEFAULT 'Pending',
+                year INTEGER NOT NULL,
+                month INTEGER NOT NULL,
+                source_system TEXT DEFAULT 'CSV_IMPORT',
+                created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(patient_id, year, month)
+            )
+        """)
+
+        # Clear existing cache for this month
+        cursor.execute(f"DELETE FROM {cache_table} WHERE year = ? AND month = ?", (year, month))
+
+        # Populate with billing codes using SQL
+        cursor.execute(f"""
+            INSERT INTO {cache_table}
+            (patient_id, facility, task_count, total_minutes, billing_code, billing_description,
+             billing_status, year, month, source_system, updated_date)
+            SELECT
+                ct.patient_id,
+                COALESCE(p.facility, '') as facility,
+                ct.task_count,
+                ct.total_minutes,
+                CASE
+                    WHEN ct.total_minutes < 20 THEN 'NOT_BILLABLE'
+                    WHEN ct.total_minutes < 40 THEN '99406'
+                    WHEN ct.total_minutes < 60 THEN '99409'
+                    WHEN ct.total_minutes < 90 THEN '99412'
+                    ELSE '99415'
+                END as billing_code,
+                CASE
+                    WHEN ct.total_minutes < 20 THEN 'Less than 20 minutes'
+                    WHEN ct.total_minutes < 40 THEN '20-39 minutes'
+                    WHEN ct.total_minutes < 60 THEN '40-59 minutes'
+                    WHEN ct.total_minutes < 90 THEN '60-89 minutes'
+                    ELSE '90+ minutes'
+                END as billing_description,
+                'Pending' as billing_status,
+                {year} as year,
+                {month} as month,
+                'CSV_IMPORT' as source_system,
+                datetime('now') as updated_date
+            FROM (
+                SELECT patient_id, COUNT(*) as task_count, SUM(duration_minutes) as total_minutes
+                FROM {source_table}
+                WHERE patient_id IS NOT NULL
+                GROUP BY patient_id
+            ) ct
+            LEFT JOIN patients p ON ct.patient_id = p.patient_id
+            WHERE ct.total_minutes >= 20
+        """)
+
+        conn.commit()
+        count = cursor.rowcount
+        print(f"Rebuilt cache for {ym}: {count} records")
+        return True
+
+    except Exception as e:
+        print(f"Error rebuilding cache: {e}")
+        conn.rollback()
+        return False
+    finally:
+        conn.close()
+
+
+def ensure_fresh_cache(year, month):
+    """Check cache staleness and rebuild if needed. Returns status."""
+    status = get_cache_staleness(year, month)
+
+    if status in ("MISSING", "STALE", "ERROR"):
+        print(f"Cache status for {year}-{month:02d}: {status} - rebuilding...")
+        success = rebuild_billing_cache(year, month)
+        return "REBUILT" if success else "FAILED"
+    elif status == "NO_SOURCE":
+        print(f"Cache status for {year}-{month:02d}: {status}")
+        return status
+    else:
+        print(f"Cache status for {year}-{month:02d}: {status} - using existing cache")
+        return status
+
+
 def get_available_months():
     """Get list of available months from both CSV imports and live tables"""
     conn = get_db_connection()
@@ -115,12 +288,45 @@ def get_billing_codes_for_minutes(minutes):
 
 
 def get_coordinator_billing_data(selected_month):
-    """Get coordinator billing data aggregated by patient only"""
+    """Get coordinator billing data from cache table (pre-calculated)"""
     conn = get_db_connection()
     try:
         year = selected_month["year"]
         month = selected_month["month"]
         data_type = selected_month.get("data_type", "LIVE")
+
+        ym = f"{year}_{month:02d}"
+        cache_table = f"coordinator_monthly_billing_cache_{ym}"
+
+        # For CSV imports, ensure fresh cache and read from it
+        if data_type == "CSV_IMPORT":
+            # Check staleness and rebuild if needed
+            cache_status = ensure_fresh_cache(year, month)
+
+            if cache_status == "NO_SOURCE":
+                st.warning(f"Source data table not found for {year}-{month:02d}")
+                return pd.DataFrame()
+            if cache_status == "FAILED":
+                st.error(f"Failed to build billing cache for {year}-{month:02d}")
+                return pd.DataFrame()
+
+            # Read from pre-calculated cache
+            query = f"""
+            SELECT
+                patient_id,
+                facility,
+                task_count,
+                total_minutes,
+                billing_code,
+                billing_description,
+                billing_status
+            FROM {cache_table}
+            ORDER BY total_minutes DESC
+            """
+            df = pd.read_sql_query(query, conn)
+            return df
+
+        # For live data, calculate on-the-fly (no cache for live data yet)
         table_name = selected_month.get("table", f"coordinator_tasks_{year}_{month:02d}")
 
         cursor = conn.cursor()
@@ -135,43 +341,22 @@ def get_coordinator_billing_data(selected_month):
         if not cursor.fetchone():
             return pd.DataFrame()
 
-        # CSV tables use staff_id instead of coordinator_id
-        # Both use duration_minutes for the time column
-        # Aggregate all minutes per patient - no DISTINCT to avoid losing duplicate tasks
-        if data_type == "CSV_IMPORT":
-            # CSV import table column names
-            query = f"""
-            SELECT
-                ct.patient_id,
-                COUNT(*) as task_count,
-                SUM(ct.duration_minutes) as total_minutes,
-                COALESCE(p.facility, '') as facility
-            FROM (
-                SELECT staff_id, patient_id, task_date, task_type, duration_minutes
-                FROM {table_name}
-                WHERE patient_id IS NOT NULL
-            ) ct
-            LEFT JOIN patients p ON ct.patient_id = p.patient_id
-            GROUP BY ct.patient_id
-            ORDER BY total_minutes DESC
-            """
-        else:
-            # Live table column names
-            query = f"""
-            SELECT
-                ct.patient_id,
-                COUNT(*) as task_count,
-                SUM(ct.duration_minutes) as total_minutes,
-                COALESCE(p.facility, '') as facility
-            FROM (
-                SELECT coordinator_id, patient_id, task_date, task_type, duration_minutes
-                FROM {table_name}
-                WHERE patient_id IS NOT NULL
-            ) ct
-            LEFT JOIN patients p ON ct.patient_id = p.patient_id
-            GROUP BY ct.patient_id
-            ORDER BY total_minutes DESC
-            """
+        # Live table column names
+        query = f"""
+        SELECT
+            ct.patient_id,
+            COUNT(*) as task_count,
+            SUM(ct.duration_minutes) as total_minutes,
+            COALESCE(p.facility, '') as facility
+        FROM (
+            SELECT coordinator_id, patient_id, task_date, task_type, duration_minutes
+            FROM {table_name}
+            WHERE patient_id IS NOT NULL
+        ) ct
+        LEFT JOIN patients p ON ct.patient_id = p.patient_id
+        GROUP BY ct.patient_id
+        ORDER BY total_minutes DESC
+        """
 
         df = pd.read_sql_query(query, conn)
 
@@ -197,12 +382,47 @@ def get_coordinator_billing_data(selected_month):
 
 
 def get_coordinator_summary(selected_month):
-    """Get summary statistics"""
+    """Get summary statistics from cache (for CSV) or live calculation"""
     conn = get_db_connection()
     try:
         year = selected_month["year"]
         month = selected_month["month"]
         data_type = selected_month.get("data_type", "LIVE")
+
+        ym = f"{year}_{month:02d}"
+        cache_table = f"coordinator_monthly_billing_cache_{ym}"
+
+        # For CSV imports, read from cache table
+        if data_type == "CSV_IMPORT":
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT name FROM sqlite_master
+                WHERE type='table' AND name = ?
+            """,
+                (cache_table,),
+            )
+
+            if not cursor.fetchone():
+                return None
+
+            query = f"""
+            SELECT
+                COUNT(*) as total_patients,
+                SUM(task_count) as total_tasks,
+                SUM(total_minutes) as total_minutes
+            FROM {cache_table}
+            """
+            result = conn.execute(query).fetchone()
+            if result:
+                return {
+                    "total_patients": result[0],
+                    "total_tasks": result[1],
+                    "total_minutes": result[2] or 0,
+                }
+            return None
+
+        # For live data, calculate on-the-fly
         table_name = selected_month.get("table", f"coordinator_tasks_{year}_{month:02d}")
 
         cursor = conn.cursor()
@@ -217,39 +437,20 @@ def get_coordinator_summary(selected_month):
         if not cursor.fetchone():
             return None
 
-        # CSV tables use staff_id instead of coordinator_id
-        # Both use duration_minutes for the time column
-        # Only count billable patients (20+ minutes per patient)
-        if data_type == "CSV_IMPORT":
-            # CSV import table column names
-            query = f"""
-            SELECT
-                COUNT(*) as total_patients,
-                SUM(task_count) as total_tasks,
-                SUM(total_minutes) as total_minutes
-            FROM (
-                SELECT patient_id, COUNT(*) as task_count, SUM(duration_minutes) as total_minutes
-                FROM {table_name}
-                WHERE patient_id IS NOT NULL
-                GROUP BY patient_id
-                HAVING SUM(duration_minutes) >= 20
-            )
-            """
-        else:
-            # Live table column names
-            query = f"""
-            SELECT
-                COUNT(*) as total_patients,
-                SUM(task_count) as total_tasks,
-                SUM(total_minutes) as total_minutes
-            FROM (
-                SELECT patient_id, COUNT(*) as task_count, SUM(duration_minutes) as total_minutes
-                FROM {table_name}
-                WHERE patient_id IS NOT NULL
-                GROUP BY patient_id
-                HAVING SUM(duration_minutes) >= 20
-            )
-            """
+        # Live table column names
+        query = f"""
+        SELECT
+            COUNT(*) as total_patients,
+            SUM(task_count) as total_tasks,
+            SUM(total_minutes) as total_minutes
+        FROM (
+            SELECT patient_id, COUNT(*) as task_count, SUM(duration_minutes) as total_minutes
+            FROM {table_name}
+            WHERE patient_id IS NOT NULL
+            GROUP BY patient_id
+            HAVING SUM(duration_minutes) >= 20
+        )
+        """
 
         result = conn.execute(query).fetchone()
         if result:
@@ -298,12 +499,6 @@ def display_monthly_coordinator_billing_dashboard():
             month = selected_month["month"]
             data_type = selected_month.get("data_type", "")
 
-            # Clear session state cache when month changes
-            month_key = f"{year}_{month:02d}_{data_type}"
-            if st.session_state.get("last_billing_month_key") != month_key:
-                st.session_state.coordinator_billing_editable_df = None
-                st.session_state.last_billing_month_key = month_key
-
             with col2:
                 st.metric("Selected Period", selected_month["display"])
                 if data_type:
@@ -350,11 +545,23 @@ def display_monthly_coordinator_billing_dashboard():
                 if show_pending:
                     filtered_df = filtered_df[filtered_df["billing_code"] == "PENDING"]
 
-                # Display table with selection capability
-                st.markdown("### Select Rows for Actions")
+                # Create cache key based on selection and filters
+                cache_key = f"{year}_{month:02d}_{data_type}_{selected_code}_{show_pending}_{len(billing_df)}"
 
-                # Initialize session state for editable dataframe
-                if "coordinator_billing_editable_df" not in st.session_state:
+                # Check if we need to rebuild the editable dataframe
+                rebuild = True
+                if "billing_cache_key" in st.session_state:
+                    if st.session_state.billing_cache_key == cache_key:
+                        # Check for old "☐ Select" column that would cause encoding errors
+                        if "coordinator_billing_editable_df" in st.session_state:
+                            df = st.session_state.coordinator_billing_editable_df
+                            if isinstance(df, pd.DataFrame) and "☐ Select" in df.columns:
+                                rebuild = True
+                            else:
+                                rebuild = False
+
+                if rebuild:
+                    # Build editable dataframe
                     display_cols = [
                         "patient_id",
                         "facility",
@@ -365,10 +572,12 @@ def display_monthly_coordinator_billing_dashboard():
                         "billing_status",
                     ]
                     editable_df = filtered_df[display_cols].copy()
-                    editable_df.insert(0, "☐ Select", False)
+                    editable_df.insert(0, "Pick", False)
                     st.session_state.coordinator_billing_editable_df = editable_df
+                    st.session_state.billing_cache_key = cache_key
 
-                # Display editable dataframe with selection column
+                # Display table with selection capability
+                st.markdown("### Select Rows for Actions")
                 st.markdown("**Check rows below to select them for actions:**")
                 edited_df = st.data_editor(
                     st.session_state.coordinator_billing_editable_df,
@@ -377,15 +586,18 @@ def display_monthly_coordinator_billing_dashboard():
                     key="coordinator_billing_editor",
                 )
 
-                # Update session state with edited dataframe
+                # Update session state with user edits
                 st.session_state.coordinator_billing_editable_df = edited_df
 
                 # Get selected rows
-                selected_rows = edited_df[edited_df["☐ Select"] == True]
+                if "Pick" in edited_df.columns:
+                    selected_rows = edited_df[edited_df["Pick"] == True]
+                else:
+                    selected_rows = pd.DataFrame()
 
                 if not selected_rows.empty:
                     st.markdown("---")
-                    st.success(f"✓ {len(selected_rows)} row(s) selected")
+                    st.success(f"[v] {len(selected_rows)} row(s) selected")
 
                     # Action buttons
                     st.markdown("### Actions")
@@ -404,13 +616,13 @@ def display_monthly_coordinator_billing_dashboard():
                                 st.error("Please enter a billing code.")
                             else:
                                 st.info(f"Would update {len(selected_rows)} row(s) with code: {new_billing_code}")
-                                st.session_state.coordinator_billing_editable_df = None
                                 # TODO: Implement actual update function
+                                st.rerun()
 
                     with col2:
                         st.markdown("#### Export Selected")
                         if st.button("Export Selected Rows", key="export_selected_btn"):
-                            display_cols = [col for col in edited_df.columns if col != "☐ Select"]
+                            display_cols = [col for col in edited_df.columns if col != "Pick"]
                             selected_data = selected_rows[display_cols]
                             csv_data = export_to_csv(selected_data, "coordinator_billing_selected")
                             st.download_button(
@@ -421,7 +633,7 @@ def display_monthly_coordinator_billing_dashboard():
                                 key="download_selected",
                             )
                 else:
-                    st.info("👆 Check the '☐ Select' column to select rows for actions")
+                    st.info("&gt; Check the 'Pick' column to select rows for actions")
 
                 # Export buttons for all/filtered data
                 st.markdown("---")
