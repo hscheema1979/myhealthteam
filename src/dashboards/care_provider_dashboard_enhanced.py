@@ -311,7 +311,8 @@ def show(user_id, user_role_ids=None):
                 show_provider_onboarding_queue(user_id, onboarding_queue)
 
             with tab4:
-                show_phone_review_entry(mode="cp", user_id=user_id)
+                filtered_patients = st.session_state.get("filtered_provider_patients")
+                show_phone_review_entry(mode="cp", user_id=user_id, filtered_patients=filtered_patients)
 
             with tab5:
                 show_monthly_task_review(user_id)
@@ -390,7 +391,8 @@ def show(user_id, user_role_ids=None):
                 show_team_management_section()
 
             with tab3:
-                show_phone_review_entry(mode="cp", user_id=user_id)
+                filtered_patients = st.session_state.get("filtered_provider_patients")
+                show_phone_review_entry(mode="cp", user_id=user_id, filtered_patients=filtered_patients)
 
             with tab4:
                 show_monthly_task_review(user_id)
@@ -478,7 +480,8 @@ def show(user_id, user_role_ids=None):
                 show_provider_onboarding_queue(user_id, onboarding_queue)
 
             with tab3:
-                show_phone_review_entry(mode="cp", user_id=user_id)
+                filtered_patients = st.session_state.get("filtered_provider_patients")
+                show_phone_review_entry(mode="cp", user_id=user_id, filtered_patients=filtered_patients)
 
             with tab4:
                 show_monthly_task_review(user_id)
@@ -548,7 +551,8 @@ def show(user_id, user_role_ids=None):
                 )
 
             with tab2:
-                show_phone_review_entry(mode="cp", user_id=user_id)
+                filtered_patients = st.session_state.get("filtered_provider_patients")
+                show_phone_review_entry(mode="cp", user_id=user_id, filtered_patients=filtered_patients)
 
             with tab3:
                 show_monthly_task_review(user_id)
@@ -754,6 +758,9 @@ def show_patient_list_section(user_id, section_id=None, has_cpm_role=False):
             if patient_status in selected_statuses:
                 filtered_by_status.append(p)
         filtered_patients = filtered_by_status
+
+    # Store filtered patients in session_state for phone review to use
+    st.session_state.filtered_provider_patients = filtered_patients
 
     # Use filtered results
     patient_data_list = filtered_patients

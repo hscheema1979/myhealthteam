@@ -2,29 +2,37 @@ import streamlit as st
 import pandas as pd
 from src import database
 
-def show_phone_review_entry(mode, user_id, provider_id=None):
+def show_phone_review_entry(mode, user_id, provider_id=None, filtered_patients=None):
     """
     Modular phone review entry UI.
     mode: 'cm' (Care Manager) or 'cp' (Care Provider)
     user_id: current user's user_id
     provider_id: (optional) provider to show patients for (for CM mode)
+    filtered_patients: (optional) pre-filtered patient list from patient panel (respects filters)
     """
     if mode == 'cm':
         # CM: select provider, then patient
-        providers = database.get_users_by_role(33)  # 36 = Care Provider
+        providers = database.get_users_by_role(33)  # 33 = Care Provider
         provider_options = [f"{p['full_name']} ({p['username']})" for p in providers]
         provider_map = {f"{p['full_name']} ({p['username']})": p['user_id'] for p in providers}
         selected_provider = st.selectbox("Select Provider", provider_options, key="phone_review_provider_select")
         selected_provider_id = provider_map[selected_provider]
-        # Get active patients for selected provider
-        patient_data_list = database.get_provider_patient_panel_enhanced(selected_provider_id)
+        # Get active patients for selected provider (or use filtered if provided and matches)
+        if filtered_patients is not None:
+            patient_data_list = filtered_patients
+        else:
+            patient_data_list = database.get_provider_patient_panel_enhanced(selected_provider_id)
     else:
         # CP: provider is current user
         selected_provider_id = user_id if provider_id is None else provider_id
         st.info(f"Provider: {database.get_user_by_id(selected_provider_id)['full_name']}")
-        patient_data_list = database.get_provider_patient_panel_enhanced(selected_provider_id)
+        # Use filtered patients if provided (respects patient panel filters)
+        if filtered_patients is not None:
+            patient_data_list = filtered_patients
+        else:
+            patient_data_list = database.get_provider_patient_panel_enhanced(selected_provider_id)
 
-    # Only show active patients
+    # Only show active patients (already filtered if filtered_patients was provided)
     allowed_statuses = ['Active', 'Active-Geri', 'Active-PCP', 'Hospice']
     active_patients = [p for p in patient_data_list if (p.get('status', '') or '').strip() in allowed_statuses]
     patient_names = [f"{p.get('first_name','').strip()} {p.get('last_name','').strip()}".strip() for p in active_patients]
