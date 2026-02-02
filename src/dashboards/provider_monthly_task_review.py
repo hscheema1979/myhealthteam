@@ -3,6 +3,7 @@ import pandas as pd
 import calendar
 from datetime import datetime
 from src import database
+from src.utils.write_ahead_logger import log_write_ahead, mark_log_completed, mark_log_failed
 
 # Location and patient type options for dropdowns
 LOCATION_TYPES = ["Home", "Office", "Telehealth"]
@@ -136,15 +137,20 @@ def show(user_id):
                 else:
                     st.caption("Edit Location, Patient Type, or Notes if corrections are needed. Changes save automatically.")
 
+                    # Store original _task_id values and set as index for tracking
+                    original_df = tasks_df.copy()
+                    original_df['_original_index'] = original_df.index
+
+                    # Create display DataFrame with only visible columns
+                    display_columns = ["Patient Name", "Date of Service", "Patient DOB", "Location of Service", "Patient Type", "Notes"]
+                    display_df = tasks_df[display_columns].copy()
+
                     # Use data_editor for editable columns
-                    edited_df = st.data_editor(
-                        tasks_df,
+                    edited_display_df = st.data_editor(
+                        display_df,
                         use_container_width=True,
                         hide_index=True,
                         column_config={
-                            "_task_id": st.column_config.TextColumn("Task ID", disabled=True, hidden=True),
-                            "_billing_code": st.column_config.TextColumn("Billing Code", disabled=True, hidden=True),
-                            "data_source": st.column_config.TextColumn("Source", disabled=True, hidden=True),
                             "Patient Name": st.column_config.TextColumn("Patient Name", disabled=True, width="medium"),
                             "Date of Service": st.column_config.TextColumn("Date of Service", disabled=True, width="small"),
                             "Patient DOB": st.column_config.TextColumn("Patient DOB", disabled=True, width="small"),
@@ -165,14 +171,19 @@ def show(user_id):
                         num_rows="dynamic"
                     )
 
+                    # Reconstruct edited_df with internal columns for save function
+                    edited_df = original_df.copy()
+                    for col in display_columns:
+                        edited_df[col] = edited_display_df[col]
+
                     # Check for edits and save changes
-                    if not edited_df.equals(tasks_df):
-                        _save_task_changes(conn, table_name, tasks_df, edited_df, user_id, year, month)
+                    if not edited_df[display_columns].equals(original_df[display_columns]):
+                        _save_task_changes(conn, table_name, original_df, edited_df, user_id, year, month)
                         st.success("Changes saved successfully!")
                         st.rerun()
 
-                    # Prepare CSV for download (without hidden columns)
-                    download_df = edited_df[["Patient Name", "Date of Service", "Patient DOB", "Location of Service", "Patient Type", "Notes"]].copy()
+                    # Prepare CSV for download (without internal columns)
+                    download_df = edited_display_df.copy()
                     csv = download_df.to_csv(index=False)
                     st.download_button(
                         label="Download CSV",
@@ -224,14 +235,35 @@ def _save_task_changes(conn, table_name, original_df, edited_df, provider_id, ye
                     )
 
                     if new_billing_code:
-                        # Update the task
-                        conn.execute(f"""
-                            UPDATE {table_name}
-                            SET billing_code = ?,
-                                notes = ?,
-                                imported_at = CURRENT_TIMESTAMP
-                            WHERE provider_task_id = ?
-                        """, (new_billing_code, new_notes, task_id))
+                        # Prepare data for write-ahead log
+                        update_data = {
+                            "provider_task_id": task_id,
+                            "billing_code": new_billing_code,
+                            "notes": new_notes
+                        }
+
+                        # Write-ahead log (Level 4: DB + Level 5: File)
+                        log_id = log_write_ahead(
+                            user_id=provider_id,
+                            target_table=table_name,
+                            operation="UPDATE",
+                            data_json=update_data,
+                            source_system="PROVIDER_DASHBOARD"
+                        )
+
+                        try:
+                            # Update the task
+                            conn.execute(f"""
+                                UPDATE {table_name}
+                                SET billing_code = ?,
+                                    notes = ?,
+                                    imported_at = CURRENT_TIMESTAMP
+                                WHERE provider_task_id = ?
+                            """, (new_billing_code, new_notes, task_id))
+                            mark_log_completed(log_id, target_record_id=task_id)
+                        except Exception as e:
+                            mark_log_failed(log_id, str(e))
+                            raise
 
                         # Track affected week for billing summary update
                         dt = datetime.strptime(task_date, '%Y-%m-%d')
