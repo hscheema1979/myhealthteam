@@ -89,6 +89,7 @@ def show(user_id):
                 """
             else:
                 # Live tables: standard columns
+                # Use subquery to get one row per billing code (avoid duplicates from multiple location_type/patient_type combos)
                 query = f"""
                 SELECT
                     pt.provider_task_id as _task_id,
@@ -102,7 +103,10 @@ def show(user_id):
                     'LIVE' as data_source
                 FROM {table_name} pt
                 LEFT JOIN patients p ON pt.patient_id = p.patient_id
-                LEFT JOIN task_billing_codes tbc ON pt.billing_code = tbc.billing_code
+                LEFT JOIN (SELECT billing_code, location_type, patient_type
+                           FROM task_billing_codes
+                           WHERE is_active = 1
+                           GROUP BY billing_code) tbc ON pt.billing_code = tbc.billing_code
                 WHERE pt.provider_id = ?
                 ORDER BY pt.task_date DESC
                 """
@@ -316,17 +320,20 @@ def _update_affected_billing_summaries(provider_id, affected_weeks):
                 pt.provider_id,
                 pt.provider_name,
                 pt.billing_code,
-                tbc.location_type,
-                tbc.patient_type,
-                tbc.task_description,
+                COALESCE(tbc.location_type, 'Home') as location_type,
+                COALESCE(tbc.patient_type, 'Follow Up') as patient_type,
+                COALESCE(tbc.task_description, 'Unknown') as task_description,
                 pt.minutes_of_service,
                 COUNT(*) as task_count
             FROM {table_name} pt
-            LEFT JOIN task_billing_codes tbc ON pt.billing_code = tbc.billing_code
+            LEFT JOIN (SELECT billing_code, location_type, patient_type, task_description
+                       FROM task_billing_codes
+                       WHERE is_active = 1
+                       GROUP BY billing_code) tbc ON pt.billing_code = tbc.billing_code
             WHERE pt.provider_id = ?
             AND pt.task_date >= ? AND pt.task_date <= ?
             AND (pt.is_deleted IS NULL OR pt.is_deleted = 0)
-            GROUP BY pt.billing_code, tbc.location_type, tbc.patient_type, tbc.task_description
+            GROUP BY pt.billing_code
             """
 
             rows = conn.execute(query, (provider_id, week_start, week_end)).fetchall()

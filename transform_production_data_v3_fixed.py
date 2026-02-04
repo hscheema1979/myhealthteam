@@ -748,7 +748,7 @@ def populate_provider_billing_status(conn, year, month):
                 FALSE as is_carried_over,
                 CURRENT_TIMESTAMP as created_date
             FROM {provider_table} pt
-            LEFT JOIN task_billing_codes tbc ON pt.billing_code = tbc.billing_code
+            LEFT JOIN (SELECT billing_code, description FROM task_billing_codes WHERE is_active = 1 GROUP BY billing_code) tbc ON pt.billing_code = tbc.billing_code
             WHERE pt.billing_code IS NOT NULL
                 AND pt.billing_code != 'Not_Billable'
                 AND pt.billing_code != ''
@@ -786,21 +786,12 @@ def populate_provider_billing_status(conn, year, month):
 
 
 def populate_coordinator_monthly_summary(conn, year, month):
-    """Populate coordinator_monthly_summary from coordinator_tasks_YYYY_MM"""
+    """Populate coordinator_monthly_summary from both coordinator_tasks_YYYY_MM and csv_coordinator_tasks_YYYY_MM"""
     try:
-        coord_table = f"coordinator_tasks_{year}_{str(month).zfill(2)}"
         summary_table = "coordinator_monthly_summary"
+        ym = f"{year}_{str(month).zfill(2)}"
 
         cursor = conn.cursor()
-        cursor.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name = ?",
-            (coord_table,),
-        )
-        if not cursor.fetchone():
-            log_print(f"  Coordinator table {coord_table} does not exist, skipping")
-            return 0
-
-        log_print(f"  Populating coordinator billing summary from {coord_table}...")
 
         # Check if records already exist for this month
         cursor.execute(
@@ -824,57 +815,118 @@ def populate_coordinator_monthly_summary(conn, year, month):
                 (year, month),
             )
 
-        # Aggregate coordinator tasks by patient/month
+        total_inserted = 0
+
+        # Process CSV import table first
+        csv_table = f"csv_coordinator_tasks_{ym}"
         cursor.execute(
-            f"""
-            INSERT INTO {summary_table} (
-                coordinator_id, coordinator_name, patient_id, patient_name,
-                year, month, month_start_date, month_end_date,
-                total_tasks_completed, total_time_spent_minutes,
-                billing_code, billing_code_description,
-                billing_status, is_billed, billed_by,
-                created_date, updated_date
-            )
-            SELECT
-                ct.coordinator_id,
-                ct.coordinator_name,
-                ct.patient_id,
-                ct.patient_id as patient_name,
-                ? as year,
-                ? as month,
-                DATE(? || '-' || PRINTF('%02d', ?) || '-01') as month_start_date,
-                DATE(? || '-' || PRINTF('%02d', ?) || '-01', '+1 month', '-1 day') as month_end_date,
-                COUNT(*) as total_tasks_completed,
-                CAST(SUM(COALESCE(ct.duration_minutes, 0)) AS INTEGER) as total_time_spent_minutes,
-                CASE
-                    WHEN SUM(COALESCE(ct.duration_minutes, 0)) >= 50 THEN '99492'
-                    WHEN SUM(COALESCE(ct.duration_minutes, 0)) >= 20 THEN '99491'
-                    ELSE '99490'
-                END as billing_code,
-                CASE
-                    WHEN SUM(COALESCE(ct.duration_minutes, 0)) >= 50 THEN 'Care Management - Complex'
-                    WHEN SUM(COALESCE(ct.duration_minutes, 0)) >= 20 THEN 'Care Management - Moderate'
-                    ELSE 'Care Management - Basic'
-                END as billing_code_description,
-                'Pending' as billing_status,
-                FALSE as is_billed,
-                NULL as billed_by,
-                CURRENT_TIMESTAMP as created_date,
-                CURRENT_TIMESTAMP as updated_date
-            FROM {coord_table} ct
-            WHERE ct.coordinator_id IS NOT NULL
-                AND ct.patient_id IS NOT NULL
-                AND TRIM(ct.patient_id) != ''
-                AND COALESCE(ct.duration_minutes, 0) > 0
-            GROUP BY ct.coordinator_id, ct.coordinator_name, ct.patient_id
-        """,
-            (year, month, year, month, year, month),
+            "SELECT name FROM sqlite_master WHERE type='table' AND name = ?",
+            (csv_table,),
         )
+        if cursor.fetchone():
+            log_print(f"  Populating coordinator billing summary from {csv_table}...")
+            cursor.execute(
+                f"""
+                INSERT INTO {summary_table} (
+                    coordinator_id, coordinator_name, patient_id, patient_name,
+                    year, month, month_start_date, month_end_date,
+                    total_tasks_completed, total_time_spent_minutes,
+                    billing_code, billing_code_description,
+                    billing_status, is_billed, billed_by,
+                    created_date, updated_date
+                )
+                SELECT
+                    ct.staff_id as coordinator_id,
+                    ct.staff_name as coordinator_name,
+                    ct.patient_id,
+                    ct.patient_id as patient_name,
+                    ? as year,
+                    ? as month,
+                    DATE(? || '-' || PRINTF('%02d', ?) || '-01') as month_start_date,
+                    DATE(? || '-' || PRINTF('%02d', ?) || '-01', '+1 month', '-1 day') as month_end_date,
+                    COUNT(*) as total_tasks_completed,
+                    CAST(SUM(COALESCE(ct.duration_minutes, 0)) AS INTEGER) as total_time_spent_minutes,
+                    bc.billing_code,
+                    bc.description as billing_code_description,
+                    'Pending' as billing_status,
+                    0 as is_billed,
+                    NULL as billed_by,
+                    CURRENT_TIMESTAMP as created_date,
+                    CURRENT_TIMESTAMP as updated_date
+                FROM {csv_table} ct
+                LEFT JOIN coordinator_billing_codes bc
+                    ON SUM(COALESCE(ct.duration_minutes, 0)) >= bc.min_minutes
+                    AND SUM(COALESCE(ct.duration_minutes, 0)) < bc.max_minutes
+                WHERE ct.staff_id IS NOT NULL
+                    AND ct.patient_id IS NOT NULL
+                    AND TRIM(ct.patient_id) != ''
+                    AND COALESCE(ct.duration_minutes, 0) > 0
+                GROUP BY ct.staff_id, ct.staff_name, ct.patient_id
+                HAVING SUM(COALESCE(ct.duration_minutes, 0)) >= 20
+            """,
+                (year, month, year, month, year, month),
+            )
+            inserted = cursor.rowcount
+            log_print(f"    Inserted {inserted} CSV coordinator billing records")
+            total_inserted += inserted
 
-        inserted_count = cursor.rowcount
-        log_print(f"    Inserted/updated {inserted_count} coordinator billing records")
+        # Process live table
+        live_table = f"coordinator_tasks_{ym}"
+        cursor.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name = ?",
+            (live_table,),
+        )
+        if cursor.fetchone():
+            log_print(f"  Populating coordinator billing summary from {live_table}...")
+            cursor.execute(
+                f"""
+                INSERT INTO {summary_table} (
+                    coordinator_id, coordinator_name, patient_id, patient_name,
+                    year, month, month_start_date, month_end_date,
+                    total_tasks_completed, total_time_spent_minutes,
+                    billing_code, billing_code_description,
+                    billing_status, is_billed, billed_by,
+                    created_date, updated_date
+                )
+                SELECT
+                    ct.coordinator_id,
+                    ct.coordinator_name,
+                    ct.patient_id,
+                    ct.patient_id as patient_name,
+                    ? as year,
+                    ? as month,
+                    DATE(? || '-' || PRINTF('%02d', ?) || '-01') as month_start_date,
+                    DATE(? || '-' || PRINTF('%02d', ?) || '-01', '+1 month', '-1 day') as month_end_date,
+                    COUNT(*) as total_tasks_completed,
+                    CAST(SUM(COALESCE(ct.duration_minutes, 0)) AS INTEGER) as total_time_spent_minutes,
+                    bc.billing_code,
+                    bc.description as billing_code_description,
+                    'Pending' as billing_status,
+                    0 as is_billed,
+                    NULL as billed_by,
+                    CURRENT_TIMESTAMP as created_date,
+                    CURRENT_TIMESTAMP as updated_date
+                FROM {live_table} ct
+                LEFT JOIN coordinator_billing_codes bc
+                    ON SUM(COALESCE(ct.duration_minutes, 0)) >= bc.min_minutes
+                    AND SUM(COALESCE(ct.duration_minutes, 0)) < bc.max_minutes
+                WHERE ct.coordinator_id IS NOT NULL
+                    AND ct.patient_id IS NOT NULL
+                    AND TRIM(ct.patient_id) != ''
+                    AND COALESCE(ct.duration_minutes, 0) > 0
+                GROUP BY ct.coordinator_id, ct.coordinator_name, ct.patient_id
+                HAVING SUM(COALESCE(ct.duration_minutes, 0)) >= 20
+            """,
+                (year, month, year, month, year, month),
+            )
+            inserted = cursor.rowcount
+            log_print(f"    Inserted {inserted} live coordinator billing records")
+            total_inserted += inserted
 
-        return inserted_count
+        if total_inserted == 0:
+            log_print(f"  Coordinator table {live_table} or {csv_table} does not exist, skipping")
+
+        return total_inserted
 
     except Exception as e:
         log_print(f"  Error populating coordinator billing summary: {e}")
