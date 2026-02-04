@@ -36,8 +36,12 @@ def get_db_connection(db_path: str = None):
         db_path = DB_PATH
 
     print(f"Attempting to connect to DB: {db_path}")
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect(db_path, timeout=30.0)
     conn.row_factory = sqlite3.Row
+    # Enable WAL mode for better concurrency (allows reads during writes)
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA busy_timeout=30000")  # 30 second timeout
+    conn.execute("PRAGMA synchronous=NORMAL")  # Faster than FULL, still safe
     return conn
 
 
@@ -5644,3 +5648,619 @@ def refresh_all_summaries(year, month):
     finally:
         conn.close()
 
+
+
+# =============================================================================
+# FACILITY REVIEW DASHBOARD FUNCTIONS
+# =============================================================================
+
+ROLE_FACILITY = 42
+
+
+def get_user_facility(user_id):
+    """
+    Get the primary facility assigned to a user.
+    
+    Args:
+        user_id: User ID to look up
+        
+    Returns:
+        facility_id or None if not assigned
+    """
+    conn = get_db_connection()
+    try:
+        result = conn.execute("""
+            SELECT facility_id FROM user_facility_assignments
+            WHERE user_id = ? AND assignment_type = 'primary'
+            LIMIT 1
+        """, (user_id,)).fetchone()
+        return result['facility_id'] if result else None
+    except Exception as e:
+        print(f"Error getting user facility: {e}")
+        return None
+    finally:
+        conn.close()
+
+
+def get_user_facilities(user_id):
+    """
+    Get all facilities assigned to a user.
+    
+    Args:
+        user_id: User ID to look up
+        
+    Returns:
+        List of facility dicts with facility_id, facility_name, assignment_type
+    """
+    conn = get_db_connection()
+    try:
+        results = conn.execute("""
+            SELECT f.facility_id, f.facility_name, ufa.assignment_type
+            FROM user_facility_assignments ufa
+            JOIN facilities f ON ufa.facility_id = f.facility_id
+            WHERE ufa.user_id = ?
+            ORDER BY ufa.assignment_type = 'primary' DESC, f.facility_name
+        """, (user_id,)).fetchall()
+        return [dict(row) for row in results]
+    except Exception as e:
+        print(f"Error getting user facilities: {e}")
+        return []
+    finally:
+        conn.close()
+
+
+def assign_user_to_facility(user_id, facility_id, assignment_type='primary'):
+    """
+    Assign a user to a facility.
+    
+    Args:
+        user_id: User ID
+        facility_id: Facility ID
+        assignment_type: 'primary' or 'secondary'
+        
+    Returns:
+        True if successful, False otherwise
+    """
+    conn = get_db_connection()
+    try:
+        conn.execute("""
+            INSERT OR REPLACE INTO user_facility_assignments 
+            (user_id, facility_id, assignment_type, assigned_date)
+            VALUES (?, ?, ?, datetime('now'))
+        """, (user_id, facility_id, assignment_type))
+        conn.commit()
+        return True
+    except Exception as e:
+        print(f"Error assigning user to facility: {e}")
+        conn.rollback()
+        return False
+    finally:
+        conn.close()
+
+
+def remove_user_from_facility(user_id, facility_id):
+    """
+    Remove a user's facility assignment.
+    
+    Args:
+        user_id: User ID
+        facility_id: Facility ID
+        
+    Returns:
+        True if successful, False otherwise
+    """
+    conn = get_db_connection()
+    try:
+        conn.execute("""
+            DELETE FROM user_facility_assignments
+            WHERE user_id = ? AND facility_id = ?
+        """, (user_id, facility_id))
+        conn.commit()
+        return True
+    except Exception as e:
+        print(f"Error removing user from facility: {e}")
+        conn.rollback()
+        return False
+    finally:
+        conn.close()
+
+
+def get_patients_by_facility(facility_id, status_filter=None, search_term=None):
+    """
+    Get all patients assigned to a facility.
+    
+    Args:
+        facility_id: Facility ID
+        status_filter: Optional list of statuses to filter by
+        search_term: Optional search term for patient name
+        
+    Returns:
+        List of patient dicts
+    """
+    conn = get_db_connection()
+    try:
+        query = """
+            SELECT 
+                p.patient_id,
+                p.first_name,
+                p.last_name,
+                p.date_of_birth,
+                p.phone_primary,
+                p.status,
+                p.facility as facility_name,
+                p.assigned_facility_id,
+                p.last_visit_date,
+                p.goc_value,
+                p.goals_of_care,
+                p.code_status,
+                p.cognitive_function,
+                p.functional_status,
+                p.mental_health_concerns,
+                p.subjective_risk_level,
+                p.active_concerns,
+                p.active_specialists,
+                p.er_count_1yr,
+                p.hospitalization_count_1yr,
+                p.labs_notes,
+                p.imaging_notes,
+                p.general_notes,
+                p.provider_name as assigned_provider,
+                p.coordinator_name as assigned_coordinator
+            FROM patient_panel p
+            WHERE p.assigned_facility_id = ?
+               OR (p.assigned_facility_id IS NULL AND p.facility = (
+                   SELECT facility_name FROM facilities WHERE facility_id = ?
+               ))
+        """
+        params = [facility_id, facility_id]
+        
+        if status_filter:
+            placeholders = ','.join(['?' for _ in status_filter])
+            query += f" AND p.status IN ({placeholders})"
+            params.extend(status_filter)
+        
+        if search_term:
+            query += """ AND (
+                LOWER(p.first_name) LIKE ? OR 
+                LOWER(p.last_name) LIKE ? OR
+                LOWER(p.patient_id) LIKE ?
+            )"""
+            search_pattern = f"%{search_term.lower()}%"
+            params.extend([search_pattern, search_pattern, search_pattern])
+        
+        query += " ORDER BY p.last_name, p.first_name"
+        
+        results = conn.execute(query, params).fetchall()
+        return [dict(row) for row in results]
+    except Exception as e:
+        print(f"Error getting patients by facility: {e}")
+        return []
+    finally:
+        conn.close()
+
+
+def get_facility_pending_intake_patients(facility_id):
+    """
+    Get patients at facility who need intake kickoff.
+    Statuses: Pending, Referral Received, New, or intake_call_completed = 0
+    
+    Args:
+        facility_id: Facility ID
+        
+    Returns:
+        List of patient dicts
+    """
+    conn = get_db_connection()
+    try:
+        results = conn.execute("""
+            SELECT 
+                p.patient_id,
+                p.first_name,
+                p.last_name,
+                p.date_of_birth,
+                p.phone_primary,
+                p.status,
+                p.facility,
+                p.intake_call_completed,
+                p.emed_chart_created,
+                p.created_date,
+                CASE 
+                    WHEN op.onboarding_id IS NOT NULL THEN 'In Progress'
+                    ELSE 'Pending'
+                END as onboarding_status,
+                op.onboarding_id,
+                op.stage1_complete,
+                op.stage2_complete,
+                op.stage3_complete,
+                op.stage4_complete,
+                op.stage5_complete
+            FROM patient_panel p
+            LEFT JOIN onboarding_patients op ON p.patient_id = op.patient_id
+            WHERE (p.assigned_facility_id = ? OR p.facility = (
+                SELECT facility_name FROM facilities WHERE facility_id = ?
+            ))
+            AND (
+                p.status IN ('Pending', 'Referral Received', 'New', 'Onboarding')
+                OR p.intake_call_completed = 0
+                OR p.emed_chart_created = 0
+                OR op.onboarding_id IS NOT NULL
+            )
+            ORDER BY p.created_date DESC
+        """, (facility_id, facility_id)).fetchall()
+        return [dict(row) for row in results]
+    except Exception as e:
+        print(f"Error getting facility pending intake patients: {e}")
+        return []
+    finally:
+        conn.close()
+
+
+def get_facility_intake_history(facility_id, days_back=30):
+    """
+    Get intake submission history for a facility.
+    
+    Args:
+        facility_id: Facility ID
+        days_back: Number of days to look back
+        
+    Returns:
+        List of intake submission dicts
+    """
+    conn = get_db_connection()
+    try:
+        results = conn.execute("""
+            SELECT 
+                op.onboarding_id,
+                op.first_name,
+                op.last_name,
+                op.date_of_birth,
+                op.intake_submitted_date,
+                op.intake_priority,
+                op.facility_notes,
+                op.stage1_complete,
+                op.stage2_complete,
+                op.stage3_complete,
+                op.stage4_complete,
+                op.stage5_complete,
+                op.completed_date,
+                u.full_name as submitted_by_name,
+                CASE 
+                    WHEN op.completed_date IS NOT NULL THEN 'Complete'
+                    WHEN op.stage5_complete = 1 THEN 'Stage 5'
+                    WHEN op.stage4_complete = 1 THEN 'Stage 4'
+                    WHEN op.stage3_complete = 1 THEN 'Stage 3'
+                    WHEN op.stage2_complete = 1 THEN 'Stage 2'
+                    WHEN op.stage1_complete = 1 THEN 'Stage 1'
+                    ELSE 'Pending'
+                END as current_stage
+            FROM onboarding_patients op
+            LEFT JOIN users u ON op.submitted_by_facility_user_id = u.user_id
+            WHERE op.source_facility_id = ?
+            AND op.intake_submitted_date >= datetime('now', ?)
+            ORDER BY op.intake_submitted_date DESC
+        """, (facility_id, f'-{days_back} days')).fetchall()
+        return [dict(row) for row in results]
+    except Exception as e:
+        print(f"Error getting facility intake history: {e}")
+        return []
+    finally:
+        conn.close()
+
+
+def submit_facility_intake(facility_user_id, facility_id, patient_data, 
+                          priority='Normal', notes=None):
+    """
+    Submit a new patient intake from a facility.
+    Creates onboarding workflow and returns onboarding_id.
+    
+    Args:
+        facility_user_id: User ID of facility staff submitting
+        facility_id: Facility ID
+        patient_data: Dict with first_name, last_name, date_of_birth, etc.
+        priority: 'Normal', 'High', or 'Urgent'
+        notes: Additional notes for onboarding team
+        
+    Returns:
+        Dict with success status and onboarding_id or error message
+    """
+    conn = get_db_connection()
+    try:
+        # Create onboarding patient record
+        cursor = conn.execute("""
+            INSERT INTO onboarding_patients (
+                first_name, last_name, date_of_birth,
+                phone_primary, email, gender,
+                insurance_provider, policy_number, group_number,
+                source_facility_id,
+                submitted_by_facility_user_id,
+                intake_priority,
+                facility_notes,
+                intake_submitted_date,
+                patient_status,
+                facility_assignment
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), 'Active', ?)
+        """, (
+            patient_data.get('first_name'),
+            patient_data.get('last_name'),
+            patient_data.get('date_of_birth'),
+            patient_data.get('phone_primary'),
+            patient_data.get('email'),
+            patient_data.get('gender'),
+            patient_data.get('insurance_provider'),
+            patient_data.get('policy_number'),
+            patient_data.get('group_number'),
+            facility_id,
+            facility_user_id,
+            priority,
+            notes,
+            patient_data.get('facility_name', '')
+        ))
+        
+        onboarding_id = cursor.lastrowid
+        
+        # Create workflow steps/tasks if workflow_steps table has entries for onboarding
+        # (Using template_id 14 for POT_Patient_Onboarding)
+        workflow_steps = conn.execute("""
+            SELECT step_id, step_order, task_name FROM workflow_steps
+            WHERE template_id = 14 ORDER BY step_order
+        """).fetchall()
+        
+        for step in workflow_steps:
+            stage = ((step['step_order'] - 1) // 3) + 1
+            if step['step_order'] > 15:
+                stage = 5
+                
+            conn.execute("""
+                INSERT INTO onboarding_tasks (
+                    onboarding_id, workflow_step_id, task_name, task_stage,
+                    task_order, status, created_date, updated_date
+                ) VALUES (?, ?, ?, ?, ?, 'Pending', datetime('now'), datetime('now'))
+            """, (
+                onboarding_id,
+                step['step_id'],
+                step['task_name'],
+                stage,
+                step['step_order']
+            ))
+        
+        # Log the intake submission
+        conn.execute("""
+            INSERT INTO facility_intake_audit (
+                facility_user_id, facility_id, onboarding_id,
+                patient_name, action, notes
+            ) VALUES (?, ?, ?, ?, 'SUBMITTED', ?)
+        """, (
+            facility_user_id,
+            facility_id,
+            onboarding_id,
+            f"{patient_data.get('first_name', '')} {patient_data.get('last_name', '')}",
+            notes
+        ))
+        
+        conn.commit()
+        return {
+            'success': True,
+            'onboarding_id': onboarding_id,
+            'message': f"Intake submitted successfully. Onboarding ID: {onboarding_id}"
+        }
+        
+    except Exception as e:
+        print(f"Error submitting facility intake: {e}")
+        conn.rollback()
+        return {
+            'success': False,
+            'error': str(e)
+        }
+    finally:
+        conn.close()
+
+
+def update_facility_intake_documents(onboarding_id, document_paths):
+    """
+    Update document paths for a facility intake.
+    
+    Args:
+        onboarding_id: Onboarding ID
+        document_paths: Dict with keys: insurance_card_front_path, 
+                       insurance_card_back_path, id_document_path
+        
+    Returns:
+        True if successful, False otherwise
+    """
+    conn = get_db_connection()
+    try:
+        conn.execute("""
+            UPDATE onboarding_patients SET
+                insurance_card_front_path = ?,
+                insurance_card_back_path = ?,
+                id_document_path = ?,
+                updated_date = datetime('now')
+            WHERE onboarding_id = ?
+        """, (
+            document_paths.get('insurance_card_front_path'),
+            document_paths.get('insurance_card_back_path'),
+            document_paths.get('id_document_path'),
+            onboarding_id
+        ))
+        conn.commit()
+        return True
+    except Exception as e:
+        print(f"Error updating facility intake documents: {e}")
+        conn.rollback()
+        return False
+    finally:
+        conn.close()
+
+
+def get_patient_workflow_history(patient_id):
+    """
+    Get workflow history for a patient.
+    
+    Args:
+        patient_id: Patient ID
+        
+    Returns:
+        List of workflow instance dicts
+    """
+    conn = get_db_connection()
+    try:
+        results = conn.execute("""
+            SELECT 
+                wi.instance_id,
+                wi.template_name,
+                wi.workflow_status,
+                wi.current_step,
+                wi.created_at,
+                wi.completed_at,
+                wi.coordinator_name,
+                wi.step1_date,
+                wi.step1_complete,
+                wi.step1_notes,
+                wi.step2_date,
+                wi.step2_complete,
+                wi.step2_notes,
+                wi.step3_date,
+                wi.step3_complete,
+                wi.step3_notes,
+                wi.step4_date,
+                wi.step4_complete,
+                wi.step4_notes,
+                wi.step5_date,
+                wi.step5_complete,
+                wi.step5_notes,
+                wi.step6_date,
+                wi.step6_complete,
+                wi.step6_notes
+            FROM workflow_instances wi
+            WHERE wi.patient_id = ?
+            ORDER BY wi.created_at DESC
+        """, (patient_id,)).fetchall()
+        return [dict(row) for row in results]
+    except Exception as e:
+        print(f"Error getting patient workflow history: {e}")
+        return []
+    finally:
+        conn.close()
+
+
+def get_latest_provider_visit(patient_id):
+    """
+    Get the most recent provider visit for a patient.
+    
+    Args:
+        patient_id: Patient ID
+        
+    Returns:
+        Provider visit dict or None
+    """
+    conn = get_db_connection()
+    try:
+        # Get list of provider task tables
+        tables = conn.execute("""
+            SELECT name FROM sqlite_master
+            WHERE type = 'table' AND name LIKE 'provider_tasks_20%'
+            ORDER BY name DESC
+        """).fetchall()
+        
+        latest_visit = None
+        
+        for table in tables:
+            table_name = table[0]
+            try:
+                result = conn.execute(f"""
+                    SELECT 
+                        '{table_name}' as source_table,
+                        patient_id,
+                        date as visit_date,
+                        service_type,
+                        task_description as notes,
+                        provider_id,
+                        minutes_of_service as duration_minutes,
+                        billing_code,
+                        location_type,
+                        patient_type
+                    FROM {table_name}
+                    WHERE patient_id = ?
+                    ORDER BY date DESC
+                    LIMIT 1
+                """, (patient_id,)).fetchone()
+                
+                if result:
+                    visit_dict = dict(result)
+                    # Get provider name
+                    if visit_dict.get('provider_id'):
+                        provider = conn.execute("""
+                            SELECT full_name FROM users WHERE user_id = ?
+                        """, (visit_dict['provider_id'],)).fetchone()
+                        if provider:
+                            visit_dict['provider_name'] = provider['full_name']
+                    
+                    if not latest_visit or (visit_dict.get('visit_date') and 
+                        (latest_visit.get('visit_date') is None or visit_dict['visit_date'] > latest_visit.get('visit_date'))):
+                        latest_visit = visit_dict
+                        
+            except Exception as e:
+                continue
+        
+        return latest_visit
+    except Exception as e:
+        print(f"Error getting latest provider visit: {e}")
+        return None
+    finally:
+        conn.close()
+
+
+def get_all_facilities():
+    """
+    Get all facilities for dropdown selection.
+    
+    Returns:
+        List of facility dicts
+    """
+    conn = get_db_connection()
+    try:
+        results = conn.execute("""
+            SELECT facility_id, facility_name, address, phone, email
+            FROM facilities
+            ORDER BY facility_name
+        """).fetchall()
+        return [dict(row) for row in results]
+    except Exception as e:
+        print(f"Error getting all facilities: {e}")
+        return []
+    finally:
+        conn.close()
+
+
+def log_facility_audit(facility_user_id, facility_id, action, onboarding_id=None, 
+                      patient_name=None, notes=None):
+    """
+    Log an audit entry for facility actions.
+    
+    Args:
+        facility_user_id: User ID
+        facility_id: Facility ID
+        action: Action type (SUBMITTED, VIEWED, etc.)
+        onboarding_id: Optional onboarding ID
+        patient_name: Optional patient name
+        notes: Optional notes
+        
+    Returns:
+        True if successful, False otherwise
+    """
+    conn = get_db_connection()
+    try:
+        conn.execute("""
+            INSERT INTO facility_intake_audit (
+                facility_user_id, facility_id, onboarding_id,
+                patient_name, action, notes
+            ) VALUES (?, ?, ?, ?, ?, ?)
+        """, (facility_user_id, facility_id, onboarding_id, patient_name, action, notes))
+        conn.commit()
+        return True
+    except Exception as e:
+        print(f"Error logging facility audit: {e}")
+        conn.rollback()
+        return False
+    finally:
+        conn.close()
