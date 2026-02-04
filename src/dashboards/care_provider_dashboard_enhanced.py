@@ -284,14 +284,13 @@ def show(user_id, user_role_ids=None):
         
         # Create tabs with management functionality for CPM
         if onboarding_queue and len(onboarding_queue) > 0:
-            tab1, tab2, tab3, tab4, tab5, tab6, tab_zmo, tab_help = st.tabs(
+            tab1, tab2, tab3, tab4, tab5, tab_zmo, tab_help = st.tabs(
                 [
                     "My Patients",
                     "Team Management",
                     "Onboarding Queue & Initial TV Visits",
                     "Phone Reviews",
                     "Task Review",
-                    "Daily Task Log",
                     "ZMO (Patient Data)",
                     "Help",
                 ]
@@ -316,9 +315,6 @@ def show(user_id, user_role_ids=None):
 
             with tab5:
                 show_monthly_task_review(user_id)
-
-            with tab6:
-                show_daily_task_log(user_id, "provider")
 
             with tab_zmo:
                 from src.zmo_module import render_zmo_tab
