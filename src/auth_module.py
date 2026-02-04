@@ -582,7 +582,7 @@ class AuthenticationManager:
         # The role switcher in Admin dashboard allows switching to Provider view
 
         # Define general role precedence (higher priority first)
-        role_precedence = [40, 37, 34, 33, 36, 35, 39]  # Case Manager, Lead Coordinator, Admin, Provider, Coordinator, Onboarding, Data Entry
+        role_precedence = [40, 37, 34, 33, 36, 35, 39, 42]  # Case Manager, Lead Coordinator, Admin, Provider, Coordinator, Onboarding, Data Entry, Facility
 
         for role_id in role_precedence:
             if role_id in user_roles:
@@ -734,6 +734,67 @@ class AuthenticationManager:
             return user_list
         except sqlite3.Error as e:
             print(f"Error getting users for dropdown: {e}")
+            return []
+        finally:
+            conn.close()
+
+    def get_staff_users_for_dropdown(self) -> List[Dict[str, Any]]:
+        """Get staff users formatted for dropdown selection (excludes FACILITY role 42)"""
+        conn = get_db_connection()
+        try:
+            users = conn.execute("""
+                SELECT DISTINCT u.user_id, u.username, u.email, u.first_name, u.last_name, u.full_name,
+                       u.status, r.role_name, r.role_id
+                FROM users u
+                JOIN user_roles ur ON u.user_id = ur.user_id
+                JOIN roles r ON ur.role_id = r.role_id
+                WHERE u.status = 'active'
+                  AND ur.role_id NOT IN (38, 42)  -- Exclude CPM (38) and FACILITY (42)
+                ORDER BY u.full_name
+            """).fetchall()
+
+            user_list = []
+            for user in users:
+                user_dict = dict(user)
+                display_name = f"{user_dict['full_name']} ({user_dict['role_name']})"
+                user_dict['display_name'] = display_name
+                user_list.append(user_dict)
+
+            return user_list
+        except sqlite3.Error as e:
+            print(f"Error getting staff users for dropdown: {e}")
+            return []
+        finally:
+            conn.close()
+
+    def get_facility_users_for_dropdown(self) -> List[Dict[str, Any]]:
+        """Get facility users formatted for dropdown selection (only FACILITY role 42)"""
+        conn = get_db_connection()
+        try:
+            users = conn.execute("""
+                SELECT DISTINCT u.user_id, u.username, u.email, u.first_name, u.last_name, u.full_name,
+                       u.status, f.facility_name, r.role_id
+                FROM users u
+                JOIN user_roles ur ON u.user_id = ur.user_id
+                JOIN roles r ON ur.role_id = r.role_id
+                LEFT JOIN user_facility_assignments ufa ON u.user_id = ufa.user_id
+                LEFT JOIN facilities f ON ufa.facility_id = f.facility_id
+                WHERE u.status = 'active'
+                  AND ur.role_id = 42  -- FACILITY role
+                ORDER BY f.facility_name, u.full_name
+            """).fetchall()
+
+            user_list = []
+            for user in users:
+                user_dict = dict(user)
+                facility_name = user_dict.get('facility_name', 'Unknown Facility')
+                display_name = f"{user_dict['full_name']} ({facility_name})"
+                user_dict['display_name'] = display_name
+                user_list.append(user_dict)
+
+            return user_list
+        except sqlite3.Error as e:
+            print(f"Error getting facility users for dropdown: {e}")
             return []
         finally:
             conn.close()
@@ -1092,29 +1153,53 @@ def render_login_sidebar(auth_manager: Optional[AuthenticationManager] = None):
                 display_name = f"{display_name} (Google)"
             st.sidebar.success(f"Logged in as: {display_name}")
 
-        # Admin impersonation dropdown
+        # Admin impersonation sections
         if auth_manager.has_role(34) and not auth_manager.is_impersonating():  # Admin role ID
             st.sidebar.markdown("---")
-            st.sidebar.markdown("### 🔍 User Impersonation")
 
-            # Get all users for dropdown
-            all_users = auth_manager.get_all_users_for_dropdown()
-            if all_users:
-                user_options = {user['display_name']: user['user_id'] for user in all_users}
-                selected_user_display = st.sidebar.selectbox(
-                    "Select User to Test:",
-                    options=list(user_options.keys()),
-                    key="impersonate_dropdown"
+            # Staff Impersonation Section
+            st.sidebar.markdown("### 🔍 Staff Impersonation")
+            staff_users = auth_manager.get_staff_users_for_dropdown()
+            if staff_users:
+                staff_options = {user['display_name']: user['user_id'] for user in staff_users}
+                selected_staff_display = st.sidebar.selectbox(
+                    "Select Staff Member:",
+                    options=list(staff_options.keys()),
+                    key="impersonate_staff_dropdown"
                 )
 
-                if st.sidebar.button("🎭 Start Impersonating", key="start_impersonation"):
-                    if selected_user_display:
-                        target_user_id = user_options[selected_user_display]
+                if st.sidebar.button("🎭 Impersonate Staff", key="start_staff_impersonation"):
+                    if selected_staff_display:
+                        target_user_id = staff_options[selected_staff_display]
                         if auth_manager.start_impersonation(target_user_id):
-                            st.sidebar.success(f"Now impersonating {selected_user_display}")
+                            st.sidebar.success(f"Now impersonating {selected_staff_display}")
                             st.rerun()
                         else:
                             st.sidebar.error("Failed to start impersonation")
+            else:
+                st.sidebar.info("No staff users found")
+
+            # Facility Impersonation Section
+            st.sidebar.markdown("### 🏥 Facility Impersonation")
+            facility_users = auth_manager.get_facility_users_for_dropdown()
+            if facility_users:
+                facility_options = {user['display_name']: user['user_id'] for user in facility_users}
+                selected_facility_display = st.sidebar.selectbox(
+                    "Select Facility User:",
+                    options=list(facility_options.keys()),
+                    key="impersonate_facility_dropdown"
+                )
+
+                if st.sidebar.button("🏥 Impersonate Facility", key="start_facility_impersonation"):
+                    if selected_facility_display:
+                        target_user_id = facility_options[selected_facility_display]
+                        if auth_manager.start_impersonation(target_user_id):
+                            st.sidebar.success(f"Now impersonating {selected_facility_display}")
+                            st.rerun()
+                        else:
+                            st.sidebar.error("Failed to start impersonation")
+            else:
+                st.sidebar.info("No facility users found")
 
         st.sidebar.markdown("---")
         if st.sidebar.button("Logout"):
