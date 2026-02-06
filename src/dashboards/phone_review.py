@@ -195,7 +195,7 @@ def show_phone_review_entry(mode, user_id, provider_id=None, filtered_patients=N
     # Phone review form fields
     st.markdown("### Phone Review Entry")
     with st.form("phone_review_form"):
-        review_date = st.date_input("Date", value=pd.to_datetime('today'))
+        review_date = st.date_input("Date", value=pd.to_datetime('today'), max_value=datetime.date.today())
         duration = st.number_input("Duration (min)", min_value=1, value=10)
         notes = st.text_area("Notes", height=80)
         submitted = st.form_submit_button("Log Phone Review")
