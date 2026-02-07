@@ -107,32 +107,17 @@ def _apply_patient_info_edits(edited_df, original_df):
                     
                     if not changed:
                         continue
-
-                    # Handle status changes specially to track history
-                    status_change = None
-                    if "status" in changed:
-                        status_change = changed.pop("status")
-
-                    if status_change is not None:
-                        result = database.update_patient_status_with_history(
-                            patient_id=int(pid_str) if pid_str.isdigit() else pid_str,
-                            new_status=status_change,
-                            user_id=None,  # No user context available in this function
-                            source_system="CC_DASHBOARD"
-                        )
-                        if not result.get('success'):
-                            print(f"DEBUG: Failed to update status for patient {pid_str}: {result.get('error')}")
-
-                    # Update patients table (excluding status which was handled above)
+                    
+                    # Update patients table
                     patient_cols = [c[1] for c in conn.execute("PRAGMA table_info('patients')").fetchall()]
                     set_parts = []
                     params = []
-
+                    
                     for k, v in changed.items():
                         if k in patient_cols:
                             set_parts.append(f"{k} = ?")
                             params.append(v)
-
+                    
                     if set_parts:
                         params.append(pid)
                         conn.execute(
@@ -773,7 +758,7 @@ def show_coordinator_patient_list(user_id, context="default"):
     st.markdown("#### Search and Filter Patients")
 
     # Create filter columns
-    col_search, col_filter, col_status = st.columns([2, 1, 1])
+    col_search, col_filter = st.columns([2, 1])
 
     with col_search:
         search_query = st.text_input(
@@ -838,29 +823,6 @@ def show_coordinator_patient_list(user_id, context="default"):
             st.warning(f"Could not load coordinator list: {e}")
             selected_coordinators = ["All Coordinators"]
 
-    with col_status:
-        # Get all unique patient statuses for the filter dropdown
-        all_statuses = sorted(
-            set(
-                (p.get("status", "") or "").strip()
-                for p in patient_data_list
-                if (p.get("status", "") or "").strip()
-            )
-        )
-
-        # Default to common active statuses
-        default_statuses = ["Active", "Active-Geri", "Active-PCP", "HOSPICE"]
-        # Ensure default statuses exist in the available options
-        default_statuses = [s for s in default_statuses if s in all_statuses]
-
-        selected_statuses = st.multiselect(
-            "Filter by Patient Status",
-            all_statuses,
-            key="coordinator_status_filter",
-            default=default_statuses if default_statuses else None,
-            help="Select one or more patient statuses to filter. Default shows active and hospice patients.",
-        )
-
     # Apply filtering
     filtered_patients = patient_data_list
 
@@ -906,15 +868,6 @@ def show_coordinator_patient_list(user_id, context="default"):
                     filtered_by_coord.append(p)
 
             filtered_patients = filtered_by_coord
-
-    # Filter by patient status
-    if selected_statuses:
-        filtered_by_status = []
-        for p in filtered_patients:
-            patient_status = (p.get("status", "") or "").strip()
-            if patient_status in selected_statuses:
-                filtered_by_status.append(p)
-        filtered_patients = filtered_by_status
 
     # Use filtered results
     patient_data_list = filtered_patients
@@ -1048,14 +1001,24 @@ def show_coordinator_patient_list(user_id, context="default"):
     col3.metric("Active-PCP Patients", count_pcp)
 
     # Prepare patient name list for workflow UI
-    # Use filtered patient_data_list to respect status filter
-    active_patient_names = sorted(
-        set(
-            f"{p.get('first_name', '')} {p.get('last_name', '')}".strip()
-            for p in patient_data_list
-            if p.get('first_name') and p.get('last_name')
-        )
-    )
+    # Get active patients directly from database where status like "Active%" or is "Hospice"
+    try:
+        conn = database.get_db_connection()
+        active_patients_rows = conn.execute("""
+            SELECT first_name, last_name
+            FROM patients
+            WHERE status LIKE 'Active%' OR status = 'Hospice'
+            ORDER BY last_name, first_name
+        """).fetchall()
+        conn.close()
+
+        active_patient_names = [
+            f"{row['first_name']} {row['last_name']}".strip()
+            for row in active_patients_rows
+        ]
+    except Exception as e:
+        st.error(f"Error fetching active patients: {e}")
+        active_patient_names = []
 
     # For the patient panel display, use the filtered list (this is correct)
     active_patients = [
@@ -1187,7 +1150,6 @@ def show_coordinator_patient_list(user_id, context="default"):
                 f"Date {i+1}",
                 value=task_entry.get("date", pd.to_datetime("today")),
                 key=f"date_{i}",
-                max_value=datetime.date.today(),
             )
         with col2:
             active_patients = [

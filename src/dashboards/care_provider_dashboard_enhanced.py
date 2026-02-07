@@ -1044,7 +1044,6 @@ def show_patient_list_section(user_id, section_id=None, has_cpm_role=False):
                 "DOS",
                 value=pd.to_datetime("today"),
                 key=f"{key_prefix}_date",
-                max_value=datetime.date.today(),
             )
 
         with col_patient:
@@ -2199,7 +2198,6 @@ def show_provider_onboarding_queue(user_id, onboarding_queue):
                     f"Date {i+1}",
                     value=task_entry.get("date", pd.to_datetime("today").date()),
                     key=f"onb_date_{i}",
-                    max_value=datetime.date.today(),
                 )
 
             with col2:
@@ -2449,19 +2447,21 @@ def show_provider_onboarding_queue(user_id, onboarding_queue):
             ):
                 if task_entry.get("patient_name") and task_entry.get("task_type"):
                     try:
-                        # Save the task (this will automatically update onboarding workflow)
-                        # Note: provider_id equals user_id in this system
-                        success = database.save_daily_task(
-                            provider_id=user_id,
-                            patient_id=task_entry.get("patient_id"),
-                            task_date=task_entry["date"],
-                            task_description=task_entry["task_type"],
-                            notes=task_entry.get("notes"),
-                            billing_code=task_entry.get("billing_code"),
-                        )
+                        # Get provider_id
+                        provider_id = database.get_provider_id_from_user_id(user_id)
+                        if provider_id:
+                            # Save the task (this will automatically update onboarding workflow)
+                            success = database.save_daily_task(
+                                provider_id=provider_id,
+                                patient_id=task_entry.get("patient_id"),
+                                task_date=task_entry["date"],
+                                task_description=task_entry["task_type"],
+                                notes=task_entry["notes"],
+                                billing_code=task_entry.get("billing_code"),
+                            )
 
-                        # Save additional clinical data for both visit types
-                        if success:
+                            # Save additional clinical data for both visit types
+                            if success:
                                 try:
                                     conn = database.get_db_connection()
 
