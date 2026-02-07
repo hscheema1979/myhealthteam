@@ -773,21 +773,35 @@ class AuthenticationManager:
         try:
             users = conn.execute("""
                 SELECT DISTINCT u.user_id, u.username, u.email, u.first_name, u.last_name, u.full_name,
-                       u.status, f.facility_name, r.role_id
+                       u.status, r.role_id
                 FROM users u
                 JOIN user_roles ur ON u.user_id = ur.user_id
                 JOIN roles r ON ur.role_id = r.role_id
-                LEFT JOIN user_facility_assignments ufa ON u.user_id = ufa.user_id
-                LEFT JOIN facilities f ON ufa.facility_id = f.facility_id
                 WHERE u.status = 'active'
                   AND ur.role_id = 42  -- FACILITY role
-                ORDER BY f.facility_name, u.full_name
+                ORDER BY u.full_name
             """).fetchall()
 
             user_list = []
             for user in users:
                 user_dict = dict(user)
-                facility_name = user_dict.get('facility_name', 'Unknown Facility')
+                # Derive facility name from username (format: facilityname_facility)
+                username = user_dict.get('username', '')
+                if username.endswith('_facility'):
+                    facility_slug = username[:-9]  # Remove '_facility'
+                    # Find facility by matching slugified name
+                    facility = conn.execute("""
+                        SELECT facility_name FROM facilities
+                        WHERE LOWER(REPLACE(facility_name, ' ', '_')) = ?
+                        LIMIT 1
+                    """, (facility_slug,)).fetchone()
+                    if facility:
+                        facility_name = facility['facility_name']
+                    else:
+                        facility_name = 'Unknown Facility'
+                else:
+                    facility_name = 'Unknown Facility'
+
                 display_name = f"{user_dict['full_name']} ({facility_name})"
                 user_dict['display_name'] = display_name
                 user_list.append(user_dict)
