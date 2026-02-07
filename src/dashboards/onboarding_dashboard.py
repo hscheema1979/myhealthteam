@@ -697,6 +697,58 @@ def show_eligibility_verification_form(patient_details, current_user_id, is_edit
             facility_index = facility_options.index(patient_details.get('facility_assignment'))
         facility_assignment = st.selectbox("Facility Assignment", facility_options, index=facility_index, key="facility_assignment")
 
+        # Section 5: Additional Information
+        st.markdown("#### 5. Additional Information")
+        col1, col2 = st.columns(2)
+
+        with col1:
+            transportation_options = [
+                "None - Independent",
+                "Family/Caregiver",
+                "Public Transit (Bus)",
+                "Public Transit (Paratransit)",
+                "Medical Transport",
+                "Ambulette",
+                "Wheelchair Van",
+                "Other"
+            ]
+            transportation_index = 0
+            if patient_details.get('transportation') in transportation_options:
+                transportation_index = transportation_options.index(patient_details.get('transportation'))
+            transportation = st.selectbox(
+                "Transportation",
+                transportation_options,
+                index=transportation_index,
+                key="transportation",
+                help="How does the patient typically get to appointments?"
+            )
+
+        with col2:
+            language_options = [
+                "English",
+                "Spanish",
+                "Chinese (Mandarin)",
+                "Chinese (Cantonese)",
+                "Tagalog/Filipino",
+                "Vietnamese",
+                "Korean",
+                "Armenian",
+                "Farsi/Persian",
+                "Russian",
+                "Other",
+                "Unknown"
+            ]
+            language_index = 0
+            if patient_details.get('preferred_language') in language_options:
+                language_index = language_options.index(patient_details.get('preferred_language'))
+            preferred_language = st.selectbox(
+                "Preferred Language",
+                language_options,
+                index=language_index,
+                key="preferred_language",
+                help="Patient's preferred language for communication"
+            )
+
         # Buttons
         col1, col2, col3 = st.columns([1, 1, 2])
         with col1:
@@ -722,6 +774,8 @@ def show_eligibility_verification_form(patient_details, current_user_id, is_edit
                         'referring_provider': referring_provider,
                         'referral_date': referral_date.isoformat() if referral_date else None,
                         'facility_assignment': facility_assignment if facility_assignment != "Add New Facility" else None,
+                        'transportation': transportation,
+                        'preferred_language': preferred_language,
                     }
                     database.update_onboarding_checkbox_data(patient_details['onboarding_id'], checkbox_payload)
 

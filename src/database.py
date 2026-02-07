@@ -3140,6 +3140,8 @@ def insert_patient_from_onboarding(onboarding_id):
                     pcp_last_seen = COALESCE(?, pcp_last_seen),
                     last_annual_wellness_visit = ?,
                     assigned_coordinator_id = ?,
+                    transportation = COALESCE(?, transportation),
+                    preferred_language = COALESCE(?, preferred_language),
                     updated_date = CURRENT_TIMESTAMP
                 WHERE patient_id = ?
             """,
@@ -3175,6 +3177,8 @@ def insert_patient_from_onboarding(onboarding_id):
                     onboarding_dict.get("pcp_last_seen"),
                     onboarding_dict.get("annual_well_visit", False),
                     onboarding_dict.get("assigned_coordinator_user_id"),
+                    onboarding_dict.get("transportation"),
+                    onboarding_dict.get("preferred_language"),
                     text_patient_id,
                 ),
             )
@@ -3203,8 +3207,9 @@ def insert_patient_from_onboarding(onboarding_id):
                     primary_care_provider, pcp_last_seen,
                     last_annual_wellness_visit,
                     assigned_coordinator_id,
+                    transportation, preferred_language,
                     enrollment_date, created_date, status
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Active')
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Active')
             """,
                 (
                     onboarding_dict["first_name"],
@@ -3238,6 +3243,8 @@ def insert_patient_from_onboarding(onboarding_id):
                     onboarding_dict.get("pcp_last_seen"),
                     onboarding_dict.get("annual_well_visit", False),
                     onboarding_dict.get("assigned_coordinator_user_id"),
+                    onboarding_dict.get("transportation"),
+                    onboarding_dict.get("preferred_language"),
                 ),
             )
             integer_patient_id = cursor.lastrowid
@@ -4337,6 +4344,8 @@ def sync_onboarding_to_all_tables(onboarding_id):
                 chart_notes = COALESCE(?, chart_notes),
                 intake_call_completed = COALESCE(?, intake_call_completed),
                 intake_notes = COALESCE(?, intake_notes),
+                transportation = COALESCE(?, transportation),
+                preferred_language = COALESCE(?, preferred_language),
                 updated_date = CURRENT_TIMESTAMP
             WHERE patient_id = ?
             """,
@@ -4356,6 +4365,8 @@ def sync_onboarding_to_all_tables(onboarding_id):
                 onboarding_dict.get('chart_notes'),
                 onboarding_dict.get('intake_call_completed', False),
                 onboarding_dict.get('intake_notes'),
+                onboarding_dict.get('transportation'),
+                onboarding_dict.get('preferred_language'),
                 patient_id,
             ),
         )
