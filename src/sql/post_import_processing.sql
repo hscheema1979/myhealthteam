@@ -721,6 +721,8 @@ SELECT DISTINCT
     p.next_appointment_date,
     CASE WHEN pa.provider_id > 0 THEN u_prov.full_name ELSE NULL END as care_provider_name,
     CASE WHEN pa.coordinator_id > 0 THEN u_coord.full_name ELSE NULL END as care_coordinator_name,
+    p.transportation,
+    p.preferred_language,
     datetime('now') as updated_date
 FROM patients p
 LEFT JOIN patient_assignments pa ON p.patient_id = pa.patient_id AND pa.status = 'active'

@@ -1444,6 +1444,9 @@ def populate_patient_panel(conn):
                 care_provider_name TEXT,
                 care_coordinator_name TEXT,
 
+                transportation TEXT,
+                preferred_language TEXT,
+
                 updated_date TEXT DEFAULT (datetime('now'))
             )
         """)
@@ -1530,6 +1533,9 @@ def populate_patient_panel(conn):
 
             CASE WHEN pa.provider_id > 0 THEN u_prov.full_name ELSE NULL END as care_provider_name,
             CASE WHEN pa.coordinator_id > 0 THEN u_coord.full_name ELSE NULL END as care_coordinator_name,
+
+            p.transportation,
+            p.preferred_language,
 
             datetime('now') as updated_date
         FROM patients p
