@@ -4032,6 +4032,8 @@ def get_all_patient_panel():
             appointment_contact_phone,
             medical_contact_name,
             medical_contact_phone,
+            nurse_poc_name,
+            nurse_phone,
             labs_notes,
             imaging_notes,
             general_notes,

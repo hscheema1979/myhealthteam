@@ -833,6 +833,8 @@ def show_patient_list_section(user_id, section_id=None, has_cpm_role=False):
                 ("appointment_contact_name", "Appt POC"),
                 ("medical_contact_phone", "Med Phone"),
                 ("appointment_contact_phone", "Appt Phone"),
+                ("nurse_poc_name", "Nurse POC"),
+                ("nurse_phone", "Nurse Phone"),
                 ("facility", "Facility"),
                 ("care_provider_name", "Provider"),
                 ("care_coordinator_name", "Coordinator"),
@@ -912,9 +914,20 @@ def show_patient_list_section(user_id, section_id=None, has_cpm_role=False):
                         "Last Name": st.column_config.TextColumn(
                             "Last Name", width=None
                         ),
+                        "Med POC": st.column_config.TextColumn("Med POC", width=None),
+                        "Appt POC": st.column_config.TextColumn("Appt POC", width=None),
+                        "Med Phone": st.column_config.TextColumn("Med Phone", width=None),
+                        "Appt Phone": st.column_config.TextColumn(
+                            "Appt Phone", width=None
+                        ),
+                        "Nurse POC": st.column_config.TextColumn("Nurse POC", width=None),
+                        "Nurse Phone": st.column_config.TextColumn(
+                            "Nurse Phone", width=None
+                        ),
                         "Facility": st.column_config.TextColumn("Facility", width=None),
-                        "Assigned Coordinator": st.column_config.TextColumn(
-                            "Assigned Coordinator", width=None
+                        "Provider": st.column_config.TextColumn("Provider", width=None),
+                        "Coordinator": st.column_config.TextColumn(
+                            "Coordinator", width=None
                         ),
                         "Last Visit Date": st.column_config.DateColumn(
                             "Last Visit Date", width=None
@@ -949,9 +962,20 @@ def show_patient_list_section(user_id, section_id=None, has_cpm_role=False):
                         "Last Name": st.column_config.TextColumn(
                             "Last Name", width=None
                         ),
+                        "Med POC": st.column_config.TextColumn("Med POC", width=None),
+                        "Appt POC": st.column_config.TextColumn("Appt POC", width=None),
+                        "Med Phone": st.column_config.TextColumn("Med Phone", width=None),
+                        "Appt Phone": st.column_config.TextColumn(
+                            "Appt Phone", width=None
+                        ),
+                        "Nurse POC": st.column_config.TextColumn("Nurse POC", width=None),
+                        "Nurse Phone": st.column_config.TextColumn(
+                            "Nurse Phone", width=None
+                        ),
                         "Facility": st.column_config.TextColumn("Facility", width=None),
-                        "Assigned Coordinator": st.column_config.TextColumn(
-                            "Assigned Coordinator", width=None
+                        "Provider": st.column_config.TextColumn("Provider", width=None),
+                        "Coordinator": st.column_config.TextColumn(
+                            "Coordinator", width=None
                         ),
                         "Last Visit Date": st.column_config.DateColumn(
                             "Last Visit Date", width=None
@@ -1572,6 +1596,12 @@ def show_unfiltered_patient_summary(patients_list=None, height=900):
         ("code_status", "Code Status"),
         ("first_name", "First Name"),
         ("last_name", "Last Name"),
+        ("medical_contact_name", "Med POC"),
+        ("appointment_contact_name", "Appt POC"),
+        ("medical_contact_phone", "Med Phone"),
+        ("appointment_contact_phone", "Appt Phone"),
+        ("nurse_poc_name", "Nurse POC"),
+        ("nurse_phone", "Nurse Phone"),
         ("facility", "Facility"),
         ("assigned_coordinator", "Assigned Coordinator"),
         ("last_visit_date", "Last Visit Date"),
@@ -1716,6 +1746,14 @@ def show_unfiltered_patient_summary(patients_list=None, height=900):
                     ),
                     "First Name": st.column_config.TextColumn("First Name", width=None),
                     "Last Name": st.column_config.TextColumn("Last Name", width=None),
+                    "Med POC": st.column_config.TextColumn("Med POC", width=None),
+                    "Appt POC": st.column_config.TextColumn("Appt POC", width=None),
+                    "Med Phone": st.column_config.TextColumn("Med Phone", width=None),
+                    "Appt Phone": st.column_config.TextColumn(
+                        "Appt Phone", width=None
+                    ),
+                    "Nurse POC": st.column_config.TextColumn("Nurse POC", width=None),
+                    "Nurse Phone": st.column_config.TextColumn("Nurse Phone", width=None),
                     "Facility": st.column_config.TextColumn("Facility", width=None),
                     "Assigned Coordinator": st.column_config.TextColumn(
                         "Assigned Coordinator", width=None
@@ -1750,6 +1788,14 @@ def show_unfiltered_patient_summary(patients_list=None, height=900):
                     ),
                     "First Name": st.column_config.TextColumn("First Name", width=None),
                     "Last Name": st.column_config.TextColumn("Last Name", width=None),
+                    "Med POC": st.column_config.TextColumn("Med POC", width=None),
+                    "Appt POC": st.column_config.TextColumn("Appt POC", width=None),
+                    "Med Phone": st.column_config.TextColumn("Med Phone", width=None),
+                    "Appt Phone": st.column_config.TextColumn(
+                        "Appt Phone", width=None
+                    ),
+                    "Nurse POC": st.column_config.TextColumn("Nurse POC", width=None),
+                    "Nurse Phone": st.column_config.TextColumn("Nurse Phone", width=None),
                     "Facility": st.column_config.TextColumn("Facility", width=None),
                     "Assigned Coordinator": st.column_config.TextColumn(
                         "Assigned Coordinator", width=None
