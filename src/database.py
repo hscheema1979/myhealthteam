@@ -2250,9 +2250,19 @@ def update_patient_status(patient_id, status):
     """Update the status of a patient (without history tracking - use update_patient_status_with_history for tracking)"""
     conn = get_db_connection()
     try:
+        # Update status in patients table
         conn.execute(
             """
             UPDATE patients
+            SET status = ?, updated_date = CURRENT_TIMESTAMP
+            WHERE patient_id = ?
+        """,
+            (status, patient_id),
+        )
+        # Also update status in patient_panel table for consistency
+        conn.execute(
+            """
+            UPDATE patient_panel
             SET status = ?, updated_date = CURRENT_TIMESTAMP
             WHERE patient_id = ?
         """,
@@ -2306,10 +2316,20 @@ def update_patient_status_with_history(patient_id, new_status, user_id=None, cha
                 'message': 'Status unchanged, no history recorded'
             }
 
-        # Update the patient status
+        # Update the patient status in patients table
         conn.execute(
             """
             UPDATE patients
+            SET status = ?, updated_date = CURRENT_TIMESTAMP
+            WHERE patient_id = ?
+        """,
+            (new_status, patient_id),
+        )
+
+        # Also update status in patient_panel table for consistency
+        conn.execute(
+            """
+            UPDATE patient_panel
             SET status = ?, updated_date = CURRENT_TIMESTAMP
             WHERE patient_id = ?
         """,
