@@ -299,43 +299,8 @@ UNION ALL
 SELECT *
 FROM provider_tasks_2026_02;
 -- Coordinator Tasks View (all months)
+-- Only include tables that exist and have consistent schema (12 columns)
 CREATE VIEW coordinator_tasks AS
-SELECT *
-FROM coordinator_tasks_2024_01
-UNION ALL
-SELECT *
-FROM coordinator_tasks_2024_02
-UNION ALL
-SELECT *
-FROM coordinator_tasks_2024_03
-UNION ALL
-SELECT *
-FROM coordinator_tasks_2024_04
-UNION ALL
-SELECT *
-FROM coordinator_tasks_2024_05
-UNION ALL
-SELECT *
-FROM coordinator_tasks_2024_06
-UNION ALL
-SELECT *
-FROM coordinator_tasks_2024_07
-UNION ALL
-SELECT *
-FROM coordinator_tasks_2024_08
-UNION ALL
-SELECT *
-FROM coordinator_tasks_2024_09
-UNION ALL
-SELECT *
-FROM coordinator_tasks_2024_10
-UNION ALL
-SELECT *
-FROM coordinator_tasks_2024_11
-UNION ALL
-SELECT *
-FROM coordinator_tasks_2024_12
-UNION ALL
 SELECT *
 FROM coordinator_tasks_2025_01
 UNION ALL
