@@ -1150,6 +1150,7 @@ def show_coordinator_patient_list(user_id, context="default"):
                 f"Date {i+1}",
                 value=task_entry.get("date", pd.to_datetime("today")),
                 key=f"date_{i}",
+                max_value=datetime.date.today(),
             )
         with col2:
             active_patients = [

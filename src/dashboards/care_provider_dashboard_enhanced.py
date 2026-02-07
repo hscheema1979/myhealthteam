@@ -2447,12 +2447,11 @@ def show_provider_onboarding_queue(user_id, onboarding_queue):
             ):
                 if task_entry.get("patient_name") and task_entry.get("task_type"):
                     try:
-                        # Get provider_id
-                        provider_id = database.get_provider_id_from_user_id(user_id)
-                        if provider_id:
-                            # Save the task (this will automatically update onboarding workflow)
-                            success = database.save_daily_task(
-                                provider_id=provider_id,
+                        # Get provider_id (use user_id directly since providers table doesn't exist)
+                        provider_id = user_id
+                        # Save the task (this will automatically update onboarding workflow)
+                        success = database.save_daily_task(
+                            provider_id=provider_id,
                                 patient_id=task_entry.get("patient_id"),
                                 task_date=task_entry["date"],
                                 task_description=task_entry["task_type"],
@@ -2461,204 +2460,204 @@ def show_provider_onboarding_queue(user_id, onboarding_queue):
                             )
 
                             # Save additional clinical data for both visit types
-                            if success:
-                                try:
-                                    conn = database.get_db_connection()
+                        if success:
+                            try:
+                                conn = database.get_db_connection()
 
-                                    # Prepare clinical data with proper null handling
-                                    subjective_risk_val = (
-                                        None
-                                        if task_entry.get("subjective_risk")
-                                        == "Select one"
-                                        else task_entry.get("subjective_risk")
-                                    )
-                                    code_status_val = (
-                                        None
-                                        if task_entry.get("code_status") == "Select one"
-                                        else task_entry.get("code_status")
-                                    )
-                                    cognitive_function_val = (
-                                        None
-                                        if task_entry.get("cognitive_function")
-                                        == "Select one"
-                                        else task_entry.get("cognitive_function")
-                                    )
-                                    functional_status_val = (
-                                        None
-                                        if task_entry.get("functional_status")
-                                        == "Select one"
-                                        else task_entry.get("functional_status")
-                                    )
-                                    goc_value_val = (
-                                        None
-                                        if task_entry.get("goc_value") == "Select one"
-                                        else task_entry.get("goc_value")
-                                    )
+                                # Prepare clinical data with proper null handling
+                                subjective_risk_val = (
+                                    None
+                                    if task_entry.get("subjective_risk")
+                                    == "Select one"
+                                    else task_entry.get("subjective_risk")
+                                )
+                                code_status_val = (
+                                    None
+                                    if task_entry.get("code_status") == "Select one"
+                                    else task_entry.get("code_status")
+                                )
+                                cognitive_function_val = (
+                                    None
+                                    if task_entry.get("cognitive_function")
+                                    == "Select one"
+                                    else task_entry.get("cognitive_function")
+                                )
+                                functional_status_val = (
+                                    None
+                                    if task_entry.get("functional_status")
+                                    == "Select one"
+                                    else task_entry.get("functional_status")
+                                )
+                                goc_value_val = (
+                                    None
+                                    if task_entry.get("goc_value") == "Select one"
+                                    else task_entry.get("goc_value")
+                                )
 
-                                    # Format notes with header if provided
-                                    notes_text = (task_entry.get("notes") or "").strip()
-                                    if notes_text:
-                                        try:
-                                            date_str = (
-                                                pd.to_datetime(task_entry["date"])
-                                                .date()
-                                                .isoformat()
+                                # Format notes with header if provided
+                                notes_text = (task_entry.get("notes") or "").strip()
+                                if notes_text:
+                                    try:
+                                        date_str = (
+                                            pd.to_datetime(task_entry["date"])
+                                            .date()
+                                            .isoformat()
+                                        )
+                                    except Exception:
+                                        date_str = str(task_entry["date"])
+
+                                    header = f"*************************************************************************\nDate {date_str}\n*************************************************************************\n"
+                                    notes_combined = header + notes_text
+
+                                    # Update patient record with clinical data and notes
+                                    conn.execute(
+                                        """
+                                        UPDATE patients SET
+                                            er_count_1yr = ?,
+                                            hospitalization_count_1yr = ?,
+                                            subjective_risk_level = ?,
+                                            mental_health_concerns = ?,
+                                            provider_mh_schizophrenia = ?,
+                                            provider_mh_depression = ?,
+                                            provider_mh_anxiety = ?,
+                                            provider_mh_stress = ?,
+                                            provider_mh_adhd = ?,
+                                            provider_mh_bipolar = ?,
+                                            provider_mh_suicidal = ?,
+                                            active_specialists = ?,
+                                            code_status = ?,
+                                            cognitive_function = ?,
+                                            functional_status = ?,
+                                            goals_of_care = ?,
+                                            chronic_conditions_provider = ?,
+                                            goc_value = ?,
+                                            last_visit_date = ?,
+                                            notes = CASE WHEN notes IS NULL OR trim(notes) = '' THEN ? ELSE notes || '\n\n' || ? END
+                                        WHERE patient_id = ?
+                                    """,
+                                        (
+                                            task_entry.get("er_visits_6mo", 0),
+                                            task_entry.get(
+                                                "hospitalizations_6mo", 0
+                                            ),
+                                            subjective_risk_val,
+                                            1
+                                            if task_entry.get(
+                                                "provider_mh_concerns"
                                             )
-                                        except Exception:
-                                            date_str = str(task_entry["date"])
-
-                                        header = f"*************************************************************************\nDate {date_str}\n*************************************************************************\n"
-                                        notes_combined = header + notes_text
-
-                                        # Update patient record with clinical data and notes
-                                        conn.execute(
-                                            """
-                                            UPDATE patients SET
-                                                er_count_1yr = ?,
-                                                hospitalization_count_1yr = ?,
-                                                subjective_risk_level = ?,
-                                                mental_health_concerns = ?,
-                                                provider_mh_schizophrenia = ?,
-                                                provider_mh_depression = ?,
-                                                provider_mh_anxiety = ?,
-                                                provider_mh_stress = ?,
-                                                provider_mh_adhd = ?,
-                                                provider_mh_bipolar = ?,
-                                                provider_mh_suicidal = ?,
-                                                active_specialists = ?,
-                                                code_status = ?,
-                                                cognitive_function = ?,
-                                                functional_status = ?,
-                                                goals_of_care = ?,
-                                                chronic_conditions_provider = ?,
-                                                goc_value = ?,
-                                                last_visit_date = ?,
-                                                notes = CASE WHEN notes IS NULL OR trim(notes) = '' THEN ? ELSE notes || '\n\n' || ? END
-                                            WHERE patient_id = ?
-                                        """,
-                                            (
-                                                task_entry.get("er_visits_6mo", 0),
-                                                task_entry.get(
-                                                    "hospitalizations_6mo", 0
-                                                ),
-                                                subjective_risk_val,
-                                                1
-                                                if task_entry.get(
-                                                    "provider_mh_concerns"
-                                                )
-                                                else 0,
-                                                task_entry.get(
-                                                    "provider_mh_schizophrenia", False
-                                                ),
-                                                task_entry.get(
-                                                    "provider_mh_depression", False
-                                                ),
-                                                task_entry.get(
-                                                    "provider_mh_anxiety", False
-                                                ),
-                                                task_entry.get(
-                                                    "provider_mh_stress", False
-                                                ),
-                                                task_entry.get(
-                                                    "provider_mh_adhd", False
-                                                ),
-                                                task_entry.get(
-                                                    "provider_mh_bipolar", False
-                                                ),
-                                                task_entry.get(
-                                                    "provider_mh_suicidal", False
-                                                ),
-                                                task_entry.get(
-                                                    "active_specialists", ""
-                                                ),
-                                                code_status_val,
-                                                cognitive_function_val,
-                                                functional_status_val,
-                                                task_entry.get("goals_of_care", ""),
-                                                task_entry.get("active_concerns", ""),
-                                                goc_value_val,
-                                                date_str,
-                                                notes_combined,
-                                                notes_combined,
-                                                task_entry.get("patient_id"),
+                                            else 0,
+                                            task_entry.get(
+                                                "provider_mh_schizophrenia", False
                                             ),
-                                        )
-                                    else:
-                                        # Update only clinical fields without notes
-                                        conn.execute(
-                                            """
-                                            UPDATE patients SET
-                                                er_count_1yr = ?,
-                                                hospitalization_count_1yr = ?,
-                                                subjective_risk_level = ?,
-                                                mental_health_concerns = ?,
-                                                provider_mh_schizophrenia = ?,
-                                                provider_mh_depression = ?,
-                                                provider_mh_anxiety = ?,
-                                                provider_mh_stress = ?,
-                                                provider_mh_adhd = ?,
-                                                provider_mh_bipolar = ?,
-                                                provider_mh_suicidal = ?,
-                                                active_specialists = ?,
-                                                code_status = ?,
-                                                cognitive_function = ?,
-                                                functional_status = ?,
-                                                goals_of_care = ?,
-                                                chronic_conditions_provider = ?,
-                                                goc_value = ?,
-                                                last_visit_date = ?
-                                            WHERE patient_id = ?
-                                        """,
-                                            (
-                                                task_entry.get("er_visits_6mo", 0),
-                                                task_entry.get(
-                                                    "hospitalizations_6mo", 0
-                                                ),
-                                                subjective_risk_val,
-                                                1
-                                                if task_entry.get(
-                                                    "provider_mh_concerns"
-                                                )
-                                                else 0,
-                                                task_entry.get(
-                                                    "provider_mh_schizophrenia", False
-                                                ),
-                                                task_entry.get(
-                                                    "provider_mh_depression", False
-                                                ),
-                                                task_entry.get(
-                                                    "provider_mh_anxiety", False
-                                                ),
-                                                task_entry.get(
-                                                    "provider_mh_stress", False
-                                                ),
-                                                task_entry.get(
-                                                    "provider_mh_adhd", False
-                                                ),
-                                                task_entry.get(
-                                                    "provider_mh_bipolar", False
-                                                ),
-                                                task_entry.get(
-                                                    "provider_mh_suicidal", False
-                                                ),
-                                                task_entry.get(
-                                                    "active_specialists", ""
-                                                ),
-                                                code_status_val,
-                                                cognitive_function_val,
-                                                functional_status_val,
-                                                task_entry.get("goals_of_care", ""),
-                                                task_entry.get("active_concerns", ""),
-                                                goc_value_val,
-                                                date_str,
-                                                task_entry.get("patient_id"),
+                                            task_entry.get(
+                                                "provider_mh_depression", False
                                             ),
-                                        )
+                                            task_entry.get(
+                                                "provider_mh_anxiety", False
+                                            ),
+                                            task_entry.get(
+                                                "provider_mh_stress", False
+                                            ),
+                                            task_entry.get(
+                                                "provider_mh_adhd", False
+                                            ),
+                                            task_entry.get(
+                                                "provider_mh_bipolar", False
+                                            ),
+                                            task_entry.get(
+                                                "provider_mh_suicidal", False
+                                            ),
+                                            task_entry.get(
+                                                "active_specialists", ""
+                                            ),
+                                            code_status_val,
+                                            cognitive_function_val,
+                                            functional_status_val,
+                                            task_entry.get("goals_of_care", ""),
+                                            task_entry.get("active_concerns", ""),
+                                            goc_value_val,
+                                            date_str,
+                                            notes_combined,
+                                            notes_combined,
+                                            task_entry.get("patient_id"),
+                                        ),
+                                    )
+                                else:
+                                    # Update only clinical fields without notes
+                                    conn.execute(
+                                        """
+                                        UPDATE patients SET
+                                            er_count_1yr = ?,
+                                            hospitalization_count_1yr = ?,
+                                            subjective_risk_level = ?,
+                                            mental_health_concerns = ?,
+                                            provider_mh_schizophrenia = ?,
+                                            provider_mh_depression = ?,
+                                            provider_mh_anxiety = ?,
+                                            provider_mh_stress = ?,
+                                            provider_mh_adhd = ?,
+                                            provider_mh_bipolar = ?,
+                                            provider_mh_suicidal = ?,
+                                            active_specialists = ?,
+                                            code_status = ?,
+                                            cognitive_function = ?,
+                                            functional_status = ?,
+                                            goals_of_care = ?,
+                                            chronic_conditions_provider = ?,
+                                            goc_value = ?,
+                                            last_visit_date = ?
+                                        WHERE patient_id = ?
+                                    """,
+                                        (
+                                            task_entry.get("er_visits_6mo", 0),
+                                            task_entry.get(
+                                                "hospitalizations_6mo", 0
+                                            ),
+                                            subjective_risk_val,
+                                            1
+                                            if task_entry.get(
+                                                "provider_mh_concerns"
+                                            )
+                                            else 0,
+                                            task_entry.get(
+                                                "provider_mh_schizophrenia", False
+                                            ),
+                                            task_entry.get(
+                                                "provider_mh_depression", False
+                                            ),
+                                            task_entry.get(
+                                                "provider_mh_anxiety", False
+                                            ),
+                                            task_entry.get(
+                                                "provider_mh_stress", False
+                                            ),
+                                            task_entry.get(
+                                                "provider_mh_adhd", False
+                                            ),
+                                            task_entry.get(
+                                                "provider_mh_bipolar", False
+                                            ),
+                                            task_entry.get(
+                                                "provider_mh_suicidal", False
+                                            ),
+                                            task_entry.get(
+                                                "active_specialists", ""
+                                            ),
+                                            code_status_val,
+                                            cognitive_function_val,
+                                            functional_status_val,
+                                            task_entry.get("goals_of_care", ""),
+                                            task_entry.get("active_concerns", ""),
+                                            goc_value_val,
+                                            date_str,
+                                            task_entry.get("patient_id"),
+                                        ),
+                                    )
 
-                                    conn.commit()
-                                    conn.close()
-                                except Exception as e:
-                                    st.error(f"Error saving clinical data: {e}")
+                                conn.commit()
+                                conn.close()
+                            except Exception as e:
+                                st.error(f"Error saving clinical data: {e}")
 
                             # Update specialist requirements and visit type based on provider's confirmation during visit
                             if success and task_entry.get("onboarding_id"):
