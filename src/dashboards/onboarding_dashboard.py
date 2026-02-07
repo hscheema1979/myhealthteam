@@ -288,6 +288,26 @@ def show_patient_intake_form(current_user_id, patient_details=None, is_edit_mode
             key="eligibility_notes"
         )
 
+        # Section 4: Telehealth Capability
+        st.markdown("#### 4. Telehealth Capability")
+        col1, col2, col3 = st.columns(3)
+
+        with col1:
+            telehealth_options = ["Yes - Smartphone", "Yes - Tablet/Computer", "Yes - Landline Only", "No - Unable", "Unknown"]
+            existing_telehealth = patient_details.get('telehealth_capable', 'Unknown') if is_edit_mode else 'Unknown'
+            try:
+                default_index = telehealth_options.index(existing_telehealth)
+            except ValueError:
+                default_index = telehealth_options.index('Unknown')
+
+            telehealth_capable = st.selectbox(
+                "Telehealth Capable",
+                telehealth_options,
+                index=default_index,
+                key="telehealth_capable",
+                help="Patient's ability to participate in telehealth visits"
+            )
+
         # Submit buttons - different for edit mode vs new patient
         if is_edit_mode:
             # Edit mode: Save Progress, Complete Stage 1, and Cancel buttons
@@ -313,6 +333,7 @@ def show_patient_intake_form(current_user_id, patient_details=None, is_edit_mode
                     'eligibility_status': eligibility_status,
                     'eligibility_notes': eligibility_notes,
                     'eligibility_verified': eligibility_verified,
+                    'telehealth_capable': telehealth_capable,
                 }
                 database.update_onboarding_checkbox_data(onboarding_id, patient_data)
                 st.success("Progress saved! You can continue later.")

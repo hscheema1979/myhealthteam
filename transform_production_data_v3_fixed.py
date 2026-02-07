@@ -1431,6 +1431,9 @@ def populate_patient_panel(conn):
                 appointment_contact_phone TEXT,
                 medical_contact_name TEXT,
                 medical_contact_phone TEXT,
+                nurse_poc_name TEXT,
+                nurse_phone TEXT,
+                telehealth_capable TEXT,
 
                 labs_notes TEXT,
                 imaging_notes TEXT,
@@ -1515,6 +1518,9 @@ def populate_patient_panel(conn):
             p.appointment_contact_phone,
             p.medical_contact_name,
             p.medical_contact_phone,
+            p.nurse_poc_name,
+            p.nurse_phone,
+            p.telehealth_capable,
 
             p.labs_notes,
             p.imaging_notes,

@@ -949,6 +949,9 @@ def show_coordinator_patient_list(user_id, context="default"):
         "appointment_contact_name": "Appt POC",
         "medical_contact_phone": "Med Phone",
         "appointment_contact_phone": "Appt Phone",
+        "nurse_poc_name": "Nurse POC",
+        "nurse_phone": "Nurse Phone",
+        "telehealth_capable": "Telehealth",
         "provider_name": "Provider Name",
         "coordinator_name": "Coordinator Name",
         "care_provider_name": "Provider",
@@ -962,15 +965,18 @@ def show_coordinator_patient_list(user_id, context="default"):
         "First Name",
         "Last Name",
         "Med POC",
-        "Appt POC",
         "Med Phone",
+        "Appt POC",
         "Appt Phone",
+        "Nurse POC",
+        "Nurse Phone",
         "Facility",
         "Provider",
         "Coordinator",
         "Last Visit Date",
         "Service Type",
         "Phone Number",
+        "Telehealth",
     ]
     # Metrics for active patient counts (show only once, no dropdown)
     allowed_statuses = ["Active", "Active-Geri", "Active-PCP", "Hospice"]
@@ -1096,7 +1102,7 @@ def show_coordinator_patient_list(user_id, context="default"):
 
     st.subheader("Patient Panel")
     st.caption(
-        "Columns: Status, First Name, Last Name, Facility, Provider Name, Provider's Last Visit Date, Service Type, Phone Number, POC-A (Appt Contact), POC-M (Medical Contact), Mins"
+        "Columns: Status, First Name, Last Name, Med POC, Med Phone, Appt POC, Appt Phone, Nurse POC, Nurse Phone, Facility, Provider, Coordinator, Last Visit Date, Service Type, Phone Number, Telehealth"
     )
 
     st.dataframe(
@@ -1107,16 +1113,16 @@ def show_coordinator_patient_list(user_id, context="default"):
             "Status": st.column_config.TextColumn("Status"),
             "First Name": st.column_config.TextColumn("First Name"),
             "Last Name": st.column_config.TextColumn("Last Name"),
+            "Med POC": st.column_config.TextColumn("Med POC"),
+            "Med Phone": st.column_config.TextColumn("Med Phone"),
+            "Appt POC": st.column_config.TextColumn("Appt POC"),
+            "Appt Phone": st.column_config.TextColumn("Appt Phone"),
+            "Nurse POC": st.column_config.TextColumn("Nurse POC"),
+            "Nurse Phone": st.column_config.TextColumn("Nurse Phone"),
             "Facility": st.column_config.TextColumn("Facility"),
-            "Provider Name": st.column_config.TextColumn("Provider Name"),
-            "Provider's Last Visit Date": st.column_config.DateColumn(
-                "Provider's Last Visit Date"
-            ),
-            "Service Type": st.column_config.TextColumn("Service Type"),
-            "POC-A (Appt Contact)": st.column_config.TextColumn("POC-A (Appt Contact)"),
-            "POC-M (Medical Contact)": st.column_config.TextColumn(
-                "POC-M (Medical Contact)"
-            ),
+            "Provider": st.column_config.TextColumn("Provider"),
+            "Coordinator": st.column_config.TextColumn("Coordinator"),
+            "Telehealth": st.column_config.TextColumn("Telehealth"),
         },
     )
 
