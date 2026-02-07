@@ -5673,15 +5673,44 @@ ROLE_FACILITY = 42
 def get_user_facility(user_id):
     """
     Get the primary facility assigned to a user.
-    
+    For facility users (role 42), derives facility_id from username.
+    For other users, checks user_facility_assignments.
+
     Args:
         user_id: User ID to look up
-        
+
     Returns:
         facility_id or None if not assigned
     """
     conn = get_db_connection()
     try:
+        # Check if user is a facility user (role 42)
+        role_check = conn.execute("""
+            SELECT 1 FROM user_roles WHERE user_id = ? AND role_id = 42
+        """, (user_id,)).fetchone()
+
+        if role_check:
+            # Facility user: derive facility from username
+            user_info = conn.execute("""
+                SELECT username FROM users WHERE user_id = ?
+            """, (user_id,)).fetchone()
+
+            if user_info and user_info['username']:
+                # Username format: facilityname_facility
+                # Extract facility name by removing '_facility' suffix
+                username = user_info['username']
+                if username.endswith('_facility'):
+                    facility_slug = username[:-9]  # Remove '_facility'
+                    # Find facility by matching slugified name
+                    facility = conn.execute("""
+                        SELECT facility_id FROM facilities
+                        WHERE LOWER(REPLACE(facility_name, ' ', '_')) = ?
+                        LIMIT 1
+                    """, (facility_slug,)).fetchone()
+                    if facility:
+                        return facility['facility_id']
+
+        # Non-facility user: check user_facility_assignments
         result = conn.execute("""
             SELECT facility_id FROM user_facility_assignments
             WHERE user_id = ? AND assignment_type = 'primary'
@@ -5820,12 +5849,11 @@ def get_patients_by_facility(facility_id, status_filter=None, search_term=None):
                 p.provider_name as assigned_provider,
                 p.coordinator_name as assigned_coordinator
             FROM patient_panel p
-            WHERE p.assigned_facility_id = ?
-               OR (p.assigned_facility_id IS NULL AND p.facility = (
-                   SELECT facility_name FROM facilities WHERE facility_id = ?
-               ))
+            WHERE p.facility = (
+                SELECT facility_name FROM facilities WHERE facility_id = ?
+               )
         """
-        params = [facility_id, facility_id]
+        params = [facility_id]
         
         if status_filter:
             placeholders = ','.join(['?' for _ in status_filter])
