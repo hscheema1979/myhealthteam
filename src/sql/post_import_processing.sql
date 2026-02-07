@@ -149,6 +149,24 @@ CREATE TABLE IF NOT EXISTS patient_monthly_billing_2025_12 (
     billing_status TEXT DEFAULT 'Pending',
     created_date DATETIME DEFAULT CURRENT_TIMESTAMP
 );
+CREATE TABLE IF NOT EXISTS patient_monthly_billing_2026_01 (
+    billing_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    billing_code TEXT,
+    billing_code_description TEXT,
+    patient_id TEXT,
+    total_minutes INTEGER DEFAULT 0,
+    billing_status TEXT DEFAULT 'Pending',
+    created_date DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS patient_monthly_billing_2026_02 (
+    billing_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    billing_code TEXT,
+    billing_code_description TEXT,
+    patient_id TEXT,
+    total_minutes INTEGER DEFAULT 0,
+    billing_status TEXT DEFAULT 'Pending',
+    created_date DATETIME DEFAULT CURRENT_TIMESTAMP
+);
 -- ============================================================================
 -- STEP 2: Create Empty Tables for Billing Workflow & Audit
 -- ============================================================================
@@ -198,29 +216,11 @@ CREATE TABLE IF NOT EXISTS audit_log (
 -- ============================================================================
 DROP VIEW IF EXISTS provider_tasks;
 DROP VIEW IF EXISTS coordinator_tasks;
+
 -- Provider Tasks View (all months)
+-- Dynamically generate UNION ALL for all existing provider_tasks tables
+-- Note: This view will need to be updated manually when new months are added
 CREATE VIEW provider_tasks AS
-SELECT *
-FROM provider_tasks_2001_01
-UNION ALL
-SELECT *
-FROM provider_tasks_2023_05
-UNION ALL
-SELECT *
-FROM provider_tasks_2023_06
-UNION ALL
-SELECT *
-FROM provider_tasks_2023_07
-UNION ALL
-SELECT *
-FROM provider_tasks_2023_10
-UNION ALL
-SELECT *
-FROM provider_tasks_2023_11
-UNION ALL
-SELECT *
-FROM provider_tasks_2023_12
-UNION ALL
 SELECT *
 FROM provider_tasks_2024_01
 UNION ALL
@@ -288,9 +288,54 @@ SELECT *
 FROM provider_tasks_2025_10
 UNION ALL
 SELECT *
-FROM provider_tasks_2025_11;
+FROM provider_tasks_2025_11
+UNION ALL
+SELECT *
+FROM provider_tasks_2025_12
+UNION ALL
+SELECT *
+FROM provider_tasks_2026_01
+UNION ALL
+SELECT *
+FROM provider_tasks_2026_02;
 -- Coordinator Tasks View (all months)
 CREATE VIEW coordinator_tasks AS
+SELECT *
+FROM coordinator_tasks_2024_01
+UNION ALL
+SELECT *
+FROM coordinator_tasks_2024_02
+UNION ALL
+SELECT *
+FROM coordinator_tasks_2024_03
+UNION ALL
+SELECT *
+FROM coordinator_tasks_2024_04
+UNION ALL
+SELECT *
+FROM coordinator_tasks_2024_05
+UNION ALL
+SELECT *
+FROM coordinator_tasks_2024_06
+UNION ALL
+SELECT *
+FROM coordinator_tasks_2024_07
+UNION ALL
+SELECT *
+FROM coordinator_tasks_2024_08
+UNION ALL
+SELECT *
+FROM coordinator_tasks_2024_09
+UNION ALL
+SELECT *
+FROM coordinator_tasks_2024_10
+UNION ALL
+SELECT *
+FROM coordinator_tasks_2024_11
+UNION ALL
+SELECT *
+FROM coordinator_tasks_2024_12
+UNION ALL
 SELECT *
 FROM coordinator_tasks_2025_01
 UNION ALL
@@ -322,7 +367,16 @@ SELECT *
 FROM coordinator_tasks_2025_10
 UNION ALL
 SELECT *
-FROM coordinator_tasks_2025_11;
+FROM coordinator_tasks_2025_11
+UNION ALL
+SELECT *
+FROM coordinator_tasks_2025_12
+UNION ALL
+SELECT *
+FROM coordinator_tasks_2026_01
+UNION ALL
+SELECT *
+FROM coordinator_tasks_2026_02;
 -- ============================================================================
 -- STEP 3: Update Patient Panel Last Visit Data
 -- ============================================================================
@@ -446,6 +500,9 @@ DELETE FROM patient_monthly_billing_2025_08;
 DELETE FROM patient_monthly_billing_2025_09;
 DELETE FROM patient_monthly_billing_2025_10;
 DELETE FROM patient_monthly_billing_2025_11;
+DELETE FROM patient_monthly_billing_2025_12;
+DELETE FROM patient_monthly_billing_2026_01;
+DELETE FROM patient_monthly_billing_2026_02;
 -- Populate 2025_01
 INSERT INTO patient_monthly_billing_2025_01 (
         billing_code,
@@ -636,7 +693,63 @@ FROM provider_tasks_2025_10 pt
     LEFT JOIN task_billing_codes tbc ON pt.billing_code = tbc.billing_code
 GROUP BY pt.billing_code,
     pt.patient_id;
--- Populate 2025_11
+-- Populate 2025_12
+INSERT INTO patient_monthly_billing_2025_12 (
+        billing_code,
+        billing_code_description,
+        patient_id,
+        total_minutes,
+        billing_status,
+        created_date
+    )
+SELECT pt.billing_code,
+    tbc.description as billing_code_description,
+    pt.patient_id,
+    SUM(pt.minutes_of_service) as total_minutes,
+    'Pending' as billing_status,
+    CURRENT_TIMESTAMP as created_date
+FROM provider_tasks_2025_12 pt
+    LEFT JOIN task_billing_codes tbc ON pt.billing_code = tbc.billing_code
+GROUP BY pt.billing_code,
+    pt.patient_id;
+-- Populate 2026_01
+INSERT INTO patient_monthly_billing_2026_01 (
+        billing_code,
+        billing_code_description,
+        patient_id,
+        total_minutes,
+        billing_status,
+        created_date
+    )
+SELECT pt.billing_code,
+    tbc.description as billing_code_description,
+    pt.patient_id,
+    SUM(pt.minutes_of_service) as total_minutes,
+    'Pending' as billing_status,
+    CURRENT_TIMESTAMP as created_date
+FROM provider_tasks_2026_01 pt
+    LEFT JOIN task_billing_codes tbc ON pt.billing_code = tbc.billing_code
+GROUP BY pt.billing_code,
+    pt.patient_id;
+-- Populate 2026_02
+INSERT INTO patient_monthly_billing_2026_02 (
+        billing_code,
+        billing_code_description,
+        patient_id,
+        total_minutes,
+        billing_status,
+        created_date
+    )
+SELECT pt.billing_code,
+    tbc.description as billing_code_description,
+    pt.patient_id,
+    SUM(pt.minutes_of_service) as total_minutes,
+    'Pending' as billing_status,
+    CURRENT_TIMESTAMP as created_date
+FROM provider_tasks_2026_02 pt
+    LEFT JOIN task_billing_codes tbc ON pt.billing_code = tbc.billing_code
+GROUP BY pt.billing_code,
+    pt.patient_id;
 INSERT INTO patient_monthly_billing_2025_11 (
         billing_code,
         billing_code_description,
@@ -659,75 +772,24 @@ GROUP BY pt.billing_code,
 -- COMPLETION MESSAGE
 -- ============================================================================
 -- ============================================================================
--- STEP 8: Rebuild patient_panel from patients (with correct schema)
+-- STEP 8: Update patient_panel last_visit_date (table already created by ETL)
 -- ============================================================================
--- CRITICAL: Schema must match what get_all_patient_panel() expects in database.py
--- Required columns: patient_id, first_name, last_name, date_of_birth, phone_primary,
---   current_facility_id, facility, status, created_date, provider_id, coordinator_id,
---   provider_name, coordinator_name, last_visit_date, last_visit_service_type,
---   goals_of_care, goc_value, code_status, subjective_risk_level, service_type,
---   er_count_1yr, hospitalization_count_1yr, mental_health_concerns, provider_mh_*,
---   cognitive_function, functional_status, active_specialists, active_concerns,
---   chronic_conditions_provider, appointment_contact_*, medical_contact_*,
---   care_provider_name, care_coordinator_name, updated_date
-DROP TABLE IF EXISTS patient_panel;
-CREATE TABLE patient_panel AS
-SELECT DISTINCT
-    p.patient_id,
-    p.first_name,
-    p.last_name,
-    p.date_of_birth,
-    p.phone_primary,
-    p.current_facility_id,
-    p.facility,
-    p.status,
-    p.created_date,
-    CAST(COALESCE(pa.provider_id, 0) AS INTEGER) as provider_id,
-    CAST(COALESCE(pa.coordinator_id, 0) AS TEXT) as coordinator_id,
-    CASE WHEN pa.provider_id > 0 THEN u_prov.full_name ELSE NULL END as provider_name,
-    CASE WHEN pa.coordinator_id > 0 THEN u_coord.full_name ELSE NULL END as coordinator_name,
-    p.last_visit_date,
-    p.service_type as last_visit_service_type,
-    p.goals_of_care,
-    p.goc_value,
-    p.code_status,
-    p.subjective_risk_level,
-    p.service_type,
-    COALESCE(p.er_count_1yr, 0) as er_count_1yr,
-    COALESCE(p.hospitalization_count_1yr, 0) as hospitalization_count_1yr,
-    COALESCE(p.mental_health_concerns, 0) as mental_health_concerns,
-    COALESCE(p.provider_mh_schizophrenia, 0) as provider_mh_schizophrenia,
-    COALESCE(p.provider_mh_depression, 0) as provider_mh_depression,
-    COALESCE(p.provider_mh_anxiety, 0) as provider_mh_anxiety,
-    COALESCE(p.provider_mh_stress, 0) as provider_mh_stress,
-    COALESCE(p.provider_mh_adhd, 0) as provider_mh_adhd,
-    COALESCE(p.provider_mh_bipolar, 0) as provider_mh_bipolar,
-    COALESCE(p.provider_mh_suicidal, 0) as provider_mh_suicidal,
-    p.cognitive_function,
-    p.functional_status,
-    p.active_specialists,
-    p.active_concerns,
-    p.chronic_conditions_provider,
-    p.appointment_contact_name,
-    p.appointment_contact_phone,
-    p.medical_contact_name,
-    p.medical_contact_phone,
-    p.nurse_poc_name,
-    p.nurse_phone,
-    p.telehealth_capable,
-    p.labs_notes,
-    p.imaging_notes,
-    p.general_notes,
-    p.next_appointment_date,
-    CASE WHEN pa.provider_id > 0 THEN u_prov.full_name ELSE NULL END as care_provider_name,
-    CASE WHEN pa.coordinator_id > 0 THEN u_coord.full_name ELSE NULL END as care_coordinator_name,
-    p.transportation,
-    p.preferred_language,
-    datetime('now') as updated_date
-FROM patients p
-LEFT JOIN patient_assignments pa ON p.patient_id = pa.patient_id AND pa.status = 'active'
-LEFT JOIN users u_prov ON pa.provider_id = u_prov.user_id
-LEFT JOIN users u_coord ON pa.coordinator_id = u_coord.user_id;
+-- The patient_panel table is already created by transform_production_data_v3_fixed.py
+-- We only need to update the last_visit_date field from the latest provider tasks
+
+-- Only update if patient_panel table exists
+UPDATE patient_panel
+SET last_visit_date = (
+    SELECT MAX(task_date)
+    FROM provider_tasks pt
+    WHERE pt.patient_id = patient_panel.patient_id
+)
+WHERE EXISTS (
+    SELECT 1
+    FROM sqlite_master
+    WHERE type = 'table'
+        AND name = 'patient_panel'
+);
 
 -- Create indexes for performance
 CREATE INDEX IF NOT EXISTS idx_patient_panel_patient_id ON patient_panel(patient_id);
