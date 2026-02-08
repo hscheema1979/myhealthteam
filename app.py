@@ -26,6 +26,7 @@ from src.dashboards import (
     care_coordinator_dashboard_enhanced,
     care_provider_dashboard_enhanced,
     data_entry_dashboard,
+    facility_review_dashboard,
     justin_simple_payment_tracker,
     monthly_coordinator_billing_dashboard,
     onboarding_dashboard,
@@ -571,6 +572,8 @@ def main():
                 dashboard_role == 40
             ):  # Coordinator Manager (CM) - gets coordinator dashboard with workflow reassignment tab
                 care_coordinator_dashboard_enhanced.show(user_id, user_role_ids)
+            elif dashboard_role == 42:  # Facility
+                facility_review_dashboard.show(user_id, user_role_ids)
             else:
                 st.error(f"Unrecognized dashboard role: {dashboard_role}")
                 st.info("Please contact your administrator.")

@@ -5865,7 +5865,7 @@ def get_patients_by_facility(facility_id, status_filter=None, search_term=None):
                 p.phone_primary,
                 p.status,
                 p.facility as facility_name,
-                p.assigned_facility_id,
+                p.current_facility_id as assigned_facility_id,
                 p.last_visit_date,
                 p.goc_value,
                 p.goals_of_care,
