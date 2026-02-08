@@ -89,24 +89,20 @@ def show(user_id):
                 """
             else:
                 # Live tables: standard columns
-                # Use subquery to get one row per billing code (avoid duplicates from multiple location_type/patient_type combos)
+                # Use location_type and patient_type directly from provider_tasks table
                 query = f"""
                 SELECT
                     pt.provider_task_id as _task_id,
                     pt.patient_name,
                     pt.task_date,
                     p.date_of_birth,
-                    COALESCE(tbc.location_type, 'Home') as location_type,
-                    COALESCE(tbc.patient_type, 'Follow Up') as patient_type,
+                    COALESCE(pt.location_type, 'Home') as location_type,
+                    COALESCE(pt.patient_type, 'Follow Up') as patient_type,
                     COALESCE(pt.notes, '') as notes,
                     pt.billing_code as _billing_code,
                     'LIVE' as data_source
                 FROM {table_name} pt
                 LEFT JOIN patients p ON pt.patient_id = p.patient_id
-                LEFT JOIN (SELECT billing_code, location_type, patient_type
-                           FROM task_billing_codes
-                           WHERE is_active = 1
-                           GROUP BY billing_code) tbc ON pt.billing_code = tbc.billing_code
                 WHERE pt.provider_id = ?
                 ORDER BY pt.task_date DESC
                 """
@@ -243,6 +239,8 @@ def _save_task_changes(conn, table_name, original_df, edited_df, provider_id, ye
                         update_data = {
                             "provider_task_id": task_id,
                             "billing_code": new_billing_code,
+                            "location_type": new_location,
+                            "patient_type": new_patient_type,
                             "notes": new_notes
                         }
 
@@ -260,10 +258,12 @@ def _save_task_changes(conn, table_name, original_df, edited_df, provider_id, ye
                             conn.execute(f"""
                                 UPDATE {table_name}
                                 SET billing_code = ?,
+                                    location_type = ?,
+                                    patient_type = ?,
                                     notes = ?,
                                     imported_at = CURRENT_TIMESTAMP
                                 WHERE provider_task_id = ?
-                            """, (new_billing_code, new_notes, task_id))
+                            """, (new_billing_code, new_location, new_patient_type, new_notes, task_id))
                             mark_log_completed(log_id, target_record_id=task_id)
                         except Exception as e:
                             mark_log_failed(log_id, str(e))

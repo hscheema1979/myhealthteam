@@ -223,7 +223,9 @@ def show_phone_review_entry(mode, user_id, provider_id=None, filtered_patients=N
                 task_date=review_date,
                 task_description="Phone Review",
                 notes=notes,
-                billing_code="Not_Billable"
+                billing_code="Not_Billable",
+                location_type="Telehealth",
+                patient_type="Follow Up"
             )
             if ok1 and ok2:
                 st.success(f"Phone review for {selected_patient} logged to coordinator and provider tasks.")

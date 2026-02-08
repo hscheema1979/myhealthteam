@@ -249,6 +249,10 @@ def ensure_monthly_coordinator_tasks_table(
                 conn.execute(f"ALTER TABLE {table_name} ADD COLUMN source_system TEXT;")
             if "imported_at" not in col_names:
                 conn.execute(f"ALTER TABLE {table_name} ADD COLUMN imported_at TEXT;")
+            if "location_type" not in col_names:
+                conn.execute(f"ALTER TABLE {table_name} ADD COLUMN location_type TEXT;")
+            if "patient_type" not in col_names:
+                conn.execute(f"ALTER TABLE {table_name} ADD COLUMN patient_type TEXT;")
             if "created_at_pst" not in col_names:
                 conn.execute(f"ALTER TABLE {table_name} ADD COLUMN created_at_pst TEXT;")
             # Add submission_status column for Daily Task Log feature
@@ -301,6 +305,8 @@ def ensure_monthly_provider_tasks_table(
                     billing_code TEXT,
                     billing_code_description TEXT,
                     icd_codes TEXT,
+                    location_type TEXT,
+                    patient_type TEXT,
                     source_system TEXT DEFAULT 'CSV_IMPORT',
                     imported_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     status TEXT DEFAULT 'completed',
@@ -1929,11 +1935,14 @@ def sync_patient_last_visit_all_tables(conn, patient_id, last_visit_date, servic
 
 
 def save_daily_task(
-    provider_id, patient_id, task_date, task_description, notes, billing_code=None, icd_codes=None
+    provider_id, patient_id, task_date, task_description, notes, billing_code=None, icd_codes=None,
+    location_type=None, patient_type=None
 ):
     """Save a daily task for a provider to the provider_tasks table.
     If `billing_code` is provided, use it to look up duration and description. Otherwise fallback to lookup by task_description.
     `icd_codes` is an optional string of ICD-10 codes for billing purposes.
+    `location_type` is the type of visit location (Home, Telehealth, Office).
+    `patient_type` is the type of patient visit (New, Follow Up, Acute, Cognitive, TCM-7, TCM-14).
     """
     conn = get_db_connection()
     try:
@@ -2024,8 +2033,8 @@ def save_daily_task(
         cursor = conn.execute(
             f"""
             INSERT INTO {table_name}
-            (provider_id, provider_name, patient_id, patient_name, task_date, notes, minutes_of_service, task_description, billing_code, billing_code_description, icd_codes, source_system, imported_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'DATA_ENTRY', CURRENT_TIMESTAMP)
+            (provider_id, provider_name, patient_id, patient_name, task_date, notes, minutes_of_service, task_description, billing_code, billing_code_description, icd_codes, location_type, patient_type, source_system, imported_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'DATA_ENTRY', CURRENT_TIMESTAMP)
         """,
             (
                 provider_id,
@@ -2039,6 +2048,8 @@ def save_daily_task(
                 billing_code_val,
                 billing_code_description,
                 icd_codes,
+                location_type,
+                patient_type,
             ),
         )
 
@@ -3757,7 +3768,9 @@ def get_provider_patient_panel_enhanced(user_id):
                 appointment_contact_name,
                 appointment_contact_phone,
                 medical_contact_name,
-                medical_contact_phone
+                medical_contact_phone,
+                nurse_poc_name,
+                nurse_phone
             FROM patient_panel
             ORDER BY last_name, first_name
         """
@@ -5100,6 +5113,8 @@ def update_task_details(task_id: int, role: str, updates: dict) -> bool:
             "task_type",
             "notes",
             "minutes_of_service",
+            "location_type",
+            "patient_type",
         ]
         for field, value in updates.items():
             if field in allowed_fields:

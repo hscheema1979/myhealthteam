@@ -1258,6 +1258,8 @@ def show_patient_list_section(user_id, section_id=None, has_cpm_role=False):
                         notes=notes,
                         billing_code=billing_code_to_use,
                         icd_codes=icd_codes if icd_codes else None,
+                        location_type=db_location_type,
+                        patient_type=patient_type_for_billing,
                     )
 
                     # Directly persist clinical fields without schema validation
@@ -2495,6 +2497,15 @@ def show_provider_onboarding_queue(user_id, onboarding_queue):
                     try:
                         # Get provider_id (use user_id directly since providers table doesn't exist)
                         provider_id = user_id
+                        # Determine location_type from visit_type
+                        visit_type = task_entry.get("visit_type", "Home Visit")
+                        location_map = {
+                            "Home Visit": "Home",
+                            "Telehealth Visit": "Telehealth",
+                        }
+                        db_location_type = location_map.get(visit_type, "Home")
+                        current_patient_type = task_entry.get("patient_type", "New")
+                        
                         # Save the task (this will automatically update onboarding workflow)
                         success = database.save_daily_task(
                             provider_id=provider_id,
@@ -2503,6 +2514,8 @@ def show_provider_onboarding_queue(user_id, onboarding_queue):
                                 task_description=task_entry["task_type"],
                                 notes=task_entry["notes"],
                                 billing_code=task_entry.get("billing_code"),
+                                location_type=db_location_type,
+                                patient_type=current_patient_type,
                             )
 
                             # Save additional clinical data for both visit types

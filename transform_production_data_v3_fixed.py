@@ -73,6 +73,8 @@ def create_provider_table(conn, year, month):
             minutes_of_service INTEGER,
             billing_code TEXT,
             billing_code_description TEXT,
+            location_type TEXT,
+            patient_type TEXT,
             source_system TEXT DEFAULT 'CSV_IMPORT',
             imported_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             status TEXT DEFAULT 'completed',
@@ -613,6 +615,8 @@ def process_psl(file_path, conn, provider_map, id_to_name):
                     str(row.get("Notes", "")),
                     processed_minutes,
                     final_billing_code,
+                    None,  # location_type (not in CSV, set to NULL)
+                    None,  # patient_type (not in CSV, set to NULL)
                 )
             )
 
@@ -649,7 +653,7 @@ def process_psl(file_path, conn, provider_map, id_to_name):
             create_provider_table(conn, int(parts[2]), int(parts[3]))
 
             inserted = conn.executemany(
-                f"INSERT OR IGNORE INTO {table} (provider_id, provider_name, patient_id, patient_name, task_date, task_description, notes, minutes_of_service, billing_code) VALUES (?,?,?,?,?,?,?,?,?)",
+                f"INSERT OR IGNORE INTO {table} (provider_id, provider_name, patient_id, patient_name, task_date, task_description, notes, minutes_of_service, billing_code, location_type, patient_type) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
                 recs,
             ).rowcount
             count += inserted
@@ -1521,9 +1525,9 @@ def populate_patient_panel(conn):
             p.appointment_contact_phone,
             p.medical_contact_name,
             p.medical_contact_phone,
-            p.nurse_poc_name,
-            p.nurse_phone,
-            p.telehealth_capable,
+            p.facility_nurse_name as nurse_poc_name,
+            p.facility_nurse_phone as nurse_phone,
+            NULL as telehealth_capable,
 
             p.labs_notes,
             p.imaging_notes,
@@ -1534,8 +1538,8 @@ def populate_patient_panel(conn):
             CASE WHEN pa.provider_id > 0 THEN u_prov.full_name ELSE NULL END as care_provider_name,
             CASE WHEN pa.coordinator_id > 0 THEN u_coord.full_name ELSE NULL END as care_coordinator_name,
 
-            p.transportation,
-            p.preferred_language,
+            NULL as transportation,
+            NULL as preferred_language,
 
             datetime('now') as updated_date
         FROM patients p
