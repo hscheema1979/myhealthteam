@@ -217,9 +217,8 @@ CREATE TABLE IF NOT EXISTS audit_log (
 DROP VIEW IF EXISTS provider_tasks;
 DROP VIEW IF EXISTS coordinator_tasks;
 
--- Provider Tasks View (all months)
--- Dynamically generate UNION ALL for all existing provider_tasks tables
--- Note: This view will need to be updated manually when new months are added
+-- Provider Tasks View (2024-2026 only - consistent schema)
+-- Old 2023 tables have different schema (15 cols vs 23 cols) and are excluded
 CREATE VIEW provider_tasks AS
 SELECT *
 FROM provider_tasks_2024_01
@@ -298,6 +297,51 @@ FROM provider_tasks_2026_01
 UNION ALL
 SELECT *
 FROM provider_tasks_2026_02;
+
+-- Coordinator Tasks View (2025-2026 only)
+-- Old tables have different schemas and are excluded
+CREATE VIEW coordinator_tasks AS
+SELECT *
+FROM coordinator_tasks_2025_01
+UNION ALL
+SELECT *
+FROM coordinator_tasks_2025_02
+UNION ALL
+SELECT *
+FROM coordinator_tasks_2025_03
+UNION ALL
+SELECT *
+FROM coordinator_tasks_2025_04
+UNION ALL
+SELECT *
+FROM coordinator_tasks_2025_05
+UNION ALL
+SELECT *
+FROM coordinator_tasks_2025_06
+UNION ALL
+SELECT *
+FROM coordinator_tasks_2025_07
+UNION ALL
+SELECT *
+FROM coordinator_tasks_2025_08
+UNION ALL
+SELECT *
+FROM coordinator_tasks_2025_09
+UNION ALL
+SELECT *
+FROM coordinator_tasks_2025_10
+UNION ALL
+SELECT *
+FROM coordinator_tasks_2025_11
+UNION ALL
+SELECT *
+FROM coordinator_tasks_2025_12
+UNION ALL
+SELECT *
+FROM coordinator_tasks_2026_01
+UNION ALL
+SELECT *
+FROM coordinator_tasks_2026_02;
 -- Coordinator Tasks View (all months)
 -- Only include tables that exist and have consistent schema (12 columns)
 CREATE VIEW coordinator_tasks AS
