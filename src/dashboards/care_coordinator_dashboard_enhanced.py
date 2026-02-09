@@ -1,5 +1,5 @@
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from typing import Optional
 
 import pandas as pd
@@ -1156,7 +1156,7 @@ def show_coordinator_patient_list(user_id, context="default"):
                 f"Date {i+1}",
                 value=task_entry.get("date", pd.to_datetime("today")),
                 key=f"date_{i}",
-                max_value=datetime.date.today(),
+                max_value=date.today(),
             )
         with col2:
             active_patients = [
