@@ -335,6 +335,11 @@ def ensure_monthly_provider_tasks_table(
                 conn.execute(f"ALTER TABLE {table_name} ADD COLUMN is_deleted INTEGER DEFAULT 0;")
             if "icd_codes" not in col_names:
                 conn.execute(f"ALTER TABLE {table_name} ADD COLUMN icd_codes TEXT;")
+            # Add location_type and patient_type if missing (for billing workflow)
+            if "location_type" not in col_names:
+                conn.execute(f"ALTER TABLE {table_name} ADD COLUMN location_type TEXT;")
+            if "patient_type" not in col_names:
+                conn.execute(f"ALTER TABLE {table_name} ADD COLUMN patient_type TEXT;")
             conn.commit()
         return table_name
     finally:
