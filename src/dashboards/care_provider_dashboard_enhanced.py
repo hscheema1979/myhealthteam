@@ -1042,13 +1042,28 @@ def show_patient_list_section(user_id, section_id=None, has_cpm_role=False):
             str(p.get("first_name", "")).lower(),
         ),
     )
+    # Format patient names as "Last, First (DOB: YYYY-MM-DD)" to handle patients with same name and birthday
+    def format_patient_name_for_provider(p):
+        last = (p.get('last_name', '') or '').strip()
+        first = (p.get('first_name', '') or '').strip()
+        dob = p.get('date_of_birth', '')
+        # Format DOB for display (handle various formats)
+        if dob:
+            try:
+                dob_formatted = pd.to_datetime(dob, errors='coerce').strftime('%Y-%m-%d') if pd.notna(pd.to_datetime(dob, errors='coerce')) else str(dob)
+            except:
+                dob_formatted = str(dob) if dob else ''
+        else:
+            dob_formatted = ''
+        return f"{last}, {first} (DOB: {dob_formatted})" if dob_formatted else f"{last}, {first}"
+
     patient_names = [
-        f"{p.get('first_name','').strip()} {p.get('last_name','').strip()}".strip()
+        format_patient_name_for_provider(p)
         for p in filtered_patients
         if p.get("first_name") and p.get("last_name")
     ]
     patient_map = {
-        f"{p.get('first_name','').strip()} {p.get('last_name','').strip()}": p
+        format_patient_name_for_provider(p): p
         for p in filtered_patients
         if p.get("first_name") and p.get("last_name")
     }
@@ -1250,7 +1265,7 @@ def show_patient_list_section(user_id, section_id=None, has_cpm_role=False):
                     # Append notes to patient and save a provider task record using selected billing code
                     billing_code_to_use = selected_billing
 
-                    database.save_daily_task(
+                    task_saved, task_error = database.save_daily_task(
                         provider_id=user_id,
                         patient_id=selected_patient["patient_id"],
                         task_date=task_date,
@@ -1261,6 +1276,20 @@ def show_patient_list_section(user_id, section_id=None, has_cpm_role=False):
                         location_type=db_location_type,
                         patient_type=patient_type_for_billing,
                     )
+
+                    # Check if task was saved successfully before proceeding with clinical fields
+                    if not task_saved:
+                        if task_error == "PSEUDO_PATIENT":
+                            st.warning("**Pseudo-Patient**: Task saved but patient was not found in the database. The task has been flagged for manual review.")
+                            # Allow proceeding, but patient may not exist
+                        elif task_error == "duplicate":
+                            st.warning("**Duplicate Task**: A task with the same patient and task description already exists for this date. Task was not logged. Please use a different task description or date.")
+                            st.stop()
+                        else:
+                            st.error(f"**Failed to save task**: {task_error or 'Unknown error'}")
+                            st.stop()
+                    elif task_error == "PSEUDO_PATIENT":
+                        st.warning("**Pseudo-Patient**: Task saved but patient was not found in the database. The task has been flagged for manual review.")
 
                     # Directly persist clinical fields without schema validation
                     try:
@@ -2505,9 +2534,9 @@ def show_provider_onboarding_queue(user_id, onboarding_queue):
                         }
                         db_location_type = location_map.get(visit_type, "Home")
                         current_patient_type = task_entry.get("patient_type", "New")
-                        
+
                         # Save the task (this will automatically update onboarding workflow)
-                        success = database.save_daily_task(
+                        task_saved, task_error = database.save_daily_task(
                             provider_id=provider_id,
                                 patient_id=task_entry.get("patient_id"),
                                 task_date=task_entry["date"],
@@ -2519,7 +2548,7 @@ def show_provider_onboarding_queue(user_id, onboarding_queue):
                             )
 
                             # Save additional clinical data for both visit types
-                        if success:
+                        if task_saved:
                             try:
                                 conn = database.get_db_connection()
 
@@ -2719,7 +2748,7 @@ def show_provider_onboarding_queue(user_id, onboarding_queue):
                                 st.error(f"Error saving clinical data: {e}")
 
                             # Update specialist requirements and visit type based on provider's confirmation during visit
-                            if success and task_entry.get("onboarding_id"):
+                            if task_saved and task_entry.get("onboarding_id"):
                                 conn = database.get_db_connection()
                                 try:
                                     conn.execute(
@@ -2763,10 +2792,13 @@ def show_provider_onboarding_queue(user_id, onboarding_queue):
                                         f"Error updating specialist requirements and visit type: {e}"
                                     )
 
-                            if success:
+                            if task_saved:
                                 visit_type_display = task_entry.get(
                                     "visit_type", "Home Visit"
                                 )
+                                # Check if this was a pseudo-patient
+                                if task_error == "PSEUDO_PATIENT":
+                                    st.warning("**Pseudo-Patient**: Task saved but patient was not found in the database. The task has been flagged for manual review.")
                                 st.success(
                                     f"Initial {visit_type_display.lower()} completed for {task_entry['patient_name']}. Specialist requirements confirmed and patient removed from onboarding queue."
                                 )
@@ -2810,7 +2842,14 @@ def show_provider_onboarding_queue(user_id, onboarding_queue):
                                 # Refresh the page to update the queue
                                 st.rerun()
                             else:
-                                st.error("Failed to save the task. Please try again.")
+                                if task_error == "PSEUDO_PATIENT":
+                                    st.warning("**Pseudo-Patient**: Task saved but patient was not found in the database. The task has been flagged for manual review.")
+                                    visit_type_display = task_entry.get("visit_type", "Home Visit")
+                                    st.success(f"Initial {visit_type_display.lower()} completed for {task_entry['patient_name']}.")
+                                elif task_error == "duplicate":
+                                    st.warning("**Duplicate Task**: A task with the same patient and task description already exists for this date. Please use a different task description or date.")
+                                else:
+                                    st.error(f"Failed to save the task: {task_error or 'Unknown error'}. Please try again.")
                         else:
                             st.error(
                                 "Provider ID not found. Please contact administrator."
@@ -3407,7 +3446,7 @@ def show_task_review_section(user_id):
                 return
 
             # View selection
-            view_tab1, view_tab2 = st.tabs(["Task List", "Monthly Summary"])
+            view_tab1, view_tab2, view_tab3 = st.tabs(["Task List", "Monthly Summary", "Deleted Tasks"])
 
             with view_tab1:
                 # Original task list functionality
@@ -3422,8 +3461,10 @@ def show_task_review_section(user_id):
                     selected_display, selected_table = selected_option
 
                 # Get provider tasks for selected month using SQLite syntax
+                # Include task_id for editing/deleting
                 provider_query = f"""
                 SELECT
+                    provider_task_id,
                     patient_name,
                     task_date,
                     minutes_of_service,
@@ -3436,14 +3477,17 @@ def show_task_review_section(user_id):
                 provider_tasks = conn.execute(provider_query, (user_id,)).fetchall()
 
                 if provider_tasks:
-                    # Convert to DataFrame
+                    # Convert to DataFrame with task_id for tracking
                     df = pd.DataFrame(
                         provider_tasks,
-                        columns=["Patient Name", "DOS", "Duration", "Service Type"],
+                        columns=["_task_id", "Patient Name", "DOS", "Duration", "Service Type"],
                     )
 
                     # Format the DOS column
                     df["DOS"] = pd.to_datetime(df["DOS"]).dt.strftime("%m-%d-%Y")
+
+                    # Store table name in session state for deletion
+                    st.session_state[f"provider_current_table_{user_id}"] = selected_table
 
                     # Display summary
                     total_tasks = len(df)
@@ -3457,11 +3501,135 @@ def show_task_review_section(user_id):
                     with col2:
                         st.metric("Total Duration (minutes)", total_duration)
 
-                    # Display the tasks table
-                    st.dataframe(df, use_container_width=True, hide_index=True)
+                    st.markdown("**Edit tasks below and click Save to update, or select tasks to delete**")
+
+                    # Store original data for comparison
+                    original_key = f"original_provider_data_{user_id}_{selected_table}"
+                    if original_key not in st.session_state:
+                        st.session_state[original_key] = df.copy()
+
+                    # Display as editable data_editor
+                    editor_key = f"provider_task_editor_{user_id}_{selected_table}"
+                    display_columns = ["Patient Name", "DOS", "Duration", "Service Type"]
+                    edited_df = st.data_editor(
+                        df[display_columns],
+                        use_container_width=True,
+                        hide_index=True,
+                        key=editor_key,
+                        num_rows="fixed",
+                    )
+
+                    # Action buttons
+                    col_btn1, col_btn2 = st.columns(2)
+
+                    with col_btn1:
+                        save_clicked = st.button("Save Changes", type="primary", key=f"save_provider_tasks_{user_id}_{selected_table}")
+
+                    with col_btn2:
+                        delete_clicked = st.button("Delete Selected Tasks", type="secondary", key=f"delete_provider_tasks_{user_id}_{selected_table}")
+
+                    # Handle save changes
+                    if save_clicked:
+                        try:
+                            conn_update = database.get_db_connection()
+                            updates_made = 0
+
+                            original_df = st.session_state[original_key].reset_index(drop=True)
+                            edited_df_reset = edited_df.reset_index(drop=True)
+
+                            for i in range(len(edited_df_reset)):
+                                orig_row = original_df.iloc[i]
+                                edited_row = edited_df_reset.iloc[i]
+                                task_id = int(orig_row["_task_id"])
+
+                                # Check if duration changed
+                                duration_orig = orig_row.get("Duration", 0)
+                                duration_edit = edited_row.get("Duration", 0)
+                                type_orig = str(orig_row.get("Service Type", ""))
+                                type_edit = str(edited_row.get("Service Type", ""))
+
+                                if duration_orig != duration_edit or type_orig != type_edit:
+                                    new_duration = int(duration_edit) if pd.notna(duration_edit) else 0
+                                    new_type = str(type_edit) if pd.notna(type_edit) else ""
+
+                                    conn_update.execute(f"""
+                                        UPDATE {selected_table}
+                                        SET minutes_of_service = {new_duration},
+                                            duration_minutes = {new_duration},
+                                            task_description = {repr(new_type)}
+                                        WHERE provider_task_id = {task_id}
+                                    """)
+                                    updates_made += 1
+
+                            conn_update.commit()
+                            conn_update.close()
+
+                            if updates_made > 0:
+                                st.success(f"Saved {updates_made} task update(s)!")
+                                # Clear state to reload fresh data
+                                del st.session_state[original_key]
+                                if editor_key in st.session_state:
+                                    del st.session_state[editor_key]
+                                st.rerun()
+                            else:
+                                st.info("No changes detected.")
+                        except Exception as e:
+                            st.error(f"Error saving changes: {e}")
+                            import traceback
+                            st.error(traceback.format_exc())
+
+                    # Handle delete selected tasks
+                    if delete_clicked:
+                        st.warning("**Delete mode**: Check the boxes next to tasks you want to delete, then click 'Confirm Delete' below.")
+                        confirm_key = f"confirm_delete_provider_{user_id}_{selected_table}"
+
+                        # Add checkbox column for selection
+                        df_with_select = df[display_columns].copy()
+                        df_with_select.insert(0, "Select", False)
+
+                        selection_key = f"delete_selection_{user_id}_{selected_table}"
+                        selected_df = st.data_editor(
+                            df_with_select,
+                            use_container_width=True,
+                            hide_index=True,
+                            key=selection_key,
+                            num_rows="fixed",
+                        )
+
+                        if st.button("Confirm Delete", type="primary", key=confirm_key):
+                            # Get selected task IDs
+                            selected_indices = selected_df[selected_df["Select"] == True].index.tolist()
+
+                            if selected_indices:
+                                task_ids_to_delete = [int(df.iloc[i]["_task_id"]) for i in selected_indices]
+
+                                # Confirm deletion
+                                st.warning(f"Are you sure you want to delete {len(task_ids_to_delete)} task(s)? Tasks will be moved to deleted_tasks table and can be restored if needed.")
+
+                                col_conf1, col_conf2 = st.columns(2)
+                                with col_conf1:
+                                    if st.button("Yes, Delete", type="primary", key=f"confirm_yes_{user_id}"):
+                                        success, message, count = database.delete_provider_tasks(task_ids_to_delete, selected_table, deleted_by_user_id=user_id)
+
+                                        if success:
+                                            st.success(message)
+                                            # Clear state to reload fresh data
+                                            if original_key in st.session_state:
+                                                del st.session_state[original_key]
+                                            if editor_key in st.session_state:
+                                                del st.session_state[editor_key]
+                                            st.rerun()
+                                        else:
+                                            st.error(message)
+                                with col_conf2:
+                                    if st.button("Cancel", key=f"confirm_cancel_{user_id}"):
+                                        st.info("Deletion cancelled.")
+                                        st.rerun()
+                            else:
+                                st.info("No tasks selected for deletion.")
 
                     # Download option
-                    csv = df.to_csv(index=False)
+                    csv = df[display_columns].to_csv(index=False)
                     st.download_button(
                         label="Download Tasks as CSV",
                         data=csv,
@@ -3562,6 +3730,93 @@ def show_task_review_section(user_id):
                         )
                     else:
                         st.info(f"No summary data found for {summary_display}")
+
+            with view_tab3:
+                # Deleted Tasks functionality
+                st.markdown("### Deleted Tasks")
+                st.markdown("*Tasks that were deleted can be restored from here*")
+
+                # Get deleted tasks for this provider
+                deleted_tasks = database.get_deleted_provider_tasks(provider_id=user_id, limit=200)
+
+                if deleted_tasks:
+                    # Convert to DataFrame
+                    deleted_df = pd.DataFrame(deleted_tasks)
+
+                    # Format the deleted_at timestamp
+                    if "deleted_at" in deleted_df.columns:
+                        deleted_df["Deleted At"] = pd.to_datetime(deleted_df["deleted_at"]).dt.strftime("%Y-%m-%d %H:%M")
+
+                    # Format task_date
+                    if "task_date" in deleted_df.columns:
+                        deleted_df["task_date"] = pd.to_datetime(deleted_df["task_date"]).dt.strftime("%m-%d-%Y")
+
+                    # Select columns to display
+                    display_cols = ["Deleted At", "task_date", "patient_name", "task_description", "minutes_of_service"]
+                    # Only include columns that exist
+                    display_cols = [c for c in display_cols if c in deleted_df.columns]
+
+                    # Rename for display
+                    deleted_df_display = deleted_df[display_cols].copy()
+                    deleted_df_display = deleted_df_display.rename(columns={
+                        "task_date": "DOS",
+                        "patient_name": "Patient Name",
+                        "task_description": "Service Type",
+                        "minutes_of_service": "Duration"
+                    })
+
+                    # Add selection column
+                    deleted_df_display.insert(0, "_deleted_id", deleted_df["deleted_id"])
+                    deleted_df_display.insert(0, "Select", False)
+
+                    st.markdown(f"**{len(deleted_tasks)} deleted task(s)**")
+
+                    # Display deleted tasks with selection
+                    deleted_editor_key = f"deleted_tasks_editor_{user_id}"
+                    selected_deleted_df = st.data_editor(
+                        deleted_df_display,
+                        use_container_width=True,
+                        hide_index=True,
+                        key=deleted_editor_key,
+                        num_rows="fixed",
+                    )
+
+                    # Restore button
+                    col_restore1, col_restore2 = st.columns(2)
+
+                    with col_restore1:
+                        restore_clicked = st.button("Restore Selected Tasks", type="primary", key=f"restore_deleted_{user_id}")
+
+                    if restore_clicked:
+                        # Get selected deleted_ids
+                        selected_indices = selected_deleted_df[selected_deleted_df["Select"] == True].index.tolist()
+
+                        if selected_indices:
+                            deleted_ids_to_restore = [int(deleted_df_display.iloc[i]["_deleted_id"]) for i in selected_indices]
+
+                            st.warning(f"Restore {len(deleted_ids_to_restore)} task(s)? Tasks will be moved back to their original tables.")
+
+                            col_conf1, col_conf2 = st.columns(2)
+                            with col_conf1:
+                                if st.button("Yes, Restore", type="primary", key=f"confirm_restore_{user_id}"):
+                                    success, message, count = database.restore_provider_tasks(deleted_ids_to_restore, restored_by_user_id=user_id)
+
+                                    if success:
+                                        st.success(message)
+                                        # Clear state to reload fresh data
+                                        if deleted_editor_key in st.session_state:
+                                            del st.session_state[deleted_editor_key]
+                                        st.rerun()
+                                    else:
+                                        st.error(message)
+                            with col_conf2:
+                                if st.button("Cancel Restore", key=f"cancel_restore_{user_id}"):
+                                    st.info("Restore cancelled.")
+                                    st.rerun()
+                        else:
+                            st.info("No tasks selected for restoration.")
+                else:
+                    st.info("No deleted tasks found for this provider.")
 
         finally:
             conn.close()
