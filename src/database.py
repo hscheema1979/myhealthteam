@@ -310,8 +310,7 @@ def ensure_monthly_provider_tasks_table(
                     source_system TEXT DEFAULT 'CSV_IMPORT',
                     imported_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     status TEXT DEFAULT 'completed',
-                    is_deleted INTEGER DEFAULT 0,
-                    UNIQUE(provider_id, patient_id, task_date, task_description)
+                    is_deleted INTEGER DEFAULT 0
                 )
             """)
             conn.execute(
@@ -319,6 +318,119 @@ def ensure_monthly_provider_tasks_table(
             )
             conn.commit()
         else:
+            # Check if the table has the old UNIQUE constraint and migrate if needed
+            # Get the CREATE SQL to check for UNIQUE constraint
+            create_sql = conn.execute(f"SELECT sql FROM sqlite_master WHERE type='table' AND name=?", (table_name,)).fetchone()
+            if create_sql and "UNIQUE(provider_id, patient_id, task_date, task_description)" in create_sql[0]:
+                # Need to migrate: drop UNIQUE constraint by recreating table
+                # First, drop ALL views to avoid dependency errors
+                all_views = conn.execute("SELECT name FROM sqlite_master WHERE type='view'").fetchall()
+                for view in all_views:
+                    try:
+                        conn.execute(f"DROP VIEW IF EXISTS {view['name']}")
+                    except Exception:
+                        pass  # Ignore errors for views that can't be dropped
+
+                temp_table = f"{table_name}_new"
+                conn.execute(f"""
+                    CREATE TABLE {temp_table} (
+                        provider_task_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        provider_id INTEGER,
+                        provider_name TEXT,
+                        patient_id TEXT,
+                        patient_name TEXT,
+                        task_date DATE,
+                        task_description TEXT,
+                        notes TEXT,
+                        minutes_of_service INTEGER,
+                        billing_code TEXT,
+                        billing_code_description TEXT,
+                        icd_codes TEXT,
+                        location_type TEXT,
+                        patient_type TEXT,
+                        source_system TEXT DEFAULT 'CSV_IMPORT',
+                        imported_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        status TEXT DEFAULT 'completed',
+                        is_deleted INTEGER DEFAULT 0
+                    )
+                """)
+                # Copy data from old table to new table
+                conn.execute(f"""
+                    INSERT INTO {temp_table}
+                    SELECT * FROM {table_name}
+                """)
+                # Drop old table and rename new table
+                conn.execute(f"DROP TABLE {table_name}")
+                conn.execute(f"ALTER TABLE {temp_table} RENAME TO {table_name}")
+                # Recreate indexes
+                conn.execute(f"CREATE INDEX IF NOT EXISTS idx_{table_name}_provider ON {table_name}(provider_id)")
+                conn.commit()
+                print(f"Migrated {table_name} to remove UNIQUE constraint (allowing duplicate phone reviews)")
+
+                # Recreate views
+                conn.execute("""
+                    CREATE VIEW IF NOT EXISTS unified_tasks AS
+                    -- Coordinator tasks
+                    SELECT
+                        'coordinator' AS task_type,
+                        coordinator_task_id AS task_id,
+                        coordinator_id AS staff_id,
+                        coordinator_name AS staff_name,
+                        patient_id,
+                        NULL AS patient_name,
+                        task_date,
+                        duration_minutes AS minutes,
+                        task_type AS activity_type,
+                        notes,
+                        NULL AS task_description,
+                        NULL AS billing_code,
+                        NULL AS billing_code_description,
+                        source_system,
+                        imported_at,
+                        NULL AS status,
+                        NULL AS is_deleted,
+                        NULL AS provider_paid,
+                        NULL AS provider_paid_date
+                    FROM coordinator_tasks
+
+                    UNION ALL
+
+                    -- Provider tasks
+                    SELECT
+                        'provider' AS task_type,
+                        provider_task_id AS task_id,
+                        provider_id AS staff_id,
+                        provider_name AS staff_name,
+                        patient_id,
+                        patient_name,
+                        task_date,
+                        minutes_of_service AS minutes,
+                        NULL AS activity_type,
+                        notes,
+                        task_description,
+                        billing_code,
+                        billing_code_description,
+                        source_system,
+                        imported_at,
+                        status,
+                        is_deleted,
+                        provider_paid,
+                        provider_paid_date
+                    FROM provider_tasks
+                """)
+                conn.execute("""
+                    CREATE VIEW IF NOT EXISTS unified_tasks_with_facilities AS
+                    SELECT
+                        ut.*,
+                        p.current_facility_id,
+                        f.facility_name
+                    FROM unified_tasks ut
+                    LEFT JOIN patients p ON ut.patient_id = p.patient_id
+                    LEFT JOIN facilities f ON p.current_facility_id = f.facility_id
+                """)
+                conn.commit()
+                print(f"Recreated views after {table_name} migration")
+
             # Verify required columns exist; add if missing
             cols = conn.execute(f"PRAGMA table_info({table_name});").fetchall()
             try:
@@ -2002,8 +2114,11 @@ def save_daily_task(
             task_year = now.year
             task_month = now.month
 
-        # Get patient name for denormalization
+        # Check if patient exists and get patient name for denormalization
         patient_name = ""
+        patient_exists = False
+        is_pseudo_patient = False
+
         try:
             p_cursor = conn.execute(
                 "SELECT first_name, last_name FROM patients WHERE patient_id = ?",
@@ -2014,8 +2129,20 @@ def save_daily_task(
                 fn = p_row[0] if p_row[0] else ""
                 ln = p_row[1] if p_row[1] else ""
                 patient_name = f"{fn} {ln}".strip()
+                patient_exists = True
+            else:
+                # Patient not found - this is a pseudo-patient
+                patient_exists = False
+                is_pseudo_patient = True
+                # Use the pseudo-patient ID as the patient name
+                patient_name = str(pid)
+                print(f"Warning: Patient ID {pid} not found in patients table. Using as pseudo-patient.")
         except Exception as e:
             print(f"Error fetching patient name: {e}")
+            # Treat as pseudo-patient on error
+            patient_exists = False
+            is_pseudo_patient = True
+            patient_name = str(pid)
 
         # Strip billing code pattern from task_description before storing
         import re
@@ -2175,13 +2302,60 @@ def save_daily_task(
             )
         else:
             # For non-initial TV tasks, sync last_visit_date and service_type across all tables
-            sync_patient_last_visit_all_tables(conn, pid, task_date, task_description)
+            # Skip sync for pseudo-patients (they don't exist in patients table)
+            if not is_pseudo_patient:
+                sync_patient_last_visit_all_tables(conn, pid, task_date, task_description)
+
+        # If this is a pseudo-patient, save to manual_intervention_needed table
+        if is_pseudo_patient:
+            try:
+                # Get user info for manual intervention record
+                user_info = conn.execute(
+                    "SELECT full_name, username FROM users WHERE user_id = ?",
+                    (provider_id,)
+                ).fetchone()
+                user_name = user_info[0] if user_info else f"Provider {provider_id}"
+
+                # Determine user role
+                user_roles = conn.execute(
+                    "SELECT role_id FROM user_roles WHERE user_id = ?",
+                    (provider_id,)
+                ).fetchall()
+                role_id = user_roles[0][0] if user_roles else None
+
+                save_manual_intervention(
+                    task_id=new_provider_task_id,
+                    task_type='provider_task',
+                    table_name=table_name,
+                    pseudo_patient_id=pid,
+                    entered_patient_name=patient_name,
+                    user_id=provider_id,
+                    user_name=user_name,
+                    user_role=str(role_id) if role_id else 'unknown',
+                    task_date=task_date,
+                    task_description=clean_task_description,
+                    duration_minutes=duration_minutes,
+                    notes=notes
+                )
+                print(f"Task saved with pseudo-patient ID '{pid}'. Added to manual intervention queue.")
+            except Exception as e:
+                print(f"Warning: Could not save manual intervention record: {e}")
 
         conn.commit()
-        return True
+
+        # Return success with manual intervention flag
+        if is_pseudo_patient:
+            return True, "PSEUDO_PATIENT"
+        return True, None
+    except sqlite3.IntegrityError as e:
+        # Integrity errors - note: UNIQUE constraint removed to allow duplicate phone reviews
+        conn.rollback()
+        print(f"Integrity error saving task: {e}")
+        return False, str(e)
     except Exception as e:
+        conn.rollback()
         print(f"Error saving task: {e}")
-        return False
+        return False, str(e)
     finally:
         conn.close()
 
@@ -2194,6 +2368,22 @@ def save_coordinator_task(
     try:
         # Normalize patient_id to the canonical string format before inserting
         pid = normalize_patient_id(patient_id, conn=conn)
+
+        # Check if patient exists (for pseudo-patient detection)
+        patient_exists = False
+        is_pseudo_patient = False
+        try:
+            p_cursor = conn.execute(
+                "SELECT 1 FROM patients WHERE patient_id = ? LIMIT 1",
+                (pid,),
+            )
+            patient_exists = p_cursor.fetchone() is not None
+            if not patient_exists:
+                is_pseudo_patient = True
+                print(f"Warning: Patient ID {pid} not found in patients table. Using as pseudo-patient.")
+        except Exception as e:
+            print(f"Error checking if patient exists: {e}")
+            is_pseudo_patient = True
 
         # Extract year and month from task_date to ensure we insert into the correct monthly table
         try:
@@ -2215,7 +2405,7 @@ def save_coordinator_task(
         now = pd.Timestamp.now()
         now_pst = now.tz_localize('UTC').tz_convert('America/Los_Angeles')
 
-        conn.execute(
+        cursor = conn.execute(
             f"""
             INSERT INTO {table_name}
             (patient_id, coordinator_id, task_date, duration_minutes, task_type, notes, source_system, imported_at, created_at_pst)
@@ -2224,12 +2414,53 @@ def save_coordinator_task(
             (pid, coordinator_id, task_date, duration_minutes, task_description, notes, now_pst.strftime("%Y-%m-%d %H:%M:%S")),
         )
 
+        # Get the newly created task_id
+        new_coordinator_task_id = cursor.lastrowid
+
+        # If this is a pseudo-patient, save to manual_intervention_needed table
+        if is_pseudo_patient:
+            try:
+                # Get user info for manual intervention record
+                user_info = conn.execute(
+                    "SELECT full_name, username FROM users WHERE user_id = ?",
+                    (coordinator_id,)
+                ).fetchone()
+                user_name = user_info[0] if user_info else f"Coordinator {coordinator_id}"
+
+                # Determine user role
+                user_roles = conn.execute(
+                    "SELECT role_id FROM user_roles WHERE user_id = ?",
+                    (coordinator_id,)
+                ).fetchall()
+                role_id = user_roles[0][0] if user_roles else None
+
+                save_manual_intervention(
+                    task_id=new_coordinator_task_id,
+                    task_type='coordinator_task',
+                    table_name=table_name,
+                    pseudo_patient_id=pid,
+                    entered_patient_name=str(pid),
+                    user_id=coordinator_id,
+                    user_name=user_name,
+                    user_role=str(role_id) if role_id else 'unknown',
+                    task_date=task_date,
+                    task_description=task_description,
+                    duration_minutes=duration_minutes,
+                    notes=notes
+                )
+                print(f"Task saved with pseudo-patient ID '{pid}'. Added to manual intervention queue.")
+            except Exception as e:
+                print(f"Warning: Could not save manual intervention record: {e}")
+
         conn.commit()
-        print(f"Coordinator task saved successfully for coordinator {coordinator_id}")
-        return True
+
+        # Return success with manual intervention flag
+        if is_pseudo_patient:
+            return True, "PSEUDO_PATIENT"
+        return True, None
     except Exception as e:
         print(f"Error saving coordinator task: {e}")
-        return False
+        return False, str(e)
     finally:
         conn.close()
 
@@ -4070,8 +4301,6 @@ def get_all_patient_panel():
             appointment_contact_phone,
             medical_contact_name,
             medical_contact_phone,
-            nurse_poc_name,
-            nurse_phone,
             labs_notes,
             imaging_notes,
             general_notes,
@@ -5154,6 +5383,330 @@ def update_task_details(task_id: int, role: str, updates: dict) -> bool:
         print(f"Error updating task details: {e}")
         conn.rollback()
         return False
+    finally:
+        conn.close()
+
+
+def ensure_deleted_provider_tasks_table(conn: sqlite3.Connection = None) -> str:
+    """
+    Ensure the deleted_provider_tasks table exists for storing deleted tasks that can be recovered.
+    Returns the table name.
+    """
+    close_conn = False
+    try:
+        if conn is None:
+            conn = get_db_connection()
+            close_conn = True
+
+        table_name = "deleted_provider_tasks"
+
+        # Check existence
+        exists = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+            (table_name,),
+        ).fetchone()
+
+        if not exists:
+            conn.execute(f"""
+                CREATE TABLE {table_name} (
+                    deleted_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    provider_task_id INTEGER,
+                    original_table_name TEXT NOT NULL,
+                    provider_id INTEGER,
+                    provider_name TEXT,
+                    patient_id TEXT,
+                    patient_name TEXT,
+                    task_date DATE,
+                    task_description TEXT,
+                    notes TEXT,
+                    minutes_of_service INTEGER,
+                    billing_code TEXT,
+                    billing_code_description TEXT,
+                    icd_codes TEXT,
+                    location_type TEXT,
+                    patient_type TEXT,
+                    source_system TEXT,
+                    imported_at TIMESTAMP,
+                    status TEXT,
+                    deleted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    deleted_by INTEGER
+                )
+            """)
+            conn.execute(
+                f"CREATE INDEX IF NOT EXISTS idx_{table_name}_provider ON {table_name}(provider_id)"
+            )
+            conn.execute(
+                f"CREATE INDEX IF NOT EXISTS idx_{table_name}_original_table ON {table_name}(original_table_name)"
+            )
+            conn.commit()
+
+        return table_name
+    finally:
+        if close_conn and conn:
+            conn.close()
+
+
+def delete_provider_tasks(task_ids: list, table_name: str, deleted_by_user_id: int = None) -> tuple[bool, str, int]:
+    """
+    Delete provider tasks by moving them to deleted_provider_tasks table.
+    Tasks are completely removed from their original monthly table.
+
+    Args:
+        task_ids: List of provider_task_id values to delete
+        table_name: Name of the monthly table (e.g., 'provider_tasks_2025_02')
+        deleted_by_user_id: Optional user ID of who performed the deletion
+
+    Returns:
+        Tuple (success: bool, message: str, deleted_count: int)
+
+    Process:
+        1. Read tasks from original table
+        2. Insert into deleted_provider_tasks with timestamp
+        3. Delete from original table
+    """
+    if not task_ids:
+        return (False, "No task IDs provided", 0)
+
+    conn = get_db_connection()
+    try:
+        # Ensure deleted table exists
+        deleted_table = ensure_deleted_provider_tasks_table(conn=conn)
+
+        # Build placeholders for SQL IN clause
+        placeholders = ",".join("?" * len(task_ids))
+
+        # First, fetch the tasks to be deleted
+        select_query = f"""
+            SELECT
+                provider_task_id,
+                provider_id,
+                provider_name,
+                patient_id,
+                patient_name,
+                task_date,
+                task_description,
+                notes,
+                minutes_of_service,
+                billing_code,
+                billing_code_description,
+                icd_codes,
+                location_type,
+                patient_type,
+                source_system,
+                imported_at,
+                status
+            FROM {table_name}
+            WHERE provider_task_id IN ({placeholders})
+        """
+
+        tasks_to_delete = conn.execute(select_query, task_ids).fetchall()
+
+        if not tasks_to_delete:
+            return (False, "No tasks found to delete", 0)
+
+        # Insert into deleted_provider_tasks table
+        insert_query = f"""
+            INSERT INTO {deleted_table} (
+                provider_task_id, original_table_name, provider_id, provider_name,
+                patient_id, patient_name, task_date, task_description, notes,
+                minutes_of_service, billing_code, billing_code_description, icd_codes,
+                location_type, patient_type, source_system, imported_at, status, deleted_by
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """
+
+        for task in tasks_to_delete:
+            task_dict = dict(task)
+            conn.execute(insert_query, (
+                task_dict["provider_task_id"],
+                table_name,
+                task_dict.get("provider_id"),
+                task_dict.get("provider_name"),
+                task_dict.get("patient_id"),
+                task_dict.get("patient_name"),
+                task_dict.get("task_date"),
+                task_dict.get("task_description"),
+                task_dict.get("notes"),
+                task_dict.get("minutes_of_service"),
+                task_dict.get("billing_code"),
+                task_dict.get("billing_code_description"),
+                task_dict.get("icd_codes"),
+                task_dict.get("location_type"),
+                task_dict.get("patient_type"),
+                task_dict.get("source_system"),
+                task_dict.get("imported_at"),
+                task_dict.get("status"),
+                deleted_by_user_id
+            ))
+
+        # Now delete from original table
+        delete_query = f"""
+            DELETE FROM {table_name}
+            WHERE provider_task_id IN ({placeholders})
+        """
+
+        cursor = conn.execute(delete_query, task_ids)
+        conn.commit()
+        deleted_count = cursor.rowcount
+
+        if deleted_count > 0:
+            return (True, f"Successfully deleted {deleted_count} task(s)", deleted_count)
+        else:
+            return (False, "No tasks were deleted", 0)
+
+    except Exception as e:
+        print(f"Error deleting provider tasks: {e}")
+        conn.rollback()
+        return (False, f"Error deleting tasks: {str(e)}", 0)
+    finally:
+        conn.close()
+
+
+def get_deleted_provider_tasks(provider_id: int = None, limit: int = 100) -> list:
+    """
+    Retrieve deleted provider tasks for potential recovery.
+
+    Args:
+        provider_id: Optional provider ID to filter by
+        limit: Maximum number of records to return (default 100)
+
+    Returns:
+        List of deleted task dictionaries
+    """
+    conn = get_db_connection()
+    try:
+        if provider_id:
+            query = """
+                SELECT
+                    deleted_id, provider_task_id, original_table_name,
+                    provider_id, provider_name, patient_id, patient_name,
+                    task_date, task_description, notes, minutes_of_service,
+                    billing_code, billing_code_description, deleted_at
+                FROM deleted_provider_tasks
+                WHERE provider_id = ?
+                ORDER BY deleted_at DESC
+                LIMIT ?
+            """
+            results = conn.execute(query, (provider_id, limit)).fetchall()
+        else:
+            query = """
+                SELECT
+                    deleted_id, provider_task_id, original_table_name,
+                    provider_id, provider_name, patient_id, patient_name,
+                    task_date, task_description, notes, minutes_of_service,
+                    billing_code, billing_code_description, deleted_at
+                FROM deleted_provider_tasks
+                ORDER BY deleted_at DESC
+                LIMIT ?
+            """
+            results = conn.execute(query, (limit,)).fetchall()
+
+        return [dict(row) for row in results]
+    finally:
+        conn.close()
+
+
+def restore_provider_tasks(deleted_ids: list, restored_by_user_id: int = None) -> tuple[bool, str, int]:
+    """
+    Restore deleted provider tasks from deleted_provider_tasks back to their original tables.
+
+    Args:
+        deleted_ids: List of deleted_id values from deleted_provider_tasks table
+        restored_by_user_id: Optional user ID of who is restoring
+
+    Returns:
+        Tuple (success: bool, message: str, restored_count: int)
+    """
+    if not deleted_ids:
+        return (False, "No deleted IDs provided", 0)
+
+    conn = get_db_connection()
+    try:
+        # Build placeholders for SQL IN clause
+        placeholders = ",".join("?" * len(deleted_ids))
+
+        # Fetch the tasks to restore
+        query = f"""
+            SELECT
+                provider_task_id, original_table_name, provider_id, provider_name,
+                patient_id, patient_name, task_date, task_description, notes,
+                minutes_of_service, billing_code, billing_code_description, icd_codes,
+                location_type, patient_type, source_system, imported_at, status
+            FROM deleted_provider_tasks
+            WHERE deleted_id IN ({placeholders})
+        """
+
+        tasks_to_restore = conn.execute(query, deleted_ids).fetchall()
+
+        if not tasks_to_restore:
+            return (False, "No deleted tasks found to restore", 0)
+
+        restored_count = 0
+
+        for task in tasks_to_restore:
+            task_dict = dict(task)
+            original_table = task_dict["original_table_name"]
+            original_task_id = task_dict["provider_task_id"]
+
+            # Ensure the original table exists
+            ensure_monthly_provider_tasks_table(year=None, month=None, table_name=original_table, conn=conn)
+
+            # Insert back into original table (using original task_id)
+            # Check if task_id already exists in original table
+            existing = conn.execute(
+                f"SELECT provider_task_id FROM {original_table} WHERE provider_task_id = ?",
+                (original_task_id,)
+            ).fetchone()
+
+            if not existing:
+                insert_query = f"""
+                    INSERT INTO {original_table} (
+                        provider_task_id, provider_id, provider_name, patient_id, patient_name,
+                        task_date, task_description, notes, minutes_of_service,
+                        billing_code, billing_code_description, icd_codes,
+                        location_type, patient_type, source_system, imported_at, status
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """
+
+                conn.execute(insert_query, (
+                    original_task_id,
+                    task_dict.get("provider_id"),
+                    task_dict.get("provider_name"),
+                    task_dict.get("patient_id"),
+                    task_dict.get("patient_name"),
+                    task_dict.get("task_date"),
+                    task_dict.get("task_description"),
+                    task_dict.get("notes"),
+                    task_dict.get("minutes_of_service"),
+                    task_dict.get("billing_code"),
+                    task_dict.get("billing_code_description"),
+                    task_dict.get("icd_codes"),
+                    task_dict.get("location_type"),
+                    task_dict.get("patient_type"),
+                    task_dict.get("source_system"),
+                    task_dict.get("imported_at"),
+                    task_dict.get("status")
+                ))
+                restored_count += 1
+
+        # Remove from deleted table
+        conn.execute(
+            f"DELETE FROM deleted_provider_tasks WHERE deleted_id IN ({placeholders})",
+            deleted_ids
+        )
+
+        conn.commit()
+
+        if restored_count > 0:
+            return (True, f"Successfully restored {restored_count} task(s)", restored_count)
+        else:
+            return (False, "No tasks were restored (may already exist in original table)", 0)
+
+    except Exception as e:
+        print(f"Error restoring provider tasks: {e}")
+        import traceback
+        traceback.print_exc()
+        conn.rollback()
+        return (False, f"Error restoring tasks: {str(e)}", 0)
     finally:
         conn.close()
 
@@ -6313,11 +6866,11 @@ def get_all_facilities():
         conn.close()
 
 
-def log_facility_audit(facility_user_id, facility_id, action, onboarding_id=None, 
+def log_facility_audit(facility_user_id, facility_id, action, onboarding_id=None,
                       patient_name=None, notes=None):
     """
     Log an audit entry for facility actions.
-    
+
     Args:
         facility_user_id: User ID
         facility_id: Facility ID
@@ -6325,7 +6878,7 @@ def log_facility_audit(facility_user_id, facility_id, action, onboarding_id=None
         onboarding_id: Optional onboarding ID
         patient_name: Optional patient name
         notes: Optional notes
-        
+
     Returns:
         True if successful, False otherwise
     """
@@ -6341,6 +6894,156 @@ def log_facility_audit(facility_user_id, facility_id, action, onboarding_id=None
         return True
     except Exception as e:
         print(f"Error logging facility audit: {e}")
+        conn.rollback()
+        return False
+    finally:
+        conn.close()
+
+
+# ===== Manual Intervention Functions =====
+
+def patient_exists(patient_id):
+    """
+    Check if a patient exists in the patients table.
+
+    Args:
+        patient_id: Patient ID to check (string or int)
+
+    Returns:
+        True if patient exists, False otherwise
+    """
+    conn = get_db_connection()
+    try:
+        # Normalize patient_id
+        pid = normalize_patient_id(patient_id, conn=conn)
+
+        # Check if patient exists
+        cursor = conn.execute(
+            "SELECT 1 FROM patients WHERE patient_id = ? LIMIT 1",
+            (pid,)
+        )
+        return cursor.fetchone() is not None
+    except Exception as e:
+        print(f"Error checking if patient exists: {e}")
+        return False
+    finally:
+        conn.close()
+
+
+def save_manual_intervention(
+    task_id, task_type, table_name, pseudo_patient_id, entered_patient_name,
+    user_id, user_name, user_role, task_date, task_description,
+    duration_minutes=None, notes=None
+):
+    """
+    Save a record to manual_intervention_needed table.
+
+    Args:
+        task_id: ID of the created task
+        task_type: Type of task ('provider_task' or 'coordinator_task')
+        table_name: Monthly table where task was saved
+        pseudo_patient_id: The pseudo patient ID used (entered text that didn't match)
+        entered_patient_name: Raw text entered by user
+        user_id: User ID who created the task
+        user_name: User name
+        user_role: User role
+        task_date: Date of the task
+        task_description: Description of the task
+        duration_minutes: Optional duration in minutes
+        notes: Optional task notes
+
+    Returns:
+        True if successful, False otherwise
+    """
+    conn = get_db_connection()
+    try:
+        conn.execute("""
+            INSERT INTO manual_intervention_needed (
+                task_id, task_type, table_name, pseudo_patient_id,
+                entered_patient_name, user_id, user_name, user_role,
+                task_date, task_description, duration_minutes, notes
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            task_id, task_type, table_name, pseudo_patient_id,
+            entered_patient_name, user_id, user_name, user_role,
+            task_date, task_description, duration_minutes, notes
+        ))
+        conn.commit()
+        return True
+    except Exception as e:
+        print(f"Error saving manual intervention: {e}")
+        conn.rollback()
+        return False
+    finally:
+        conn.close()
+
+
+def get_manual_interventions(resolved=None, user_id=None, limit=100):
+    """
+    Get manual intervention records.
+
+    Args:
+        resolved: Filter by resolved status (None for all, True for resolved, False for unresolved)
+        user_id: Filter by user ID (None for all users)
+        limit: Maximum number of records to return
+
+    Returns:
+        List of manual intervention dicts
+    """
+    conn = get_db_connection()
+    try:
+        query = """
+            SELECT mi.*, u.username as resolved_by_username
+            FROM manual_intervention_needed mi
+            LEFT JOIN users u ON mi.resolved_by = u.user_id
+            WHERE 1=1
+        """
+        params = []
+
+        if resolved is not None:
+            query += " AND mi.resolved = ?"
+            params.append(1 if resolved else 0)
+
+        if user_id is not None:
+            query += " AND mi.user_id = ?"
+            params.append(user_id)
+
+        query += " ORDER BY mi.created_at DESC LIMIT ?"
+        params.append(limit)
+
+        results = conn.execute(query, params).fetchall()
+        return [dict(row) for row in results]
+    except Exception as e:
+        print(f"Error getting manual interventions: {e}")
+        return []
+    finally:
+        conn.close()
+
+
+def resolve_manual_intervention(intervention_id, resolved_by, resolution_notes=None):
+    """
+    Mark a manual intervention as resolved.
+
+    Args:
+        intervention_id: ID of the manual intervention record
+        resolved_by: User ID who resolved the intervention
+        resolution_notes: Optional notes about the resolution
+
+    Returns:
+        True if successful, False otherwise
+    """
+    conn = get_db_connection()
+    try:
+        conn.execute("""
+            UPDATE manual_intervention_needed
+            SET resolved = 1, resolved_at = CURRENT_TIMESTAMP,
+                resolved_by = ?, resolution_notes = ?
+            WHERE id = ?
+        """, (resolved_by, resolution_notes, intervention_id))
+        conn.commit()
+        return True
+    except Exception as e:
+        print(f"Error resolving manual intervention: {e}")
         conn.rollback()
         return False
     finally:

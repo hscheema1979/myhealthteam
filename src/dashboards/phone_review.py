@@ -182,8 +182,24 @@ def show_phone_review_entry(mode, user_id, provider_id=None, filtered_patients=N
     # Only show active patients (based on filtered results)
     allowed_statuses = ['Active', 'Active-Geri', 'Active-PCP', 'Hospice', 'HOSPICE']
     active_patients = [p for p in patient_data_list if (p.get('status', '') or '').strip() in allowed_statuses]
-    patient_names = [f"{p.get('first_name','').strip()} {p.get('last_name','').strip()}".strip() for p in active_patients]
-    patient_map = {f"{p.get('first_name','').strip()} {p.get('last_name','').strip()}": p for p in active_patients}
+
+    # Format patient names as "Last, First (DOB: YYYY-MM-DD)" to handle patients with same name and birthday
+    def format_patient_name(p):
+        last = p.get('last_name', '').strip()
+        first = p.get('first_name', '').strip()
+        dob = p.get('date_of_birth', '')
+        # Format DOB for display (handle various formats)
+        if dob:
+            try:
+                dob_formatted = pd.to_datetime(dob, errors='coerce').strftime('%Y-%m-%d') if pd.notna(pd.to_datetime(dob, errors='coerce')) else str(dob)
+            except:
+                dob_formatted = str(dob) if dob else ''
+        else:
+            dob_formatted = ''
+        return f"{last}, {first} (DOB: {dob_formatted})" if dob_formatted else f"{last}, {first}"
+
+    patient_names = [format_patient_name(p) for p in active_patients]
+    patient_map = {format_patient_name(p): p for p in active_patients}
 
     # Show patient count
     if patient_names:
@@ -208,7 +224,7 @@ def show_phone_review_entry(mode, user_id, provider_id=None, filtered_patients=N
             patient_id = patient.get('patient_id') or patient.get('id') or selected_patient
             provider_user_id = selected_provider_id
             # Write to coordinator_tasks (as provider is acting as coordinator for phone review)
-            ok1 = database.save_coordinator_task(
+            ok1, coord_error = database.save_coordinator_task(
                 coordinator_id=provider_user_id,
                 patient_id=patient_id,
                 task_date=review_date,
@@ -217,7 +233,7 @@ def show_phone_review_entry(mode, user_id, provider_id=None, filtered_patients=N
                 notes=notes
             )
             # Write to provider_tasks and provider_tasks_YYYY_MM with Not_Billable
-            ok2 = database.save_daily_task(
+            task_saved, task_error = database.save_daily_task(
                 provider_id=provider_user_id,
                 patient_id=patient_id,
                 task_date=review_date,
@@ -227,7 +243,16 @@ def show_phone_review_entry(mode, user_id, provider_id=None, filtered_patients=N
                 location_type="Telehealth",
                 patient_type="Follow Up"
             )
-            if ok1 and ok2:
-                st.success(f"Phone review for {selected_patient} logged to coordinator and provider tasks.")
+
+            # Check for pseudo-patient warnings
+            has_pseudo_patient = (task_error == "PSEUDO_PATIENT" or coord_error == "PSEUDO_PATIENT")
+            actual_error = task_error if task_error != "PSEUDO_PATIENT" else None
+            actual_coord_error = coord_error if coord_error != "PSEUDO_PATIENT" else None
+
+            if ok1 and task_saved:
+                if has_pseudo_patient:
+                    st.warning(f"Phone review for {selected_patient} logged successfully, but the patient was not found in the database. The task has been flagged for manual review.")
+                else:
+                    st.success(f"Phone review for {selected_patient} logged to coordinator and provider tasks.")
             else:
-                st.error("Error logging phone review. Please check your entry and try again.")
+                st.error(f"Error logging phone review: {actual_error or actual_coord_error or 'Unknown error'}. Please check your entry and try again.")

@@ -201,8 +201,23 @@ def tab_patient_status_review(facility_id):
         if not patients:
             st.info("No patients found for your facility.")
             return
-        
-        patient_options = {f"{p['last_name']}, {p['first_name']} (ID: {p['patient_id']})": p['patient_id'] 
+
+        # Format patient names as "Last, First (DOB: YYYY-MM-DD)" to handle patients with same name and birthday
+        def format_patient_name_for_facility(p):
+            last = (p.get('last_name', '') or '').strip()
+            first = (p.get('first_name', '') or '').strip()
+            dob = p.get('date_of_birth', '')
+            # Format DOB for display (handle various formats)
+            if dob:
+                try:
+                    dob_formatted = pd.to_datetime(dob, errors='coerce').strftime('%Y-%m-%d') if pd.notna(pd.to_datetime(dob, errors='coerce')) else str(dob)
+                except:
+                    dob_formatted = str(dob) if dob else ''
+            else:
+                dob_formatted = ''
+            return f"{last}, {first} (DOB: {dob_formatted})" if dob_formatted else f"{last}, {first}"
+
+        patient_options = {format_patient_name_for_facility(p): p['patient_id']
                           for p in patients}
         
         selected_patient_display = st.selectbox(

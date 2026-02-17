@@ -1011,15 +1011,30 @@ def show_coordinator_patient_list(user_id, context="default"):
     try:
         conn = database.get_db_connection()
         active_patients_rows = conn.execute("""
-            SELECT first_name, last_name
+            SELECT first_name, last_name, date_of_birth
             FROM patients
             WHERE status LIKE 'Active%' OR status = 'Hospice'
             ORDER BY last_name, first_name
         """).fetchall()
         conn.close()
 
+        # Format patient names as "Last, First (DOB: YYYY-MM-DD)" to handle patients with same name and birthday
+        def format_patient_name_for_workflow(row):
+            last = (row['last_name'] or '').strip()
+            first = (row['first_name'] or '').strip()
+            dob = row.get('date_of_birth', '')
+            # Format DOB for display (handle various formats)
+            if dob:
+                try:
+                    dob_formatted = pd.to_datetime(dob, errors='coerce').strftime('%Y-%m-%d') if pd.notna(pd.to_datetime(dob, errors='coerce')) else str(dob)
+                except:
+                    dob_formatted = str(dob) if dob else ''
+            else:
+                dob_formatted = ''
+            return f"{last}, {first} (DOB: {dob_formatted})" if dob_formatted else f"{last}, {first}"
+
         active_patient_names = [
-            f"{row['first_name']} {row['last_name']}".strip()
+            format_patient_name_for_workflow(row)
             for row in active_patients_rows
         ]
     except Exception as e:
@@ -1174,8 +1189,23 @@ def show_coordinator_patient_list(user_id, context="default"):
                     str(p.get("first_name", "")).lower(),
                 ),
             )
+            # Format patient names as "Last, First (DOB: YYYY-MM-DD)" to handle patients with same name and birthday
+            def format_patient_name_for_task_entry(p):
+                last = (p.get('last_name', '') or '').strip()
+                first = (p.get('first_name', '') or '').strip()
+                dob = p.get('date_of_birth', '')
+                # Format DOB for display (handle various formats)
+                if dob:
+                    try:
+                        dob_formatted = pd.to_datetime(dob, errors='coerce').strftime('%Y-%m-%d') if pd.notna(pd.to_datetime(dob, errors='coerce')) else str(dob)
+                    except:
+                        dob_formatted = str(dob) if dob else ''
+                else:
+                    dob_formatted = ''
+                return f"{last}, {first} (DOB: {dob_formatted})" if dob_formatted else f"{last}, {first}"
+
             patient_names = [
-                f"{p.get('first_name', '')} {p.get('last_name', '')} ({p.get('username', '')})".strip()
+                format_patient_name_for_task_entry(p)
                 for p in active_patients
             ]
             if not patient_names:

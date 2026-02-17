@@ -773,15 +773,30 @@ def show_workflow_management(
             try:
                 conn = get_db_connection()
                 patients_rows = conn.execute("""
-                    SELECT first_name, last_name
+                    SELECT first_name, last_name, date_of_birth
                     FROM patients
                     WHERE status LIKE 'Active%' OR status = 'Hospice'
                     ORDER BY last_name, first_name
                 """).fetchall()
                 conn.close()
 
+                # Format patient names as "Last, First (DOB: YYYY-MM-DD)" to handle patients with same name and birthday
+                def format_patient_name_for_workflow(row):
+                    last = (row['last_name'] or '').strip()
+                    first = (row['first_name'] or '').strip()
+                    dob = row.get('date_of_birth', '')
+                    # Format DOB for display (handle various formats)
+                    if dob:
+                        try:
+                            dob_formatted = pd.to_datetime(dob, errors='coerce').strftime('%Y-%m-%d') if pd.notna(pd.to_datetime(dob, errors='coerce')) else str(dob)
+                        except:
+                            dob_formatted = str(dob) if dob else ''
+                    else:
+                        dob_formatted = ''
+                    return f"{last}, {first} (DOB: {dob_formatted})" if dob_formatted else f"{last}, {first}"
+
                 workflow_patient_options = ["Select Patient..."] + [
-                    f"{row['first_name']} {row['last_name']}".strip()
+                    format_patient_name_for_workflow(row)
                     for row in patients_rows
                 ]
             except Exception as e:

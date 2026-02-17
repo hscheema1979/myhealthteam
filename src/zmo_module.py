@@ -123,8 +123,8 @@ PATIENTS_TABLE_COLUMNS = {
 
 # Columns that should NOT be editable (computed, auto-generated, or special IDs)
 READONLY_COLUMNS = {
-    # Computed display names (from JOINs or COALESCE)
-    "care_provider_name", "care_coordinator_name", "provider_name", "coordinator_name",
+    # Computed display names (from JOINs or COALESCE) - provider_name and coordinator_name are now editable
+    "care_provider_name", "care_coordinator_name",
     # Provider/Coordinator assignment IDs (must use reassignment function)
     "provider_id", "coordinator_id",
     # Auto-timestamps
@@ -133,6 +133,11 @@ READONLY_COLUMNS = {
     "patient_id",
     # Other IDs that shouldn't be changed
     "current_facility_id", "chart_id", "assigned_coordinator_id",
+}
+
+# Columns that require special cascade updates when edited
+CASCADE_NAME_COLUMNS = {
+    "provider_name", "coordinator_name"
 }
 
 # Columns that require special handling (update patient_assignments table instead)
@@ -460,6 +465,11 @@ def save_edits_to_database(
                     # Handle assignment columns separately
                     if col in ASSIGNMENT_COLUMNS:
                         assignment_updates[col] = edited_val
+                    # Handle cascade name columns (provider_name, coordinator_name)
+                    elif col in CASCADE_NAME_COLUMNS:
+                        # This will be handled separately with cascade update
+                        if col not in panel_updates:
+                            panel_updates[col] = edited_val
                     # Determine which table this column belongs to
                     elif col in PATIENT_PANEL_COLUMNS:
                         panel_updates[col] = edited_val
@@ -476,17 +486,91 @@ def save_edits_to_database(
 
             # Apply updates to patient_panel table
             if panel_updates:
-                set_clause = ", ".join([f"{col} = ?" for col in panel_updates.keys()])
-                values = list(panel_updates.values()) + [patient_id]
+                # Separate cascade updates from regular panel updates
+                cascade_updates = {k: v for k, v in panel_updates.items() if k in CASCADE_NAME_COLUMNS}
+                regular_panel_updates = {k: v for k, v in panel_updates.items() if k not in CASCADE_NAME_COLUMNS}
 
-                conn.execute(
-                    f"UPDATE patient_panel SET {set_clause}, updated_date = CURRENT_TIMESTAMP WHERE patient_id = ?",
-                    values,
-                )
-                change_summaries.append(
-                    f"Patient {patient_id}: Updated {', '.join(panel_updates.keys())}"
-                )
-                rows_updated += 1
+                # Handle cascade name updates (provider_name, coordinator_name)
+                if cascade_updates:
+                    for col, new_name in cascade_updates.items():
+                        # Get the user_id for this provider/coordinator
+                        user_id_col = "provider_id" if col == "provider_name" else "coordinator_id"
+                        user_id_val = edited_row.get(user_id_col)
+
+                        if user_id_val and user_id_val != 0 and user_id_val != "UNASSIGNED":
+                            try:
+                                # Update the users table
+                                conn.execute(
+                                    "UPDATE users SET full_name = ? WHERE user_id = ?",
+                                    (new_name, user_id_val)
+                                )
+
+                                # Cascade to all patient_panel records with this user
+                                conn.execute(
+                                    f"UPDATE patient_panel SET {col} = ?, updated_date = CURRENT_TIMESTAMP WHERE {user_id_col} = ?",
+                                    (new_name, user_id_val)
+                                )
+
+                                # Also update care_provider_name or care_coordinator_name columns
+                                if col == "provider_name":
+                                    conn.execute(
+                                        "UPDATE patient_panel SET care_provider_name = ?, updated_date = CURRENT_TIMESTAMP WHERE provider_id = ?",
+                                        (new_name, user_id_val)
+                                    )
+                                elif col == "coordinator_name":
+                                    conn.execute(
+                                        "UPDATE patient_panel SET care_coordinator_name = ?, updated_date = CURRENT_TIMESTAMP WHERE coordinator_id = ?",
+                                        (new_name, user_id_val)
+                                    )
+
+                                # Update provider_tasks_YYYY_MM tables (provider_name column)
+                                if col == "provider_name":
+                                    conn.execute(
+                                        "UPDATE provider_tasks SET provider_name = ? WHERE provider_id = ?",
+                                        (new_name, user_id_val)
+                                    )
+
+                                # Update coordinator_tasks_YYYY_MM tables (coordinator_name column if exists)
+                                # Note: coordinator_tasks tables don't typically have coordinator_name, but some might
+
+                                # Update workflow_instances table
+                                if col == "coordinator_name":
+                                    conn.execute(
+                                        "UPDATE workflow_instances SET coordinator_name = ? WHERE coordinator_id = ?",
+                                        (new_name, user_id_val)
+                                    )
+
+                                # Update provider_monthly_summary table
+                                if col == "provider_name":
+                                    conn.execute(
+                                        "UPDATE provider_monthly_summary SET provider_name = ? WHERE provider_id = ?",
+                                        (new_name, user_id_val)
+                                    )
+
+                                change_summaries.append(
+                                    f"Patient {patient_id}: Updated {col} to '{new_name}' (cascaded to all records for user {user_id_val})"
+                                )
+                                rows_updated += 1
+                            except Exception as e:
+                                logger.error(f"Error cascading {col} update: {e}")
+                                change_summaries.append(
+                                    f"Patient {patient_id}: Failed to cascade {col} update - {e}"
+                                )
+
+                # Handle regular panel updates
+                if regular_panel_updates:
+                    set_clause = ", ".join([f"{col} = ?" for col in regular_panel_updates.keys()])
+                    values = list(regular_panel_updates.values()) + [patient_id]
+
+                    conn.execute(
+                        f"UPDATE patient_panel SET {set_clause}, updated_date = CURRENT_TIMESTAMP WHERE patient_id = ?",
+                        values,
+                    )
+                    if not cascade_updates:  # Only add summary if not already added from cascade
+                        change_summaries.append(
+                            f"Patient {patient_id}: Updated {', '.join(regular_panel_updates.keys())}"
+                        )
+                    rows_updated += 1
 
             # Apply updates to patients table
             if patients_updates:
