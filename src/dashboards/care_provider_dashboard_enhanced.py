@@ -3481,7 +3481,7 @@ def show_task_review_section(user_id):
                     selected_display, selected_table = selected_option
 
                 # Get provider tasks for selected month using SQLite syntax
-                # Include task_id for editing/deleting, plus notes, ICD codes, and location type for reference
+                # Include task_id for editing/deleting, plus notes, ICD codes, location type, and patient type
                 provider_query = f"""
                 SELECT
                     provider_task_id,
@@ -3490,6 +3490,7 @@ def show_task_review_section(user_id):
                     minutes_of_service,
                     task_description,
                     location_type,
+                    patient_type,
                     notes,
                     icd_codes
                 FROM {selected_table}
@@ -3503,18 +3504,17 @@ def show_task_review_section(user_id):
                     # Convert to DataFrame with task_id for tracking
                     df = pd.DataFrame(
                         provider_tasks,
-                        columns=["_task_id", "Patient Name", "DOS", "Duration", "Service Type", "Location", "Notes", "ICD Codes"],
+                        columns=["_task_id", "Patient Name", "DOS", "Duration", "Task Description", "Location", "Type", "Notes", "ICD Codes"],
                     )
 
                     # Format the DOS column
                     df["DOS"] = pd.to_datetime(df["DOS"]).dt.strftime("%m-%d-%Y")
 
-                    # Clean up Service Type - remove billing code pattern if present
-                    import re
-                    df["Service Type"] = df["Service Type"].str.replace(r'\s*-\s*\d{5}\s*$', '', regex=True).str.strip()
-
                     # Format Location - capitalize first letter
                     df["Location"] = df["Location"].str.strip().str.title()
+
+                    # Ensure Type has a default value if NULL
+                    df["Type"] = df["Type"].fillna("Follow Up")
 
                     # Store table name in session state for deletion
                     st.session_state[f"provider_current_table_{user_id}"] = selected_table
@@ -3536,14 +3536,14 @@ def show_task_review_section(user_id):
                     editor_key = f"provider_task_editor_{user_id}_{selected_table}"
 
                     # Define the columns to display (excluding _task_id which is internal)
-                    # Location, Notes and ICD Codes are read-only reference columns
-                    display_columns = ["Patient Name", "DOS", "Service Type", "Location", "Notes", "ICD Codes"]
+                    # Task Description, Location, Type, Notes and ICD Codes are read-only reference columns
+                    display_columns = ["Patient Name", "DOS", "Task Description", "Location", "Type", "Notes", "ICD Codes"]
 
                     # Add a Delete checkbox column to the dataframe
                     df_edit = df[display_columns].copy()
                     df_edit.insert(0, "Delete", False)
 
-                    # Configure column types - only Service Type is editable
+                    # Configure column types - only Type is editable
                     column_config = {
                         "Delete": st.column_config.CheckboxColumn(
                             "Delete",
@@ -3560,10 +3560,10 @@ def show_task_review_section(user_id):
                             disabled=True,
                             width="small"
                         ),
-                        "Service Type": st.column_config.TextColumn(
-                            "Service Type",
-                            disabled=False,
-                            help="Edit service type and click Save Changes",
+                        "Task Description": st.column_config.TextColumn(
+                            "Task Description",
+                            disabled=True,
+                            help="Task description (e.g., Phone Review, Home Visit) - reference only",
                             width="medium"
                         ),
                         "Location": st.column_config.TextColumn(
@@ -3571,6 +3571,12 @@ def show_task_review_section(user_id):
                             disabled=True,
                             help="Service location (Home, Office, Telehealth) - reference only",
                             width="small"
+                        ),
+                        "Type": st.column_config.TextColumn(
+                            "Type",
+                            disabled=False,
+                            help="Patient visit type (Follow Up, New, Acute, TCM-7, TCM-14) - editable",
+                            width="medium"
                         ),
                         "Notes": st.column_config.TextColumn(
                             "Notes",
@@ -3621,16 +3627,16 @@ def show_task_review_section(user_id):
                                 edited_row = edited_df_reset.iloc[i]
                                 task_id = int(orig_row["_task_id"])
 
-                                # Check if service type changed
-                                type_orig = str(orig_row.get("Service Type", ""))
-                                type_edit = str(edited_row.get("Service Type", ""))
+                                # Check if Type (patient_type) changed
+                                type_orig = str(orig_row.get("Type", ""))
+                                type_edit = str(edited_row.get("Type", ""))
 
                                 if type_orig != type_edit:
-                                    new_type = str(type_edit) if pd.notna(type_edit) else ""
+                                    new_type = str(type_edit) if pd.notna(type_edit) else "Follow Up"
 
                                     conn_update.execute(f"""
                                         UPDATE {selected_table}
-                                        SET task_description = {repr(new_type)}
+                                        SET patient_type = {repr(new_type)}
                                         WHERE provider_task_id = {task_id}
                                     """)
                                     updates_made += 1
