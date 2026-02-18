@@ -5494,12 +5494,7 @@ def delete_provider_tasks(task_ids: list, table_name: str, deleted_by_user_id: i
                 minutes_of_service,
                 billing_code,
                 billing_code_description,
-                icd_codes,
-                location_type,
-                patient_type,
-                source_system,
-                imported_at,
-                status
+                icd_codes
             FROM {table_name}
             WHERE provider_task_id IN ({placeholders})
         """
@@ -5510,13 +5505,14 @@ def delete_provider_tasks(task_ids: list, table_name: str, deleted_by_user_id: i
             return (False, "No tasks found to delete", 0)
 
         # Insert into deleted_provider_tasks table
+        # Only insert columns that exist in deleted_provider_tasks table
         insert_query = f"""
             INSERT INTO {deleted_table} (
                 provider_task_id, original_table_name, provider_id, provider_name,
                 patient_id, patient_name, task_date, task_description, notes,
                 minutes_of_service, billing_code, billing_code_description, icd_codes,
-                location_type, patient_type, source_system, imported_at, status, deleted_by
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                deleted_by_user_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
 
         for task in tasks_to_delete:
@@ -5535,11 +5531,6 @@ def delete_provider_tasks(task_ids: list, table_name: str, deleted_by_user_id: i
                 task_dict.get("billing_code"),
                 task_dict.get("billing_code_description"),
                 task_dict.get("icd_codes"),
-                task_dict.get("location_type"),
-                task_dict.get("patient_type"),
-                task_dict.get("source_system"),
-                task_dict.get("imported_at"),
-                task_dict.get("status"),
                 deleted_by_user_id
             ))
 
