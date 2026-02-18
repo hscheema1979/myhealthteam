@@ -3481,14 +3481,16 @@ def show_task_review_section(user_id):
                     selected_display, selected_table = selected_option
 
                 # Get provider tasks for selected month using SQLite syntax
-                # Include task_id for editing/deleting
+                # Include task_id for editing/deleting, plus notes and ICD codes for reference
                 provider_query = f"""
                 SELECT
                     provider_task_id,
                     patient_name,
                     task_date,
                     minutes_of_service,
-                    task_description
+                    task_description,
+                    notes,
+                    icd_codes
                 FROM {selected_table}
                 WHERE provider_id = ?
                 ORDER BY task_date DESC
@@ -3500,7 +3502,7 @@ def show_task_review_section(user_id):
                     # Convert to DataFrame with task_id for tracking
                     df = pd.DataFrame(
                         provider_tasks,
-                        columns=["_task_id", "Patient Name", "DOS", "Duration", "Service Type"],
+                        columns=["_task_id", "Patient Name", "DOS", "Duration", "Service Type", "Notes", "ICD Codes"],
                     )
 
                     # Format the DOS column
@@ -3533,14 +3535,60 @@ def show_task_review_section(user_id):
                     editor_key = f"provider_task_editor_{user_id}_{selected_table}"
 
                     # Define the columns to display (excluding _task_id which is internal)
-                    display_columns = ["Patient Name", "DOS", "Duration", "Service Type"]
+                    # Notes and ICD Codes are read-only reference columns
+                    display_columns = ["Patient Name", "DOS", "Duration", "Service Type", "Notes", "ICD Codes"]
 
                     # Add a Delete checkbox column to the dataframe
                     df_edit = df[display_columns].copy()
                     df_edit.insert(0, "Delete", False)
 
+                    # Configure column types - make Notes and ICD Codes read-only
+                    column_config = {
+                        "Delete": st.column_config.CheckboxColumn(
+                            "Delete",
+                            help="Check to select for deletion",
+                            width="small"
+                        ),
+                        "Patient Name": st.column_config.TextColumn(
+                            "Patient Name",
+                            disabled=True,
+                            width="medium"
+                        ),
+                        "DOS": st.column_config.TextColumn(
+                            "DOS",
+                            disabled=True,
+                            width="small"
+                        ),
+                        "Duration": st.column_config.NumberColumn(
+                            "Duration",
+                            help="Edit duration and click Save Changes",
+                            min_value=0,
+                            max_value=480,
+                            step=1,
+                            width="small"
+                        ),
+                        "Service Type": st.column_config.TextColumn(
+                            "Service Type",
+                            help="Edit service type and click Save Changes",
+                            width="medium"
+                        ),
+                        "Notes": st.column_config.TextColumn(
+                            "Notes",
+                            disabled=True,
+                            help="Reference only - not editable here",
+                            width="large"
+                        ),
+                        "ICD Codes": st.column_config.TextColumn(
+                            "ICD Codes",
+                            disabled=True,
+                            help="Reference only - not editable here",
+                            width="medium"
+                        ),
+                    }
+
                     edited_df = st.data_editor(
                         df_edit,
+                        column_config=column_config,
                         use_container_width=True,
                         hide_index=True,
                         key=editor_key,
