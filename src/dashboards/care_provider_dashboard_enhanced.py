@@ -314,7 +314,7 @@ def show(user_id, user_role_ids=None):
                 show_phone_review_entry(mode="cp", user_id=user_id, filtered_patients=filtered_patients)
 
             with tab5:
-                show_monthly_task_review(user_id)
+                show_task_review_section(user_id)
 
             with tab_zmo:
                 from src.zmo_module import render_zmo_tab
@@ -391,7 +391,7 @@ def show(user_id, user_role_ids=None):
                 show_phone_review_entry(mode="cp", user_id=user_id, filtered_patients=filtered_patients)
 
             with tab4:
-                show_monthly_task_review(user_id)
+                show_task_review_section(user_id)
             with tab_zmo:
                 from src.zmo_module import render_zmo_tab
                 render_zmo_tab(user_id=user_id)
@@ -480,7 +480,7 @@ def show(user_id, user_role_ids=None):
                 show_phone_review_entry(mode="cp", user_id=user_id, filtered_patients=filtered_patients)
 
             with tab4:
-                show_monthly_task_review(user_id)
+                show_task_review_section(user_id)
             with tab_zmo:
                 from src.zmo_module import render_zmo_tab
                 render_zmo_tab(user_id=user_id)
@@ -551,7 +551,7 @@ def show(user_id, user_role_ids=None):
                 show_phone_review_entry(mode="cp", user_id=user_id, filtered_patients=filtered_patients)
 
             with tab3:
-                show_monthly_task_review(user_id)
+                show_task_review_section(user_id)
             with tab_zmo:
                 from src.zmo_module import render_zmo_tab
                 render_zmo_tab(user_id=user_id)
