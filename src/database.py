@@ -5545,11 +5545,21 @@ def delete_provider_tasks(task_ids: list, table_name: str, deleted_by_user_id: i
         """
 
         cursor = conn.execute(delete_query, task_ids)
+
+        # Also delete from provider_task_billing_status table
+        # This prevents deleted tasks from appearing in billing reports
+        billing_status_delete = f"""
+            DELETE FROM provider_task_billing_status
+            WHERE provider_task_id IN ({placeholders})
+        """
+        conn.execute(billing_status_delete, task_ids)
+        billing_status_deleted = conn.rowcount
+
         conn.commit()
         deleted_count = cursor.rowcount
 
         if deleted_count > 0:
-            return (True, f"Successfully deleted {deleted_count} task(s)", deleted_count)
+            return (True, f"Successfully deleted {deleted_count} task(s) (removed from {billing_status_deleted} billing status entries)", deleted_count)
         else:
             return (False, "No tasks were deleted", 0)
 
@@ -5688,6 +5698,43 @@ def restore_provider_tasks(deleted_ids: list, restored_by_user_id: int = None) -
                 ))
                 restored_count += 1
 
+                # Restore billing status entry if it exists
+                # Check if there's a billing status entry for this task
+                billing_check = conn.execute(
+                    "SELECT billing_status_id FROM provider_task_billing_status WHERE provider_task_id = ?",
+                    (original_task_id,)
+                ).fetchone()
+
+                if billing_check:
+                    # Billing status exists, recreate it
+                    conn.execute("""
+                        INSERT INTO provider_task_billing_status (
+                            provider_task_id, provider_id, provider_name,
+                            patient_id, patient_name, task_date, task_description,
+                            notes, minutes_of_service, billing_code, billing_code_description,
+                            icd_codes, location_type, patient_type, source_system,
+                            imported_at, status, created_date
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                    """, (
+                        original_task_id,
+                        task_dict.get("provider_id"),
+                        task_dict.get("provider_name"),
+                        task_dict.get("patient_id"),
+                        task_dict.get("patient_name"),
+                        task_dict.get("task_date"),
+                        task_dict.get("task_description"),
+                        task_dict.get("notes"),
+                        task_dict.get("minutes_of_service"),
+                        task_dict.get("billing_code"),
+                        task_dict.get("billing_code_description"),
+                        task_dict.get("icd_codes"),
+                        task_dict.get("location_type"),
+                        task_dict.get("patient_type"),
+                        task_dict.get("source_system"),
+                        task_dict.get("imported_at"),
+                        task_dict.get("status")
+                    ))
+
         # Remove from deleted table
         conn.execute(
             f"DELETE FROM deleted_provider_tasks WHERE deleted_id IN ({placeholders})",
@@ -5697,7 +5744,7 @@ def restore_provider_tasks(deleted_ids: list, restored_by_user_id: int = None) -
         conn.commit()
 
         if restored_count > 0:
-            return (True, f"Successfully restored {restored_count} task(s)", restored_count)
+            return (True, f"Successfully restored {restored_count} task(s) (billing status restored)", restored_count)
         else:
             return (False, "No tasks were restored (may already exist in original table)", 0)
 
