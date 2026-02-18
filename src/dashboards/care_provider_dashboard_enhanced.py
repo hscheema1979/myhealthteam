@@ -3522,17 +3522,22 @@ def show_task_review_section(user_id):
                         st.metric("Total Duration (minutes)", total_duration)
 
                     st.markdown("**Edit tasks below and click Save to update, or select tasks to delete**")
+                    st.info("💡 To delete tasks: check the boxes in the 'Delete' column, then click the 'Delete Selected Tasks' button below")
 
                     # Store original data for comparison
                     original_key = f"original_provider_data_{user_id}_{selected_table}"
                     if original_key not in st.session_state:
                         st.session_state[original_key] = df.copy()
 
-                    # Display as editable data_editor
+                    # Display as editable data_editor with Delete checkbox column
                     editor_key = f"provider_task_editor_{user_id}_{selected_table}"
-                    display_columns = ["Patient Name", "DOS", "Duration", "Service Type"]
+
+                    # Add a Delete checkbox column to the dataframe
+                    df_edit = df[display_columns].copy()
+                    df_edit.insert(0, "Delete", False)
+
                     edited_df = st.data_editor(
-                        df[display_columns],
+                        df_edit,
                         use_container_width=True,
                         hide_index=True,
                         key=editor_key,
@@ -3562,7 +3567,7 @@ def show_task_review_section(user_id):
                                 edited_row = edited_df_reset.iloc[i]
                                 task_id = int(orig_row["_task_id"])
 
-                                # Check if duration changed
+                                # Check if duration or service type changed (exclude Delete column from comparison)
                                 duration_orig = orig_row.get("Duration", 0)
                                 duration_edit = edited_row.get("Duration", 0)
                                 type_orig = str(orig_row.get("Service Type", ""))
@@ -3585,14 +3590,14 @@ def show_task_review_section(user_id):
                             conn_update.close()
 
                             if updates_made > 0:
-                                st.success(f"Saved {updates_made} task update(s)!")
+                                st.success(f"✅ Saved {updates_made} task update(s)!")
                                 # Clear state to reload fresh data
                                 del st.session_state[original_key]
                                 if editor_key in st.session_state:
                                     del st.session_state[editor_key]
                                 st.rerun()
                             else:
-                                st.info("No changes detected.")
+                                st.info("💾 No changes detected.")
                         except Exception as e:
                             st.error(f"Error saving changes: {e}")
                             import traceback
@@ -3600,53 +3605,39 @@ def show_task_review_section(user_id):
 
                     # Handle delete selected tasks
                     if delete_clicked:
-                        st.warning("**Delete mode**: Check the boxes next to tasks you want to delete, then click 'Confirm Delete' below.")
-                        confirm_key = f"confirm_delete_provider_{user_id}_{selected_table}"
+                        # Get selected task IDs from the Delete checkbox column in the main dataframe
+                        selected_indices = edited_df[edited_df["Delete"] == True].index.tolist()
 
-                        # Add checkbox column for selection
-                        df_with_select = df[display_columns].copy()
-                        df_with_select.insert(0, "Select", False)
+                        if selected_indices:
+                            task_ids_to_delete = [int(df.iloc[i]["_task_id"]) for i in selected_indices]
 
-                        selection_key = f"delete_selection_{user_id}_{selected_table}"
-                        selected_df = st.data_editor(
-                            df_with_select,
-                            use_container_width=True,
-                            hide_index=True,
-                            key=selection_key,
-                            num_rows="fixed",
-                        )
+                            # Confirm deletion
+                            st.warning(f"⚠️ Are you sure you want to delete {len(task_ids_to_delete)} task(s)? Tasks will be moved to deleted_tasks table and can be restored from the 'Deleted Tasks' tab.")
 
-                        if st.button("Confirm Delete", type="primary", key=confirm_key):
-                            # Get selected task IDs
-                            selected_indices = selected_df[selected_df["Select"] == True].index.tolist()
+                            col_conf1, col_conf2 = st.columns(2)
+                            with col_conf1:
+                                if st.button("Yes, Delete", type="primary", key=f"confirm_yes_{user_id}"):
+                                    success, message, count = database.delete_provider_tasks(task_ids_to_delete, selected_table, deleted_by_user_id=user_id)
 
-                            if selected_indices:
-                                task_ids_to_delete = [int(df.iloc[i]["_task_id"]) for i in selected_indices]
-
-                                # Confirm deletion
-                                st.warning(f"Are you sure you want to delete {len(task_ids_to_delete)} task(s)? Tasks will be moved to deleted_tasks table and can be restored if needed.")
-
-                                col_conf1, col_conf2 = st.columns(2)
-                                with col_conf1:
-                                    if st.button("Yes, Delete", type="primary", key=f"confirm_yes_{user_id}"):
-                                        success, message, count = database.delete_provider_tasks(task_ids_to_delete, selected_table, deleted_by_user_id=user_id)
-
-                                        if success:
-                                            st.success(message)
-                                            # Clear state to reload fresh data
-                                            if original_key in st.session_state:
-                                                del st.session_state[original_key]
-                                            if editor_key in st.session_state:
-                                                del st.session_state[editor_key]
-                                            st.rerun()
-                                        else:
-                                            st.error(message)
-                                with col_conf2:
-                                    if st.button("Cancel", key=f"confirm_cancel_{user_id}"):
-                                        st.info("Deletion cancelled.")
+                                    if success:
+                                        st.success(f"✅ {message}")
+                                        # Clear state to reload fresh data
+                                        if original_key in st.session_state:
+                                            del st.session_state[original_key]
+                                        if editor_key in st.session_state:
+                                            del st.session_state[editor_key]
+                                        # Also clear the month selection state to refresh the list
+                                        if task_month_state_key in st.session_state:
+                                            del st.session_state[task_month_state_key]
                                         st.rerun()
-                            else:
-                                st.info("No tasks selected for deletion.")
+                                    else:
+                                        st.error(message)
+                            with col_conf2:
+                                if st.button("Cancel", key=f"confirm_cancel_{user_id}"):
+                                    st.info("❌ Deletion cancelled.")
+                                    st.rerun()
+                        else:
+                            st.warning("⚠️ No tasks selected for deletion. Please check the 'Delete' boxes next to the tasks you want to remove.")
 
                     # Download option
                     csv = df[display_columns].to_csv(index=False)
