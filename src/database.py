@@ -2053,13 +2053,14 @@ def sync_patient_last_visit_all_tables(conn, patient_id, last_visit_date, servic
 
 def save_daily_task(
     provider_id, patient_id, task_date, task_description, notes, billing_code=None, icd_codes=None,
-    location_type=None, patient_type=None
+    location_type=None, patient_type=None, duration_minutes_override=None
 ):
     """Save a daily task for a provider to the provider_tasks table.
     If `billing_code` is provided, use it to look up duration and description. Otherwise fallback to lookup by task_description.
     `icd_codes` is an optional string of ICD-10 codes for billing purposes.
     `location_type` is the type of visit location (Home, Telehealth, Office).
     `patient_type` is the type of patient visit (New, Follow Up, Acute, Cognitive, TCM-7, TCM-14).
+    `duration_minutes_override` is an optional parameter to override the default duration (used for phone reviews, etc.).
     """
     conn = get_db_connection()
     try:
@@ -2099,6 +2100,10 @@ def save_daily_task(
             billing_code_val = billing_code if billing_code else "UNKNOWN"
             rate = 0
             billing_code_description = f"{task_description} - Default"
+
+        # Use duration override if provided (for phone reviews, etc.)
+        if duration_minutes_override is not None:
+            duration_minutes = duration_minutes_override
 
         # Normalize patient_id for storage and related lookups
         pid = normalize_patient_id(patient_id, conn=conn)
