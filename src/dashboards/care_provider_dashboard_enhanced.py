@@ -3548,6 +3548,7 @@ def show_task_review_section(user_id):
                     )
 
                     # Action buttons
+                    st.markdown("---")  # Add separator before buttons
                     col_btn1, col_btn2 = st.columns(2)
 
                     with col_btn1:
@@ -3555,6 +3556,8 @@ def show_task_review_section(user_id):
 
                     with col_btn2:
                         delete_clicked = st.button("Delete Selected Tasks", type="secondary", key=f"delete_provider_tasks_{user_id}_{selected_table}")
+
+                    st.markdown("---")  # Add separator after buttons
 
                     # Handle save changes
                     if save_clicked:
