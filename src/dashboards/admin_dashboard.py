@@ -469,8 +469,13 @@ def show():
 
     # --- TAB: User Role Management ---
     with tab_role:
-        st.subheader(TextStyle.INFO_INDICATOR + " User Role Management")
-        st.markdown("### Assign and Remove User Roles")
+        # Create sub-tabs for Users and Facilities
+        sub_tab_users, sub_tab_facilities = st.tabs(["User Roles", "Facility Management"])
+
+        # ===== SUB-TAB: User Roles =====
+        with sub_tab_users:
+            st.subheader(TextStyle.INFO_INDICATOR + " User Roles")
+            st.markdown("### Assign and Remove User Roles")
         users = db.get_all_users() or []
         roles = db.get_all_roles() or []
         # Filter out roles that are no longer used as separate roles
@@ -689,6 +694,196 @@ def show():
                 #     with col_no:
                 #         st.info("Operation cancelled")
                 #         st.rerun()  # Reset the state
+
+        # ===== SUB-TAB: Facility Management =====
+        with sub_tab_facilities:
+            st.subheader(TextStyle.INFO_INDICATOR + " Facility Management")
+            st.markdown("### Manage Facilities and User Assignments")
+
+            # Facility Management Section
+            st.markdown("#### Facilities List")
+
+            # Get facilities with full details
+            conn = db.get_db_connection()
+            facilities = conn.execute("SELECT * FROM facilities ORDER BY facility_name").fetchall()
+            conn.close()
+
+            if facilities:
+                facility_data = []
+                for f in facilities:
+                    facility_data.append({
+                        "facility_id": f[0],
+                        "facility_name": f[1],
+                        "address": f[2] or "",
+                        "phone": f[3] or "",
+                        "email": f[4] or "",
+                    })
+                facilities_df = pd.DataFrame(facility_data)
+
+                # Display facilities
+                st.dataframe(
+                    facilities_df,
+                    column_config={
+                        "facility_id": None,
+                        "facility_name": st.column_config.TextColumn("Facility Name", width="medium"),
+                        "address": st.column_config.TextColumn("Address", width="large"),
+                        "phone": st.column_config.TextColumn("Phone", width="small"),
+                        "email": st.column_config.TextColumn("Email", width="medium"),
+                    },
+                    hide_index=True,
+                    use_container_width=True,
+                )
+
+                # Add new facility
+                st.divider()
+                st.markdown("##### Add New Facility")
+                with st.form("add_facility_form"):
+                    new_facility_name = st.text_input("Facility Name*")
+                    new_facility_address = st.text_input("Address")
+                    new_facility_phone = st.text_input("Phone")
+                    new_facility_email = st.text_input("Email")
+
+                    submitted = st.form_submit_button("Add Facility", use_container_width=True)
+                    if submitted and new_facility_name:
+                        try:
+                            conn = db.get_db_connection()
+                            conn.execute(
+                                """
+                                INSERT INTO facilities (facility_name, address, phone, email, created_date)
+                                VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+                                """,
+                                (new_facility_name, new_facility_address, new_facility_phone, new_facility_email)
+                            )
+                            conn.commit()
+                            conn.close()
+                            st.success(f"Added facility: {new_facility_name}")
+                            time.sleep(1)
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Error adding facility: {e}")
+
+            else:
+                st.info("No facilities found in the system.")
+
+            # User-Facility Assignments
+            st.divider()
+            st.markdown("#### User-Facility Assignments")
+
+            # Get all assignments with user and facility details
+            conn = db.get_db_connection()
+            assignments = conn.execute("""
+                SELECT
+                    ufa.assignment_id,
+                    u.user_id,
+                    u.full_name,
+                    f.facility_id,
+                    f.facility_name,
+                    ufa.assignment_type,
+                    ufa.assigned_date
+                FROM user_facility_assignments ufa
+                JOIN users u ON ufa.user_id = u.user_id
+                JOIN facilities f ON ufa.facility_id = f.facility_id
+                ORDER BY f.facility_name, u.full_name
+            """).fetchall()
+            conn.close()
+
+            if assignments:
+                assignment_data = []
+                for a in assignments:
+                    assignment_data.append({
+                        "assignment_id": a[0],
+                        "user_id": a[1],
+                        "full_name": a[2],
+                        "facility_id": a[3],
+                        "facility_name": a[4],
+                        "assignment_type": a[5],
+                        "assigned_date": a[6],
+                    })
+                assignments_df = pd.DataFrame(assignment_data)
+
+                st.dataframe(
+                    assignments_df,
+                    column_config={
+                        "assignment_id": None,
+                        "user_id": None,
+                        "facility_id": None,
+                        "full_name": st.column_config.TextColumn("User", width="medium"),
+                        "facility_name": st.column_config.TextColumn("Facility", width="medium"),
+                        "assignment_type": st.column_config.TextColumn("Type", width="small"),
+                        "assigned_date": st.column_config.TextColumn("Assigned", width="small"),
+                    },
+                    hide_index=True,
+                    use_container_width=True,
+                )
+
+            else:
+                st.info("No user-facility assignments found.")
+
+            # Get users and facilities for dropdowns (used in both forms below)
+            users_list = db.get_all_users() or []
+            conn = db.get_db_connection()
+            facilities_list = conn.execute("SELECT facility_id, facility_name FROM facilities ORDER BY facility_name").fetchall()
+            conn.close()
+
+            if users_list and facilities_list:
+                user_options = {f"{u['full_name']} (ID: {u['user_id']})": u['user_id'] for u in users_list}
+                facility_options = {f[1]: f[0] for f in facilities_list}
+
+                # Remove assignment section
+                st.divider()
+                st.markdown("##### Remove Facility Assignment")
+                with st.form("remove_facility_assignment_form"):
+                    selected_user = st.selectbox("Select User*", options=list(user_options.keys()), key="remove_user")
+                    selected_facility = st.selectbox("Select Facility*", options=list(facility_options.keys()), key="remove_facility")
+
+                    remove_submitted = st.form_submit_button("Remove Assignment", use_container_width=True)
+                    if remove_submitted:
+                        try:
+                            user_id_to_remove = user_options[selected_user]
+                            facility_id_to_remove = facility_options[selected_facility]
+
+                            conn = db.get_db_connection()
+                            conn.execute(
+                                "DELETE FROM user_facility_assignments WHERE user_id = ? AND facility_id = ?",
+                                (user_id_to_remove, facility_id_to_remove)
+                            )
+                            conn.commit()
+                            conn.close()
+                            st.success(f"Removed {selected_user} from {selected_facility}")
+                            time.sleep(1)
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Error removing assignment: {e}")
+
+                # Add new assignment
+                st.divider()
+                st.markdown("##### Add Facility Assignment")
+                with st.form("add_facility_assignment_form"):
+                    selected_user = st.selectbox("Select User*", options=list(user_options.keys()), key="add_user")
+                    selected_facility = st.selectbox("Select Facility*", options=list(facility_options.keys()), key="add_facility")
+                    assignment_type = st.selectbox("Assignment Type", options=["primary", "secondary"], index=0)
+
+                    add_submitted = st.form_submit_button("Add Assignment", use_container_width=True)
+                    if add_submitted:
+                        try:
+                            user_id_to_add = user_options[selected_user]
+                            facility_id_to_add = facility_options[selected_facility]
+
+                            conn = db.get_db_connection()
+                            conn.execute(
+                                """
+                                INSERT INTO user_facility_assignments (user_id, facility_id, assignment_type, assigned_date)
+                                VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+                                """,
+                                (user_id_to_add, facility_id_to_add, assignment_type)
+                            )
+                            conn.commit()
+                            conn.close()
+                            st.success(f"Assigned {selected_user} to {selected_facility} as {assignment_type}")
+                            time.sleep(1)
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Error adding assignment: {e}")
 
     # --- TAB: Staff Onboarding (Hidden User Management Table) ---
     # HIDING: User management table display issues - functionality moved to User Role Management tab
