@@ -3532,6 +3532,9 @@ def show_task_review_section(user_id):
                     # Display as editable data_editor with Delete checkbox column
                     editor_key = f"provider_task_editor_{user_id}_{selected_table}"
 
+                    # Define the columns to display (excluding _task_id which is internal)
+                    display_columns = ["Patient Name", "DOS", "Duration", "Service Type"]
+
                     # Add a Delete checkbox column to the dataframe
                     df_edit = df[display_columns].copy()
                     df_edit.insert(0, "Delete", False)
