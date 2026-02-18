@@ -3481,7 +3481,7 @@ def show_task_review_section(user_id):
                     selected_display, selected_table = selected_option
 
                 # Get provider tasks for selected month using SQLite syntax
-                # Include task_id for editing/deleting, plus notes and ICD codes for reference
+                # Include task_id for editing/deleting, plus notes, ICD codes, and location type for reference
                 provider_query = f"""
                 SELECT
                     provider_task_id,
@@ -3489,6 +3489,7 @@ def show_task_review_section(user_id):
                     task_date,
                     minutes_of_service,
                     task_description,
+                    location_type,
                     notes,
                     icd_codes
                 FROM {selected_table}
@@ -3502,47 +3503,42 @@ def show_task_review_section(user_id):
                     # Convert to DataFrame with task_id for tracking
                     df = pd.DataFrame(
                         provider_tasks,
-                        columns=["_task_id", "Patient Name", "DOS", "Duration", "Service Type", "Notes", "ICD Codes"],
+                        columns=["_task_id", "Patient Name", "DOS", "Duration", "Service Type", "Location", "Notes", "ICD Codes"],
                     )
 
                     # Format the DOS column
                     df["DOS"] = pd.to_datetime(df["DOS"]).dt.strftime("%m-%d-%Y")
+
+                    # Clean up Service Type - remove billing code pattern if present
+                    import re
+                    df["Service Type"] = df["Service Type"].str.replace(r'\s*-\s*\d{5}\s*$', '', regex=True).str.strip()
+
+                    # Format Location - capitalize first letter
+                    df["Location"] = df["Location"].str.strip().str.title()
 
                     # Store table name in session state for deletion
                     st.session_state[f"provider_current_table_{user_id}"] = selected_table
 
                     # Display summary
                     total_tasks = len(df)
-                    total_duration = (
-                        df["Duration"].sum() if "Duration" in df.columns else 0
-                    )
 
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        st.metric("Total Tasks", total_tasks)
-                    with col2:
-                        st.metric("Total Duration (minutes)", total_duration)
+                    st.metric("Total Tasks", total_tasks)
 
-                    st.markdown("**Edit tasks below and click Save to update, or select tasks to delete**")
-                    st.info("💡 To delete tasks: check the boxes in the 'Delete' column, then click the 'Delete Selected Tasks' button below")
-
-                    # Store original data for comparison
-                    original_key = f"original_provider_data_{user_id}_{selected_table}"
-                    if original_key not in st.session_state:
-                        st.session_state[original_key] = df.copy()
+                    st.markdown("**Review tasks below. Select tasks to delete using the checkboxes.**")
+                    st.info("💡 This is a reference view. To edit tasks, use the Daily Task Log or other entry forms.")
 
                     # Display as editable data_editor with Delete checkbox column
                     editor_key = f"provider_task_editor_{user_id}_{selected_table}"
 
                     # Define the columns to display (excluding _task_id which is internal)
-                    # Notes and ICD Codes are read-only reference columns
-                    display_columns = ["Patient Name", "DOS", "Duration", "Service Type", "Notes", "ICD Codes"]
+                    # Location, Notes and ICD Codes are read-only reference columns
+                    display_columns = ["Patient Name", "DOS", "Service Type", "Location", "Notes", "ICD Codes"]
 
                     # Add a Delete checkbox column to the dataframe
                     df_edit = df[display_columns].copy()
                     df_edit.insert(0, "Delete", False)
 
-                    # Configure column types - make Notes and ICD Codes read-only
+                    # Configure column types - make Location, Notes and ICD Codes read-only
                     column_config = {
                         "Delete": st.column_config.CheckboxColumn(
                             "Delete",
@@ -3559,18 +3555,17 @@ def show_task_review_section(user_id):
                             disabled=True,
                             width="small"
                         ),
-                        "Duration": st.column_config.NumberColumn(
-                            "Duration",
-                            help="Edit duration and click Save Changes",
-                            min_value=0,
-                            max_value=480,
-                            step=1,
-                            width="small"
-                        ),
                         "Service Type": st.column_config.TextColumn(
                             "Service Type",
-                            help="Edit service type and click Save Changes",
+                            disabled=True,
+                            help="Task description (cleaned)",
                             width="medium"
+                        ),
+                        "Location": st.column_config.TextColumn(
+                            "Location",
+                            disabled=True,
+                            help="Service location (Home, Office, Telehealth)",
+                            width="small"
                         ),
                         "Notes": st.column_config.TextColumn(
                             "Notes",
@@ -3597,65 +3592,10 @@ def show_task_review_section(user_id):
 
                     # Action buttons
                     st.markdown("---")  # Add separator before buttons
-                    col_btn1, col_btn2 = st.columns(2)
 
-                    with col_btn1:
-                        save_clicked = st.button("Save Changes", type="primary", key=f"save_provider_tasks_{user_id}_{selected_table}")
-
-                    with col_btn2:
-                        delete_clicked = st.button("Delete Selected Tasks", type="secondary", key=f"delete_provider_tasks_{user_id}_{selected_table}")
+                    delete_clicked = st.button("Delete Selected Tasks", type="secondary", key=f"delete_provider_tasks_{user_id}_{selected_table}")
 
                     st.markdown("---")  # Add separator after buttons
-
-                    # Handle save changes
-                    if save_clicked:
-                        try:
-                            conn_update = database.get_db_connection()
-                            updates_made = 0
-
-                            original_df = st.session_state[original_key].reset_index(drop=True)
-                            edited_df_reset = edited_df.reset_index(drop=True)
-
-                            for i in range(len(edited_df_reset)):
-                                orig_row = original_df.iloc[i]
-                                edited_row = edited_df_reset.iloc[i]
-                                task_id = int(orig_row["_task_id"])
-
-                                # Check if duration or service type changed (exclude Delete column from comparison)
-                                duration_orig = orig_row.get("Duration", 0)
-                                duration_edit = edited_row.get("Duration", 0)
-                                type_orig = str(orig_row.get("Service Type", ""))
-                                type_edit = str(edited_row.get("Service Type", ""))
-
-                                if duration_orig != duration_edit or type_orig != type_edit:
-                                    new_duration = int(duration_edit) if pd.notna(duration_edit) else 0
-                                    new_type = str(type_edit) if pd.notna(type_edit) else ""
-
-                                    conn_update.execute(f"""
-                                        UPDATE {selected_table}
-                                        SET minutes_of_service = {new_duration},
-                                            duration_minutes = {new_duration},
-                                            task_description = {repr(new_type)}
-                                        WHERE provider_task_id = {task_id}
-                                    """)
-                                    updates_made += 1
-
-                            conn_update.commit()
-                            conn_update.close()
-
-                            if updates_made > 0:
-                                st.success(f"✅ Saved {updates_made} task update(s)!")
-                                # Clear state to reload fresh data
-                                del st.session_state[original_key]
-                                if editor_key in st.session_state:
-                                    del st.session_state[editor_key]
-                                st.rerun()
-                            else:
-                                st.info("💾 No changes detected.")
-                        except Exception as e:
-                            st.error(f"Error saving changes: {e}")
-                            import traceback
-                            st.error(traceback.format_exc())
 
                     # Handle delete selected tasks
                     if delete_clicked:
@@ -3675,12 +3615,7 @@ def show_task_review_section(user_id):
 
                                     if success:
                                         st.success(f"✅ {message}")
-                                        # Clear state to reload fresh data
-                                        if original_key in st.session_state:
-                                            del st.session_state[original_key]
-                                        if editor_key in st.session_state:
-                                            del st.session_state[editor_key]
-                                        # Also clear the month selection state to refresh the list
+                                        # Clear the month selection state to refresh the list
                                         if task_month_state_key in st.session_state:
                                             del st.session_state[task_month_state_key]
                                         st.rerun()
