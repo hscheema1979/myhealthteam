@@ -3445,17 +3445,37 @@ def show_task_review_section(user_id):
                 st.info("No valid monthly task tables found.")
                 return
 
+            # Initialize session state for selected month (persistent across tab switches)
+            task_month_state_key = f"provider_task_review_month_{user_id}"
+
             # View selection
             view_tab1, view_tab2, view_tab3 = st.tabs(["Task List", "Monthly Summary", "Deleted Tasks"])
 
             with view_tab1:
                 # Original task list functionality
+                # Determine the index of the currently selected month (or default to 0)
+                if task_month_state_key in st.session_state:
+                    prev_table = st.session_state[task_month_state_key]
+                    # Find the index of the previously selected table
+                    month_index = 0
+                    for i, (display_name, table_name) in enumerate(available_months):
+                        if table_name == prev_table:
+                            month_index = i
+                            break
+                else:
+                    # Default to first month (most recent)
+                    month_index = 0
+
                 selected_option = st.selectbox(
                     "Select Month:",
                     available_months,
                     format_func=lambda x: x[0],
+                    index=month_index,
                     key="task_list_month",
                 )
+
+                # Store the selected table name for persistence across tab switches
+                st.session_state[task_month_state_key] = selected_option[1]
 
                 if selected_option:
                     selected_display, selected_table = selected_option
@@ -3643,13 +3663,32 @@ def show_task_review_section(user_id):
                 # Monthly Summary functionality
                 st.markdown("### Monthly Summary")
 
-                # Month selection for summary
+                # Month selection for summary (use same persistent state as Task List)
+                summary_month_state_key = f"provider_summary_review_month_{user_id}"
+
+                # Determine the index of the currently selected month (or default to 0)
+                if summary_month_state_key in st.session_state:
+                    prev_table = st.session_state[summary_month_state_key]
+                    # Find the index of the previously selected table
+                    summary_month_index = 0
+                    for i, (display_name, table_name) in enumerate(available_months):
+                        if table_name == prev_table:
+                            summary_month_index = i
+                            break
+                else:
+                    # Default to first month (most recent)
+                    summary_month_index = 0
+
                 selected_summary_option = st.selectbox(
                     "Select Month for Summary:",
                     available_months,
                     format_func=lambda x: x[0],
+                    index=summary_month_index,
                     key="summary_month",
                 )
+
+                # Store the selected table name for persistence across tab switches
+                st.session_state[summary_month_state_key] = selected_summary_option[1]
 
                 if selected_summary_option:
                     summary_display, summary_table = selected_summary_option
