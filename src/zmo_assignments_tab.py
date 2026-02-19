@@ -16,7 +16,6 @@ from src.utils.patient_assignments import (
     get_provider_options,
     get_all_users_map
 )
-from src import logger
 
 
 def _render_patient_assignments_tab(user_id: Optional[int] = None) -> None:
