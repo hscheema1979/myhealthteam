@@ -21,7 +21,7 @@ import streamlit as st
 from src import database
 from src.core_utils import get_user_role_ids
 from src.dashboards.phone_review import show_phone_review_entry
-from src.dashboards.coordinator_task_review_component import show as show_monthly_task_review
+from src.dashboards.coordinator_task_review_component import show as show_coordinator_task_review
 from src.zmo_module import render_zmo_tab
 
 
@@ -97,17 +97,36 @@ def render_results_review_tab(user_id: int, user_role_ids: list):
                     st.write("**Existing Notes:**")
                     st.info(wf['notes'])
 
-                # Action buttons
+                # Action buttons with time tracking
                 col1, col2, col3 = st.columns(3)
 
                 with col1:
+                    st.write("**Time Spent (minutes):**")
+                    duration = st.number_input(
+                        "Minutes",
+                        min_value=1,
+                        max_value=480,
+                        value=15,
+                        step=5,
+                        key=f"duration_{wf['instance_id']}",
+                        help="Enter time spent on this review"
+                    )
+
+                with col2:
                     if st.button(f"Complete Review", key=f"complete_{wf['instance_id']}"):
-                        complete_rr_workflow(wf['instance_id'], wf['template_id'])
+                        complete_rr_workflow(
+                            instance_id=wf['instance_id'],
+                            template_id=wf['template_id'],
+                            user_id=user_id,
+                            duration_minutes=duration,
+                            patient_id=wf['patient_id'],
+                            patient_name=wf['patient_name']
+                        )
                         st.success("Workflow completed successfully!")
                         time.sleep(1)
                         st.rerun()
 
-                with col2:
+                with col3:
                     if st.button(f"Add Note", key=f"note_{wf['instance_id']}"):
                         add_workflow_note(wf['instance_id'])
 
@@ -119,11 +138,21 @@ def render_results_review_tab(user_id: int, user_role_ids: list):
         conn.close()
 
 
-def complete_rr_workflow(instance_id: int, template_id: int):
+def complete_rr_workflow(instance_id: int, template_id: int, user_id: int,
+                         duration_minutes: int, patient_id: str, patient_name: str):
     """
     Complete the RR workflow step and the entire workflow
 
-    For RR workflows, completing the final step also completes the entire workflow
+    For RR workflows, completing the final step also completes the entire workflow.
+    Also creates a coordinator task entry for billing purposes.
+
+    Args:
+        instance_id: Workflow instance ID
+        template_id: Workflow template ID (determines task type)
+        user_id: RR user ID
+        duration_minutes: Time spent on review
+        patient_id: Patient ID
+        patient_name: Patient name
     """
     conn = database.get_db_connection()
     try:
@@ -137,7 +166,54 @@ def complete_rr_workflow(instance_id: int, template_id: int):
             st.error("Workflow not found")
             return
 
-        # Mark the current step as completed
+        # Get RR user info
+        user = conn.execute(
+            "SELECT user_id, username, full_name FROM users WHERE user_id = ?",
+            (user_id,)
+        ).fetchone()
+
+        if not user:
+            st.error("User not found")
+            return
+
+        # Determine task type based on template
+        if template_id in [1, 2, 3]:
+            task_type = "Results Review - LAB"
+        elif template_id in [4, 5, 6]:
+            task_type = "Results Review - IMAGING"
+        else:
+            task_type = "Results Review"
+
+        # Get current month table name
+        from datetime import datetime
+        current_month_table = f"coordinator_tasks_{datetime.now().strftime('%Y_%m')}"
+
+        # Ensure monthly table exists
+        database.ensure_monthly_coordinator_tasks_table()
+
+        # Insert into coordinator_tasks for billing
+        conn.execute(f"""
+            INSERT INTO {current_month_table} (
+                coordinator_id,
+                coordinator_name,
+                patient_id,
+                task_date,
+                duration_minutes,
+                task_type,
+                notes,
+                source_system,
+                created_at_pst
+            ) VALUES (?, ?, ?, date('now'), ?, ?, ?, 'DASHBOARD', datetime('now', 'localtime'))
+        """, (
+            user['user_id'],
+            user['full_name'] or user['username'],
+            patient_id,
+            duration_minutes,
+            task_type,
+            f"Workflow instance {instance_id} completed via Results Review dashboard"
+        ))
+
+        # Mark the workflow as completed
         conn.execute(
             "UPDATE workflow_instances SET workflow_status = 'Completed' WHERE instance_id = ?",
             (instance_id,)
@@ -147,12 +223,13 @@ def complete_rr_workflow(instance_id: int, template_id: int):
         conn.execute(
             """INSERT INTO workflow_progress_log
                (instance_id, step_number, completed_at, completed_by, notes)
-               VALUES (?, ?, datetime('now'), 'RR', 'Workflow completed by Results Reviewer')""",
-            (instance_id, workflow['current_step'])
+               VALUES (?, ?, datetime('now'), 'RR', ?)""",
+            (instance_id, workflow['current_step'],
+             f"Workflow completed by Results Reviewer ({user['username']}) - {duration_minutes} minutes")
         )
 
         conn.commit()
-        st.success(f"Workflow {instance_id} marked as complete!")
+        st.success(f"Workflow {instance_id} completed and billed ({duration_minutes} minutes)!")
     finally:
         conn.close()
 
@@ -227,16 +304,12 @@ def render_phone_review_tab(user_id: int, user_role_ids: list):
 
 
 def render_task_review_tab(user_id: int, user_role_ids: list):
-    """Render Task Review tab - reuse existing component"""
+    """Render Task Review tab - use coordinator task review component for RR"""
     st.subheader("Task Review")
 
-    # Get RR role info for filtering
-    conn = database.get_db_connection()
-    try:
-        # Get tasks assigned to RR user
-        show_monthly_task_review(user_id=user_id)
-    finally:
-        conn.close()
+    # RR users use the coordinator task review component
+    # This shows coordinator_tasks_YYYY_MM tables filtered by coordinator_id
+    show_coordinator_task_review(user_id=user_id)
 
 
 def render_help_tab():

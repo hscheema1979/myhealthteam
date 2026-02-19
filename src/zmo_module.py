@@ -613,11 +613,9 @@ def render_zmo_tab(
     Render the complete ZMO (Patient Data Management) tab interface.
 
     This is the main entry point for displaying the ZMO tab in dashboards.
-    It provides:
-    - Search and filter functionality
-    - Column management (show/hide, reorder, search)
-    - Editable data table with pagination
-    - Save to database functionality
+    It provides tabs for:
+    - Patient Data Management (editable table)
+    - Patient Assignments (coordinator/provider reassignment with dropdowns)
 
     Args:
         rows_per_page: Number of rows to display per page (default: 50)
@@ -627,6 +625,28 @@ def render_zmo_tab(
     """
     st.subheader("ZMO: Patient Data Management")
 
+    # Create tabs
+    tab1, tab2 = st.tabs([
+        "Patient Data",
+        "Patient Assignments"
+    ])
+
+    with tab1:
+        _render_patient_data_tab(rows_per_page, enable_editing, show_save_button, user_id)
+
+    with tab2:
+        # Import and render the Patient Assignments tab
+        from src.zmo_assignments_tab import _render_patient_assignments_tab
+        _render_patient_assignments_tab(user_id)
+
+
+def _render_patient_data_tab(
+    rows_per_page: int = 50,
+    enable_editing: bool = True,
+    show_save_button: bool = True,
+    user_id: Optional[int] = None
+) -> None:
+    """Render the Patient Data tab (original ZMO functionality)."""
     try:
         # Fetch data
         panel_rows = get_patient_panel_data()
@@ -672,7 +692,7 @@ def render_zmo_tab(
                 axis=1,
             )
             merged = merged[search_mask]
-            st.success(f"✓ Found {len(merged)} patients matching '{patient_search}'")
+            st.success(f"[PASS] Found {len(merged)} patients matching '{patient_search}'")
         else:
             st.caption(f"Showing all {len(merged)} patients")
 
