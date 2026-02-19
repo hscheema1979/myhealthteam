@@ -50,8 +50,7 @@ def render_results_review_tab(user_id: int, user_role_ids: list):
                 wi.workflow_status,
                 wi.created_at,
                 ws.task_name as current_task,
-                ws.deliverable as current_deliverable,
-                wi.notes
+                ws.deliverable as current_deliverable
             FROM workflow_instances wi
             JOIN workflow_templates wt ON wi.template_id = wt.template_id
             LEFT JOIN workflow_steps ws ON wi.template_id = ws.template_id AND wi.current_step = ws.step_order
@@ -76,7 +75,7 @@ def render_results_review_tab(user_id: int, user_role_ids: list):
                 f"{wf['template_name']} - {wf['patient_name']} "
                 f"(Created: {wf['created_at'][:10]})"
             ):
-                col1, col2, col3 = st.columns(3)
+                col1, col2 = st.columns(2)
 
                 with col1:
                     st.write("**Patient ID:**")
@@ -86,19 +85,11 @@ def render_results_review_tab(user_id: int, user_role_ids: list):
                     st.write("**Current Step:**")
                     st.write(f"Step {wf['current_step']}: {wf['current_task']}")
 
-                with col3:
-                    st.write("**Status:**")
-                    st.write(wf['workflow_status'])
-
                 st.write("**Deliverable:**")
                 st.write(wf['current_deliverable'])
 
-                if wf['notes']:
-                    st.write("**Existing Notes:**")
-                    st.info(wf['notes'])
-
                 # Action buttons with time tracking
-                col1, col2, col3 = st.columns(3)
+                col1, col2 = st.columns(2)
 
                 with col1:
                     st.write("**Time Spent (minutes):**")
@@ -113,7 +104,7 @@ def render_results_review_tab(user_id: int, user_role_ids: list):
                     )
 
                 with col2:
-                    if st.button(f"Complete Review", key=f"complete_{wf['instance_id']}"):
+                    if st.button(f"Complete Review", key=f"complete_{wf['instance_id']}", type="primary"):
                         complete_rr_workflow(
                             instance_id=wf['instance_id'],
                             template_id=wf['template_id'],
@@ -126,14 +117,8 @@ def render_results_review_tab(user_id: int, user_role_ids: list):
                         time.sleep(1)
                         st.rerun()
 
-                with col3:
-                    if st.button(f"Add Note", key=f"note_{wf['instance_id']}"):
-                        add_workflow_note(wf['instance_id'])
-
-                with col3:
-                    if st.button(f"View Details", key=f"view_{wf['instance_id']}"):
-                        view_workflow_details(wf['instance_id'])
-
+    except Exception as e:
+        st.error(f"Error loading workflows: {e}")
     finally:
         conn.close()
 
@@ -191,11 +176,40 @@ def complete_rr_workflow(instance_id: int, template_id: int, user_id: int,
         # Ensure monthly table exists
         database.ensure_monthly_coordinator_tasks_table()
 
+        # Determine step number and columns based on template
+        if template_id in [1, 2, 3]:  # LAB workflows
+            step_number = 5
+            step_col = "step5_complete"
+            notes_col = "step5_notes"
+            date_col = "step5_date"
+            duration_col = "step5_duration_minutes"
+        else:  # IMAGING workflows
+            step_number = 4
+            step_col = "step4_complete"
+            notes_col = "step4_notes"
+            date_col = "step4_date"
+            duration_col = "step4_duration_minutes"
+
+        # Get existing notes and duration for appending
+        existing = conn.execute(
+            f"SELECT {notes_col}, {duration_col} FROM workflow_instances WHERE instance_id = ?",
+            (instance_id,)
+        ).fetchone()
+
+        existing_notes = existing[notes_col] if existing and existing[notes_col] else ""
+        existing_duration = existing[duration_col] if existing and existing[duration_col] else 0
+
+        # Append new notes with timestamp
+        from datetime import datetime
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+        completion_note = f"Results review completed by {user['full_name'] or user['username']} ({duration_minutes} min)"
+        new_notes = f"{timestamp}: {completion_note}" if not existing_notes else f"{existing_notes}\n\n{timestamp}: {completion_note}"
+        new_duration = existing_duration + duration_minutes
+
         # Insert into coordinator_tasks for billing
         conn.execute(f"""
             INSERT INTO {current_month_table} (
                 coordinator_id,
-                coordinator_name,
                 patient_id,
                 task_date,
                 duration_minutes,
@@ -203,96 +217,28 @@ def complete_rr_workflow(instance_id: int, template_id: int, user_id: int,
                 notes,
                 source_system,
                 created_at_pst
-            ) VALUES (?, ?, ?, date('now'), ?, ?, ?, 'DASHBOARD', datetime('now', 'localtime'))
+            ) VALUES (?, ?, date('now'), ?, ?, ?, 'DASHBOARD', datetime('now', 'localtime'))
         """, (
             user['user_id'],
-            user['full_name'] or user['username'],
             patient_id,
             duration_minutes,
             task_type,
-            f"Workflow instance {instance_id} completed via Results Review dashboard"
+            new_notes
         ))
 
-        # Mark the workflow as completed
-        conn.execute(
-            "UPDATE workflow_instances SET workflow_status = 'Completed' WHERE instance_id = ?",
-            (instance_id,)
-        )
-
-        # Log completion
-        conn.execute(
-            """INSERT INTO workflow_progress_log
-               (instance_id, step_number, completed_at, completed_by, notes)
-               VALUES (?, ?, datetime('now'), 'RR', ?)""",
-            (instance_id, workflow['current_step'],
-             f"Workflow completed by Results Reviewer ({user['username']}) - {duration_minutes} minutes")
-        )
+        # Mark the step and workflow as completed
+        conn.execute(f"""
+            UPDATE workflow_instances
+            SET {step_col} = 1,
+                {notes_col} = ?,
+                {date_col} = date('now'),
+                {duration_col} = ?,
+                workflow_status = 'Completed'
+            WHERE instance_id = ?
+        """, (new_notes, new_duration, instance_id))
 
         conn.commit()
         st.success(f"Workflow {instance_id} completed and billed ({duration_minutes} minutes)!")
-    finally:
-        conn.close()
-
-
-def add_workflow_note(instance_id: int):
-    """Add a note to the workflow"""
-    note = st.text_area("Enter note:", key=f"note_input_{instance_id}")
-
-    if st.button("Save Note", key=f"save_note_{instance_id}"):
-        if note:
-            conn = database.get_db_connection()
-            try:
-                # Append note to existing notes
-                conn.execute(
-                    """UPDATE workflow_instances
-                       SET notes = CASE
-                           WHEN notes IS NULL THEN ?
-                           ELSE notes || '\n\n' || ?
-                       END
-                       WHERE instance_id = ?""",
-                    (note, note, instance_id)
-                )
-                conn.commit()
-                st.success("Note added successfully!")
-                time.sleep(1)
-                st.rerun()
-            finally:
-                conn.close()
-
-
-def view_workflow_details(instance_id: int):
-    """View detailed workflow information"""
-    conn = database.get_db_connection()
-    try:
-        # Get workflow instance details
-        workflow = conn.execute(
-            """SELECT wi.*, wt.template_name
-               FROM workflow_instances wi
-               JOIN workflow_templates wt ON wi.template_id = wt.template_id
-               WHERE wi.instance_id = ?""",
-            (instance_id,)
-        ).fetchone()
-
-        if workflow:
-            st.json(dict(workflow))
-
-        # Get workflow progress
-        progress = conn.execute(
-            """SELECT wpl.*, ws.task_name
-               FROM workflow_progress_log wpl
-               LEFT JOIN workflow_steps ws ON wpl.step_number = ws.step_order AND wpl.instance_id IN (
-                   SELECT instance_id FROM workflow_instances WHERE template_id IN (1,2,3,4,5,6)
-               )
-               WHERE wpl.instance_id = ?
-               ORDER BY wpl.completed_at DESC""",
-            (instance_id,)
-        ).fetchall()
-
-        if progress:
-            st.write("**Progress History:**")
-            for p in progress:
-                st.write(f"- Step {p['step_number']}: {p['task_name']} - {p['completed_at']}")
-
     finally:
         conn.close()
 

@@ -12,6 +12,7 @@ import streamlit as st
 
 from src import database as db
 from src.utils.patient_assignments import (
+    _row_to_dict,
     get_coordinator_options,
     get_provider_options,
     get_all_users_map
@@ -50,7 +51,7 @@ def _render_patient_assignments_tab(user_id: Optional[int] = None) -> None:
                 p.coordinator_name,
                 p.provider_id,
                 p.provider_name
-            FROM patients p
+            FROM patient_panel p
             WHERE p.status = 'Active'
             ORDER BY p.last_name, p.first_name
         """).fetchall()
@@ -90,7 +91,7 @@ def _render_patient_assignments_tab(user_id: Optional[int] = None) -> None:
         # Filter patients
         filtered_patients = []
         for p in patients:
-            p_dict = dict(p)
+            p_dict = _row_to_dict(p)
 
             # Name filter
             if search_name:
@@ -224,7 +225,6 @@ def _render_patient_assignments_tab(user_id: Optional[int] = None) -> None:
 
     except Exception as e:
         st.error(f"Error loading assignments: {e}")
-        logger.error(f"Patient assignments error: {e}", exc_info=True)
     finally:
         conn.close()
 
