@@ -1022,7 +1022,7 @@ def show_coordinator_patient_list(user_id, context="default"):
         def format_patient_name_for_workflow(row):
             last = (row['last_name'] or '').strip()
             first = (row['first_name'] or '').strip()
-            dob = row.get('date_of_birth', '')
+            dob = row.get('date_of_birth', '') if hasattr(row, 'get') else (row['date_of_birth'] or '')
             # Format DOB for display (handle various formats)
             if dob:
                 try:
