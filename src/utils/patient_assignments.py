@@ -11,6 +11,13 @@ from typing import List, Dict, Optional
 from src import database
 
 
+def _row_to_dict(row) -> dict:
+    """Safely convert SQLite Row object to dict."""
+    if hasattr(row, 'keys'):
+        return {k: row[k] for k in row.keys()}
+    return dict(row)
+
+
 def get_coordinator_options() -> List[Dict]:
     """
     Get list of coordinators for dropdown.
@@ -36,7 +43,8 @@ def get_coordinator_options() -> List[Dict]:
             ORDER BY u.full_name, u.username
         """).fetchall()
 
-        return [dict(c) for c in coordinators]
+        # Convert Row objects to dicts
+        return [{k: c[k] for k in c.keys()} for c in coordinators]
     finally:
         conn.close()
 
@@ -66,7 +74,8 @@ def get_provider_options() -> List[Dict]:
             ORDER BY u.full_name, u.username
         """).fetchall()
 
-        return [dict(p) for p in providers]
+        # Convert Row objects to dicts
+        return [{k: p[k] for k in p.keys()} for p in providers]
     finally:
         conn.close()
 
@@ -438,6 +447,7 @@ def get_all_users_map() -> Dict[str, str]:
             ORDER BY u.full_name, u.username
         """).fetchall()
 
+        # Convert Row objects to dicts
         return {str(u['user_id']): f"{u['display_name']} (ID: {u['user_id']})" for u in users}
     finally:
         conn.close()
