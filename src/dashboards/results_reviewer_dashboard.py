@@ -50,8 +50,7 @@ def render_results_review_tab(user_id: int, user_role_ids: list):
                 wi.workflow_status,
                 wi.created_at,
                 ws.task_name as current_task,
-                ws.deliverable as current_deliverable,
-                wi.notes
+                ws.deliverable as current_deliverable
             FROM workflow_instances wi
             JOIN workflow_templates wt ON wi.template_id = wt.template_id
             LEFT JOIN workflow_steps ws ON wi.template_id = ws.template_id AND wi.current_step = ws.step_order
@@ -93,10 +92,6 @@ def render_results_review_tab(user_id: int, user_role_ids: list):
                 st.write("**Deliverable:**")
                 st.write(wf['current_deliverable'])
 
-                if wf['notes']:
-                    st.write("**Existing Notes:**")
-                    st.info(wf['notes'])
-
                 # Action buttons with time tracking
                 col1, col2, col3 = st.columns(3)
 
@@ -113,7 +108,7 @@ def render_results_review_tab(user_id: int, user_role_ids: list):
                     )
 
                 with col2:
-                    if st.button(f"Complete Review", key=f"complete_{wf['instance_id']}"):
+                    if st.button(f"Complete Review", key=f"complete_{wf['instance_id']}", type="primary"):
                         complete_rr_workflow(
                             instance_id=wf['instance_id'],
                             template_id=wf['template_id'],
@@ -127,8 +122,8 @@ def render_results_review_tab(user_id: int, user_role_ids: list):
                         st.rerun()
 
                 with col3:
-                    if st.button(f"Add Note", key=f"note_{wf['instance_id']}"):
-                        add_workflow_note(wf['instance_id'])
+                    if st.button(f"View Details", key=f"view_{wf['instance_id']}"):
+                        view_workflow_details(wf['instance_id'])
 
                 with col3:
                     if st.button(f"View Details", key=f"view_{wf['instance_id']}"):
