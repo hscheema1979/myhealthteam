@@ -11,7 +11,12 @@ from datetime import datetime
 import streamlit as st
 
 from src import database as db
-from src.utils.patient_assignments import _row_to_dict
+from src.utils.patient_assignments import (
+    _row_to_dict,
+    get_coordinator_options,
+    get_provider_options,
+    get_all_users_map
+)
 
 
 def _render_patient_assignments_tab(user_id: Optional[int] = None) -> None:
