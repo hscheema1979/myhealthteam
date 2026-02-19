@@ -33,6 +33,7 @@ from src.dashboards import (
     weekly_provider_billing_dashboard,
     weekly_provider_payroll_dashboard,
 )
+from src.dashboards import results_reviewer_dashboard
 from src.database import (
     add_user,
     get_all_users,
@@ -470,6 +471,7 @@ def main():
                     37,
                     38,
                     40,
+                    43,  # Results Reviewer (RR)
                 ]  # All dashboard-capable roles
                 available_dashboard_roles = [
                     role_id for role_id in user_role_ids if role_id in dashboard_roles
@@ -486,6 +488,7 @@ def main():
                         36: "Coordinator View",
                         35: "Onboarding View",
                         39: "Data Entry View",
+                        43: "Results Reviewer View",
                         37: "Lead Coordinator View",
                         38: "Care Provider Manager View",
                         40: "Coordinator Manager (Enhanced) View",
@@ -572,6 +575,8 @@ def main():
                 dashboard_role == 40
             ):  # Coordinator Manager (CM) - gets coordinator dashboard with workflow reassignment tab
                 care_coordinator_dashboard_enhanced.show(user_id, user_role_ids)
+            elif dashboard_role == 43:  # Results Reviewer (RR)
+                results_reviewer_dashboard.show_results_reviewer_dashboard(user_id)
             elif dashboard_role == 42:  # Facility
                 facility_review_dashboard.show(user_id, user_role_ids)
             else:

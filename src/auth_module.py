@@ -582,7 +582,7 @@ class AuthenticationManager:
         # The role switcher in Admin dashboard allows switching to Provider view
 
         # Define general role precedence (higher priority first)
-        role_precedence = [40, 37, 34, 33, 36, 35, 39, 42]  # Case Manager, Lead Coordinator, Admin, Provider, Coordinator, Onboarding, Data Entry, Facility
+        role_precedence = [40, 37, 34, 33, 36, 35, 39, 43, 42]  # Case Manager, Lead Coordinator, Admin, Provider, Coordinator, Onboarding, Data Entry, Results Reviewer, Facility
 
         for role_id in role_precedence:
             if role_id in user_roles:
