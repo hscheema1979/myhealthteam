@@ -327,21 +327,23 @@ def test_workflow_completion_logic():
 
         # Check for key operations
         has_update = "workflow_status = 'Completed'" in source
-        has_log = "workflow_progress_log" in source
+        has_notes = "step_notes" in source or "notes_col" in source
+        has_billing = "coordinator_tasks" in source
         has_commit = "commit" in source
 
-        if all([has_update, has_log, has_commit]):
+        if all([has_update, has_notes, has_billing, has_commit]):
             tracker.add_result(
                 "Workflow Completion Logic",
                 "PASS",
-                "Function updates status, logs progress, and commits",
+                "Function updates status, appends notes, inserts billing task, and commits",
                 ""
             )
             return True
         else:
             missing = []
             if not has_update: missing.append("status update")
-            if not has_log: missing.append("progress log")
+            if not has_notes: missing.append("notes update")
+            if not has_billing: missing.append("billing insertion")
             if not has_commit: missing.append("commit")
 
             tracker.add_result(

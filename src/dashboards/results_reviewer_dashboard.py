@@ -186,6 +186,36 @@ def complete_rr_workflow(instance_id: int, template_id: int, user_id: int,
         # Ensure monthly table exists
         database.ensure_monthly_coordinator_tasks_table()
 
+        # Determine step number and columns based on template
+        if template_id in [1, 2, 3]:  # LAB workflows
+            step_number = 5
+            step_col = "step5_complete"
+            notes_col = "step5_notes"
+            date_col = "step5_date"
+            duration_col = "step5_duration_minutes"
+        else:  # IMAGING workflows
+            step_number = 4
+            step_col = "step4_complete"
+            notes_col = "step4_notes"
+            date_col = "step4_date"
+            duration_col = "step4_duration_minutes"
+
+        # Get existing notes and duration for appending
+        existing = conn.execute(
+            f"SELECT {notes_col}, {duration_col} FROM workflow_instances WHERE instance_id = ?",
+            (instance_id,)
+        ).fetchone()
+
+        existing_notes = existing[notes_col] if existing and existing[notes_col] else ""
+        existing_duration = existing[duration_col] if existing and existing[duration_col] else 0
+
+        # Append new notes with timestamp
+        from datetime import datetime
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+        completion_note = f"Results review completed by {user['full_name'] or user['username']} ({duration_minutes} min)"
+        new_notes = f"{timestamp}: {completion_note}" if not existing_notes else f"{existing_notes}\n\n{timestamp}: {completion_note}"
+        new_duration = existing_duration + duration_minutes
+
         # Insert into coordinator_tasks for billing
         conn.execute(f"""
             INSERT INTO {current_month_table} (
@@ -205,23 +235,19 @@ def complete_rr_workflow(instance_id: int, template_id: int, user_id: int,
             patient_id,
             duration_minutes,
             task_type,
-            f"Workflow instance {instance_id} completed via Results Review dashboard"
+            new_notes
         ))
 
-        # Mark the workflow as completed
-        conn.execute(
-            "UPDATE workflow_instances SET workflow_status = 'Completed' WHERE instance_id = ?",
-            (instance_id,)
-        )
-
-        # Log completion
-        conn.execute(
-            """INSERT INTO workflow_progress_log
-               (instance_id, step_number, completed_at, completed_by, notes)
-               VALUES (?, ?, datetime('now'), 'RR', ?)""",
-            (instance_id, workflow['current_step'],
-             f"Workflow completed by Results Reviewer ({user['username']}) - {duration_minutes} minutes")
-        )
+        # Mark the step and workflow as completed
+        conn.execute(f"""
+            UPDATE workflow_instances
+            SET {step_col} = 1,
+                {notes_col} = ?,
+                {date_col} = date('now'),
+                {duration_col} = ?,
+                workflow_status = 'Completed'
+            WHERE instance_id = ?
+        """, (new_notes, new_duration, instance_id))
 
         conn.commit()
         st.success(f"Workflow {instance_id} completed and billed ({duration_minutes} minutes)!")

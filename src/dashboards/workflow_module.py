@@ -385,8 +385,23 @@ def complete_workflow_step(
             notes_col = f"step{step_order}_notes"
             date_col = f"step{step_order}_date"
             duration_col = f"step{step_order}_duration_minutes"
+
+            # Get existing notes and duration for appending
+            existing = conn.execute(
+                f"SELECT {notes_col}, {duration_col} FROM workflow_instances WHERE instance_id = ?",
+                (instance_id,)
+            ).fetchone()
+
+            existing_notes = existing[notes_col] if existing and existing[notes_col] else ""
+            existing_duration = existing[duration_col] if existing and existing[duration_col] else 0
+
+            # Append new notes with timestamp
+            timestamp = pd.Timestamp.now().tz_localize('UTC').tz_convert('America/Los_Angeles').strftime("%Y-%m-%d %H:%M")
+            new_notes = f"{timestamp}: {notes}" if not existing_notes else f"{existing_notes}\n\n{timestamp}: {notes}"
+            new_duration = existing_duration + duration_minutes
+
             update_sql = f"UPDATE workflow_instances SET {step_col} = 1, {notes_col} = ?, {date_col} = date('now'), {duration_col} = ? WHERE instance_id = ?"
-            conn.execute(update_sql, (notes, duration_minutes, instance_id))
+            conn.execute(update_sql, (new_notes, new_duration, instance_id))
             conn.commit()
         except Exception:
             pass
