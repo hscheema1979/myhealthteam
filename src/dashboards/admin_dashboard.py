@@ -248,7 +248,7 @@ def _execute_patient_reassignment(
 
         # Check if assignment exists, if not create new record
         existing_assignment = conn.execute(
-            f"SELECT id FROM {assignment_table} WHERE patient_id = ?", (patient_id,)
+            f"SELECT assignment_id FROM {assignment_table} WHERE patient_id = ?", (patient_id,)
         ).fetchone()
 
         if existing_assignment:

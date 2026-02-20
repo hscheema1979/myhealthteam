@@ -259,6 +259,9 @@ def save_assignment_changes(patient_id: str, old_coordinator_id, old_provider_id
     """
     Save coordinator and provider assignment changes.
 
+    Simplified logic: Updates patient_assignments (source of truth) and patient_panel (display).
+    Does NOT update patients table (wrong table for assignment data).
+
     Args:
         patient_id: Patient ID
         old_coordinator_id: Previous coordinator ID
@@ -270,106 +273,84 @@ def save_assignment_changes(patient_id: str, old_coordinator_id, old_provider_id
     try:
         changes = []
 
-        # Update coordinator if changed
+        # Handle coordinator change
         if old_coordinator_id != new_coordinator_id:
-            # Get coordinator name
-            coord_name = None
+            # Deactivate old coordinator assignments
+            if old_coordinator_id:
+                conn.execute(
+                    "UPDATE patient_assignments SET status = 'inactive' WHERE patient_id = ? AND coordinator_id = ? AND status = 'active'",
+                    (patient_id, old_coordinator_id)
+                )
+
+            # Create new coordinator assignment if provided
             if new_coordinator_id:
+                # Get coordinator name for display
                 coord = conn.execute(
                     "SELECT full_name, username FROM users WHERE user_id = ?",
                     (new_coordinator_id,)
                 ).fetchone()
                 coord_name = coord['full_name'] or coord['username'] if coord else None
 
-            # Update patients table
-            conn.execute(
-                "UPDATE patients SET coordinator_id = ?, coordinator_name = ? WHERE patient_id = ?",
-                (str(new_coordinator_id) if new_coordinator_id else None, coord_name, patient_id)
-            )
+                # Create new assignment
+                conn.execute(
+                    "INSERT INTO patient_assignments (patient_id, coordinator_id, status) VALUES (?, ?, 'active')",
+                    (patient_id, new_coordinator_id)
+                )
+
+                # Update patient_panel for display
+                conn.execute(
+                    "UPDATE patient_panel SET coordinator_id = ?, coordinator_name = ?, updated_date = CURRENT_TIMESTAMP WHERE patient_id = ?",
+                    (new_coordinator_id, coord_name, patient_id)
+                )
 
             changes.append(f"Coordinator: {old_coordinator_id} → {new_coordinator_id}")
 
-            # Update patient_assignments table
-            if new_coordinator_id:
-                # Check if assignment exists
-                existing = conn.execute(
-                    """SELECT assignment_id FROM patient_assignments
-                       WHERE patient_id = ? AND coordinator_id = ? AND status = 'active'""",
-                    (patient_id, str(new_coordinator_id))
-                ).fetchone()
-
-                if not existing:
-                    # Deactivate old assignments
-                    conn.execute(
-                        """UPDATE patient_assignments SET status = 'inactive', end_date = date('now')
-                           WHERE patient_id = ? AND role_type = 'coordinator' AND status = 'active'""",
-                        (patient_id,)
-                    )
-
-                    # Create new assignment
-                    conn.execute(
-                        """INSERT INTO patient_assignments
-                           (patient_id, coordinator_id, assignment_date, status, role_type)
-                           VALUES (?, ?, date('now'), 'active', 'coordinator')""",
-                        (patient_id, str(new_coordinator_id))
-                    )
-
-        # Update provider if changed
+        # Handle provider change
         if old_provider_id != new_provider_id:
-            # Get provider name
-            prov_name = None
+            # Deactivate old provider assignments
+            if old_provider_id:
+                conn.execute(
+                    "UPDATE patient_assignments SET status = 'inactive' WHERE patient_id = ? AND provider_id = ? AND status = 'active'",
+                    (patient_id, old_provider_id)
+                )
+
+            # Create new provider assignment if provided
             if new_provider_id:
+                # Get provider name for display
                 prov = conn.execute(
                     "SELECT full_name, username FROM users WHERE user_id = ?",
                     (new_provider_id,)
                 ).fetchone()
                 prov_name = prov['full_name'] or prov['username'] if prov else None
 
-            # Update patients table
-            conn.execute(
-                "UPDATE patients SET provider_id = ?, provider_name = ? WHERE patient_id = ?",
-                (new_provider_id, prov_name, patient_id)
-            )
+                # Create new assignment
+                conn.execute(
+                    "INSERT INTO patient_assignments (patient_id, provider_id, status) VALUES (?, ?, 'active')",
+                    (patient_id, new_provider_id)
+                )
+
+                # Update patient_panel for display
+                conn.execute(
+                    "UPDATE patient_panel SET provider_id = ?, provider_name = ?, updated_date = CURRENT_TIMESTAMP WHERE patient_id = ?",
+                    (new_provider_id, prov_name, patient_id)
+                )
 
             changes.append(f"Provider: {old_provider_id} → {new_provider_id}")
 
-            # Update patient_assignments table
-            if new_provider_id:
-                # Check if assignment exists
-                existing = conn.execute(
-                    """SELECT assignment_id FROM patient_assignments
-                       WHERE patient_id = ? AND provider_id = ? AND status = 'active'""",
-                    (patient_id, new_provider_id)
-                ).fetchone()
-
-                if not existing:
-                    # Deactivate old assignments
-                    conn.execute(
-                        """UPDATE patient_assignments SET status = 'inactive', end_date = date('now')
-                           WHERE patient_id = ? AND role_type = 'provider' AND status = 'active'""",
-                        (patient_id,)
-                    )
-
-                    # Create new assignment
-                    conn.execute(
-                        """INSERT INTO patient_assignments
-                           (patient_id, provider_id, assignment_date, status, role_type)
-                           VALUES (?, ?, date('now'), 'active', 'provider')""",
-                        (patient_id, new_provider_id)
-                    )
-
-        # Log changes
+        # Log to patient_assignment_history table
         if changes:
             conn.execute(
                 """INSERT INTO patient_assignment_history
                    (patient_id, old_coordinator_id, new_coordinator_id, old_provider_id,
                     new_provider_id, changed_by_user_id, changed_date, change_notes)
-                   VALUES (?, ?, ?, ?, ?, ?, datetime('now', 'localtime'), ?)""",
-                (patient_id, str(old_coordinator_id) if old_coordinator_id else None,
+                   VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?)""",
+                (patient_id,
+                 str(old_coordinator_id) if old_coordinator_id else None,
                  str(new_coordinator_id) if new_coordinator_id else None,
                  str(old_provider_id) if old_provider_id else None,
                  str(new_provider_id) if new_provider_id else None,
-                 st.session_state.get('user_id'), '; '.join(changes))
+                 st.session_state.get("user_id"),
+                 '; '.join(changes))
             )
 
         conn.commit()
