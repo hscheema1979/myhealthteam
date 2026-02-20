@@ -1086,10 +1086,35 @@ def show_patient_list_section(user_id, section_id=None, has_cpm_role=False):
             )
 
         with col_patient:
-            patient_options = ["Select one"] + patient_names
+            patient_options = ["Select one"] + patient_names + ["--- Manual Entry ---"]
             selected_patient_name = st.selectbox(
                 "Patient", patient_options, key=f"{key_prefix}_patient"
             )
+
+            # Show manual entry fields if selected
+            is_manual_entry = selected_patient_name == "--- Manual Entry ---"
+            if is_manual_entry:
+                st.markdown("**Enter Patient Details:**")
+                col_first, col_last, col_dob = st.columns(3)
+                with col_first:
+                    manual_first_name = st.text_input(
+                        "First Name*",
+                        key=f"{key_prefix}_manual_first",
+                        help="Required"
+                    )
+                with col_last:
+                    manual_last_name = st.text_input(
+                        "Last Name*",
+                        key=f"{key_prefix}_manual_last",
+                        help="Required"
+                    )
+                with col_dob:
+                    manual_dob = st.text_input(
+                        "DOB (MM/DD/YYYY)*",
+                        key=f"{key_prefix}_manual_dob",
+                        help="Required - Use MM/DD/YYYY format",
+                        placeholder="01/15/2000"
+                    )
 
         with col_type:
             patient_type_options = ["Follow Up", "New", "Acute", "Cognitive", "TCM-7", "TCM-14"]
@@ -1249,7 +1274,90 @@ def show_patient_list_section(user_id, section_id=None, has_cpm_role=False):
     notes = st.text_area("Notes / Clinical Summary", key=f"{key_prefix}_notes")
 
     if st.button("Log Task", key=f"{key_prefix}_log_task"):
-        if (
+        # Handle manual entry case
+        if is_manual_entry:
+            # Validate manual entry fields
+            if not manual_first_name or not manual_last_name or not manual_dob:
+                st.error("**Manual Entry**: Please fill in all required fields (First Name, Last Name, DOB).")
+            elif not selected_billing:
+                st.error("Cannot log task: Patient Type and Location combination is not valid. Please correct the selection above.")
+            else:
+                # Generate pseudo-patient_id from manual entry
+                # Format: MANUAL_LASTFIRST_DOB (MMDDYYYY)
+                try:
+                    # Parse and reformat DOB to ensure consistency
+                    import re
+                    dob_clean = re.sub(r'[^\d/]', '', manual_dob)  # Remove non-digit, non-slash chars
+
+                    # Try to parse DOB
+                    from datetime import datetime
+                    if '/' in dob_clean:
+                        dob_parts = dob_clean.split('/')
+                        if len(dob_parts) == 3:
+                            mm, dd, yyyy = dob_parts
+                            dob_formatted = f"{yyyy}{mm.zfill(2)}{dd.zfill(2)}"
+                        else:
+                            raise ValueError("Invalid DOB format")
+                    else:
+                        # Assume YYYYMMDD if no slashes
+                        dob_formatted = dob_clean
+
+                    # Create pseudo-patient ID
+                    pseudo_patient_id = f"MANUAL_{manual_last_name.upper()}_{manual_first_name.upper()}_{dob_formatted}"
+
+                    # Create pseudo-patient dict (for consistency with normal flow)
+                    selected_patient = {
+                        "patient_id": pseudo_patient_id,
+                        "first_name": manual_first_name,
+                        "last_name": manual_last_name,
+                        "date_of_birth": manual_dob,
+                        "_is_manual_entry": True  # Flag to indicate this is manual entry
+                    }
+
+                    # Show info message
+                    st.info(f"**Manual Entry**: Creating task for patient {manual_first_name} {manual_last_name} (DOB: {manual_dob}). Patient will be added to manual review queue.")
+
+                    # Continue to task saving (same logic as below)
+                    try:
+                        # Append notes to patient and save a provider task record using selected billing code
+                        billing_code_to_use = selected_billing
+
+                        task_saved, task_error = database.save_daily_task(
+                            provider_id=user_id,
+                            patient_id=selected_patient["patient_id"],
+                            task_date=task_date,
+                            task_description=f"Primary Care Visit - {billing_code_to_use or 'Unknown'}",
+                            notes=notes,
+                            billing_code=billing_code_to_use,
+                            icd_codes=icd_codes if icd_codes else None,
+                            location_type=db_location_type,
+                            patient_type=patient_type_for_billing,
+                        )
+
+                        # Check if task was saved successfully
+                        if not task_saved:
+                            if task_error == "PSEUDO_PATIENT":
+                                st.warning("**Manual Entry Patient**: Task saved successfully. Patient has been flagged for manual review and will be added to the system.")
+                            elif task_error == "duplicate":
+                                st.warning("**Duplicate Task**: A task with the same patient and task description already exists for this date. Task was not logged. Please use a different task description or date.")
+                                st.stop()
+                            else:
+                                st.error(f"**Failed to save task**: {task_error or 'Unknown error'}")
+                                st.stop()
+                        elif task_error == "PSEUDO_PATIENT":
+                            st.success("**Manual Entry Patient**: Task saved successfully! Patient has been flagged for manual review and will be added to the system.")
+
+                        st.success(f"**Task Logged**: {billing_code_to_use or 'Unknown'} - {manual_first_name} {manual_last_name}")
+                        st.rerun()
+
+                    except Exception as e:
+                        st.error(f"**Error saving task**: {str(e)}")
+
+                except Exception as e:
+                    st.error(f"**Invalid DOB format**: {manual_dob}. Please use MM/DD/YYYY format. Error: {str(e)}")
+
+        # Handle normal patient selection
+        elif (
             not selected_patient_name
             or selected_patient_name == "Select one"
         ):
