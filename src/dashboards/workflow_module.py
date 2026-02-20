@@ -400,10 +400,42 @@ def complete_workflow_step(
             new_notes = f"{timestamp}: {notes}" if not existing_notes else f"{existing_notes}\n\n{timestamp}: {notes}"
             new_duration = existing_duration + duration_minutes
 
-            update_sql = f"UPDATE workflow_instances SET {step_col} = 1, {notes_col} = ?, {date_col} = date('now'), {duration_col} = ? WHERE instance_id = ?"
-            conn.execute(update_sql, (new_notes, new_duration, instance_id))
+            # Find the next incomplete step to update current_step
+            next_step = conn.execute(
+                """
+                SELECT ws.step_order
+                FROM workflow_steps ws
+                JOIN workflow_instances wi ON ws.template_id = wi.template_id
+                WHERE wi.instance_id = ?
+                ORDER BY ws.step_order
+                """,
+                (instance_id,)
+            ).fetchall()
+
+            # Determine next incomplete step (first step where stepX_complete != 1)
+            new_current_step = step_order  # Default to current step
+            for step_row in next_step:
+                step_num = step_row["step_order"]
+                if step_num > step_order:
+                    # Check if this next step is already complete
+                    check_col = f"step{step_num}_complete"
+                    check_result = conn.execute(
+                        f"SELECT {check_col} FROM workflow_instances WHERE instance_id = ?",
+                        (instance_id,)
+                    ).fetchone()
+                    # Access sqlite3.Row using bracket notation (not .get())
+                    if check_result and check_col in check_result.keys() and check_result[check_col] != 1:
+                        new_current_step = step_num
+                        break
+            # If all steps are complete, keep current_step at the last step
+
+            # Update workflow_instances with step completion, notes, duration, AND new current_step
+            update_sql = f"UPDATE workflow_instances SET {step_col} = 1, {notes_col} = ?, {date_col} = date('now'), {duration_col} = ?, current_step = ? WHERE instance_id = ?"
+            conn.execute(update_sql, (new_notes, new_duration, new_current_step, instance_id))
             conn.commit()
-        except Exception:
+        except Exception as e:
+            # Log error for debugging
+            print(f"Error updating workflow_instances step columns: {e}")
             pass
         total_steps = conn.execute(
             """
