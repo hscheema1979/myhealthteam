@@ -52,7 +52,7 @@ def _render_patient_assignments_tab(user_id: Optional[int] = None) -> None:
                 p.provider_id,
                 p.provider_name
             FROM patient_panel p
-            WHERE p.status = 'Active'
+            WHERE p.status LIKE 'Active%' OR p.status = 'Hospice'
             ORDER BY p.last_name, p.first_name
         """).fetchall()
 
