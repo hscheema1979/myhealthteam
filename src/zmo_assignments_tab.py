@@ -26,10 +26,8 @@ def _render_patient_assignments_tab(user_id: Optional[int] = None) -> None:
     Provides easy coordinator/provider reassignment with name-based dropdowns
     instead of requiring users to know IDs.
 
-    Uses the same active patient filtering logic as the admin dashboard for consistency.
-    This ensures future-proof handling of new status types.
-
     Enhanced to support viewing inactive patients for reactivation workflow.
+    Uses flexible multi-select status filtering like the admin dashboard.
     """
     st.subheader("Patient Assignments")
     st.info("💡 Tip: Use dropdowns to change coordinator/provider assignments. Changes cascade to all tables automatically.")
@@ -64,40 +62,38 @@ def _render_patient_assignments_tab(user_id: Optional[int] = None) -> None:
         # Add columns for status filter and search
         col_status, col_search, col_coord, col_prov = st.columns([2, 2, 2, 2])
 
-    with col_status:
-        selected_statuses = st.multiselect(
-            "Filter by Patient Status",
-            options=all_statuses,
-            default=default_statuses,
-            key="assign_status_filter",
-            help="Select which patient statuses to display. Default shows Active and Hospice."
-        )
+        with col_status:
+            selected_statuses = st.multiselect(
+                "Filter by Patient Status",
+                options=all_statuses,
+                default=default_statuses,
+                key="assign_status_filter",
+                help="Select which patient statuses to display. Default shows Active and Hospice."
+            )
 
-    with col_search:
-        search_name = st.text_input(
-            "Search by name or ID",
-            key="assign_search_name",
-            help="Filter patients by name or patient ID"
-        )
+        with col_search:
+            search_name = st.text_input(
+                "Search by name or ID",
+                key="assign_search_name",
+                help="Filter patients by name or patient ID"
+            )
 
-    with col_coord:
-        filter_coord = st.selectbox(
-            "Filter by coordinator",
-            options=["All"] + [c['display_name'] for c in coordinator_options],
-            key="assign_filter_coord",
-            help="Show only patients assigned to this coordinator"
-        )
+        with col_coord:
+            filter_coord = st.selectbox(
+                "Filter by coordinator",
+                options=["All"] + [c['display_name'] for c in coordinator_options],
+                key="assign_filter_coord",
+                help="Show only patients assigned to this coordinator"
+            )
 
-    with col_prov:
-        filter_prov = st.selectbox(
-            "Filter by provider",
-            options=["All"] + [p['display_name'] for p in provider_options],
-            key="assign_filter_prov",
-            help="Show only patients assigned to this provider"
-        )
+        with col_prov:
+            filter_prov = st.selectbox(
+                "Filter by provider",
+                options=["All"] + [p['display_name'] for p in provider_options],
+                key="assign_filter_prov",
+                help="Show only patients assigned to this provider"
+            )
 
-    # Get all patients from patient_panel
-    try:
         # Fetch all patients - we'll filter for statuses in Python for consistency
         patients = conn.execute("""
             SELECT
@@ -287,22 +283,10 @@ def _render_patient_assignments_tab(user_id: Optional[int] = None) -> None:
                     if st.button("View Patient Details", key=f"details_{patient['patient_id']}"):
                         st.json(patient)
 
-        # Get all patients from patient_panel
-        patients = conn.execute("""
-            SELECT
-                p.patient_id,
-                p.first_name,
-                p.last_name,
-                p.status,
-                p.coordinator_id,
-                p.coordinator_name,
-                p.provider_id,
-                p.provider_name
-            FROM patient_panel p
-            ORDER BY p.last_name, p.first_name
-        """).fetchall()
-
-        if not patients:
+    except Exception as e:
+        st.error(f"Error loading assignments: {e}")
+    finally:
+        conn.close()
 
 
 def _view_assignment_history(patient_id: str) -> None:
