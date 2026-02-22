@@ -174,24 +174,41 @@ def _render_patient_assignments_tab(user_id: Optional[int] = None) -> None:
         if "assign_page" not in st.session_state:
             st.session_state.assign_page = 0
 
-        # Pagination controls
-        col_page1, col_page2, col_page3 = st.columns([2, 2, 2])
+        # Pagination controls with dropdown
+        col_page1, col_page2, col_page3, col_page4 = st.columns([1.5, 2, 1.5, 2])
 
         with col_page1:
-            if st.button("← Previous", key="assign_prev", disabled=(st.session_state.assign_page == 0)):
+            if st.button("← Prev", key="assign_prev", disabled=(st.session_state.assign_page == 0)):
                 st.session_state.assign_page -= 1
                 st.rerun()
 
         with col_page2:
-            st.caption(
-                f"Page {st.session_state.assign_page + 1} of {total_pages} | "
-                f"{len(filtered_patients)} total patients"
+            # Page selector dropdown
+            page_options = [f"Page {i+1} of {total_pages}" for i in range(total_pages)]
+            current_page_label = f"Page {st.session_state.assign_page + 1} of {total_pages}"
+
+            selected_page = st.selectbox(
+                "Jump to page",
+                options=page_options,
+                index=st.session_state.assign_page,
+                label_visibility="collapsed",
+                key="assign_page_selector"
             )
+
+            # Update page if dropdown changed
+            if selected_page != current_page_label:
+                new_page_num = int(selected_page.split()[1]) - 1
+                if new_page_num != st.session_state.assign_page:
+                    st.session_state.assign_page = new_page_num
+                    st.rerun()
 
         with col_page3:
             if st.button("Next →", key="assign_next", disabled=(st.session_state.assign_page >= total_pages - 1)):
                 st.session_state.assign_page += 1
                 st.rerun()
+
+        with col_page4:
+            st.caption(f"{len(filtered_patients)} patients")
 
         # Calculate page boundaries
         start_idx = st.session_state.assign_page * patients_per_page
