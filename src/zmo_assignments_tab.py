@@ -166,11 +166,43 @@ def _render_patient_assignments_tab(user_id: Optional[int] = None) -> None:
         else:
             st.caption("Showing: All statuses")
 
+        # ===== Pagination =====
+        patients_per_page = 50
+        total_pages = max(1, (len(filtered_patients) + patients_per_page - 1) // patients_per_page)
+
+        # Initialize pagination in session state
+        if "assign_page" not in st.session_state:
+            st.session_state.assign_page = 0
+
+        # Pagination controls
+        col_page1, col_page2, col_page3 = st.columns([2, 2, 2])
+
+        with col_page1:
+            if st.button("← Previous", key="assign_prev", disabled=(st.session_state.assign_page == 0)):
+                st.session_state.assign_page -= 1
+                st.rerun()
+
+        with col_page2:
+            st.caption(
+                f"Page {st.session_state.assign_page + 1} of {total_pages} | "
+                f"{len(filtered_patients)} total patients"
+            )
+
+        with col_page3:
+            if st.button("Next →", key="assign_next", disabled=(st.session_state.assign_page >= total_pages - 1)):
+                st.session_state.assign_page += 1
+                st.rerun()
+
+        # Calculate page boundaries
+        start_idx = st.session_state.assign_page * patients_per_page
+        end_idx = start_idx + patients_per_page
+        paginated_patients = filtered_patients[start_idx:end_idx]
+
         # Determine which patients are inactive (not Active/Hospice) for special handling
         active_statuses = ["Active", "Active-Geri", "Active-PCP", "Hospice", "HOSPICE"]
 
         # Show assignments with edit controls
-        for patient in filtered_patients[:50]:  # Limit to 50 for performance
+        for patient in paginated_patients:
             patient_status = patient.get('status', 'Unknown')
             is_inactive = patient_status not in active_statuses and not (
                 patient_status.startswith('Active') or patient_status.upper() == 'HOSPICE'
