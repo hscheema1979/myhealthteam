@@ -1,7 +1,7 @@
 """
-Patient Assignments Tab for ZMO Module
+Patient Assignments Tab for ZMO Module - Enhanced Version
 
-This file contains the Patient Assignments tab functionality.
+This file contains the Patient Assignments tab functionality with support for viewing inactive patients.
 It will be imported and used by the main ZMO module.
 """
 
@@ -28,6 +28,8 @@ def _render_patient_assignments_tab(user_id: Optional[int] = None) -> None:
 
     Uses the same active patient filtering logic as the admin dashboard for consistency.
     This ensures future-proof handling of new status types.
+
+    Enhanced to support viewing inactive patients for reactivation workflow.
     """
     st.subheader("Patient Assignments")
     st.info("💡 Tip: Use dropdowns to change coordinator/provider assignments. Changes cascade to all tables automatically.")
@@ -41,11 +43,62 @@ def _render_patient_assignments_tab(user_id: Optional[int] = None) -> None:
     coord_map = {c['user_id']: c['display_name'] for c in coordinator_options}
     prov_map = {p['user_id']: p['display_name'] for p in provider_options}
 
-    # Get all patients from patient_panel (filter for active statuses in Python for consistency)
+    # Get all patients from patient_panel
     conn = db.get_db_connection()
     try:
-        # Fetch all patients - we'll filter for active statuses in Python
-        # This ensures consistency with admin dashboard and handles future status types
+        # ===== Status Filter Section =====
+        st.markdown("### Patient Status Filter")
+
+        # Get all available statuses from the database
+        all_statuses = conn.execute("""
+            SELECT DISTINCT status
+            FROM patient_panel
+            WHERE status IS NOT NULL
+            ORDER BY status
+        """).fetchall()
+        all_statuses = [s[0] for s in all_statuses]
+
+        # Default to Active statuses and Hospice (same as admin dashboard)
+        default_statuses = [s for s in all_statuses if s.startswith("Active") or s.upper() == "HOSPICE"]
+
+        # Add columns for status filter and search
+        col_status, col_search, col_coord, col_prov = st.columns([2, 2, 2, 2])
+
+    with col_status:
+        selected_statuses = st.multiselect(
+            "Filter by Patient Status",
+            options=all_statuses,
+            default=default_statuses,
+            key="assign_status_filter",
+            help="Select which patient statuses to display. Default shows Active and Hospice."
+        )
+
+    with col_search:
+        search_name = st.text_input(
+            "Search by name or ID",
+            key="assign_search_name",
+            help="Filter patients by name or patient ID"
+        )
+
+    with col_coord:
+        filter_coord = st.selectbox(
+            "Filter by coordinator",
+            options=["All"] + [c['display_name'] for c in coordinator_options],
+            key="assign_filter_coord",
+            help="Show only patients assigned to this coordinator"
+        )
+
+    with col_prov:
+        filter_prov = st.selectbox(
+            "Filter by provider",
+            options=["All"] + [p['display_name'] for p in provider_options],
+            key="assign_filter_prov",
+            help="Show only patients assigned to this provider"
+        )
+
+    # Get all patients from patient_panel
+    try:
+        # Fetch all patients - we'll filter for statuses in Python for consistency
         patients = conn.execute("""
             SELECT
                 p.patient_id,
@@ -64,64 +117,25 @@ def _render_patient_assignments_tab(user_id: Optional[int] = None) -> None:
             st.info("No patients found.")
             return
 
-        # Filter for active patients using the same logic as admin dashboard
-        # This ensures consistency and handles future status types (e.g., Active-XXX)
-        active_statuses = ["Active", "Active-Geri", "Active-PCP", "Hospice", "HOSPICE"]
-
-        active_patients = []
+        # First pass: Filter by selected statuses
+        status_filtered = []
         for p in patients:
             p_dict = _row_to_dict(p)
             status = p_dict.get('status', '').strip() if p_dict.get('status') else ''
 
-            # Apply same filtering logic as admin dashboard:
-            # - Known active statuses
-            # - Status starts with 'Active' (handles future Active-XXX types)
-            # - Status is 'HOSPICE' or 'Hospice' (case-insensitive)
-            is_active = (
-                status in active_statuses or
-                status.startswith('Active') or
-                status.upper() == 'HOSPICE'
-            )
+            # Apply status filter based on user selection
+            if selected_statuses and status not in selected_statuses:
+                continue
 
-            if is_active:
-                active_patients.append(p_dict)
+            status_filtered.append(p_dict)
 
-        if not active_patients:
-            st.info("No active patients found.")
+        if not status_filtered:
+            st.info(f"No patients found matching the selected statuses: {', '.join(selected_statuses)}")
             return
 
-        st.write(f"**{len(active_patients)} active patients**")
-
-        # Add filters
-        col1, col2, col3 = st.columns(3)
-
-        with col1:
-            search_name = st.text_input(
-                "Search by name or ID",
-                key="assign_search_name",
-                help="Filter patients by name or patient ID"
-            )
-
-        with col2:
-            filter_coord = st.selectbox(
-                "Filter by coordinator",
-                options=["All"] + [c['display_name'] for c in coordinator_options],
-                key="assign_filter_coord",
-                help="Show only patients assigned to this coordinator"
-            )
-
-        with col3:
-            filter_prov = st.selectbox(
-                "Filter by provider",
-                options=["All"] + [p['display_name'] for p in provider_options],
-                key="assign_filter_prov",
-                help="Show only patients assigned to this provider"
-            )
-
-        # Filter patients based on search/coordinator/provider filters
+        # Second pass: Apply search/coordinator/provider filters
         filtered_patients = []
-        for p in active_patients:
-
+        for p_dict in status_filtered:
             # Name filter
             if search_name:
                 search_lower = search_name.lower()
@@ -149,13 +163,27 @@ def _render_patient_assignments_tab(user_id: Optional[int] = None) -> None:
             st.info("No patients match the current filters.")
             return
 
-        st.write(f"**Showing {len(filtered_patients)} patient(s)**")
+        # Show patient count with status breakdown
+        st.write(f"**{len(filtered_patients)} patient(s)**")
+        if len(selected_statuses) < len(all_statuses):
+            st.caption(f"Showing: {', '.join(selected_statuses)}")
+        else:
+            st.caption("Showing: All statuses")
+
+        # Determine which patients are inactive (not Active/Hospice) for special handling
+        active_statuses = ["Active", "Active-Geri", "Active-PCP", "Hospice", "HOSPICE"]
 
         # Show assignments with edit controls
         for patient in filtered_patients[:50]:  # Limit to 50 for performance
+            patient_status = patient.get('status', 'Unknown')
+            is_inactive = patient_status not in active_statuses and not (
+                patient_status.startswith('Active') or patient_status.upper() == 'HOSPICE'
+            )
+            status_emoji = "🔴" if is_inactive else "🟢"
+
             with st.expander(
-                f"{patient['last_name']}, {patient['first_name']} "
-                f"(ID: {patient['patient_id']})"
+                f"{status_emoji} {patient['last_name']}, {patient['first_name']} "
+                f"(ID: {patient['patient_id']}) - Status: **{patient_status}**"
             ):
                 col1, col2 = st.columns(2)
 
@@ -169,9 +197,9 @@ def _render_patient_assignments_tab(user_id: Optional[int] = None) -> None:
                         except (ValueError, TypeError):
                             current_coord_id = None
 
-                    # Add user reference info
-                    if current_coord_id:
-                        st.caption(f"Current ID: {current_coord_id}")
+                    # Show last assignment info for inactive patients
+                    if is_inactive and current_coord_id:
+                        st.caption(f"Last assigned: {patient.get('coordinator_name', 'Unknown')} (ID: {current_coord_id})")
                         if current_coord_id in users_map:
                             st.caption(f"Reference: {users_map[current_coord_id]}")
 
@@ -196,9 +224,9 @@ def _render_patient_assignments_tab(user_id: Optional[int] = None) -> None:
                         except (ValueError, TypeError):
                             current_prov_id = None
 
-                    # Add user reference info
-                    if current_prov_id:
-                        st.caption(f"Current ID: {current_prov_id}")
+                    # Show last assignment info for inactive patients
+                    if is_inactive and current_prov_id:
+                        st.caption(f"Last assigned: {patient.get('provider_name', 'Unknown')} (ID: {current_prov_id})")
                         if current_prov_id in users_map:
                             st.caption(f"Reference: {users_map[current_prov_id]}")
 
@@ -228,6 +256,10 @@ def _render_patient_assignments_tab(user_id: Optional[int] = None) -> None:
                     )
 
                     if coord_changed or prov_changed:
+                        # For inactive patients, remind about reactivation
+                        if is_inactive:
+                            st.info("💡 Don't forget to update patient status to 'Active' in Patient Info tab when reactivating.")
+
                         if st.button("Save Changes", key=f"save_assign_{patient['patient_id']}", type="primary"):
                             # Update using the assignment utility function
                             from src.utils.patient_assignments import save_assignment_changes
@@ -239,7 +271,10 @@ def _render_patient_assignments_tab(user_id: Optional[int] = None) -> None:
                                 new_coordinator['user_id'] if new_coordinator else None,
                                 new_provider['user_id'] if new_provider else None
                             )
+
                             st.success("Assignments updated successfully!")
+                            if is_inactive:
+                                st.info("💡 Reminder: Update patient status to 'Active' in the Patient Info tab when reactivating.")
                             st.rerun()
                     else:
                         st.write("No changes to save")
@@ -252,10 +287,22 @@ def _render_patient_assignments_tab(user_id: Optional[int] = None) -> None:
                     if st.button("View Patient Details", key=f"details_{patient['patient_id']}"):
                         st.json(patient)
 
-    except Exception as e:
-        st.error(f"Error loading assignments: {e}")
-    finally:
-        conn.close()
+        # Get all patients from patient_panel
+        patients = conn.execute("""
+            SELECT
+                p.patient_id,
+                p.first_name,
+                p.last_name,
+                p.status,
+                p.coordinator_id,
+                p.coordinator_name,
+                p.provider_id,
+                p.provider_name
+            FROM patient_panel p
+            ORDER BY p.last_name, p.first_name
+        """).fetchall()
+
+        if not patients:
 
 
 def _view_assignment_history(patient_id: str) -> None:
