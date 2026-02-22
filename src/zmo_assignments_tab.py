@@ -25,6 +25,9 @@ def _render_patient_assignments_tab(user_id: Optional[int] = None) -> None:
 
     Provides easy coordinator/provider reassignment with name-based dropdowns
     instead of requiring users to know IDs.
+
+    Uses the same active patient filtering logic as the admin dashboard for consistency.
+    This ensures future-proof handling of new status types.
     """
     st.subheader("Patient Assignments")
     st.info("💡 Tip: Use dropdowns to change coordinator/provider assignments. Changes cascade to all tables automatically.")
@@ -38,9 +41,11 @@ def _render_patient_assignments_tab(user_id: Optional[int] = None) -> None:
     coord_map = {c['user_id']: c['display_name'] for c in coordinator_options}
     prov_map = {p['user_id']: p['display_name'] for p in provider_options}
 
-    # Get current assignments
+    # Get all patients from patient_panel (filter for active statuses in Python for consistency)
     conn = db.get_db_connection()
     try:
+        # Fetch all patients - we'll filter for active statuses in Python
+        # This ensures consistency with admin dashboard and handles future status types
         patients = conn.execute("""
             SELECT
                 p.patient_id,
@@ -52,15 +57,40 @@ def _render_patient_assignments_tab(user_id: Optional[int] = None) -> None:
                 p.provider_id,
                 p.provider_name
             FROM patient_panel p
-            WHERE p.status LIKE 'Active%' OR p.status = 'Hospice'
             ORDER BY p.last_name, p.first_name
         """).fetchall()
 
         if not patients:
+            st.info("No patients found.")
+            return
+
+        # Filter for active patients using the same logic as admin dashboard
+        # This ensures consistency and handles future status types (e.g., Active-XXX)
+        active_statuses = ["Active", "Active-Geri", "Active-PCP", "Hospice", "HOSPICE"]
+
+        active_patients = []
+        for p in patients:
+            p_dict = _row_to_dict(p)
+            status = p_dict.get('status', '').strip() if p_dict.get('status') else ''
+
+            # Apply same filtering logic as admin dashboard:
+            # - Known active statuses
+            # - Status starts with 'Active' (handles future Active-XXX types)
+            # - Status is 'HOSPICE' or 'Hospice' (case-insensitive)
+            is_active = (
+                status in active_statuses or
+                status.startswith('Active') or
+                status.upper() == 'HOSPICE'
+            )
+
+            if is_active:
+                active_patients.append(p_dict)
+
+        if not active_patients:
             st.info("No active patients found.")
             return
 
-        st.write(f"**{len(patients)} active patients**")
+        st.write(f"**{len(active_patients)} active patients**")
 
         # Add filters
         col1, col2, col3 = st.columns(3)
@@ -88,10 +118,9 @@ def _render_patient_assignments_tab(user_id: Optional[int] = None) -> None:
                 help="Show only patients assigned to this provider"
             )
 
-        # Filter patients
+        # Filter patients based on search/coordinator/provider filters
         filtered_patients = []
-        for p in patients:
-            p_dict = _row_to_dict(p)
+        for p in active_patients:
 
             # Name filter
             if search_name:
