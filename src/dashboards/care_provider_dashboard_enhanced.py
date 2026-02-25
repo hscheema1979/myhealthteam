@@ -1841,8 +1841,7 @@ def render_comprehensive_help_with_visuals():
         """)
 
     st.markdown("---")
-    st.markdown("### 🎉 You're ready to use the Provider Dashboard!")
-    st.balloons()
+    st.markdown("### ✅ You're ready to use the Provider Dashboard!")
 
 def show(user_id, user_role_ids=None):
     if user_role_ids is None:
@@ -5591,7 +5590,6 @@ def show_daily_task_log(user_id, role="provider"):
                         st.success(
                             "✅ Daily task log submitted successfully!"
                         )
-                        st.balloons()
                         time.sleep(2)  # Give user time to see success message
                         st.rerun()
                     else:
