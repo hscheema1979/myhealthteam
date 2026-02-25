@@ -268,7 +268,7 @@ def render_provider_help_examples(key_prefix: str = ""):
         st.markdown("- Export: download CSV for further analysis.")
 
 
-def render_comprehensive_help():
+def render_comprehensive_help_with_visuals():
     """
     Comprehensive help documentation for the Care Provider Dashboard.
     Covers every tab, filter, field, button, and feature in detail.
@@ -1107,6 +1107,743 @@ def render_comprehensive_help():
     """)
 
 
+def render_comprehensive_help_with_visuals():
+    """
+    Comprehensive help documentation with visual examples for the Care Provider Dashboard.
+    Covers every tab, filter, field, button, and feature with interactive demonstrations.
+    """
+
+    st.header("Provider Dashboard - Complete User Guide")
+
+    # Color Legend Section
+    st.subheader("Patient Status Color Legend")
+    st.info("These colors appear throughout the dashboard to help you quickly identify patient visit status:")
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.success("**Green**: Seen ≤30 days ago")
+        st.caption("Patient has been visited recently - on track")
+    with col2:
+        st.warning("**Yellow**: Seen 31-60 days ago")
+        st.caption("Approaching due date - schedule soon")
+    with col3:
+        st.error("**Red**: NOT seen >60 days ago")
+        st.caption("Overdue - priority for scheduling")
+    with col4:
+        st.info("**Blue**: ≥200 minutes this month")
+        st.caption("High-utilization patient in summaries")
+
+    st.markdown("---")
+
+    # TAB 1: MY PATIENTS
+    st.subheader("1. My Patients Tab")
+
+    st.markdown("### How to Use This Tab")
+    st.markdown("This tab displays your assigned patient panel with filtering and search capabilities.")
+
+    st.markdown("#### Visual Example: Filters Section")
+
+    col_search, col_filter, col_status = st.columns([2, 1, 1])
+
+    with col_search:
+        st.text_input(
+            "🔍 Search by patient name or ID",
+            key="help_search",
+            placeholder="Enter patient name or ID...",
+            disabled=True,
+            help="Type any part of patient's first name, last name, or patient ID. Results update as you type."
+        )
+
+    with col_filter:
+        st.multiselect(
+            "Filter by Provider(s)",
+            ["All Providers", "Dr. Smith", "Dr. Johnson", "Dr. Williams"],
+            default=["Dr. Smith"],
+            key="help_provider_filter",
+            disabled=True,
+            help="CPMs can select multiple providers. Regular CPs see only their patients."
+        )
+
+    with col_status:
+        st.multiselect(
+            "Filter by Patient Status",
+            ["Active", "Active-Geri", "Active-PCP", "ONBOARDING", "HOSPICE", "INACTIVE", "DC"],
+            default=["Active", "Active-Geri", "Active-PCP", "HOSPICE"],
+            key="help_status_filter",
+            disabled=True,
+            help="Select multiple statuses to compare patient groups."
+        )
+
+    st.info("💡 **Tip**: The filters work together - search text AND provider selection AND status selection all apply simultaneously.")
+
+    st.markdown("#### Visual Example: Metrics Bar")
+    metric_col1, metric_col2, metric_col3, metric_col4 = st.columns(4)
+    with metric_col1:
+        st.metric("Filtered Patients", "47", "-2")
+    with metric_col2:
+        st.metric("Active-Geri", "23", "+1")
+    with metric_col3:
+        st.metric("Active-PCP", "18", "0")
+    with metric_col4:
+        st.metric("Hospice", "6", "0")
+
+    st.markdown("#### Visual Example: Patient Panel Table")
+
+    # Create sample data with color coding
+    sample_patients = pd.DataFrame({
+        "Status": ["Active", "Active", "HOSPICE", "Active", "Active"],
+        "GOC": ["Rev/Confirm", "Discuss", "Hospice", "Rev/Confirm", "Full"],
+        "Code Status": ["Full Code", "DNR", "DNR/DNI", "Full Code", "Limited"],
+        "Risk": ["Level 3", "Level 4", "Level 5", "Level 2", "Level 3"],
+        "First Name": ["Margaret", "Robert", "Eleanor", "William", "Dorothy"],
+        "Last Name": ["Thompson", "Anderson", "Martinez", "Harris", "Wilson"],
+        "Med POC": ["Dr. Smith", "Dr. Lee", "Dr. Chen", "Dr. Smith", "Dr. Davis"],
+        "Med Phone": ["(555) 101-2001", "(555) 102-2002", "(555) 103-2003", "(555) 104-2004", "(555) 105-2005"],
+        "Appt POC": ["Mary", "Sarah", "Lisa", "Mary", "Karen"],
+        "Appt Phone": ["(555) 201-3001", "(555) 202-3002", "(555) 203-3003", "(555) 204-3004", "(555) 205-3005"],
+        "Facility": ["Autumn Ridge", "Summit Care", "Oak Manor", "Autumn Ridge", "Pine Valley"],
+        "Provider": ["Dr. Smith", "Dr. Smith", "Dr. Johnson", "Dr. Smith", "Dr. Williams"],
+        "Coordinator": ["Sarah J.", "Alex R.", "Maria G.", "Sarah J.", "Emily K."],
+        "Last Visit": ["2025-01-20", "2024-12-15", "2025-01-10", "2024-11-01", "2025-01-18"],
+        "Service Type": ["PCP", "PCP", "GG", "PCP", "NP"],
+        "Phone": ["(555) 301-4001", "(555) 302-4002", "(555) 303-4003", "(555) 304-4004", "(555) 305-4005"]
+    })
+
+    # Add color coding based on last visit
+    def style_patient_row(row):
+        try:
+            visit_date = pd.to_datetime(row["Last Visit"])
+            days_since = (datetime.now() - visit_date).days
+            if days_since <= 30:
+                return ["background-color: #d4edda"] * len(row)
+            elif days_since <= 60:
+                return ["background-color: #fff3cd"] * len(row)
+            else:
+                return ["background-color: #f8d7da"] * len(row)
+        except:
+            return [""] * len(row)
+
+    styled_table = sample_patients.style.apply(style_patient_row, axis=1)
+    st.dataframe(styled_table, use_container_width=True, height=300)
+
+    st.caption("🎨 **Row colors**: Green = ≤30 days, Yellow = 31-60 days, Red = >60 days")
+
+    with st.expander("📖 See detailed column explanations"):
+        st.markdown("""
+        **Columns Explained (Left to Right)**:
+
+        1. **Status**: Current patient status (Active, Hospice, Onboarding, etc.)
+        2. **GOC**: Goals of Care (Rev/Confirm, Discuss, Full, Palliative, Hospice)
+        3. **Code Status**: Resuscitation preference (Full Code, DNR, DNI, Limited)
+        4. **Risk**: Risk level (1-6)
+        5. **First Name**: Patient's first name
+        6. **Last Name**: Patient's last name
+        7. **Med POC**: Medical Point of Contact name
+        8. **Med Phone**: Medical contact phone number
+        9. **Appt POC**: Appointment Point of Contact name
+        10. **Appt Phone**: Appointment contact phone number
+        11. **Facility**: Facility name where patient resides
+        12. **Provider**: Assigned Care Provider name
+        13. **Coordinator**: Assigned Care Coordinator name
+        14. **Last Visit**: Most recent visit date (determines row color)
+        15. **Service Type**: Visit type (PCP, GG, NP, etc.)
+        16. **Phone**: Primary patient phone number
+        """)
+
+    st.markdown("---")
+
+    # TAB 2: TEAM MANAGEMENT (CPM Only)
+    st.subheader("2. Team Management Tab (CPM Only)")
+
+    st.info("👨‍💼 **This tab is only available to Care Provider Managers (CPM)**")
+
+    st.markdown("### Visual Example: Provider Statistics Summary")
+
+    provider_stats = pd.DataFrame({
+        "Provider": ["Dr. Smith", "Dr. Johnson", "Dr. Williams"],
+        "Seen ≤30 days": [12, 8, 15],
+        "Seen 31-60 days": [5, 7, 3],
+        "Not seen >60 days": [3, 5, 1],
+        "Total Patients": [20, 20, 19]
+    })
+    st.dataframe(provider_stats, use_container_width=True)
+
+    st.markdown("### Visual Example: Expandable Sections")
+
+    with st.expander("🟢 Patients Seen in Last 30 Days by Provider"):
+        st.markdown("**Dr. Smith's patients**:")
+        st.success("• Margaret Thompson (Autumn Ridge) - Last visit: 2025-01-20")
+        st.success("• William Harris (Autumn Ridge) - Last visit: 2025-01-18")
+        st.success("• Dorothy Wilson (Pine Valley) - Last visit: 2025-01-15")
+
+        st.markdown("**Dr. Johnson's patients**:")
+        st.success("• Eleanor Martinez (Oak Manor) - Last visit: 2025-01-10")
+
+        st.markdown("**Dr. Williams' patients**:")
+        st.success("• [5 more patients listed]")
+
+    with st.expander("🟡 Patients Seen 1-2 Months Ago by Provider"):
+        st.warning("**Dr. Smith's patients**:")
+        st.warning("• Robert Anderson (Summit Care) - Last visit: 2024-12-15")
+        st.warning("• [3 more patients]")
+
+    with st.expander("🔴 Patients NOT Seen in 2+ Months by Provider"):
+        st.error("**Dr. Smith's patients**:")
+        st.error("• [2 patients overdue - needs scheduling]")
+        st.error("**Dr. Johnson's patients**:")
+        st.error("• [5 patients overdue - urgent attention needed]")
+
+    st.markdown("---")
+
+    # TAB 3: ONBOARDING QUEUE
+    st.subheader("3. Onboarding Queue & Initial TV Visits Tab")
+
+    st.markdown("### Visual Example: Refresh Button")
+    col1, col2, col3 = st.columns([1, 2, 2])
+    with col1:
+        st.button("🔄 Refresh Patient Data", disabled=True, key="help_refresh")
+    with col2:
+        st.caption("Click to reload onboarding assignments if new patients appear while dashboard is open")
+
+    st.markdown("### Visual Example: Initial Visit Form")
+
+    with st.expander("📋 See complete onboarding form example", expanded=True):
+        st.markdown("##### Specialist Requirements Confirmation")
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.checkbox("Hypertension", value=True, disabled=True, key="help_hyper")
+        with col2:
+            st.checkbox("Mental Health", value=False, disabled=True, key="help_mh")
+        with col3:
+            st.checkbox("Dementia Care", value=False, disabled=True, key="help_dementia")
+        with col4:
+            st.checkbox("Annual Wellness", value=True, disabled=True, key="help_wellness")
+
+        st.markdown("##### Task Entry Fields (4 Columns)")
+        col1, col2, col3, col4 = st.columns(4)
+
+        with col1:
+            st.date_input("Date", value=pd.to_datetime("today"), disabled=True, key="help_date")
+
+        with col2:
+            st.selectbox(
+                "Visit Type",
+                ["Home Visit", "Telehealth Visit"],
+                index=0,
+                disabled=True,
+                key="help_visit_type"
+            )
+
+        with col3:
+            st.selectbox(
+                "Patient Type",
+                ["New", "Acute", "Cognitive", "Follow Up", "TCM-7", "TCM-14"],
+                index=3,
+                disabled=True,
+                key="help_patient_type"
+            )
+
+        with col4:
+            st.text_input("Summary (Read-only)", "Patient: John Doe | Task: HV | Code: 99337 | Duration: 45 min | Type: Follow Up",
+                        disabled=True, key="help_summary")
+
+        st.markdown("##### Clinical Assessment")
+
+        col_left, col_right = st.columns(2)
+
+        with col_left:
+            st.markdown("**Left Column**")
+            st.number_input("ER Visits (Last 12 Months)", min_value=0, value=1, disabled=True, key="help_er")
+            st.number_input("Hospitalizations (Last 12 Months)", min_value=0, value=0, disabled=True, key="help_hosp")
+            st.selectbox(
+                "Subjective Risk Level",
+                ["Level 1", "Level 2", "Level 3", "Level 4", "Level 5", "Level 6"],
+                index=2,
+                disabled=True,
+                key="help_risk"
+            )
+
+            mh_checkbox = st.checkbox("Mental Health Concerns", value=True, disabled=True, key="help_mh_checkbox")
+            if mh_checkbox:
+                st.multiselect(
+                    "Specific Conditions",
+                    ["Schizophrenia", "Depression", "Anxiety", "Stress/PTSD", "ADHD", "Bipolar Disorder", "Suicidal Ideation"],
+                    default=["Depression"],
+                    disabled=True,
+                    key="help_mh_conditions"
+                )
+
+            st.text_input("Active Specialists", "Cardiology, Wound Care", disabled=True, key="help_specialists")
+
+        with col_right:
+            st.markdown("**Right Column**")
+            st.selectbox(
+                "Code Status",
+                ["Full Code", "DNR", "DNI", "Limited", "Unknown"],
+                index=1,
+                disabled=True,
+                key="help_code_status"
+            )
+            st.selectbox(
+                "Cognitive Function",
+                ["Intact", "Mild Impairment", "Moderate", "Severe"],
+                index=1,
+                disabled=True,
+                key="help_cognitive"
+            )
+            st.selectbox(
+                "Functional Status",
+                ["Ambulatory without fall risk", "Ambulatory with fall risk requiring device", "Wheelchair", "Bedbound"],
+                index=1,
+                disabled=True,
+                key="help_functional"
+            )
+            st.selectbox(
+                "GOC (Goals of Care)",
+                ["Full", "Palliative", "Hospice", "Unknown"],
+                index=0,
+                disabled=True,
+                key="help_goc"
+            )
+            st.text_area("Goals of Care", "Patient wishes to remain at home with family support.", disabled=True, key="help_goals")
+            st.text_area("Active Concerns", "Blood pressure management, wound healing", disabled=True, key="help_concerns")
+
+        st.text_area(
+            "Visit Notes",
+            "Initial visit completed. Patient is alert and oriented x3. Wound on left heel showing signs of healing. BP elevated at 150/90. Will continue weekly visits.",
+            disabled=True,
+            key="help_notes",
+            height=100
+        )
+
+        st.markdown("##### Action Button")
+        st.button("✅ Complete Initial Home Visit", disabled=True, key="help_complete_visit")
+        st.warning("⚠️ **Important**: This button removes patient from onboarding queue. Cannot undo!")
+
+    st.markdown("---")
+
+    # TAB 4: PHONE REVIEWS
+    st.subheader("4. Phone Reviews Tab")
+
+    st.markdown("### Visual Example: Phone Review Entry Form")
+
+    with st.container():
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.selectbox(
+                "Task Type",
+                ["Phone Review", "Follow-up Call"],
+                index=0,
+                disabled=True,
+                key="help_phone_type",
+                help="Choose appropriate call type"
+            )
+
+            st.date_input(
+                "Date",
+                value=pd.to_datetime("today"),
+                disabled=True,
+                key="help_phone_date",
+                help="Select actual date of phone call"
+            )
+
+            st.selectbox(
+                "Patient",
+                ["Margaret Thompson", "Robert Anderson", "Eleanor Martinez", "William Harris"],
+                index=0,
+                disabled=True,
+                key="help_phone_patient",
+                help="Select patient you called (searchable)"
+            )
+
+        with col2:
+            st.text_area(
+                "Notes",
+                "Called patient to discuss recent lab results. Patient reports feeling better. BP improved. Will continue current medications. Follow up in 2 weeks.",
+                disabled=True,
+                key="help_phone_notes",
+                height=150,
+                help="Document call details, clinical updates, action items, next steps"
+            )
+
+        st.button("📞 Log Task", disabled=True, key="help_log_phone")
+        st.success("✅ Task logged successfully! (This is what you'll see)")
+
+    st.markdown("---")
+
+    # TAB 5: TASK REVIEW
+    st.subheader("5. Task Review Tab")
+
+    st.markdown("This tab has **3 sub-tabs**. Click through each below to see examples:")
+
+    task_tab1, task_tab2, task_tab3 = st.tabs(["Task List", "Monthly Summary", "Deleted Tasks"])
+
+    with task_tab1:
+        st.markdown("### Sub-Tab 1: Task List")
+
+        st.selectbox(
+            "Select Month",
+            ["January 2025", "December 2024", "November 2024"],
+            index=0,
+            disabled=True,
+            key="help_task_month"
+        )
+
+        st.metric("Total Tasks", "142", "+12")
+
+        # Sample task table
+        sample_tasks = pd.DataFrame({
+            "Delete": [False, False, True],
+            "Patient Name": ["Margaret Thompson", "Robert Anderson", "Eleanor Martinez"],
+            "DOS": ["2025-01-20", "2025-01-18", "2025-01-15"],
+            "Task Description": ["PCP-Visit Home Visit", "Phone Review", "GG Consultation"],
+            "Location": ["Home", "Telehealth", "Office"],
+            "Type": ["Home Visit", "Phone Review", "Office Visit"],
+            "Notes": ["Routine visit", "BP check", "Cognitive assessment"],
+            "ICD Codes": ["I10", "I10, E11.9", "F03"]
+        })
+        st.dataframe(sample_tasks, use_container_width=True)
+
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.button("💾 Save Changes", disabled=True, key="help_save_tasks")
+        with col2:
+            st.button("🗑️ Delete Selected Tasks (1)", disabled=True, key="help_delete_tasks")
+        with col3:
+            st.button("📥 Download Tasks as CSV", disabled=True, key="help_download_tasks")
+
+        st.info("💡 **Only the 'Type' column is editable** - click to change task type")
+
+    with task_tab2:
+        st.markdown("### Sub-Tab 2: Monthly Summary")
+
+        st.selectbox(
+            "Select Month for Summary",
+            ["January 2025", "December 2024", "November 2024"],
+            index=0,
+            disabled=True,
+            key="help_summary_month"
+        )
+
+        metric1, metric2, metric3 = st.columns(3)
+        with metric1:
+            st.metric("Total Tasks", "142")
+        with metric2:
+            st.metric("Total Minutes", "4,285")
+        with metric3:
+            st.metric("Avg Minutes/Task", "30.2")
+
+        st.markdown("#### Service Type Summary")
+        service_summary = pd.DataFrame({
+            "Service Type": ["Home Visit", "Telehealth", "Office Visit", "Phone Review"],
+            "Task Count": [45, 38, 25, 34],
+            "Total Minutes": [2475, 570, 375, 865],
+            "Billing Codes": ["99337, 99334", "99441, 99442", "99213-99215", "99441-99443"]
+        })
+        st.dataframe(service_summary, use_container_width=True)
+
+        st.markdown("#### Billing Code Breakdown")
+        billing_summary = pd.DataFrame({
+            "Billing Code": ["99337", "99334", "99441", "99213", "99446"],
+            "Description": ["Home Visit, 60 min", "Home Visit, 30 min", "Phone Visit", "Office Visit", "Visit Complexity"],
+            "Count": [25, 20, 38, 25, 34],
+            "Total Minutes": [1500, 975, 570, 375, 865],
+            "Min Minutes": [40, 20, 5, 10, 15],
+            "Max Minutes": [60, 40, 20, 30, 40]
+        })
+        st.dataframe(billing_summary, use_container_width=True)
+
+        st.button("📥 Download Summary as CSV", disabled=True, key="help_download_summary")
+
+    with task_tab3:
+        st.markdown("### Sub-Tab 3: Deleted Tasks")
+
+        st.info("Shows up to 200 most recently deleted tasks. Older tasks are permanently removed.")
+
+        deleted_tasks = pd.DataFrame({
+            "Select": [False, True],
+            "Deleted At": ["2025-01-20 14:32", "2025-01-19 09:15"],
+            "DOS": ["2025-01-18", "2025-01-15"],
+            "Patient Name": ["John Smith", "Jane Doe"],
+            "Service Type": ["Home Visit", "Phone Review"],
+            "Duration": [45, 15]
+        })
+        st.dataframe(deleted_tasks, use_container_width=True)
+
+        st.button("♻️ Restore Selected Tasks (1)", disabled=True, key="help_restore_tasks")
+        st.success("✅ Task restored successfully!")
+
+    st.markdown("---")
+
+    # VISIT TASK ENTRY SECTION
+    st.subheader("6. Visit Task Entry Section (Below Patient List)")
+
+    st.markdown("### Visual Example: Compact Entry Form")
+
+    with st.container():
+        st.markdown("#### 5-Column Form")
+
+        col1, col2, col3, col4, col5 = st.columns(5)
+
+        with col1:
+            st.date_input("DOS", value=pd.to_datetime("today"), disabled=True, key="help_entry_dos")
+
+        with col2:
+            st.selectbox(
+                "Patient",
+                ["Margaret Thompson", "Robert Anderson", "--- Manual Entry ---"],
+                index=0,
+                disabled=True,
+                key="help_entry_patient"
+            )
+
+        with col3:
+            st.selectbox(
+                "Type",
+                ["Follow Up", "New", "Acute", "Cognitive", "TCM-7", "TCM-14"],
+                index=0,
+                disabled=True,
+                key="help_entry_type"
+            )
+
+        with col4:
+            st.selectbox(
+                "Location",
+                ["Home", "Office", "Tele"],
+                index=0,
+                disabled=True,
+                key="help_entry_location"
+            )
+
+        with col5:
+            st.text_area(
+                "ICD Codes",
+                "I10\nE11.9",
+                disabled=True,
+                key="help_entry_icd",
+                height=80
+            )
+
+        st.markdown("#### Optional Clinical Fields")
+
+        col_left, col_right = st.columns(2)
+
+        with col_left:
+            st.markdown("**Left Column**")
+            st.number_input("ER Visits (12 mo)", min_value=0, value=0, disabled=True, key="help_entry_er")
+            st.number_input("Hospitalizations (12 mo)", min_value=0, value=0, disabled=True, key="help_entry_hosp")
+            st.selectbox("Subjective Risk Level", ["Level 1", "Level 2", "Level 3", "Level 4", "Level 5", "Level 6"],
+                        index=2, disabled=True, key="help_entry_risk")
+
+            st.checkbox("Mental Health Concerns", value=False, disabled=True, key="help_entry_mh")
+            st.text_input("Active Specialists", "", disabled=True, key="help_entry_specs")
+
+        with col_right:
+            st.markdown("**Right Column**")
+            st.selectbox("Code Status", ["Full Code", "DNR", "DNI", "Limited", "Unknown"],
+                        index=0, disabled=True, key="help_entry_code")
+            st.selectbox("Cognitive Function", ["Intact", "Mild Impairment", "Moderate", "Severe"],
+                        index=0, disabled=True, key="help_entry_cog")
+            st.selectbox("Functional Status", ["Ambulatory without fall risk", "Ambulatory with fall risk requiring device", "Wheelchair", "Bedbound"],
+                        index=0, disabled=True, key="help_entry_func")
+            st.selectbox("GOC", ["Full", "Palliative", "Hospice", "Unknown"],
+                        index=0, disabled=True, key="help_entry_goc")
+            st.text_area("Goals of Care", "", disabled=True, key="help_entry_goals", height=60)
+            st.text_area("Active Concerns", "", disabled=True, key="help_entry_concerns", height=60)
+
+        st.text_area(
+            "Notes/Clinical Summary",
+            "Routine follow-up visit. Patient stable. BP controlled.",
+            disabled=True,
+            key="help_entry_notes",
+            height=80
+        )
+
+        st.button("➕ Log Task", disabled=True, key="help_entry_log")
+
+        st.info("✅ **Success Message Example**: Task logged! Billing code: 99337, Duration: 45 min")
+
+    with st.expander("⚠️ Validation Rules"):
+        st.markdown("""
+        **Patient Type + Location Combinations**:
+
+        ✓ = Allowed | ✗ = Not Allowed
+
+        | Patient Type | Home | Office | Telehealth |
+        |--------------|------|--------|------------|
+        | Follow Up    | ✓    | ✓      | ✓          |
+        | New          | ✓    | ✓      | ✓          |
+        | Acute        | ✗    | ✓      | ✓          |
+        | Cognitive    | ✓    | ✓      | ✗          |
+        | TCM-7        | ✓    | ✓      | ✓ (99496)  |
+        | TCM-14       | ✓    | ✓      | ✓ (99495)  |
+
+        **Invalid combinations will show error message and prevent task logging.**
+        """)
+
+    st.markdown("---")
+
+    # TAB 7: ZMO
+    st.subheader("7. ZMO (Patient Data) Tab")
+
+    st.markdown("### Visual Example: Editable Notes Panel")
+
+    zmo_sample = pd.DataFrame({
+        "Status": ["Active", "Active", "HOSPICE"],
+        "First Name": ["Margaret", "Robert", "Eleanor"],
+        "Last Name": ["Thompson", "Anderson", "Martinez"],
+        "Labs Notes": [
+            "BMP normal. Lipid panel pending.",
+            "A1C 7.2% - slightly elevated. Fasting glucose 118.",
+            "BNP normal. CMP stable."
+        ],
+        "Imaging Notes": [
+            "CXR 1/10: Clear. No acute findings.",
+            "None this month.",
+            "Ultrasound 1/12: Gallstones noted, asymptomatic."
+        ],
+        "General Notes": [
+            "Patient doing well. Family supportive.",
+            "Needs dietary education for diabetes.",
+            "Comfort care focused. No aggressive interventions."
+        ]
+    })
+
+    st.data_editor(
+        zmo_sample,
+        column_config={
+            "Labs Notes": st.column_config.TextColumn(
+                "Labs Notes",
+                width="large",
+                help="Click to edit laboratory results and testing notes"
+            ),
+            "Imaging Notes": st.column_config.TextColumn(
+                "Imaging Notes",
+                width="large",
+                help="Click to edit imaging studies notes (X-ray, CT, MRI, ultrasound)"
+            ),
+            "General Notes": st.column_config.TextColumn(
+                "General Notes",
+                width="large",
+                help="Click to edit general clinical notes and observations"
+            )
+        },
+        use_container_width=True,
+        hide_index=True
+    )
+
+    st.success("💡 **Auto-Save**: Notes save automatically when you click away or press Enter. No save button needed!")
+
+    st.markdown("---")
+
+    # GENERAL TIPS
+    st.subheader("8. General Tips & Best Practices")
+
+    with st.expander("🎨 Color Coding", expanded=True):
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.success("**Green** = Good")
+            st.caption("Recent visit ≤30 days ago")
+        with col2:
+            st.warning("**Yellow** = Caution")
+            st.caption("Visit 31-60 days ago - schedule soon")
+        with col3:
+            st.error("**Red** = Alert")
+            st.caption("No visit >60 days - priority")
+
+    with st.expander("💡 Data Refresh Behavior"):
+        st.info("""
+        - Patient panel data refreshes periodically from external sources
+        - ✅ **Notes columns (Labs, Imaging, General)** are PRESERVED during refresh
+        - ✅ Task data is never overwritten by refresh
+        - ✅ Manual entries always retained
+        """)
+
+    with st.expander("🔄 Month Selection Persists"):
+        st.success("""
+        - When you select a month in Task Review, it remembers
+        - Switch between sub-tabs without losing your selection
+        - Applies independently to Task List and Monthly Summary
+        """)
+
+    with st.expander("👤 Manual Patient Entry"):
+        st.markdown("""
+        **Use "--- Manual Entry ---" option for**:
+        - Patients not yet in the database
+        - Required: First Name, Last Name, DOB (MM/DD/YYYY format)
+        - System creates temporary pseudo-patient ID
+        - Patient can be linked to formal record later
+        """)
+
+    with st.expander("🗑️ Task Deletion is Soft-Delete"):
+        st.warning("""
+        - Deleted tasks go to "Deleted Tasks" sub-tab
+        - Can restore within 200-task window
+        - After 200 deletions, oldest are permanently removed
+        - ⚠️ Always double-check before deleting
+        """)
+
+    with st.expander("✓ Validation Rules"):
+        st.info("""
+        **Billing Code Validation**:
+        - System automatically assigns billing codes based on Patient Type + Location
+        - Invalid combinations are blocked with error message
+        - See "Validation Rules" expander in Visit Task Entry section above
+
+        **Required Fields**:
+        - DOS (Date of Service)
+        - Patient selection or manual entry details
+        - Type (Patient Type)
+        - Location
+        - Notes (for phone reviews)
+        """)
+
+    with st.expander("🔍 Filter Persistence"):
+        st.markdown("""
+        - Filters in My Patients tab affect other tabs
+        - Phone Reviews uses filtered patient list
+        - Visit Task Entry uses filtered patient list
+        - Adjust filters to limit options in other tabs
+        """)
+
+    with st.expander("👨‍💼 CPM vs Regular Provider"):
+        st.markdown("""
+        **Care Provider Managers (CPM)** see:
+        - ✅ Team Management tab
+        - ✅ Can view all providers' patients
+        - ✅ Provider filter dropdown
+
+        **Regular Care Providers (CP)** see:
+        - ✅ Only their assigned patients
+        - ✅ No provider filter (not needed)
+        - ✅ Same tabs otherwise
+
+        **Both see**:
+        - ✅ Onboarding queue (if assigned patients)
+        - ✅ Same task review functionality
+        """)
+
+    with st.expander("📝 Data Entry Best Practices"):
+        st.success("""
+        - ✅ Be thorough in notes (care continuity depends on it)
+        - ✅ Use clinical fields for comprehensive assessments
+        - ✅ Log tasks promptly (accurate dates matter for billing)
+        - ✅ Review Task Review monthly for accuracy
+        - ✅ Use proper Patient Type codes for billing compliance
+        """)
+
+    with st.expander("❓ Getting Help"):
+        st.info("""
+        - 📞 Contact your coordinator for workflow questions
+        - 💻 Contact admin for technical issues
+        - 📖 Use this Help tab as reference guide
+        - 🐛 Report bugs with screenshot and steps to reproduce
+        """)
+
+    st.markdown("---")
+    st.markdown("### 🎉 You're ready to use the Provider Dashboard!")
+    st.balloons()
+
 def show(user_id, user_role_ids=None):
     if user_role_ids is None:
         user_role_ids = []
@@ -1159,7 +1896,7 @@ def show(user_id, user_role_ids=None):
                 from src.zmo_module import render_zmo_tab
                 render_zmo_tab(user_id=user_id)
             with tab_help:
-                render_comprehensive_help()
+                render_comprehensive_help_with_visuals()
         else:
             tab1, tab2, tab3, tab4, tab_zmo, tab_help = st.tabs(
                 [
@@ -1188,7 +1925,7 @@ def show(user_id, user_role_ids=None):
                 from src.zmo_module import render_zmo_tab
                 render_zmo_tab(user_id=user_id)
             with tab_help:
-                render_comprehensive_help()
+                render_comprehensive_help_with_visuals()
     else:
         # Regular care provider tabs - include onboarding queue if they have assigned patients
         if onboarding_queue and len(onboarding_queue) > 0:
@@ -1223,7 +1960,7 @@ def show(user_id, user_role_ids=None):
                 from src.zmo_module import render_zmo_tab
                 render_zmo_tab(user_id=user_id)
             with tab_help:
-                render_comprehensive_help()
+                render_comprehensive_help_with_visuals()
         else:
             tab1, tab2, tab3, tab_zmo, tab_help = st.tabs(
                 ["My Patients", "Phone Reviews", "Task Review", "ZMO (Patient Data)", "Help"]
@@ -1244,7 +1981,7 @@ def show(user_id, user_role_ids=None):
                 from src.zmo_module import render_zmo_tab
                 render_zmo_tab(user_id=user_id)
             with tab_help:
-                render_comprehensive_help()
+                render_comprehensive_help_with_visuals()
 
 
 def show_patient_list_section(user_id, section_id=None, has_cpm_role=False):
