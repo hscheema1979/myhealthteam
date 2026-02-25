@@ -268,6 +268,845 @@ def render_provider_help_examples(key_prefix: str = ""):
         st.markdown("- Export: download CSV for further analysis.")
 
 
+def render_comprehensive_help():
+    """
+    Comprehensive help documentation for the Care Provider Dashboard.
+    Covers every tab, filter, field, button, and feature in detail.
+    """
+
+    st.header("Provider Dashboard - Complete User Guide")
+
+    # Color Legend Section
+    st.subheader("Patient Status Color Legend")
+    st.info("These colors appear throughout the dashboard to help you quickly identify patient visit status:")
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.success("**Green**: Seen ≤30 days ago")
+        st.caption("Patient has been visited recently - on track")
+    with col2:
+        st.warning("**Yellow**: Seen 31-60 days ago")
+        st.caption("Approaching due date - schedule soon")
+    with col3:
+        st.error("**Red**: NOT seen >60 days ago")
+        st.caption("Overdue - priority for scheduling")
+    with col4:
+        st.info("**Blue**: ≥200 minutes this month")
+        st.caption("High-utilization patient in summaries")
+
+    st.markdown("---")
+
+    # TAB 1: MY PATIENTS
+    st.subheader("1. My Patients Tab")
+
+    st.markdown("### How to Use This Tab")
+    st.markdown("This tab displays your assigned patient panel with filtering and search capabilities.")
+
+    st.markdown("#### Filters (Top of Tab)")
+    st.markdown("""
+    **1. Search by Patient Name or ID**
+    - Type any part of patient's first name, last name, or patient ID
+    - Results update as you type
+    - Clear the field to show all patients
+
+    **2. Filter by Provider(s)** (Dropdown)
+    - **Care Provider Managers (CPM)**: Can select multiple providers or "All Providers" to view team's patients
+    - **Regular Care Providers (CP)**: Shows only your patients (no selection needed)
+    - Use for viewing specific provider's panel when managing team
+
+    **3. Filter by Patient Status** (Multiselect)
+    - **Default selections**: Active, Active-Geri, Active-PCP, HOSPICE
+    - Click to expand options: Active, Active-Geri, Active-PCP, ONBOARDING, HOSPICE, INACTIVE, DC
+    - Select multiple statuses to compare patient groups
+    - **Tip**: Deselect all to see no patients (not recommended)
+    """)
+
+    st.markdown("#### Metrics Bar (Below Filters)")
+    st.markdown("""
+    Shows counts for filtered patients:
+    - **Filtered Patients**: Total number matching current filters
+    - **Active-Geri**: Geriatric patients count
+    - **Active-PCP**: Primary Care patients count
+    - **Hospice**: Hospice patients count
+    """)
+
+    st.markdown("#### Patient Panel Table")
+    st.markdown("""
+    **Columns (Left to Right)**:
+
+    1. **Status**: Current patient status (Active, Hospice, Onboarding, etc.)
+    2. **GOC**: Goals of Care (Rev/Confirm, Discuss, Full, Palliative, Hospice)
+    3. **Code Status**: Resuscitation preference (Full Code, DNR, DNI, Limited)
+    4. **Risk**: Risk level (1-6, or categorized)
+    5. **First Name**: Patient's first name
+    6. **Last Name**: Patient's last name
+    7. **Med POC**: Medical Point of Contact name
+    8. **Med Phone**: Medical contact phone number
+    9. **Appt POC**: Appointment Point of Contact name
+    10. **Appt Phone**: Appointment contact phone number
+    11. **Nurse POC**: Nursing contact name
+    12. **Nurse Phone**: Nursing contact phone number
+    13. **Facility**: Facility name where patient resides
+    14. **Provider**: Assigned Care Provider name
+    15. **Coordinator**: Assigned Care Coordinator name
+    16. **Last Visit Date**: Most recent visit date
+    17. **Service Type**: Visit type (PCP, GG, NP, etc.)
+    18. **Phone Number**: Primary patient phone number
+    19. **patient_id**: Internal system ID (for reference)
+
+    **Row Color Coding**:
+    - **Green background**: Last visit ≤30 days ago
+    - **Yellow background**: Last visit 31-60 days ago
+    - **Red background**: Last visit >60 days ago (needs attention)
+    """)
+
+    st.markdown("---")
+
+    # TAB 2: TEAM MANAGEMENT (CPM Only)
+    st.subheader("2. Team Management Tab (CPM Only)")
+
+    st.markdown("### Overview")
+    st.markdown("This tab is only available to Care Provider Managers. It provides team-wide patient visibility and statistics.")
+
+    st.markdown("### Subsection: Provider Patient Visit Breakdown")
+
+    st.markdown("#### Provider Statistics Summary Table")
+    st.markdown("""
+    Shows visit breakdown for each provider on your team:
+
+    **Columns**:
+    - **Provider**: Provider name
+    - **Seen ≤30 days**: Count of patients visited recently (green)
+    - **Seen 31-60 days**: Count of patients needing visit soon (yellow)
+    - **Not seen >60 days**: Count of overdue patients (red)
+    - **Total Patients**: Total assigned patient count
+
+    **Use This Table To**:
+    - Identify which providers have many overdue patients
+    - Balance workload across team
+    - Prioritize outreach efforts
+    """)
+
+    st.markdown("#### Expandable Sections")
+    st.markdown("""
+    **1. 🟢 Patients Seen in Last 30 Days by Provider**
+    - Click to expand
+    - Shows all patients with recent visits
+    - Grouped by provider
+    - Patient names highlighted in green
+
+    **2. 🟡 Patients Seen 1-2 Months Ago by Provider**
+    - Click to expand
+    - Shows patients approaching visit due date
+    - Grouped by provider
+    - Patient names highlighted in yellow
+    - **Action**: Schedule visits for these patients soon
+
+    **3. 🔴 Patients NOT Seen by Regional Provider in 2+ Months by Provider**
+    - Click to expand
+    - Shows overdue patients requiring immediate attention
+    - Grouped by provider
+    - Patient names highlighted in red
+    - **Action**: Prioritize scheduling for these patients
+    """)
+
+    st.markdown("### Subsection: Complete Patient Panel")
+
+    st.markdown("#### Active Patients Section")
+    st.markdown("""
+    - Always visible
+    - Shows all active patients with full panel columns
+    - Same color coding as My Patients tab
+    - Useful for comprehensive team review
+    """)
+
+    st.markdown("#### Inactive Patients Section")
+    st.markdown("""
+    - Click to expand/collapse
+    - Shows inactive, discharged, or closed patients
+    - Same columns as active patients
+    - Useful for historical reference
+    """)
+
+    st.markdown("---")
+
+    # TAB 3: ONBOARDING QUEUE
+    st.subheader("3. Onboarding Queue & Initial TV Visits Tab")
+
+    st.markdown("### Overview")
+    st.markdown("This tab appears only when you have patients assigned for onboarding (initial visit). Complete these initial visits to remove patients from the queue.")
+
+    st.markdown("### Button: Refresh Patient Data")
+    st.markdown("""
+    - Click to reload onboarding assignments
+    - Use if new patients are assigned while dashboard is open
+    - Located at top of tab
+    """)
+
+    st.markdown("### Initial Visit Task Logging Form")
+
+    st.markdown("#### For Each Assigned Patient:")
+
+    st.markdown("##### Specialist Requirements Confirmation (Checkboxes)")
+    st.markdown("""
+    Check all specialist requirements addressed during initial visit:
+    - **Hypertension**: Blood pressure management addressed
+    - **Mental Health**: Behavioral health needs assessed
+    - **Dementia Care**: Cognitive impairment needs addressed
+    - **Annual Wellness**: Annual wellness visit completed
+    """)
+
+    st.markdown("##### Task Entry Fields (4 Columns)")
+
+    st.markdown("""
+    **Column 1: Date**
+    - Date picker for visit date
+    - Defaults to today
+    - Click to select correct visit date
+
+    **Column 2: Visit Type** (Dropdown)
+    - **Home Visit**: In-person visit at patient's residence
+    - **Telehealth Visit**: Virtual visit via phone/video
+    - Select appropriate option
+
+    **Column 3: Patient Type** (Dropdown)
+    - **New**: New patient admission
+    - **Acute**: Acute condition or exacerbation
+    - **Cognitive**: Cognitive impairment focus
+    - **Follow Up**: Routine follow-up visit
+    - **TCM-7**: Transitional Care Management (7-day)
+    - **TCM-14**: Transitional Care Management (14-day)
+    - Select based on visit purpose
+
+    **Column 4: Summary Display**
+    - Shows: Patient name, Task type, Billing code, Duration, Patient type
+    - Read-only - for reference only
+    """)
+
+    st.markdown("##### Clinical Assessment (2 Columns)")
+
+    st.markdown("""
+    **Left Column:**
+
+    **1. ER Visits (Last 12 Months)**
+    - Number input
+    - Enter count of emergency room visits in past year
+    - Use 0 if none
+
+    **2. Hospitalizations (Last 12 Months)**
+    - Number input
+    - Enter count of hospital admissions in past year
+    - Use 0 if none
+
+    **3. Subjective Risk Level** (Dropdown)
+    - **Level 1**: Lowest risk
+    - **Level 2**: Low-moderate risk
+    - **Level 3**: Moderate risk
+    - **Level 4**: Moderate-high risk
+    - **Level 5**: High risk
+    - **Level 6**: Highest risk
+    - Select based on clinical judgment
+
+    **4. Mental Health Concerns** (Checkbox)
+    - Check if patient has mental health concerns
+    - **If checked**, 7 additional checkboxes appear:
+      - Schizophrenia
+      - Depression
+      - Anxiety
+      - Stress/PTSD
+      - ADHD
+      - Bipolar Disorder
+      - Suicidal Ideation
+    - Select all that apply
+
+    **5. Active Specialists**
+    - Text input field
+    - List involved specialists (e.g., "Cardiology, Wound Care, Podiatry")
+    - Separate with commas
+
+    **Right Column:**
+
+    **6. Code Status** (Dropdown)
+    - **Full Code**: All resuscitation measures
+    - **DNR**: Do Not Resuscitate
+    - **DNI**: Do Not Intubate
+    - **Limited**: Specific limitations
+    - **Unknown**: Status not determined
+    - Select documented status
+
+    **7. Cognitive Function** (Dropdown)
+    - **Intact**: Normal cognitive function
+    - **Mild Impairment**: Slight cognitive deficits
+    - **Moderate**: Moderate cognitive impairment
+    - **Severe**: Severe cognitive impairment
+    - Select based on assessment
+
+    **8. Functional Status Summary** (Dropdown)
+    - **Ambulatory without fall risk**: Walks independently
+    - **Ambulatory with fall risk requiring device**: Walks with aid, fall risk
+    - **Wheelchair**: Wheelchair-dependent
+    - **Bedbound**: Bedbound
+    - Select best description
+
+    **9. GOC (Goals of Care)** (Dropdown)
+    - **Full**: Curative/aggressive care
+    - **Palliative**: Comfort-focused
+    - **Hospice**: End-of-life care
+    - **Unknown**: Not yet discussed
+    - Select current goals
+
+    **10. Goals of Care**
+    - Text area
+    - Document patient-centered care goals
+    - Include patient/family preferences
+
+    **11. Active Concerns**
+    - Text area
+    - List primary clinical concerns
+    - Include issues needing follow-up
+    """)
+
+    st.markdown("##### Visit Notes")
+    st.markdown("""
+    - Large text area
+    - Document comprehensive visit summary
+    - Include assessment, plan, patient response
+    - Be thorough for care continuity
+    """)
+
+    st.markdown("##### Button: Complete Initial [TV/HV] Visit")
+    st.markdown("""
+    - **Primary action button** for this tab
+    - Button text changes based on visit type (Complete Initial TV Visit or Complete Initial HV Visit)
+    - **What it does**:
+      - Validates all required fields
+      - Creates task record in provider_tasks table
+      - Updates patient records with clinical data
+      - Removes patient from onboarding queue
+      - Marks onboarding task as complete
+    - **Click only when all fields are complete**
+    - Patient will disappear from queue after successful completion
+    - **Important**: Cannot undo - ensure accuracy before clicking
+    """)
+
+    st.markdown("---")
+
+    # TAB 4: PHONE REVIEWS
+    st.subheader("4. Phone Reviews Tab")
+
+    st.markdown("### Overview")
+    st.markdown("Log phone calls and follow-up communications with patients.")
+
+    st.markdown("### Phone Review Entry Form")
+
+    st.markdown("#### Field 1: Task Type (Dropdown)")
+    st.markdown("""
+    - **Phone Review**: Routine patient check-in call
+    - **Follow-up Call**: Follow-up on previous visit or issue
+    - Select appropriate call type
+    """)
+
+    st.markdown("#### Field 2: Date")
+    st.markdown("""
+    - Date picker
+    - Defaults to today
+    - Select actual date of phone call
+    """)
+
+    st.markdown("#### Field 3: Patient (Dropdown)")
+    st.markdown("""
+    - Searchable dropdown
+    - Shows filtered patients from My Patients tab
+    - Start typing to search by name
+    - Select patient you called
+    - **Note**: List respects filters from My Patients tab
+    """)
+
+    st.markdown("#### Field 4: Notes")
+    st.markdown("""
+    - Large text area
+    - Document call details:
+      - Reason for call
+      - Patient condition/concerns
+      - Clinical updates provided
+      - Action items
+      - Next steps
+    - Be thorough for care coordination
+    """)
+
+    st.markdown("#### Button: Log Task")
+    st.markdown("""
+    - **Primary action button**
+    - Validates all required fields (must have selections and notes)
+    - Creates task record in provider_tasks table
+    - Saves with type "Phone Review" or "Follow-up Call"
+    - Available for billing and reporting
+    - Success message confirms task logged
+    - Form clears after successful logging
+    """)
+
+    st.markdown("---")
+
+    # TAB 5: TASK REVIEW
+    st.subheader("5. Task Review Tab")
+
+    st.markdown("### Overview")
+    st.markdown("Review, edit, and manage all your logged tasks. This tab has three sub-tabs.")
+
+    st.markdown("### Sub-Tab 1: Task List")
+
+    st.markdown("#### Dropdown: Select Month")
+    st.markdown("""
+    - Located at top of sub-tab
+    - Shows months from current year
+    - Select month to view tasks
+    - **Persists across tab switches** (remembers your selection)
+    - Defaults to current month
+    """)
+
+    st.markdown("#### Task List Table")
+
+    st.markdown("""
+    **Columns (Left to Right)**:
+
+    1. **Delete** (Checkbox)
+       - Check to select task for deletion
+       - Select multiple to delete in batch
+       - Use with "Delete Selected Tasks" button
+
+    2. **Patient Name**
+       - Patient first and last name
+       - Read-only
+
+    3. **DOS** (Date of Service)
+       - Date task was performed
+       - Read-only
+
+    4. **Task Description**
+       - Description of task type and details
+       - Read-only
+
+    5. **Location**
+       - Where service was provided
+       - Read-only
+
+    6. **Type** (Editable!)
+       - **This is the ONLY editable column**
+       - Dropdown for each row
+       - Options: Home Visit, Telehealth, Office, Phone Review, etc.
+       - Click to change type if needed
+       - Changes take effect after clicking "Save Changes"
+
+    7. **Notes**
+       - Task notes
+       - Read-only
+
+    8. **ICD Codes**
+       - Diagnosis codes
+       - Read-only
+
+    **Tip**: Scroll horizontally to see all columns
+    """)
+
+    st.markdown("#### Metrics: Total Tasks")
+    st.markdown("""
+    - Displayed above table
+    - Shows total count of tasks in selected month
+    """)
+
+    st.markdown("#### Buttons")
+
+    st.markdown("""
+    **Button 1: Save Changes** (Primary)
+    - Click after editing Type column
+    - Saves all Type changes to database
+    - Validates entries before saving
+    - Success message confirms save
+    - **Always click after making changes**
+
+    **Button 2: Delete Selected Tasks** (Secondary)
+    - Only active when tasks are selected (checkboxes)
+    - Click to soft-delete selected tasks
+    - **Confirmation dialog appears** - confirm to proceed
+    - Deleted tasks move to "Deleted Tasks" sub-tab
+    - Can be restored within 200-task limit
+    - Use carefully - deletes billing records
+
+    **Button 3: Download Tasks as CSV**
+    - Click to export current month's tasks
+    - Downloads spreadsheet file
+    - Useful for external analysis or reporting
+    - Includes all columns
+    """)
+
+    st.markdown("### Sub-Tab 2: Monthly Summary")
+
+    st.markdown("#### Dropdown: Select Month for Summary")
+    st.markdown("""
+    - Located at top of sub-tab
+    - Independent from Task List month selection
+    - Shows months from current year
+    - Defaults to current month
+    """)
+
+    st.markdown("#### Metrics Bar")
+    st.markdown("""
+    - **Total Tasks**: Count of all tasks in month
+    - **Total Minutes**: Sum of all task durations
+    - **Avg Minutes/Task**: Average task duration
+    - Useful for productivity tracking
+    """)
+
+    st.markdown("#### Table 1: Service Type Summary")
+    st.markdown("""
+    **Columns**:
+    - **Service Type**: Type of service (Home Visit, Telehealth, etc.)
+    - **Task Count**: Number of tasks of this type
+    - **Total Minutes**: Sum of minutes for this type
+    - **Billing Codes**: Associated billing codes
+
+    **Use For**:
+    - Understanding workload distribution
+    - Billing code verification
+    - Productivity analysis
+    """)
+
+    st.markdown("#### Table 2: Billing Code Breakdown")
+    st.markdown("""
+    **Columns**:
+    - **Billing Code**: CPT/HCPCS code
+    - **Description**: Code description
+    - **Count**: Number of times used
+    - **Total Minutes**: Sum of minutes for this code
+    - **Min Minutes**: Minimum allowed minutes
+    - **Max Minutes**: Maximum allowed minutes
+
+    **Use For**:
+    - Billing verification
+    - Code usage analysis
+    - Compliance checking
+    """)
+
+    st.markdown("#### Button: Download Summary as CSV")
+    st.markdown("""
+    - Click to export monthly summary
+    - Downloads spreadsheet with both tables
+    - Useful for billing reports
+    """)
+
+    st.markdown("### Sub-Tab 3: Deleted Tasks")
+
+    st.markdown("#### Overview")
+    st.markdown("""
+    - Shows up to 200 most recently deleted tasks
+    - Older deleted tasks are permanently removed
+    - Tasks are soft-deleted (can be restored)
+    """)
+
+    st.markdown("#### Deleted Tasks Table")
+
+    st.markdown("""
+    **Columns**:
+    1. **Select** (Checkbox)
+       - Check to select tasks for restoration
+       - Select multiple for batch restore
+
+    2. **Deleted At**
+       - Date/time when task was deleted
+       - Helps identify recent deletions
+
+    3. **DOS** (Date of Service)
+       - Original service date
+       - Read-only
+
+    4. **Patient Name**
+       - Patient first and last name
+       - Read-only
+
+    5. **Service Type**
+       - Type of service
+       - Read-only
+
+    6. **Duration**
+       - Task duration in minutes
+       - Read-only
+    """)
+
+    st.markdown("#### Button: Restore Selected Tasks (Primary)")
+    st.markdown("""
+    - Only active when tasks are selected
+    - Click to restore selected deleted tasks
+    - **Confirmation dialog appears** - confirm to proceed
+    - Tasks move back to Task List
+    - Restores billing records
+    - Use to recover accidentally deleted tasks
+    """)
+
+    st.markdown("---")
+
+    # VISIT TASK ENTRY SECTION
+    st.subheader("6. Visit Task Entry Section (Below Patient List)")
+
+    st.markdown("### Overview")
+    st.markdown("Located at the bottom of My Patients tab. Use this form to log new visit tasks.")
+
+    st.markdown("### Compact Form (5 Columns)")
+
+    st.markdown("""
+    **Column 1: DOS** (Date of Service)
+    - Date picker
+    - Defaults to today
+    - Select visit date
+
+    **Column 2: Patient** (Dropdown)
+    - Shows filtered patients from My Patients tab
+    - Select "--- Manual Entry ---" if patient not in system
+    - **If Manual Entry Selected**:
+      - **First Name** field appears
+      - **Last Name** field appears
+      - **DOB** field appears (format: MM/DD/YYYY)
+      - Use for patients not yet in database
+      - System creates pseudo-patient ID
+
+    **Column 3: Type** (Patient Type Dropdown)
+    - **Follow Up**: Routine follow-up
+    - **New**: New patient
+    - **Acute**: Acute condition
+    - **Cognitive**: Cognitive focus
+    - **TCM-7**: Transitional care (7-day)
+    - **TCM-14**: Transitional care (14-day)
+    - Select appropriate type
+
+    **Column 4: Location** (Dropdown)
+    - **Tele**: Telehealth
+    - **Home**: Home visit
+    - **Office**: Office visit
+    - **Important**: Not all combinations are valid (see validation rules below)
+
+    **Column 5: ICD Codes**
+    - Large text area
+    - Enter diagnosis codes
+    - One per line or comma-separated
+    - Format: e.g., "I10", "E11.9", "J44.9"
+    """)
+
+    st.markdown("### Patient Risk & Clinical Fields (Optional)")
+
+    st.markdown("#### Left Column")
+
+    st.markdown("""
+    **1. ER Visits (12 Months)**
+    - Number input
+    - Count of ER visits in past year
+    - Optional
+
+    **2. Hospitalizations (12 Months)**
+    - Number input
+    - Count of hospitalizations in past year
+    - Optional
+
+    **3. Subjective Risk Level**
+    - Level 1-6
+    - Provider's clinical assessment
+    - Optional
+
+    **4. Mental Health Concerns** (Checkbox)
+    - Check if patient has MH concerns
+    - **If checked**, 7 condition checkboxes appear:
+      - Schizophrenia
+      - Depression
+      - Anxiety
+      - Stress/PTSD
+      - ADHD
+      - Bipolar Disorder
+      - Suicidal Ideation
+    - Select all that apply
+
+    **5. Active Specialists**
+    - Text input
+    - List involved specialists
+    - Optional
+    """)
+
+    st.markdown("#### Right Column")
+
+    st.markdown("""
+    **6. Code Status** (Dropdown)
+    - Full Code, DNR, DNI, Limited, Unknown
+    - Optional
+
+    **7. Cognitive Function** (Dropdown)
+    - Intact, Mild Impairment, Moderate, Severe
+    - Optional
+
+    **8. Functional Status Summary** (Dropdown)
+    - Ambulatory without fall risk
+    - Ambulatory with fall risk requiring device
+    - Wheelchair
+    - Bedbound
+    - Optional
+
+    **9. GOC (Goals of Care)** (Dropdown)
+    - Full, Palliative, Hospice, Unknown
+    - Optional
+
+    **10. Goals of Care**
+    - Text area
+    - Document care goals
+    - Optional
+
+    **11. Active Concerns**
+    - Text area
+    - List primary concerns
+    - Optional
+    """)
+
+    st.markdown("### Notes/Clinical Summary")
+    st.markdown("""
+    - Large text area at bottom of form
+    - Document visit details
+    - Include assessment and plan
+    - Highly recommended for care continuity
+    """)
+
+    st.markdown("### Button: Log Task")
+    st.markdown("""
+    - **Primary action button**
+    - Validates required fields:
+      - DOS (required)
+      - Patient (required)
+      - Type (required)
+      - Location (required)
+      - If manual entry: First Name, Last Name, DOB (required)
+    - **Validates Patient Type + Location combination**:
+      - **Follow Up**: Home ✓, Office ✓, Tele ✓
+      - **New**: Home ✓, Office ✓, Tele ✓
+      - **Acute**: Home ✗, Office ✓, Tele ✓
+      - **Cognitive**: Home ✓, Office ✓, Tele ✗
+      - **TCM-7**: Home ✓, Office ✓, Tele ✓ (Code: 99496)
+      - **TCM-14**: Home ✓, Office ✓, Tele ✓ (Code: 99495)
+
+    **On Success**:
+    - Creates task in provider_tasks table
+    - Displays billing code used
+    - Shows confirmation message
+    - Form clears for next entry
+    - Task appears in Task Review tab
+    """)
+
+    st.markdown("---")
+
+    # TAB 6: ZMO
+    st.subheader("7. ZMO (Patient Data) Tab")
+
+    st.markdown("### Overview")
+    st.markdown("Zen Medical Onboarding (ZMO) module for comprehensive patient data management and notes documentation.")
+
+    st.markdown("### Features")
+    st.markdown("""
+    **1. Patient Panel Display**
+    - Shows all patient panel columns
+    - Same filtering as My Patients tab
+    - Color-coded rows
+
+    **2. Editable Notes Columns**
+    Three editable text columns for clinical documentation:
+
+    - **Labs Notes**
+      - Laboratory results and testing notes
+      - Reference ranges, trends
+      - Pending orders
+      - Click to edit, press Enter or click away to save
+
+    - **Imaging Notes**
+      - X-ray, CT, MRI, ultrasound notes
+      - Exam dates, findings
+      - Comparison studies
+      - Click to edit, press Enter or click away to save
+
+    - **General Notes**
+      - Overall clinical notes
+      - Care summaries
+      - Important reminders
+      - Click to edit, press Enter or click away to save
+
+    **3. Auto-Save**
+    - Notes save automatically when you click away or press Enter
+    - No save button needed
+    - Changes persist immediately to database
+    - **Note**: These notes are preserved during data refreshes
+
+    **4. Role Access**
+    - Available to all roles: Coordinators, Providers, Onboarding team
+    - Notes shared across all roles
+    - Collaborative documentation
+    """)
+
+    st.markdown("---")
+
+    # GENERAL TIPS
+    st.subheader("General Tips & Best Practices")
+
+    st.markdown("""
+    **1. Data Refresh Behavior**
+    - Patient panel data refreshes periodically from external sources
+    - **Notes columns (Labs, Imaging, General)** are PRESERVED during refresh
+    - Task data is never overwritten by refresh
+    - Manual entries always retained
+
+    **2. Color Coding is Your Friend**
+    - Green = Good (recent visit)
+    - Yellow = Caution (visit due soon)
+    - Red = Alert (visit overdue)
+    - Use these to prioritize your day
+
+    **3. Month Selection Persists**
+    - When you select a month in Task Review, it remembers
+    - Switch between sub-tabs without losing your selection
+    - Applies independently to Task List and Monthly Summary
+
+    **4. Manual Patient Entry**
+    - Use "--- Manual Entry ---" for new patients not yet in system
+    - Required: First Name, Last Name, DOB
+    - System creates temporary pseudo-patient ID
+    - Patient can be linked to formal record later
+
+    **5. Task Deletion is Soft-Delete**
+    - Deleted tasks go to "Deleted Tasks" sub-tab
+    - Can restore within 200-task window
+    - After 200 deletions, oldest are permanently removed
+    - Always double-check before deleting
+
+    **6. Billing Code Validation**
+    - System automatically assigns billing codes based on:
+      - Patient Type + Location combination
+    - Invalid combinations are blocked with error message
+    - See validation rules in "Visit Task Entry" section above
+
+    **7. Filter Persistence**
+    - Filters in My Patients tab affect other tabs
+    - Phone Reviews uses filtered patient list
+    - Visit Task Entry uses filtered patient list
+    - Adjust filters to limit options in other tabs
+
+    **8. CPM vs Regular Provider**
+    - CPMs see "Team Management" tab
+    - CPMs can view all providers' patients
+    - Regular providers see only their assigned patients
+    - Onboarding queue appears for anyone with assigned onboarding patients
+
+    **9. Data Entry Best Practices**
+    - Be thorough in notes (care continuity depends on it)
+    - Use clinical fields for comprehensive assessments
+    - Log tasks promptly (accurate dates matter for billing)
+    - Review Task Review monthly for accuracy
+
+    **10. Getting Help**
+    - Contact your coordinator for workflow questions
+    - Contact admin for technical issues
+    - Use this Help tab as reference guide
+    """)
+
+
 def show(user_id, user_role_ids=None):
     if user_role_ids is None:
         user_role_ids = []
@@ -320,54 +1159,7 @@ def show(user_id, user_role_ids=None):
                 from src.zmo_module import render_zmo_tab
                 render_zmo_tab(user_id=user_id)
             with tab_help:
-                st.header("Help")
-                st.markdown(
-                    "This help uses real UI elements to explain what you see and how to act."
-                )
-                st.subheader("Color Legend (Patient Activity)")
-                col1, col2, col3, col4 = st.columns(4)
-                with col1:
-                    st.success("Green: Seen in the last 30 days")
-                with col2:
-                    st.warning("Yellow: Seen 1–2 months ago")
-                with col3:
-                    st.error("Red: NOT seen in 2+ months")
-                with col4:
-                    st.info("Blue: ≥200 minutes this month")
-                st.caption(
-                    "These colors appear in summaries and expanders to help triage quickly."
-                )
-
-                st.subheader("My Patients")
-                st.markdown(
-                    "- Filter and act on your assigned patients.\n- Common actions: Open Chart, Call Patient, Add Task."
-                )
-                st.markdown(
-                    "- Columns: Status, GOC, Code Status, Risk, First Name, Last Name, Med POC, Appt POC, Med Phone, Appt Phone, Facility, CP Name, CC Name, Last Visit Date, Service Type, Phone Number"
-                )
-
-                st.subheader("Onboarding Queue & Initial TV")
-                st.markdown("- Fields: Visit Type, Date, Visit Notes")
-                st.markdown(
-                    "- Clinical fields: ER Visits (12 mo), Hospitalizations (12 mo), Subjective Risk Level, Mental Health Concerns (checkboxes), Code Status, Cognitive Function, Functional Status, GOC, Goals of Care, Active Concerns, Active Specialists"
-                )
-                st.markdown(
-                    "- Action: Complete Initial Visit — updates onboarding and patient records"
-                )
-
-                st.subheader("Phone Reviews")
-                st.markdown(
-                    "- Fields: Task Type, Date, Notes; validates required fields; saves to provider_tasks"
-                )
-
-                st.subheader("Task Review")
-                st.markdown(
-                    "- Monthly view only: edit Duration (minutes) for tasks"
-                )
-                st.markdown(
-                    "- Columns: Patient Name, Date, Duration, Service Type; CSV export"
-                )
-                render_provider_help_examples(key_prefix="cpm_queue_")
+                render_comprehensive_help()
         else:
             tab1, tab2, tab3, tab4, tab_zmo, tab_help = st.tabs(
                 [
@@ -396,61 +1188,7 @@ def show(user_id, user_role_ids=None):
                 from src.zmo_module import render_zmo_tab
                 render_zmo_tab(user_id=user_id)
             with tab_help:
-                st.header("Help")
-                st.subheader("Color Legend (Patient Activity)")
-                col1, col2, col3, col4 = st.columns(4)
-                with col1:
-                    st.success("Green: Seen in the last 30 days")
-                with col2:
-                    st.warning("Yellow: Seen 1–2 months ago")
-                with col3:
-                    st.error("Red: NOT seen in 2+ months")
-                with col4:
-                    st.info("Blue: ≥200 minutes this month")
-                st.subheader("Sections")
-                st.markdown("- My Patients: act on your panel.")
-                st.markdown(
-                    "  • Columns: Status, GOC, Code Status, Risk, First Name, Last Name, Med POC, Appt POC, Med Phone, Appt Phone, Facility, Provider, Coordinator, Last Visit Date, Service Type, Phone Number"
-                )
-                st.markdown("- Onboarding Queue: initial TV visit tasks.")
-                st.markdown(
-                    "  • Fields: Visit Type, Date, Visit Notes; Clinical: ER Visits, Hospitalizations, Subjective Risk, MH Concerns, Code Status, Cognitive, Functional, GOC, Goals of Care, Active Concerns, Specialists"
-                )
-                st.markdown("- Phone Reviews: structured entry forms.")
-                st.markdown(
-                    "  • Fields: Task Type, Date, Notes; validation and save to provider_tasks"
-                )
-                st.markdown("- Task Review: monthly view with minutes editing.")
-                st.markdown(
-                    "  • Columns: Patient Name, Date, Duration, Service Type; CSV export"
-                )
-                render_provider_help_examples(key_prefix="cpm_noqueue_")
-            with tab_help:
-                st.header("Help")
-                st.subheader("Color Legend (Patient Activity)")
-                col1, col2, col3, col4 = st.columns(4)
-                with col1:
-                    st.success("Green: Seen in the last 30 days")
-                with col2:
-                    st.warning("Yellow: Seen 1–2 months ago")
-                with col3:
-                    st.error("Red: NOT seen in 2+ months")
-                with col4:
-                    st.info("Blue: ≥200 minutes this month")
-                st.subheader("Sections")
-                st.markdown("- My Patients: act on your panel.")
-                st.markdown(
-                    "  • Columns: Status, GOC, Code Status, Risk, First Name, Last Name, Med POC, Appt POC, Med Phone, Appt Phone, Facility, Provider, Coordinator, Last Visit Date, Service Type, Phone Number"
-                )
-                st.markdown("- Phone Reviews: structured entry forms.")
-                st.markdown(
-                    "  • Fields: Task Type, Date, Notes; validation and save to provider_tasks"
-                )
-                st.markdown("- Task Review: monthly view with minutes editing.")
-                st.markdown(
-                    "  • Columns: Patient Name, Date, Duration, Service Type; CSV export"
-                )
-                render_provider_help_examples(key_prefix="cp_noqueue_")
+                render_comprehensive_help()
     else:
         # Regular care provider tabs - include onboarding queue if they have assigned patients
         if onboarding_queue and len(onboarding_queue) > 0:
@@ -485,57 +1223,7 @@ def show(user_id, user_role_ids=None):
                 from src.zmo_module import render_zmo_tab
                 render_zmo_tab(user_id=user_id)
             with tab_help:
-                st.header("Help")
-                st.markdown(
-                    "This help uses real UI elements to explain what you see and how to act."
-                )
-                st.subheader("Color Legend (Patient Activity)")
-                col1, col2, col3, col4 = st.columns(4)
-                with col1:
-                    st.success("Green: Seen in the last 30 days")
-                with col2:
-                    st.warning("Yellow: Seen 1–2 months ago")
-                with col3:
-                    st.error("Red: NOT seen in 2+ months")
-                with col4:
-                    st.info("Blue: ≥200 minutes this month")
-                st.caption(
-                    "These colors appear in summaries and expanders to help triage quickly."
-                )
-
-                st.subheader("My Patients")
-                st.markdown(
-                    "- Filter and act on your assigned patients.\n- Common actions: Open Chart, Call Patient, Add Task."
-                )
-                st.markdown(
-                    "- Columns: Status, GOC, Code Status, Risk, First Name, Last Name, Med POC, Appt POC, Med Phone, Appt Phone, Facility, Provider, Coordinator, Last Visit Date, Service Type, Phone Number"
-                )
-
-                st.subheader("Onboarding Queue & Initial TV")
-                st.markdown(
-                    "- Patients assigned for initial visits. Completing the visit updates onboarding and patient records."
-                )
-                st.markdown("- Fields: Visit Type, Date, Visit Notes")
-                st.markdown(
-                    "- Clinical fields: ER Visits (12 mo), Hospitalizations (12 mo), Subjective Risk Level, Mental Health Concerns (checkboxes), Code Status, Cognitive Function, Functional Status, GOC, Goals of Care, Active Concerns, Active Specialists"
-                )
-                st.markdown(
-                    "- Action: Complete Initial Visit — updates onboarding and patient records"
-                )
-
-                st.subheader("Phone Reviews")
-                st.markdown(
-                    "- Fields: Task Type, Date, Notes; validates required fields; saves to provider_tasks"
-                )
-
-                st.subheader("Task Review")
-                st.markdown(
-                    "- Monthly view only: edit Duration (minutes) for tasks"
-                )
-                st.markdown(
-                    "- Columns: Patient Name, Date, Duration, Service Type; CSV export"
-                )
-                render_provider_help_examples(key_prefix="cp_queue_")
+                render_comprehensive_help()
         else:
             tab1, tab2, tab3, tab_zmo, tab_help = st.tabs(
                 ["My Patients", "Phone Reviews", "Task Review", "ZMO (Patient Data)", "Help"]
@@ -556,21 +1244,7 @@ def show(user_id, user_role_ids=None):
                 from src.zmo_module import render_zmo_tab
                 render_zmo_tab(user_id=user_id)
             with tab_help:
-                st.header("Help")
-                st.subheader("Color Legend (Patient Activity)")
-                col1, col2, col3, col4 = st.columns(4)
-                with col1:
-                    st.success("Green: Seen in the last 30 days")
-                with col2:
-                    st.warning("Yellow: Seen 1–2 months ago")
-                with col3:
-                    st.error("Red: NOT seen in 2+ months")
-                with col4:
-                    st.info("Blue: ≥200 minutes this month")
-                st.subheader("Sections")
-                st.markdown(
-                    "- My Patients: act on your panel.\n- Phone Reviews: structured entry forms.\n- Task Review: monthly view with minutes editing."
-                )
+                render_comprehensive_help()
 
 
 def show_patient_list_section(user_id, section_id=None, has_cpm_role=False):
@@ -1086,10 +1760,35 @@ def show_patient_list_section(user_id, section_id=None, has_cpm_role=False):
             )
 
         with col_patient:
-            patient_options = ["Select one"] + patient_names
+            patient_options = ["Select one"] + patient_names + ["--- Manual Entry ---"]
             selected_patient_name = st.selectbox(
                 "Patient", patient_options, key=f"{key_prefix}_patient"
             )
+
+            # Show manual entry fields if selected
+            is_manual_entry = selected_patient_name == "--- Manual Entry ---"
+            if is_manual_entry:
+                st.markdown("**Enter Patient Details:**")
+                col_first, col_last, col_dob = st.columns(3)
+                with col_first:
+                    manual_first_name = st.text_input(
+                        "First Name*",
+                        key=f"{key_prefix}_manual_first",
+                        help="Required"
+                    )
+                with col_last:
+                    manual_last_name = st.text_input(
+                        "Last Name*",
+                        key=f"{key_prefix}_manual_last",
+                        help="Required"
+                    )
+                with col_dob:
+                    manual_dob = st.text_input(
+                        "DOB (MM/DD/YYYY)*",
+                        key=f"{key_prefix}_manual_dob",
+                        help="Required - Use MM/DD/YYYY format",
+                        placeholder="01/15/2000"
+                    )
 
         with col_type:
             patient_type_options = ["Follow Up", "New", "Acute", "Cognitive", "TCM-7", "TCM-14"]
@@ -1249,7 +1948,90 @@ def show_patient_list_section(user_id, section_id=None, has_cpm_role=False):
     notes = st.text_area("Notes / Clinical Summary", key=f"{key_prefix}_notes")
 
     if st.button("Log Task", key=f"{key_prefix}_log_task"):
-        if (
+        # Handle manual entry case
+        if is_manual_entry:
+            # Validate manual entry fields
+            if not manual_first_name or not manual_last_name or not manual_dob:
+                st.error("**Manual Entry**: Please fill in all required fields (First Name, Last Name, DOB).")
+            elif not selected_billing:
+                st.error("Cannot log task: Patient Type and Location combination is not valid. Please correct the selection above.")
+            else:
+                # Generate pseudo-patient_id from manual entry
+                # Format: MANUAL_LASTFIRST_DOB (MMDDYYYY)
+                try:
+                    # Parse and reformat DOB to ensure consistency
+                    import re
+                    dob_clean = re.sub(r'[^\d/]', '', manual_dob)  # Remove non-digit, non-slash chars
+
+                    # Try to parse DOB
+                    from datetime import datetime
+                    if '/' in dob_clean:
+                        dob_parts = dob_clean.split('/')
+                        if len(dob_parts) == 3:
+                            mm, dd, yyyy = dob_parts
+                            dob_formatted = f"{yyyy}{mm.zfill(2)}{dd.zfill(2)}"
+                        else:
+                            raise ValueError("Invalid DOB format")
+                    else:
+                        # Assume YYYYMMDD if no slashes
+                        dob_formatted = dob_clean
+
+                    # Create pseudo-patient ID
+                    pseudo_patient_id = f"MANUAL_{manual_last_name.upper()}_{manual_first_name.upper()}_{dob_formatted}"
+
+                    # Create pseudo-patient dict (for consistency with normal flow)
+                    selected_patient = {
+                        "patient_id": pseudo_patient_id,
+                        "first_name": manual_first_name,
+                        "last_name": manual_last_name,
+                        "date_of_birth": manual_dob,
+                        "_is_manual_entry": True  # Flag to indicate this is manual entry
+                    }
+
+                    # Show info message
+                    st.info(f"**Manual Entry**: Creating task for patient {manual_first_name} {manual_last_name} (DOB: {manual_dob}). Patient will be added to manual review queue.")
+
+                    # Continue to task saving (same logic as below)
+                    try:
+                        # Append notes to patient and save a provider task record using selected billing code
+                        billing_code_to_use = selected_billing
+
+                        task_saved, task_error = database.save_daily_task(
+                            provider_id=user_id,
+                            patient_id=selected_patient["patient_id"],
+                            task_date=task_date,
+                            task_description=f"Primary Care Visit - {billing_code_to_use or 'Unknown'}",
+                            notes=notes,
+                            billing_code=billing_code_to_use,
+                            icd_codes=icd_codes if icd_codes else None,
+                            location_type=db_location_type,
+                            patient_type=patient_type_for_billing,
+                        )
+
+                        # Check if task was saved successfully
+                        if not task_saved:
+                            if task_error == "PSEUDO_PATIENT":
+                                st.warning("**Manual Entry Patient**: Task saved successfully. Patient has been flagged for manual review and will be added to the system.")
+                            elif task_error == "duplicate":
+                                st.warning("**Duplicate Task**: A task with the same patient and task description already exists for this date. Task was not logged. Please use a different task description or date.")
+                                st.stop()
+                            else:
+                                st.error(f"**Failed to save task**: {task_error or 'Unknown error'}")
+                                st.stop()
+                        elif task_error == "PSEUDO_PATIENT":
+                            st.success("**Manual Entry Patient**: Task saved successfully! Patient has been flagged for manual review and will be added to the system.")
+
+                        st.success(f"**Task Logged**: {billing_code_to_use or 'Unknown'} - {manual_first_name} {manual_last_name}")
+                        st.rerun()
+
+                    except Exception as e:
+                        st.error(f"**Error saving task**: {str(e)}")
+
+                except Exception as e:
+                    st.error(f"**Invalid DOB format**: {manual_dob}. Please use MM/DD/YYYY format. Error: {str(e)}")
+
+        # Handle normal patient selection
+        elif (
             not selected_patient_name
             or selected_patient_name == "Select one"
         ):
