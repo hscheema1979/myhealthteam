@@ -688,6 +688,7 @@ def show_coordinator_tasks_tab(
         filter_col1, filter_col2, filter_col3 = st.columns(3)
 
         with filter_col1:
+            st.markdown("**Date Range**")
             # Get first and last day of selected month
             first_day = f"{selected_year}-{selected_month:02d}-01"
             if selected_month == 12:
@@ -709,7 +710,8 @@ def show_coordinator_tasks_tab(
                 "Date Range",
                 value=(last_day_of_month.replace(day=1), last_day_of_month),
                 format="YYYY-MM-DD",
-                key="daily_minutes_date_range"
+                key="daily_minutes_date_range",
+                label_visibility="collapsed"
             )
 
         with filter_col2:
