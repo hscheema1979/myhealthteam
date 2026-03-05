@@ -4008,16 +4008,14 @@ def get_coordinator_daily_minutes(year, month, coordinator_id=None, start_date=N
         if not table_exists:
             return []
 
-        # Build base query
+        # Build simple aggregation query (same pattern as monthly summary)
         query = f"""
             SELECT
                 ct.coordinator_id,
-                COALESCE(u.full_name, 'Unknown') as coordinator_name,
                 DATE(ct.task_date) as task_date,
                 SUM(CAST(ct.duration_minutes AS INTEGER)) as total_minutes,
                 COUNT(*) as task_count
             FROM {table_name} ct
-            LEFT JOIN users u ON CAST(ct.coordinator_id AS INTEGER) = u.user_id
             WHERE ct.duration_minutes IS NOT NULL
             AND CAST(ct.duration_minutes AS INTEGER) > 0
         """
@@ -4039,11 +4037,72 @@ def get_coordinator_daily_minutes(year, month, coordinator_id=None, start_date=N
             params.append(end_date)
 
         # Group by coordinator and date
-        query += " GROUP BY ct.coordinator_id, u.full_name, ct.coordinator_name, DATE(ct.task_date)"
-        query += " ORDER BY DATE(ct.task_date) ASC, coordinator_name ASC"
+        query += " GROUP BY ct.coordinator_id, DATE(ct.task_date)"
+        query += " ORDER BY DATE(ct.task_date) ASC"
 
+        # Get aggregated results
         result = conn.execute(query, params).fetchall()
-        return [dict(row) for row in result]
+
+        # Convert to list of dicts
+        daily_data = []
+        for row in result:
+            daily_data.append({
+                'coordinator_id': row[0],
+                'task_date': row[1],
+                'total_minutes': row[2],
+                'task_count': row[3],
+                'coordinator_name': None  # Will be filled next
+            })
+
+        if not daily_data:
+            return []
+
+        # Build coordinator name mapping (same as monthly summary)
+        coordinator_ids = list(set([d['coordinator_id'] for d in daily_data]))
+
+        # Try to get names from tasks table first (where they might be cached)
+        id_to_name = {}
+        try:
+            placeholders = ','.join(['?' for _ in coordinator_ids])
+            name_query = f"""
+                SELECT DISTINCT coordinator_id, coordinator_name
+                FROM {table_name}
+                WHERE coordinator_id IN ({placeholders})
+                AND coordinator_name IS NOT NULL
+                AND coordinator_name != ''
+            """
+            name_rows = conn.execute(name_query, coordinator_ids).fetchall()
+            for row in name_rows:
+                key = str(int(row[0])) if row[0] is not None else None
+                name = row[1]
+                if key and name:
+                    id_to_name[key] = name
+        except Exception:
+            pass
+
+        # Fill in missing names from users table
+        for coord_id in coordinator_ids:
+            key = str(int(coord_id)) if coord_id is not None else None
+            if key and key not in id_to_name:
+                # Look up from users table
+                user = conn.execute(
+                    "SELECT full_name FROM users WHERE user_id = ?",
+                    (coord_id,)
+                ).fetchone()
+                if user and user[0]:
+                    id_to_name[key] = user[0]
+                else:
+                    id_to_name[key] = "Unknown"
+
+        # Map coordinator names to results
+        for d in daily_data:
+            key = str(int(d['coordinator_id'])) if d['coordinator_id'] is not None else None
+            d['coordinator_name'] = id_to_name.get(key, 'Unknown')
+
+        # Sort by coordinator name within each date
+        daily_data.sort(key=lambda x: (x['task_date'], x['coordinator_name']))
+
+        return daily_data
     finally:
         conn.close()
 
