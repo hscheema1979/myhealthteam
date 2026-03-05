@@ -5,6 +5,10 @@ Restricted access page for billing reports and financial management.
 Only accessible to Justin (user_id 18) and Harpreet (user_id 12).
 
 URL: /superadmin
+
+NOTE: This page is hidden from navigation by default. Access via:
+- Direct URL: https://care.myhealthteam.org/superadmin
+- Or navigate from Admin Dashboard when authorized
 """
 
 import streamlit as st
@@ -30,6 +34,16 @@ def check_billing_access(user_id: int) -> bool:
         True if user is authorized (user_id in [12, 18])
     """
     return user_id in [12, 18]  # Harpreet=12, Justin=18
+
+
+# Hide from navigation menu - only accessible via direct URL or button
+st.set_page_config(
+    page_title="SuperAdmin Billing",
+    page_icon="💰",
+    layout="wide",
+    initial_sidebar_state="expanded",
+    menu_item=None  # Hide from sidebar navigation
+)
 
 
 def show_superadmin_dashboard():
