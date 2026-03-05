@@ -246,7 +246,17 @@ def get_unassigned_active_patients() -> pd.DataFrame:
         ORDER BY pp.last_name, pp.first_name
         """
         df = pd.read_sql_query(query, conn)
+
+        # Debug: Log query results
+        import sys
+        print(f"[DEBUG] Unassigned patients query returned {len(df)} rows", file=sys.stderr)
+
         return df
+    except Exception as e:
+        import sys
+        print(f"[ERROR] Unassigned patients query failed: {str(e)}", file=sys.stderr)
+        # Return empty DataFrame on error
+        return pd.DataFrame()
     finally:
         conn.close()
 
@@ -708,34 +718,46 @@ def show_unassigned_patients_only_tab(user_id: int, user_role_ids: List[int]):
     st.header("Unassigned Patient Management")
     st.markdown("### Patient Assignment Management")
 
-    # Get base data
-    unassigned_df = get_unassigned_active_patients()
+    try:
+        # Get base data
+        unassigned_df = get_unassigned_active_patients()
 
-    if unassigned_df.empty:
-        st.info(f"{TextStyle.INFO_INDICATOR}: No unassigned active patients found.")
-        return
+        # Debug: Show what we got
+        if unassigned_df is None:
+            st.warning("Query returned None")
+            return
 
-    # Summary metrics
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        no_coordinator = unassigned_df[unassigned_df['coordinator_id'].isna() | (unassigned_df['coordinator_id'] == 0)]
-        st.metric(get_metric_label("No Coordinator", is_current_month=True), len(no_coordinator))
+        if unassigned_df.empty:
+            st.info(f"{TextStyle.INFO_INDICATOR}: No unassigned active patients found.")
+            st.info("This means all active patients have both a coordinator and provider assigned.")
+            return
 
-    with col2:
-        no_provider = unassigned_df[unassigned_df['provider_id'].isna() | (unassigned_df['provider_id'] == 0)]
-        st.metric(get_metric_label("No Provider", is_current_month=True), len(no_provider))
+        # Summary metrics
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            no_coordinator = unassigned_df[unassigned_df['coordinator_id'].isna() | (unassigned_df['coordinator_id'] == 0)]
+            st.metric(get_metric_label("No Coordinator", is_current_month=True), len(no_coordinator))
 
-    with col3:
-        st.metric(get_metric_label("Total Unassigned", is_current_month=True), len(unassigned_df))
+        with col2:
+            no_provider = unassigned_df[unassigned_df['provider_id'].isna() | (unassigned_df['provider_id'] == 0)]
+            st.metric(get_metric_label("No Provider", is_current_month=True), len(no_provider))
 
-    # Tab system for views (internal sub-tabs within this tab)
-    tab_andrew, tab_jan = st.tabs(["Andrew's View", "Jan's View"])
+        with col3:
+            st.metric(get_metric_label("Total Unassigned", is_current_month=True), len(unassigned_df))
 
-    with tab_andrew:
-        display_andrews_view(no_coordinator)
+        # Tab system for views (internal sub-tabs within this tab)
+        tab_andrew, tab_jan = st.tabs(["Andrew's View", "Jan's View"])
 
-    with tab_jan:
-        display_jans_view(no_provider)
+        with tab_andrew:
+            display_andrews_view(no_coordinator)
+
+        with tab_jan:
+            display_jans_view(no_provider)
+
+    except Exception as e:
+        st.error(f"Error loading unassigned patients: {str(e)}")
+        import traceback
+        st.code(traceback.format_exc())
 
 
 def show_workflow_analytics_unassigned_tab(user_id: int, user_role_ids: List[int]):
