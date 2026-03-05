@@ -557,6 +557,9 @@ def display_andrews_view(df: pd.DataFrame):
     # Add selection column for assignment
     andrews_df['Select'] = False
 
+    # Convert last_visit_date to string to avoid type inference issues
+    andrews_df['last_visit_date'] = andrews_df['last_visit_date'].astype(str)
+
     # Display
     edited_df = st.data_editor(
         andrews_df[[
@@ -602,6 +605,9 @@ def display_jans_view(df: pd.DataFrame):
 
     # Add selection column for assignment
     jans_df['Select'] = False
+
+    # Convert last_visit_date to string to avoid type inference issues
+    jans_df['last_visit_date'] = jans_df['last_visit_date'].astype(str)
 
     # Display
     edited_df = st.data_editor(
