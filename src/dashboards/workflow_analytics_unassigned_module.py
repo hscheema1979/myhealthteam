@@ -233,17 +233,18 @@ def get_unassigned_active_patients() -> pd.DataFrame:
             p.first_name || ' ' || p.last_name as full_name,
             p.status,
             p.facility,
-            p.provider_id,
-            p.coordinator_id,
+            pa.provider_id,
+            pa.coordinator_id,
             up.provider_name,
             up.coordinator_name,
             p.last_visit_date,
             p.next_appointment_date,
             p.general_notes
         FROM patients p
+        LEFT JOIN patient_assignments pa ON p.patient_id = pa.patient_id AND pa.status = 'active'
         LEFT JOIN patient_panel up ON p.patient_id = up.patient_id
         WHERE p.status = 'Active'
-          AND (p.provider_id IS NULL OR p.coordinator_id IS NULL)
+          AND (pa.provider_id IS NULL OR pa.coordinator_id IS NULL)
         ORDER BY p.last_name, p.first_name
         """
         df = pd.read_sql_query(query, conn)
