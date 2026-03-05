@@ -227,25 +227,23 @@ def get_unassigned_active_patients() -> pd.DataFrame:
     try:
         query = """
         SELECT
-            p.patient_id,
-            p.first_name,
-            p.last_name,
-            p.first_name || ' ' || p.last_name as full_name,
-            p.status,
-            p.facility,
-            pa.provider_id,
-            pa.coordinator_id,
-            up.provider_name,
-            up.coordinator_name,
-            p.last_visit_date,
-            p.next_appointment_date,
-            p.general_notes
-        FROM patients p
-        LEFT JOIN patient_assignments pa ON p.patient_id = pa.patient_id AND pa.status = 'active'
-        LEFT JOIN patient_panel up ON p.patient_id = up.patient_id
-        WHERE p.status = 'Active'
-          AND (pa.provider_id IS NULL OR pa.coordinator_id IS NULL)
-        ORDER BY p.last_name, p.first_name
+            pp.patient_id,
+            pp.first_name,
+            pp.last_name,
+            pp.first_name || ' ' || pp.last_name as full_name,
+            pp.status,
+            pp.facility,
+            pp.provider_id,
+            pp.coordinator_id,
+            pp.provider_name,
+            pp.coordinator_name,
+            pp.last_visit_date,
+            pp.next_appointment_date,
+            pp.general_notes
+        FROM patient_panel pp
+        WHERE pp.status = 'Active'
+          AND (pp.provider_id IS NULL OR pp.provider_id = 0 OR pp.coordinator_id IS NULL OR pp.coordinator_id = '')
+        ORDER BY pp.last_name, pp.first_name
         """
         df = pd.read_sql_query(query, conn)
         return df
@@ -573,7 +571,7 @@ def display_andrews_view(df: pd.DataFrame):
             'patient_id': st.column_config.TextColumn("Patient ID"),
             'full_name': st.column_config.TextColumn("Patient Name"),
             'facility': st.column_config.TextColumn("Facility"),
-            'last_visit_date': st.column_config.DateColumn("Last Visit"),
+            'last_visit_date': st.column_config.TextColumn("Last Visit"),
             'priority': st.column_config.TextColumn("Priority"),
             'general_notes': st.column_config.TextColumn("Notes")
         },
@@ -619,7 +617,7 @@ def display_jans_view(df: pd.DataFrame):
             'patient_id': st.column_config.TextColumn("Patient ID"),
             'full_name': st.column_config.TextColumn("Patient Name"),
             'facility': st.column_config.TextColumn("Facility"),
-            'last_visit_date': st.column_config.DateColumn("Last Visit"),
+            'last_visit_date': st.column_config.TextColumn("Last Visit"),
             'urgency': st.column_config.TextColumn("Urgency"),
             'general_notes': st.column_config.TextColumn("Notes")
         },
