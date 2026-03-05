@@ -721,7 +721,7 @@ def show_coordinator_tasks_tab(
             conn = database.get_db_connection()
             coord_list_query = f"""
                 SELECT DISTINCT
-                    COALESCE(u.full_name, ct.coordinator_name, 'Unknown') as coordinator_name
+                    COALESCE(u.full_name, 'Unknown') as coordinator_name
                 FROM {table_name} ct
                 LEFT JOIN users u ON CAST(ct.coordinator_id AS INTEGER) = u.user_id
                 WHERE ct.coordinator_id IS NOT NULL
@@ -766,7 +766,7 @@ def show_coordinator_tasks_tab(
                 SELECT DISTINCT ct.coordinator_id
                 FROM {table_name} ct
                 LEFT JOIN users u ON CAST(ct.coordinator_id AS INTEGER) = u.user_id
-                WHERE COALESCE(u.full_name, ct.coordinator_name) = ?
+                WHERE COALESCE(u.full_name, 'Unknown') = ?
                 LIMIT 1
             """
             coord_id_result = conn.execute(coord_id_query, (selected_coordinator_filter,)).fetchone()

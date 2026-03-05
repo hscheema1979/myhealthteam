@@ -4012,7 +4012,7 @@ def get_coordinator_daily_minutes(year, month, coordinator_id=None, start_date=N
         query = f"""
             SELECT
                 ct.coordinator_id,
-                COALESCE(u.full_name, ct.coordinator_name, 'Unknown') as coordinator_name,
+                COALESCE(u.full_name, 'Unknown') as coordinator_name,
                 DATE(ct.task_date) as task_date,
                 SUM(CAST(ct.duration_minutes AS INTEGER)) as total_minutes,
                 COUNT(*) as task_count
