@@ -230,7 +230,7 @@ def get_unassigned_active_patients() -> pd.DataFrame:
             p.patient_id,
             p.first_name,
             p.last_name,
-            p.full_name,
+            p.first_name || ' ' || p.last_name as full_name,
             p.status,
             p.facility,
             p.provider_id,
