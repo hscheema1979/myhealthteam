@@ -2988,121 +2988,6 @@ def show():
             st.error(f"Error loading HHC View Template: {e}")
             logger.error(f"HHC View Template error: {e}", exc_info=True)
 
-    # --- TAB: Billing Report ---
-    with tab_billing:
-        # Check if user has admin role (role_id 34) and is authorized for billing
-        current_user = st.session_state.get("authenticated_user")
-        user_email = current_user.get("email", "") if current_user else ""
-        has_admin_access = False
-        show_billing = False
-
-        if current_user and "user_id" in current_user:
-            user_id = current_user["user_id"]
-            try:
-                user_roles = db.get_user_roles_by_user_id(user_id)
-                has_admin_access = any(role["role_id"] == 34 for role in user_roles)
-                # Show billing only to Justin (18) and Harpreet (12)
-                show_billing = has_admin_access and user_id in [12, 18]
-            except Exception as e:
-                st.error(f"Error checking user roles: {e}")
-                has_admin_access = False
-                show_billing = False
-
-        if show_billing:
-            # Create sub-tabs for different billing views
-            billing_tab1, billing_tab2, billing_tab3 = st.tabs(
-                [
-                    "Monthly Billing (Coordinators)",
-                    "Weekly Billing (Providers)",
-                    "Provider Payroll",
-                ]
-            )
-
-            with billing_tab1:
-                st.subheader("Monthly Coordinator Billing")
-                st.markdown(
-                    "Track coordinator billing by month using patient minutes and billing codes"
-                )
-                try:
-                    from src.dashboards.monthly_coordinator_billing_dashboard import (
-                        display_monthly_coordinator_billing_dashboard,
-                    )
-
-                    display_monthly_coordinator_billing_dashboard()
-                except Exception as e:
-                    st.error(
-                        f"Error loading monthly coordinator billing dashboard: {e}"
-                    )
-                    st.info(
-                        "Please ensure the monthly coordinator billing dashboard module is properly configured."
-                    )
-
-            with billing_tab2:
-                st.subheader("Weekly Provider Billing")
-                st.markdown(
-                    "Track provider billing by week using provider tasks and billing status"
-                )
-                try:
-                    from src.dashboards.weekly_provider_billing_dashboard_v2 import (
-                        display_weekly_provider_billing_dashboard,
-                    )
-
-                    display_weekly_provider_billing_dashboard()
-                except Exception as e:
-                    st.error(f"Error loading weekly provider billing dashboard: {e}")
-                    st.info(
-                        "Please ensure the weekly provider billing dashboard module is properly configured."
-                    )
-
-            with billing_tab3:
-                st.subheader("Weekly Provider Payroll")
-                st.markdown("Track provider payroll by week and mark providers as paid")
-                try:
-                    from src.dashboards.weekly_provider_payroll_dashboard import (
-                        display_weekly_provider_payroll_dashboard,
-                    )
-
-                    display_weekly_provider_payroll_dashboard()
-                except Exception as e:
-                    st.error(f"Error loading weekly provider payroll dashboard: {e}")
-                    st.info(
-                        "Please ensure the weekly provider payroll dashboard module is properly configured."
-                    )
-        else:
-            st.warning("Billing Access Restricted")
-            st.info(
-                "Billing dashboard access is restricted to Justin and Harpreet only."
-            )
-            st.markdown("---")
-            st.markdown(
-                "**Note:** This tab is visible but billing features are limited to authorized users."
-            )
-            st.markdown(
-                "- Current user email: `{}`".format(
-                    user_email if user_email else "Not available"
-                )
-            )
-
-    # --- TAB: ZMO ---
-    with tab_test:
-        # Import and use the shared ZMO module
-        from src.zmo_module import render_zmo_tab
-        render_zmo_tab(user_id=user_id)
-
-    # --- TAB: Workflow Analytics & Unassigned Patients ---
-    with tab_analytics_unassigned:
-        # Import the new workflow analytics and unassigned patients module
-        from src.dashboards.workflow_analytics_unassigned_module import show_workflow_analytics_unassigned_tab
-
-        # Get user's role IDs
-        user_role_ids = db.get_user_role_ids(user_id) if hasattr(db, 'get_user_role_ids') else []
-
-        # Show the workflow analytics and unassigned patients tab
-        show_workflow_analytics_unassigned_tab(
-            user_id=user_id,
-            user_role_ids=user_role_ids
-        )
-
     # --- TAB: Workflow Reassignment (Bianchi's Special View) ---
     with tab_workflow:
         st.subheader("🔧 Workflow Reassignment")
@@ -3230,3 +3115,119 @@ def show():
             if should_rerun:
                 st.cache_data.clear()
                 st.rerun()
+# --- TAB: ZMO ---
+    with tab_test:
+        # Import and use the shared ZMO module
+        from src.zmo_module import render_zmo_tab
+        render_zmo_tab(user_id=user_id)
+
+    # --- TAB: Workflow Analytics & Unassigned Patients ---
+    with tab_analytics_unassigned:
+        # Import the new workflow analytics and unassigned patients module
+        from src.dashboards.workflow_analytics_unassigned_module import show_workflow_analytics_unassigned_tab
+
+        # Get user's role IDs
+        user_role_ids = db.get_user_role_ids(user_id) if hasattr(db, 'get_user_role_ids') else []
+
+        # Show the workflow analytics and unassigned patients tab
+        show_workflow_analytics_unassigned_tab(
+            user_id=user_id,
+            user_role_ids=user_role_ids
+        )
+
+    # --- TAB: Billing Report ---
+    with tab_billing:
+        # Check if user has admin role (role_id 34) and is authorized for billing
+        current_user = st.session_state.get("authenticated_user")
+        user_email = current_user.get("email", "") if current_user else ""
+        has_admin_access = False
+        show_billing = False
+
+        if current_user and "user_id" in current_user:
+            user_id = current_user["user_id"]
+            try:
+                user_roles = db.get_user_roles_by_user_id(user_id)
+                has_admin_access = any(role["role_id"] == 34 for role in user_roles)
+                # Show billing only to Justin (18) and Harpreet (12)
+                show_billing = has_admin_access and user_id in [12, 18]
+            except Exception as e:
+                st.error(f"Error checking user roles: {e}")
+                has_admin_access = False
+                show_billing = False
+
+        if show_billing:
+            # Create sub-tabs for different billing views
+            billing_tab1, billing_tab2, billing_tab3 = st.tabs(
+                [
+                    "Monthly Billing (Coordinators)",
+                    "Weekly Billing (Providers)",
+                    "Provider Payroll",
+                ]
+            )
+
+            with billing_tab1:
+                st.subheader("Monthly Coordinator Billing")
+                st.markdown(
+                    "Track coordinator billing by month using patient minutes and billing codes"
+                )
+                try:
+                    from src.dashboards.monthly_coordinator_billing_dashboard import (
+                        display_monthly_coordinator_billing_dashboard,
+                    )
+
+                    display_monthly_coordinator_billing_dashboard()
+                except Exception as e:
+                    st.error(
+                        f"Error loading monthly coordinator billing dashboard: {e}"
+                    )
+                    st.info(
+                        "Please ensure the monthly coordinator billing dashboard module is properly configured."
+                    )
+
+            with billing_tab2:
+                st.subheader("Weekly Provider Billing")
+                st.markdown(
+                    "Track provider billing by week using provider tasks and billing status"
+                )
+                try:
+                    from src.dashboards.weekly_provider_billing_dashboard_v2 import (
+                        display_weekly_provider_billing_dashboard,
+                    )
+
+                    display_weekly_provider_billing_dashboard()
+                except Exception as e:
+                    st.error(f"Error loading weekly provider billing dashboard: {e}")
+                    st.info(
+                        "Please ensure the weekly provider billing dashboard module is properly configured."
+                    )
+
+            with billing_tab3:
+                st.subheader("Weekly Provider Payroll")
+                st.markdown("Track provider payroll by week and mark providers as paid")
+                try:
+                    from src.dashboards.weekly_provider_payroll_dashboard import (
+                        display_weekly_provider_payroll_dashboard,
+                    )
+
+                    display_weekly_provider_payroll_dashboard()
+                except Exception as e:
+                    st.error(f"Error loading weekly provider payroll dashboard: {e}")
+                    st.info(
+                        "Please ensure the weekly provider payroll dashboard module is properly configured."
+                    )
+        else:
+            st.warning("Billing Access Restricted")
+            st.info(
+                "Billing dashboard access is restricted to Justin and Harpreet only."
+            )
+            st.markdown("---")
+            st.markdown(
+                "**Note:** This tab is visible but billing features are limited to authorized users."
+            )
+            st.markdown(
+                "- Current user email: `{}`".format(
+                    user_email if user_email else "Not available"
+                )
+            )
+
+    
