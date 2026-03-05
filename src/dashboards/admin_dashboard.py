@@ -296,6 +296,14 @@ def show():
     st.title("Admin Dashboard")
     user_id = st.session_state.get("user_id", None)
 
+    # Add SuperAdmin navigation link for authorized users (Justin 18, Harpreet 12)
+    if user_id in [12, 18]:
+        st.info(
+            "💰 **Billing Reports:** [Access SuperAdmin Dashboard](http://localhost:8501/superadmin) "
+            "(restricted to Harpreet & Justin only)"
+        )
+        st.markdown("---")
+
     current_user = st.session_state.get("authenticated_user", {})
     active_role_id = None
 
@@ -394,15 +402,12 @@ def show():
             "HHC View Template",
             "Workflow Reassignment",
             "ZMO",
+            "Workflow Analytics",
+            "Unassigned Patients",
         ]
 
-        # Add Billing Report for specific admin users (Justin and Harpreet)
-        current_user_id = st.session_state.get("user_id")
-        if current_user_id in [
-            12,
-            18,
-        ]:  # Harpreet=12, Justin=18 (keep as user IDs, not roles)
-            tab_names.append("Billing Report")
+        # Note: Billing Report moved to /superadmin page
+        # Only accessible to Harpreet (12) and Justin (18)
 
     elif active_role_id == 33:  # Care Provider
         tab_names = [
@@ -446,10 +451,9 @@ def show():
                 "Unassigned Patients",
             ]
 
-            # Add Billing Report for Justin (18) and Harpreet (12) at the end
-            current_user_id = st.session_state.get("user_id")
-            if current_user_id in [12, 18]:  # Harpreet=12, Justin=18
-                tab_names.append("Billing Report")
+            # Note: Billing Report moved to separate /superadmin page
+            # Accessible at: https://care.myhealthteam.org/superadmin
+            # Restricted to Justin (18) and Harpreet (12)
         else:
             # Default minimal view for other users
             tab_names = ["Patient Info"]
@@ -469,8 +473,7 @@ def show():
     tab_analytics = tabs[8] if len(tab_names) > 8 else st.empty()
     tab_unassigned = tabs[9] if len(tab_names) > 9 else st.empty()
 
-    # Billing is at index 10 (only for Justin/Harpreet)
-    tab_billing = tabs[10] if len(tab_names) > 10 else st.empty()
+    # Note: Billing Report moved to /superadmin page (removed from admin dashboard)
 
     # --- TAB: User Role Management ---
     with tab_role:
@@ -3151,99 +3154,6 @@ def show():
             user_role_ids=user_role_ids
         )
 
-    # --- TAB: Billing Report ---
-    with tab_billing:
-        # Check if user has admin role (role_id 34) and is authorized for billing
-        current_user = st.session_state.get("authenticated_user")
-        user_email = current_user.get("email", "") if current_user else ""
-        has_admin_access = False
-        show_billing = False
-
-        if current_user and "user_id" in current_user:
-            user_id = current_user["user_id"]
-            try:
-                user_roles = db.get_user_roles_by_user_id(user_id)
-                has_admin_access = any(role["role_id"] == 34 for role in user_roles)
-                # Show billing only to Justin (18) and Harpreet (12)
-                show_billing = has_admin_access and user_id in [12, 18]
-            except Exception as e:
-                st.error(f"Error checking user roles: {e}")
-                has_admin_access = False
-                show_billing = False
-
-        if show_billing:
-            # Create sub-tabs for different billing views
-            billing_tab1, billing_tab2, billing_tab3 = st.tabs(
-                [
-                    "Monthly Billing (Coordinators)",
-                    "Weekly Billing (Providers)",
-                    "Provider Payroll",
-                ]
-            )
-
-            with billing_tab1:
-                st.subheader("Monthly Coordinator Billing")
-                st.markdown(
-                    "Track coordinator billing by month using patient minutes and billing codes"
-                )
-                try:
-                    from src.dashboards.monthly_coordinator_billing_dashboard import (
-                        display_monthly_coordinator_billing_dashboard,
-                    )
-
-                    display_monthly_coordinator_billing_dashboard()
-                except Exception as e:
-                    st.error(
-                        f"Error loading monthly coordinator billing dashboard: {e}"
-                    )
-                    st.info(
-                        "Please ensure the monthly coordinator billing dashboard module is properly configured."
-                    )
-
-            with billing_tab2:
-                st.subheader("Weekly Provider Billing")
-                st.markdown(
-                    "Track provider billing by week using provider tasks and billing status"
-                )
-                try:
-                    from src.dashboards.weekly_provider_billing_dashboard_v2 import (
-                        display_weekly_provider_billing_dashboard,
-                    )
-
-                    display_weekly_provider_billing_dashboard()
-                except Exception as e:
-                    st.error(f"Error loading weekly provider billing dashboard: {e}")
-                    st.info(
-                        "Please ensure the weekly provider billing dashboard module is properly configured."
-                    )
-
-            with billing_tab3:
-                st.subheader("Weekly Provider Payroll")
-                st.markdown("Track provider payroll by week and mark providers as paid")
-                try:
-                    from src.dashboards.weekly_provider_payroll_dashboard import (
-                        display_weekly_provider_payroll_dashboard,
-                    )
-
-                    display_weekly_provider_payroll_dashboard()
-                except Exception as e:
-                    st.error(f"Error loading weekly provider payroll dashboard: {e}")
-                    st.info(
-                        "Please ensure the weekly provider payroll dashboard module is properly configured."
-                    )
-        else:
-            st.warning("Billing Access Restricted")
-            st.info(
-                "Billing dashboard access is restricted to Justin and Harpreet only."
-            )
-            st.markdown("---")
-            st.markdown(
-                "**Note:** This tab is visible but billing features are limited to authorized users."
-            )
-            st.markdown(
-                "- Current user email: `{}`".format(
-                    user_email if user_email else "Not available"
-                )
-            )
-
-    
+    # Note: Billing Report functionality moved to /superadmin page
+    # Navigate to: https://care.myhealthteam.org/superadmin
+    # Access restricted to Justin (18) and Harpreet (12)
