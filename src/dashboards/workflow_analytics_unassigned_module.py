@@ -114,6 +114,13 @@ def get_workflow_delay_tracking() -> Tuple[pd.DataFrame, pd.DataFrame]:
 
         # Calculate delayed and late
         if not df.empty:
+            # Convert to numeric, handling any string values
+            df['expected_cycle_time_days'] = pd.to_numeric(df['expected_cycle_time_days'], errors='coerce')
+            df['days_in_workflow'] = pd.to_numeric(df['days_in_workflow'], errors='coerce')
+
+            # Fill NULL values with a default (7 days if cycle_time is NULL)
+            df['expected_cycle_time_days'] = df['expected_cycle_time_days'].fillna(7.0)
+
             # Delayed: Exceeds 150% of expected cycle time
             df['is_delayed'] = df['days_in_workflow'] > (df['expected_cycle_time_days'] * 1.5)
 
