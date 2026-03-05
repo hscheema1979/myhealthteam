@@ -807,6 +807,13 @@ CREATE INDEX IF NOT EXISTS idx_patient_panel_coordinator_id ON patient_panel(coo
 CREATE INDEX IF NOT EXISTS idx_patient_panel_status ON patient_panel(status);
 CREATE INDEX IF NOT EXISTS idx_patient_panel_facility ON patient_panel(facility);
 CREATE INDEX IF NOT EXISTS idx_patient_panel_last_visit ON patient_panel(last_visit_date);
+-- Indexes for new enhancement columns
+CREATE INDEX IF NOT EXISTS idx_patient_panel_hh_status ON patient_panel(hh_status);
+CREATE INDEX IF NOT EXISTS idx_patient_panel_smartph_active ON patient_panel(smartph_active);
+CREATE INDEX IF NOT EXISTS idx_patient_panel_bh_team ON patient_panel(bh_team);
+CREATE INDEX IF NOT EXISTS idx_patient_panel_cog_team ON patient_panel(cog_team);
+CREATE INDEX IF NOT EXISTS idx_patient_panel_rpm_team ON patient_panel(rpm_team);
+CREATE INDEX IF NOT EXISTS idx_patient_panel_transportation_status ON patient_panel(transportation_status);
 SELECT 'Post-import processing complete' as status,
     (
         SELECT COUNT(*)

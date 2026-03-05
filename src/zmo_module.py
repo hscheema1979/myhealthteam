@@ -56,6 +56,9 @@ PATIENT_PANEL_COLUMNS = {
     "labs_notes", "imaging_notes", "general_notes", "next_appointment_date",
     # Display names (computed, stored as text columns)
     "care_provider_name", "care_coordinator_name",
+    # Patient Panel Enhancement Columns
+    "transportation_status", "hh_status", "medlist_date", "smartph_active",
+    "language", "rpm_team", "bh_team", "cog_team", "pcp_name", "consents",
     # Metadata
     "updated_date",
 }
@@ -119,6 +122,9 @@ PATIENTS_TABLE_COLUMNS = {
     # Medical records tracking
     "medical_records_requested", "referral_documents_received",
     "insurance_cards_received", "emed_signature_received",
+    # Patient Panel Enhancement Columns
+    "transportation_status", "hh_status", "medlist_date", "smartph_active",
+    "language", "rpm_team", "bh_team", "cog_team", "pcp_name", "consents",
 }
 
 # Columns that should NOT be editable (computed, auto-generated, or special IDs)
@@ -314,6 +320,17 @@ def format_column_name(col: str) -> str:
         "imaging_notes": "Imaging Notes",
         "general_notes": "General Notes",
         "next_appointment_date": "Next Appointment Date",
+        # Patient Panel Enhancement Columns
+        "transportation_status": "Transportation Status",
+        "hh_status": "HH Status",
+        "medlist_date": "MedList Date",
+        "smartph_active": "SmartPh Active",
+        "language": "Language",
+        "rpm_team": "RPM Team",
+        "bh_team": "BH Team",
+        "cog_team": "Cog Team",
+        "pcp_name": "PCP Name",
+        "consents": "Consents",
     }
     return overrides.get(col, name)
 
@@ -854,10 +871,32 @@ def _render_patient_data_tab(
                 # Skip readonly columns - they'll use default config
                 # (changes won't be saved due to save function filtering)
                 continue
-            elif col in ["labs_notes", "imaging_notes", "general_notes", "next_appointment_date"]:
-                # Notes columns - use wider text column
+            elif col in ["labs_notes", "imaging_notes", "general_notes", "next_appointment_date", "consents", "rpm_team", "pcp_name", "language"]:
+                # Notes and text columns - use wider text column
                 col_config[col] = st.column_config.TextColumn(
                     display_name, width="large"
+                )
+            elif col in ["transportation_status", "hh_status"]:
+                # Status columns - use selectbox-like text column with help text
+                col_config[col] = st.column_config.TextColumn(
+                    display_name,
+                    width="medium",
+                    help="Available / Unavailable" if col == "transportation_status" else "Active / Discharged"
+                )
+            elif col in ["smartph_active", "bh_team", "cog_team"]:
+                # Boolean columns - use number column with 0/1 values
+                col_config[col] = st.column_config.NumberColumn(
+                    display_name,
+                    width="small",
+                    help="0 = No, 1 = Yes",
+                    min_value=0,
+                    max_value=1,
+                    step=1
+                )
+            elif col == "medlist_date":
+                # Date column - use text column for date string
+                col_config[col] = st.column_config.TextColumn(
+                    display_name, width="medium", help="Last updated timestamp"
                 )
             elif pd.api.types.is_float_dtype(dtype) or pd.api.types.is_integer_dtype(dtype):
                 col_config[col] = st.column_config.NumberColumn(

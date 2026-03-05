@@ -1451,6 +1451,17 @@ def populate_patient_panel(conn):
                 transportation TEXT,
                 preferred_language TEXT,
 
+                transportation_status TEXT,
+                hh_status TEXT,
+                medlist_date TEXT,
+                smartph_active INTEGER DEFAULT 0,
+                language TEXT,
+                rpm_team TEXT,
+                bh_team INTEGER DEFAULT 0,
+                cog_team INTEGER DEFAULT 0,
+                pcp_name TEXT,
+                consents TEXT,
+
                 updated_date TEXT DEFAULT (datetime('now'))
             )
         """)
@@ -1540,6 +1551,17 @@ def populate_patient_panel(conn):
 
             NULL as transportation,
             NULL as preferred_language,
+
+            p.transportation_status,
+            p.hh_status,
+            p.medlist_date,
+            COALESCE(p.smartph_active, 0) as smartph_active,
+            p.language,
+            p.rpm_team,
+            COALESCE(p.bh_team, 0) as bh_team,
+            COALESCE(p.cog_team, 0) as cog_team,
+            p.pcp_name,
+            p.consents,
 
             datetime('now') as updated_date
         FROM patients p
