@@ -1856,17 +1856,18 @@ def show(user_id, user_role_ids=None):
     onboarding_queue = database.get_provider_onboarding_queue(user_id)
 
     if has_cpm_role:
-        
+
         # Create tabs with management functionality for CPM
         if onboarding_queue and len(onboarding_queue) > 0:
-            tab1, tab2, tab3, tab4, tab5, tab_analytics, tab_zmo, tab_help = st.tabs(
+            tab1, tab2, tab3, tab4, tab5, tab_analytics, tab_unassigned, tab_zmo, tab_help = st.tabs(
                 [
                     "My Patients",
                     "Team Management",
                     "Onboarding Queue & Initial TV Visits",
                     "Phone Reviews",
                     "Task Review",
-                    "Analytics & Unassigned",
+                    "Analytics",
+                    "Unassigned Patients",
                     "ZMO (Patient Data)",
                     "Help",
                 ]
@@ -1892,19 +1893,40 @@ def show(user_id, user_role_ids=None):
             with tab5:
                 show_task_review_section(user_id)
 
+            with tab_analytics:
+                # Import workflow analytics module
+                from src.dashboards.workflow_analytics_unassigned_module import show_workflow_analytics_only_tab
+
+                # Show workflow analytics only
+                show_workflow_analytics_only_tab(
+                    user_id=user_id,
+                    user_role_ids=user_role_ids
+                )
+
+            with tab_unassigned:
+                # Import unassigned patients module
+                from src.dashboards.workflow_analytics_unassigned_module import show_unassigned_patients_only_tab
+
+                # Show unassigned patients only
+                show_unassigned_patients_only_tab(
+                    user_id=user_id,
+                    user_role_ids=user_role_ids
+                )
+
             with tab_zmo:
                 from src.zmo_module import render_zmo_tab
                 render_zmo_tab(user_id=user_id)
             with tab_help:
                 render_comprehensive_help_with_visuals()
         else:
-            tab1, tab2, tab3, tab4, tab_analytics, tab_zmo, tab_help = st.tabs(
+            tab1, tab2, tab3, tab4, tab_analytics, tab_unassigned, tab_zmo, tab_help = st.tabs(
                 [
                     "My Patients",
                     "Team Management",
                     "Phone Reviews",
                     "Task Review",
-                    "Analytics & Unassigned",
+                    "Analytics",
+                    "Unassigned Patients",
                     "ZMO (Patient Data)",
                     "Help",
                 ]
@@ -1922,15 +1944,27 @@ def show(user_id, user_role_ids=None):
 
             with tab4:
                 show_task_review_section(user_id)
-            with tab_analytics:
-                # Import the new workflow analytics and unassigned patients module
-                from src.dashboards.workflow_analytics_unassigned_module import show_workflow_analytics_unassigned_tab
 
-                # Show the workflow analytics and unassigned patients tab
-                show_workflow_analytics_unassigned_tab(
+            with tab_analytics:
+                # Import workflow analytics module
+                from src.dashboards.workflow_analytics_unassigned_module import show_workflow_analytics_only_tab
+
+                # Show workflow analytics only
+                show_workflow_analytics_only_tab(
                     user_id=user_id,
                     user_role_ids=user_role_ids
                 )
+
+            with tab_unassigned:
+                # Import unassigned patients module
+                from src.dashboards.workflow_analytics_unassigned_module import show_unassigned_patients_only_tab
+
+                # Show unassigned patients only
+                show_unassigned_patients_only_tab(
+                    user_id=user_id,
+                    user_role_ids=user_role_ids
+                )
+
             with tab_zmo:
                 from src.zmo_module import render_zmo_tab
                 render_zmo_tab(user_id=user_id)
