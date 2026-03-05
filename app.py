@@ -390,6 +390,24 @@ def main():
     # Set sidebar title
     st.sidebar.title("Zen Medicine")
 
+    # Hide SuperAdmin and app menu items for unauthorized users
+    # Only Justin (user_id 18) and Harpreet (user_id 12) can see these
+    current_user_id = st.session_state.get("user_id")
+    is_superadmin = current_user_id in [12, 18]  # Harpreet, Justin
+
+    if not is_superadmin:
+        # Inject CSS to hide SuperAdmin menu items from navigation
+        hide_menu_css = """
+        <style>
+        /* Hide SuperAdmin page from sidebar navigation */
+        div[data-testid="stSidebarNav"] a[href*="/superadmin"],
+        div[data-testid="stSidebarNav"] a[href*="/app"] {
+            display: none !important;
+        }
+        </style>
+        """
+        st.markdown(hide_menu_css, unsafe_allow_html=True)
+
     # Route: dedicated Help pages via query params
     try:
         # Streamlit >=1.32: st.query_params, older: experimental_get_query_params

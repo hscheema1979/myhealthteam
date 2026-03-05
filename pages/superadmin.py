@@ -222,4 +222,16 @@ if __name__ == "__main__":
     ):
         st.switch_page("app.py")
     else:
-        show_superadmin_dashboard()
+        # Check authorization (only Justin 18 and Harpreet 12)
+        current_user = st.session_state.get("authenticated_user")
+        user_id = current_user.get("user_id") if current_user else None
+
+        if not check_billing_access(user_id):
+            st.error("🚫 Access Denied")
+            st.warning("You do not have permission to access the SuperAdmin Billing Dashboard.")
+            st.info("This page is restricted to authorized billing administrators only.")
+            st.markdown("---")
+            if st.button("← Return to Main Dashboard", key="return_to_main_unauthorized"):
+                st.switch_page("app.py")
+        else:
+            show_superadmin_dashboard()
