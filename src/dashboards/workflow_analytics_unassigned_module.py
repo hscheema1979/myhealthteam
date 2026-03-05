@@ -642,14 +642,112 @@ def display_jans_view(df: pd.DataFrame):
 
 
 # =============================================================================
-# MAIN TAB COMPONENT
+# MAIN TAB COMPONENTS
 # =============================================================================
+
+def show_workflow_analytics_only_tab(user_id: int, user_role_ids: List[int]):
+    """
+    Display Workflow Analytics content directly without creating sub-tabs.
+
+    This function shows ONLY the workflow analytics content (FR-2.x features).
+
+    Args:
+        user_id: Current user ID
+        user_role_ids: List of user's role IDs
+
+    Usage in dashboard:
+        with tab_analytics:
+            show_workflow_analytics_only_tab(user_id, user_role_ids)
+    """
+    # Apply professional styling
+    from src.config.ui_style_config import apply_custom_css
+    apply_custom_css()
+
+    st.header("Workflow Analytics & Monitoring")
+    st.markdown("### Performance Monitoring")
+
+    # Summary metrics
+    display_workflow_metrics_summary()
+
+    st.markdown("---")
+
+    # Detailed analytics
+    col1, col2 = st.columns(2)
+
+    with col1:
+        display_step_level_metrics()
+
+    with col2:
+        display_delay_tracking()
+
+    st.markdown("---")
+
+    # Stagnation alerts (full width)
+    display_stagnation_alerts()
+
+
+def show_unassigned_patients_only_tab(user_id: int, user_role_ids: List[int]):
+    """
+    Display Unassigned Patients content directly without creating sub-tabs.
+
+    This function shows ONLY the unassigned patients content (FR-3.x features).
+    It creates its own internal sub-tabs for Andrew's View and Jan's View.
+
+    Args:
+        user_id: Current user ID
+        user_role_ids: List of user's role IDs
+
+    Usage in dashboard:
+        with tab_unassigned:
+            show_unassigned_patients_only_tab(user_id, user_role_ids)
+    """
+    # Apply professional styling
+    from src.config.ui_style_config import apply_custom_css
+    apply_custom_css()
+
+    st.header("Unassigned Patient Management")
+    st.markdown("### Patient Assignment Management")
+
+    # Get base data
+    unassigned_df = get_unassigned_active_patients()
+
+    if unassigned_df.empty:
+        st.info(f"{TextStyle.INFO_INDICATOR}: No unassigned active patients found.")
+        return
+
+    # Summary metrics
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        no_coordinator = unassigned_df[unassigned_df['coordinator_id'].isna() | (unassigned_df['coordinator_id'] == 0)]
+        st.metric(get_metric_label("No Coordinator", is_current_month=True), len(no_coordinator))
+
+    with col2:
+        no_provider = unassigned_df[unassigned_df['provider_id'].isna() | (unassigned_df['provider_id'] == 0)]
+        st.metric(get_metric_label("No Provider", is_current_month=True), len(no_provider))
+
+    with col3:
+        st.metric(get_metric_label("Total Unassigned", is_current_month=True), len(unassigned_df))
+
+    # Tab system for views (internal sub-tabs within this tab)
+    tab_andrew, tab_jan = st.tabs(["Andrew's View", "Jan's View"])
+
+    with tab_andrew:
+        display_andrews_view(no_coordinator)
+
+    with tab_jan:
+        display_jans_view(no_provider)
+
 
 def show_workflow_analytics_unassigned_tab(user_id: int, user_role_ids: List[int]):
     """
     Main entry point for Workflow Analytics & Unassigned Patients tab.
 
-    This function should be called from the dashboard's tab system.
+    This function creates sub-tabs for both features and should be used when
+    you want a single tab that contains both features as sub-tabs.
+
+    NOTE: For dashboards that need separate tabs, use:
+    - show_workflow_analytics_only_tab() for analytics only
+    - show_unassigned_patients_only_tab() for unassigned patients only
 
     Args:
         user_id: Current user ID

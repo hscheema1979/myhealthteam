@@ -3126,27 +3126,27 @@ def show():
     # --- TAB: Workflow Analytics ---
     with tab_analytics:
         # Import the workflow analytics module
-        from src.dashboards.workflow_analytics_unassigned_module import show_workflow_analytics_unassigned_tab
+        from src.dashboards.workflow_analytics_unassigned_module import show_workflow_analytics_only_tab
 
         # Get user's role IDs
         user_role_ids = db.get_user_role_ids(user_id) if hasattr(db, 'get_user_role_ids') else []
 
-        # Show workflow analytics (with sub-tabs for analytics/unassigned)
-        show_workflow_analytics_unassigned_tab(
+        # Show workflow analytics only (no sub-tabs)
+        show_workflow_analytics_only_tab(
             user_id=user_id,
             user_role_ids=user_role_ids
         )
 
     # --- TAB: Unassigned Patients ---
     with tab_unassigned:
-        # Import the workflow analytics module (same module, displays unassigned patients)
-        from src.dashboards.workflow_analytics_unassigned_module import show_workflow_analytics_unassigned_tab
+        # Import the workflow analytics module
+        from src.dashboards.workflow_analytics_unassigned_module import show_unassigned_patients_only_tab
 
         # Get user's role IDs
         user_role_ids = db.get_user_role_ids(user_id) if hasattr(db, 'get_user_role_ids') else []
 
-        # Show unassigned patients (with sub-tabs for analytics/unassigned)
-        show_workflow_analytics_unassigned_tab(
+        # Show unassigned patients only (no sub-tabs at this level)
+        show_unassigned_patients_only_tab(
             user_id=user_id,
             user_role_ids=user_role_ids
         )
