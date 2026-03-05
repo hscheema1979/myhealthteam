@@ -435,8 +435,6 @@ def show():
             # Both admin and coordinator managers get the full admin dashboard
             tab_names = [
                 "User Role Management",
-                "Workflow Analytics",
-                "Unassigned Patients",
                 "Staff Onboarding",
                 "Coordinator Tasks",
                 "Provider Tasks",
@@ -444,6 +442,8 @@ def show():
                 "HHC View Template",
                 "Workflow Reassignment",
                 "ZMO",
+                "Workflow Analytics",
+                "Unassigned Patients",
             ]
 
             # Add Billing Report for Justin (18) and Harpreet (12) at the end
@@ -459,15 +459,15 @@ def show():
 
     # Assign to variables while handling different tab counts
     tab_role = tabs[0] if len(tab_names) > 0 else st.empty()
-    tab_analytics = tabs[1] if len(tab_names) > 1 else st.empty()
-    tab_unassigned = tabs[2] if len(tab_names) > 2 else st.empty()
-    tab_onboard = tabs[3] if len(tab_names) > 3 else st.empty()
-    tab_coord_tasks = tabs[4] if len(tab_names) > 4 else st.empty()
-    tab_prov_tasks = tabs[5] if len(tab_names) > 5 else st.empty()
-    tab3 = tabs[6] if len(tab_names) > 6 else st.empty()
-    tab_hhc = tabs[7] if len(tab_names) > 7 else st.empty()
-    tab_workflow = tabs[8] if len(tab_names) > 8 else st.empty()
-    tab_test = tabs[9] if len(tab_names) > 9 else st.empty()
+    tab_onboard = tabs[1] if len(tab_names) > 1 else st.empty()
+    tab_coord_tasks = tabs[2] if len(tab_names) > 2 else st.empty()
+    tab_prov_tasks = tabs[3] if len(tab_names) > 3 else st.empty()
+    tab3 = tabs[4] if len(tab_names) > 4 else st.empty()
+    tab_hhc = tabs[5] if len(tab_names) > 5 else st.empty()
+    tab_workflow = tabs[6] if len(tab_names) > 6 else st.empty()
+    tab_test = tabs[7] if len(tab_names) > 7 else st.empty()
+    tab_analytics = tabs[8] if len(tab_names) > 8 else st.empty()
+    tab_unassigned = tabs[9] if len(tab_names) > 9 else st.empty()
 
     # Billing is at index 10 (only for Justin/Harpreet)
     tab_billing = tabs[10] if len(tab_names) > 10 else st.empty()
