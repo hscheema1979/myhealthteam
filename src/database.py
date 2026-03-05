@@ -3981,6 +3981,73 @@ def get_coordinator_monthly_patient_service_minutes(coordinator_id, months_back=
         conn.close()
 
 
+def get_coordinator_daily_minutes(year, month, coordinator_id=None, start_date=None, end_date=None):
+    """
+    Get daily minutes logged per coordinator for a specific month.
+
+    Args:
+        year: Year (e.g., 2025)
+        month: Month (1-12)
+        coordinator_id: Optional coordinator ID to filter. If None, returns all coordinators.
+        start_date: Optional start date filter (YYYY-MM-DD format)
+        end_date: Optional end date filter (YYYY-MM-DD format)
+
+    Returns:
+        List of dicts with keys: coordinator_id, coordinator_name, task_date, total_minutes, task_count
+    """
+    conn = get_db_connection()
+    try:
+        table_name = f"coordinator_tasks_{year}_{str(month).zfill(2)}"
+
+        # Check if table exists
+        table_exists = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+            (table_name,),
+        ).fetchone()
+
+        if not table_exists:
+            return []
+
+        # Build base query
+        query = f"""
+            SELECT
+                ct.coordinator_id,
+                COALESCE(u.full_name, ct.coordinator_name, 'Unknown') as coordinator_name,
+                DATE(ct.task_date) as task_date,
+                SUM(CAST(ct.duration_minutes AS INTEGER)) as total_minutes,
+                COUNT(*) as task_count
+            FROM {table_name} ct
+            LEFT JOIN users u ON CAST(ct.coordinator_id AS INTEGER) = u.user_id
+            WHERE ct.duration_minutes IS NOT NULL
+            AND CAST(ct.duration_minutes AS INTEGER) > 0
+        """
+
+        params = []
+
+        # Add coordinator filter if specified
+        if coordinator_id is not None:
+            query += " AND ct.coordinator_id = ?"
+            params.append(coordinator_id)
+
+        # Add date range filters if specified
+        if start_date:
+            query += " AND DATE(ct.task_date) >= ?"
+            params.append(start_date)
+
+        if end_date:
+            query += " AND DATE(ct.task_date) <= ?"
+            params.append(end_date)
+
+        # Group by coordinator and date
+        query += " GROUP BY ct.coordinator_id, u.full_name, ct.coordinator_name, DATE(ct.task_date)"
+        query += " ORDER BY DATE(ct.task_date) ASC, coordinator_name ASC"
+
+        result = conn.execute(query, params).fetchall()
+        return [dict(row) for row in result]
+    finally:
+        conn.close()
+
+
 def get_provider_patient_panel_enhanced(user_id):
     """Get all patients from unified patient_panel table for Provider dashboard filtering"""
     conn = get_db_connection()

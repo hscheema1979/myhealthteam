@@ -675,7 +675,235 @@ def show_coordinator_tasks_tab(
                     st.info("No coordinator summary data available for this month.")
         except Exception as e:
             st.error(f"Error loading coordinator monthly summary: {e}")
-    
+
+    # --- Daily Minutes Summary Table (FR-1.1, FR-1.2, FR-1.3) ---
+    st.divider()
+    st.subheader(
+        f"Daily Minutes Summary ({calendar.month_name[selected_month]} {selected_year})"
+    )
+    st.caption("Track daily productivity for each coordinator")
+
+    try:
+        # Date range filters
+        filter_col1, filter_col2, filter_col3 = st.columns(3)
+
+        with filter_col1:
+            # Get first and last day of selected month
+            first_day = f"{selected_year}-{selected_month:02d}-01"
+            if selected_month == 12:
+                last_day = f"{selected_year + 1}-01-01"
+            else:
+                last_day = f"{selected_year}-{selected_month + 1:02d}-01"
+
+            # Calculate last day of month
+            import datetime
+            if selected_month == 12:
+                last_day_of_month = datetime.date(selected_year, 12, 31)
+            else:
+                last_day_of_month = datetime.date(selected_year, selected_month + 1, 1) - datetime.timedelta(days=1)
+
+            last_day_date = last_day_of_month.strftime("%Y-%m-%d")
+
+            # Date range input
+            date_range = st.date_input(
+                "Date Range",
+                value=(last_day_of_month.replace(day=1), last_day_of_month),
+                format="YYYY-MM-DD",
+                key="daily_minutes_date_range"
+            )
+
+        with filter_col2:
+            # Coordinator filter
+            st.markdown("**Coordinator**")
+            all_coordinators_option = "All Coordinators"
+
+            # Get list of coordinators for the selected month
+            conn = database.get_db_connection()
+            coord_list_query = f"""
+                SELECT DISTINCT
+                    COALESCE(u.full_name, ct.coordinator_name, 'Unknown') as coordinator_name
+                FROM {table_name} ct
+                LEFT JOIN users u ON CAST(ct.coordinator_id AS INTEGER) = u.user_id
+                WHERE ct.coordinator_id IS NOT NULL
+                ORDER BY coordinator_name
+            """
+            coord_rows = conn.execute(coord_list_query).fetchall()
+            conn.close()
+
+            coordinator_options = [all_coordinators_option] + [row[0] for row in coord_rows]
+            selected_coordinator_filter = st.selectbox(
+                "Filter by Coordinator",
+                options=coordinator_options,
+                key="daily_minutes_coordinator_filter",
+                label_visibility="collapsed"
+            )
+
+        with filter_col3:
+            # View format toggle
+            st.markdown("**View Format**")
+            view_format = st.radio(
+                "Format",
+                options=["Table", "Pivot Chart"],
+                horizontal=True,
+                key="daily_minutes_view_format",
+                label_visibility="collapsed"
+            )
+
+        # Get daily minutes data with filters
+        start_date_filter = None
+        end_date_filter = None
+        coordinator_id_filter = None
+
+        if len(date_range) == 2:
+            start_date_filter = date_range[0].strftime("%Y-%m-%d")
+            end_date_filter = date_range[1].strftime("%Y-%m-%d")
+
+        # Get coordinator ID if filtering
+        if selected_coordinator_filter != all_coordinators_option:
+            # Look up coordinator_id from name
+            conn = database.get_db_connection()
+            coord_id_query = f"""
+                SELECT DISTINCT ct.coordinator_id
+                FROM {table_name} ct
+                LEFT JOIN users u ON CAST(ct.coordinator_id AS INTEGER) = u.user_id
+                WHERE COALESCE(u.full_name, ct.coordinator_name) = ?
+                LIMIT 1
+            """
+            coord_id_result = conn.execute(coord_id_query, (selected_coordinator_filter,)).fetchone()
+            if coord_id_result:
+                coordinator_id_filter = coord_id_result[0]
+            conn.close()
+
+        # Fetch daily minutes data
+        daily_data = database.get_coordinator_daily_minutes(
+            year=selected_year,
+            month=selected_month,
+            coordinator_id=coordinator_id_filter,
+            start_date=start_date_filter,
+            end_date=end_date_filter
+        )
+
+        if daily_data:
+            df_daily = pd.DataFrame(daily_data)
+
+            # View format: Table
+            if view_format == "Table":
+                # Create summary table
+                st.markdown("**Daily Productivity Table**")
+
+                # Format display
+                display_df = df_daily.copy()
+                display_df["task_date"] = pd.to_datetime(display_df["task_date"]).dt.strftime("%Y-%m-%d")
+                display_df = display_df.rename(columns={
+                    "coordinator_name": "Coordinator",
+                    "task_date": "Date",
+                    "total_minutes": "Total Minutes",
+                    "task_count": "Task Count"
+                })
+
+                # Add day of week column
+                display_df["Day of Week"] = pd.to_datetime(display_df["Date"]).dt.day_name()
+
+                # Reorder columns
+                display_df = display_df[["Coordinator", "Date", "Day of Week", "Total Minutes", "Task Count"]]
+
+                # Color code for productivity
+                def _color_minutes_row(row):
+                    try:
+                        minutes = float(row["Total Minutes"])
+                        if minutes < 30:
+                            return ["background-color: #fee5e5"] * len(row)  # Light red
+                        elif minutes < 60:
+                            return ["background-color:fef3c7"] * len(row)  # Light yellow
+                        elif minutes < 120:
+                            return ["background-color:dcfce7"] * len(row)  # Light green
+                        else:
+                            return ["background-color:dbeafe"] * len(row)  # Light blue
+                    except:
+                        return [""] * len(row)
+
+                # Apply styling
+                styled_df = display_df.style.apply(_color_minutes_row, axis=1)
+                st.dataframe(styled_df, use_container_width=True, height=400)
+
+                # Summary statistics
+                st.markdown("**Summary Statistics**")
+                col_stat1, col_stat2, col_stat3 = st.columns(3)
+
+                with col_stat1:
+                    total_minutes_all = display_df["Total Minutes"].sum()
+                    avg_minutes_per_day = display_df.groupby("Date")["Total Minutes"].sum().mean()
+                    st.metric("Total Minutes (All Coordinators)", f"{int(total_minutes_all):,}")
+                    st.metric("Avg Minutes/Day", f"{int(avg_minutes_per_day):,}")
+
+                with col_stat2:
+                    if selected_coordinator_filter == all_coordinators_option:
+                        unique_coordinators = display_df["Coordinator"].nunique()
+                        st.metric("Active Coordinators", unique_coordinators)
+                    else:
+                        coordinator_total = display_df[display_df["Coordinator"] == selected_coordinator_filter]["Total Minutes"].sum()
+                        st.metric(f"{selected_coordinator_filter} Total", f"{int(coordinator_total):,}")
+
+                with col_stat3:
+                    total_tasks = display_df["Task Count"].sum()
+                    avg_tasks_per_day = display_df.groupby("Date")["Task Count"].sum().mean()
+                    st.metric("Total Tasks", f"{int(total_tasks):,}")
+                    st.metric("Avg Tasks/Day", f"{int(avg_tasks_per_day):,}")
+
+            # View format: Pivot Chart
+            else:
+                st.markdown("**Daily Productivity Pivot Chart**")
+
+                # Create pivot table
+                pivot_df = df_daily.pivot_table(
+                    index="task_date",
+                    columns="coordinator_name",
+                    values="total_minutes",
+                    aggfunc="sum",
+                    fill_value=0
+                ).reset_index()
+
+                # Format date column
+                pivot_df["task_date"] = pd.to_datetime(pivot_df["task_date"]).dt.strftime("%m/%d")
+
+                # Rename columns for display
+                pivot_df = pivot_df.rename(columns={"task_date": "Date"})
+
+                # Set Date as index
+                pivot_df = pivot_df.set_index("Date")
+
+                # Display pivot table with heatmap styling
+                st.dataframe(
+                    pivot_df.style.background_gradient(cmap="Blues", axis=None),
+                    use_container_width=True
+                )
+
+                # Create bar chart
+                st.markdown("**Daily Minutes by Coordinator**")
+                chart_df = df_daily.copy()
+                chart_df["task_date"] = pd.to_datetime(chart_df["task_date"]).dt.strftime("%m/%d")
+
+                import plotly.express as px
+                fig = px.bar(
+                    chart_df,
+                    x="task_date",
+                    y="total_minutes",
+                    color="coordinator_name",
+                    title="Daily Minutes Logged by Coordinator",
+                    labels={"task_date": "Date", "total_minutes": "Minutes", "coordinator_name": "Coordinator"},
+                    height=400
+                )
+                fig.update_layout(xaxis_title="Date", yaxis_title="Minutes")
+                st.plotly_chart(fig, use_container_width=True)
+
+        else:
+            st.info(f"No daily minutes data available for the selected criteria.")
+
+    except Exception as e:
+        st.error(f"Error loading daily minutes summary: {e}")
+        import traceback
+        traceback.print_exc()
+
     st.divider()
     
     # --- Coordinator Tasks Table ---
