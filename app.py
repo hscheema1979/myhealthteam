@@ -392,37 +392,31 @@ def main():
     current_user_id = st.session_state.get("user_id")
     is_superadmin = current_user_id in [12, 18]  # Harpreet, Justin
 
-    custom_nav_css = """
+    custom_css = """
     <style>
-    /* Rename 'app' to 'Zen Medicine' in navigation */
-    div[data-testid="stSidebarNav"] a[href*="/app"] span:last-child {
-        visibility: hidden;
-        position: relative;
+    /* Hide the original "app" text and show "Zen Medicine" instead */
+    div[data-testid="stSidebarNav"] a[href="/app"] {
+        font-size: 0;
     }
-    div[data-testid="stSidebarNav"] a[href*="/app"] span:last-child::after {
+    div[data-testid="stSidebarNav"] a[href="/app"]::before {
         content: "Zen Medicine";
-        visibility: visible;
-        position: absolute;
-        left: 0;
-        top: 0;
+        font-size: 14px;
+        font-weight: 400;
     }
     """
 
     if not is_superadmin:
         # Hide SuperAdmin for non-superadmin users
-        custom_nav_css += """
-    div[data-testid="stSidebarNav"] a[href*="/superadmin"] {
+        custom_css += """
+    div[data-testid="stSidebarNav"] a[href="/superadmin"] {
         display: none !important;
     }
     """
-    else:
-        # Keep SuperAdmin visible for authorized users
-        pass
 
-    custom_nav_css += """
+    custom_css += """
     </style>
     """
-    st.markdown(custom_nav_css, unsafe_allow_html=True)
+    st.markdown(custom_css, unsafe_allow_html=True)
 
 
     # Route: dedicated Help pages via query params
