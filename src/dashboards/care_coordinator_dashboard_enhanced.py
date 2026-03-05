@@ -968,6 +968,17 @@ def show_coordinator_patient_list(user_id, context="default"):
         "coordinator_name": "Coordinator Name",
         "care_provider_name": "Provider",
         "care_coordinator_name": "Coordinator",
+        # Patient Panel Enhancement Columns
+        "transportation_status": "Transportation Status",
+        "hh_status": "HH Status",
+        "medlist_date": "MedList Date",
+        "smartph_active": "SmartPh Active",
+        "language": "Language",
+        "rpm_team": "RPM Team",
+        "bh_team": "BH Team",
+        "cog_team": "Cog Team",
+        "pcp_name": "PCP Name",
+        "consents": "Consents",
     }
     required_columns = [
         "Status",
@@ -989,6 +1000,17 @@ def show_coordinator_patient_list(user_id, context="default"):
         "Service Type",
         "Phone Number",
         "Telehealth",
+        # Patient Panel Enhancement Columns
+        "Transportation Status",
+        "HH Status",
+        "MedList Date",
+        "SmartPh Active",
+        "Language",
+        "RPM Team",
+        "BH Team",
+        "Cog Team",
+        "PCP Name",
+        "Consents",
     ]
     # Metrics for active patient counts (show only once, no dropdown)
     allowed_statuses = ["Active", "Active-Geri", "Active-PCP", "Hospice"]
@@ -1129,7 +1151,7 @@ def show_coordinator_patient_list(user_id, context="default"):
 
     st.subheader("Patient Panel")
     st.caption(
-        "Columns: Status, First Name, Last Name, Med POC, Med Phone, Appt POC, Appt Phone, Nurse POC, Nurse Phone, Facility, Provider, Coordinator, Last Visit Date, Service Type, Phone Number, Telehealth"
+        "Columns: Status, First Name, Last Name, Med POC, Med Phone, Appt POC, Appt Phone, Nurse POC, Nurse Phone, Facility, Provider, Coordinator, Last Visit Date, Service Type, Phone Number, Telehealth, Transportation Status, HH Status, MedList Date, SmartPh Active, Language, RPM Team, BH Team, Cog Team, PCP Name, Consents"
     )
 
     st.dataframe(

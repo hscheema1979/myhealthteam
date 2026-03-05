@@ -2271,6 +2271,17 @@ def show_patient_list_section(user_id, section_id=None, has_cpm_role=False):
                 ("last_visit_date", "Last Visit Date"),
                 ("service_type", "Service Type"),
                 ("phone_primary", "Phone Number"),
+                # Patient Panel Enhancement Columns
+                ("transportation_status", "Transportation Status"),
+                ("hh_status", "HH Status"),
+                ("medlist_date", "MedList Date"),
+                ("smartph_active", "SmartPh Active"),
+                ("language", "Language"),
+                ("rpm_team", "RPM Team"),
+                ("bh_team", "BH Team"),
+                ("cog_team", "Cog Team"),
+                ("pcp_name", "PCP Name"),
+                ("consents", "Consents"),
             ]
             patients_df = pd.DataFrame(filtered_patients)
             # Ensure all required columns are present and sourced from patient_data_list
