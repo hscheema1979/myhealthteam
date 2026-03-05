@@ -183,13 +183,14 @@ def show(user_id, user_role_ids=None):
         st.info(
             f"**Management Access**: You have {' & '.join(role_text)} privileges with additional tabs available"
         )
-        tab1, tab2, tab3, tab_workflow, tab_zmo, tab4 = st.tabs(
+        tab1, tab2, tab3, tab_workflow, tab_zmo, tab_analytics, tab4 = st.tabs(
             [
                 "My Patients",
                 "Phone Reviews",
                 "Team Management",
                 "Workflow Reassignment",
                 "ZMO (Patient Data)",
+                "Analytics & Unassigned",
                 "Help",
             ]
         )
@@ -338,6 +339,17 @@ def show(user_id, user_role_ids=None):
         with tab_zmo:
             from src.zmo_module import render_zmo_tab
             render_zmo_tab(user_id=user_id)
+
+        with tab_analytics:
+            # Import the new workflow analytics and unassigned patients module
+            from src.dashboards.workflow_analytics_unassigned_module import show_workflow_analytics_unassigned_tab
+
+            # Show the workflow analytics and unassigned patients tab
+            show_workflow_analytics_unassigned_tab(
+                user_id=user_id,
+                user_role_ids=user_role_ids
+            )
+
     else:
         # Non-management coordinator view: provide My Patients + Help tabs (no Team Management)
         tab1, tab_task_review, tab_zmo, tab2 = st.tabs(

@@ -1859,13 +1859,14 @@ def show(user_id, user_role_ids=None):
         
         # Create tabs with management functionality for CPM
         if onboarding_queue and len(onboarding_queue) > 0:
-            tab1, tab2, tab3, tab4, tab5, tab_zmo, tab_help = st.tabs(
+            tab1, tab2, tab3, tab4, tab5, tab_analytics, tab_zmo, tab_help = st.tabs(
                 [
                     "My Patients",
                     "Team Management",
                     "Onboarding Queue & Initial TV Visits",
                     "Phone Reviews",
                     "Task Review",
+                    "Analytics & Unassigned",
                     "ZMO (Patient Data)",
                     "Help",
                 ]
@@ -1897,12 +1898,13 @@ def show(user_id, user_role_ids=None):
             with tab_help:
                 render_comprehensive_help_with_visuals()
         else:
-            tab1, tab2, tab3, tab4, tab_zmo, tab_help = st.tabs(
+            tab1, tab2, tab3, tab4, tab_analytics, tab_zmo, tab_help = st.tabs(
                 [
                     "My Patients",
                     "Team Management",
                     "Phone Reviews",
                     "Task Review",
+                    "Analytics & Unassigned",
                     "ZMO (Patient Data)",
                     "Help",
                 ]
@@ -1920,6 +1922,15 @@ def show(user_id, user_role_ids=None):
 
             with tab4:
                 show_task_review_section(user_id)
+            with tab_analytics:
+                # Import the new workflow analytics and unassigned patients module
+                from src.dashboards.workflow_analytics_unassigned_module import show_workflow_analytics_unassigned_tab
+
+                # Show the workflow analytics and unassigned patients tab
+                show_workflow_analytics_unassigned_tab(
+                    user_id=user_id,
+                    user_role_ids=user_role_ids
+                )
             with tab_zmo:
                 from src.zmo_module import render_zmo_tab
                 render_zmo_tab(user_id=user_id)
@@ -1955,6 +1966,15 @@ def show(user_id, user_role_ids=None):
 
             with tab4:
                 show_task_review_section(user_id)
+            with tab_analytics:
+                # Import the new workflow analytics and unassigned patients module
+                from src.dashboards.workflow_analytics_unassigned_module import show_workflow_analytics_unassigned_tab
+
+                # Show the workflow analytics and unassigned patients tab
+                show_workflow_analytics_unassigned_tab(
+                    user_id=user_id,
+                    user_role_ids=user_role_ids
+                )
             with tab_zmo:
                 from src.zmo_module import render_zmo_tab
                 render_zmo_tab(user_id=user_id)

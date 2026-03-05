@@ -442,6 +442,7 @@ def show():
                 "HHC View Template",
                 "Workflow Reassignment",
                 "ZMO",
+                "Workflow Analytics & Unassigned",
             ]
 
             # Add Billing Report for Justin (18) and Harpreet (12) at the end
@@ -464,9 +465,10 @@ def show():
     tab_hhc = tabs[5] if len(tab_names) > 5 else st.empty()
     tab_workflow = tabs[6] if len(tab_names) > 6 else st.empty()
     tab_test = tabs[7] if len(tab_names) > 7 else st.empty()
+    tab_analytics_unassigned = tabs[8] if len(tab_names) > 8 else st.empty()
 
-    # Billing is at index 8 (only for Justin/Harpreet)
-    tab_billing = tabs[8] if len(tab_names) > 8 else st.empty()
+    # Billing is at index 9 (only for Justin/Harpreet)
+    tab_billing = tabs[9] if len(tab_names) > 9 else st.empty()
 
     # --- TAB: User Role Management ---
     with tab_role:
@@ -3086,6 +3088,20 @@ def show():
         # Import and use the shared ZMO module
         from src.zmo_module import render_zmo_tab
         render_zmo_tab(user_id=user_id)
+
+    # --- TAB: Workflow Analytics & Unassigned Patients ---
+    with tab_analytics_unassigned:
+        # Import the new workflow analytics and unassigned patients module
+        from src.dashboards.workflow_analytics_unassigned_module import show_workflow_analytics_unassigned_tab
+
+        # Get user's role IDs
+        user_role_ids = db.get_user_role_ids(user_id) if hasattr(db, 'get_user_role_ids') else []
+
+        # Show the workflow analytics and unassigned patients tab
+        show_workflow_analytics_unassigned_tab(
+            user_id=user_id,
+            user_role_ids=user_role_ids
+        )
 
     # --- TAB: Workflow Reassignment (Bianchi's Special View) ---
     with tab_workflow:
