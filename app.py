@@ -390,23 +390,56 @@ def main():
     # Set sidebar title
     st.sidebar.title("Zen Medicine")
 
-    # Hide SuperAdmin and app menu items for unauthorized users
-    # Only Justin (user_id 18) and Harpreet (user_id 12) can see these
+    # Hide default Streamlit navigation menu items
+    # Only show custom navigation we control
     current_user_id = st.session_state.get("user_id")
     is_superadmin = current_user_id in [12, 18]  # Harpreet, Justin
 
+    # Inject CSS to customize navigation menu
+    custom_nav_css = """
+    <style>
+    /* Hide the default "app" menu item for everyone */
+    div[data-testid="stSidebarNav"] a[href*="/app"] {
+        display: none !important;
+    }
+
+    /* Hide SuperAdmin for non-superadmin users */
+    """
     if not is_superadmin:
-        # Inject CSS to hide SuperAdmin menu items from navigation
-        hide_menu_css = """
-        <style>
-        /* Hide SuperAdmin page from sidebar navigation */
-        div[data-testid="stSidebarNav"] a[href*="/superadmin"],
-        div[data-testid="stSidebarNav"] a[href*="/app"] {
-            display: none !important;
-        }
-        </style>
-        """
-        st.markdown(hide_menu_css, unsafe_allow_html=True)
+        custom_nav_css += """
+    div[data-testid="stSidebarNav"] a[href*="/superadmin"] {
+        display: none !important;
+    }
+    """
+    else:
+        # Keep SuperAdmin visible for authorized users, but hide app
+        custom_nav_css += """
+    /* Keep superadmin visible for Justin & Harpreet */
+    """
+
+    custom_nav_css += """
+    /* Remove any header/spacing above login section */
+    div[data-testid="stSidebar"] > div:first-child {
+        display: none !important;
+    }
+
+    /* Clean up sidebar spacing */
+    [data-testid="stSidebar"] [data-testid="stVerticalBlock"] {
+        gap: 0rem;
+    }
+    </style>
+    """
+    st.markdown(custom_nav_css, unsafe_allow_html=True)
+
+    # Add a "Home" link in the sidebar to replace the hidden "app" link
+    # This is visible to all users
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### **Navigation**")
+    if st.sidebar.button("🏠 **Zen Medicine**", key="nav_home", use_container_width=True):
+        # Clear any query params and go to main page
+        st.switch_page("app.py")
+    st.sidebar.markdown("---")
+
 
     # Route: dedicated Help pages via query params
     try:
