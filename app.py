@@ -34,6 +34,7 @@ from src.dashboards import (
     weekly_provider_payroll_dashboard,
 )
 from src.dashboards import results_reviewer_dashboard
+from src.dashboards import view_only_dashboard
 from src.database import (
     add_user,
     get_all_users,
@@ -608,6 +609,8 @@ def main():
                 results_reviewer_dashboard.show_results_reviewer_dashboard(user_id)
             elif dashboard_role == 42:  # Facility
                 facility_review_dashboard.show(user_id, user_role_ids)
+            elif dashboard_role in (44, 45, 46, 47):  # View-Only dashboards
+                view_only_dashboard.show(user_id, user_role_ids)
             else:
                 st.error(f"Unrecognized dashboard role: {dashboard_role}")
                 st.info("Please contact your administrator.")
