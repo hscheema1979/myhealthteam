@@ -59,6 +59,8 @@ PATIENT_PANEL_COLUMNS = {
     # Patient Panel Enhancement Columns
     "transportation_status", "hh_status", "medlist_date", "smartph_active",
     "language", "rpm_team", "bh_team", "cog_team", "pcp_name", "consents",
+    # 7 New Columns (DME, eTV Panel, XRx, CareTeam, Folder, AWV, DD)
+    "dme", "etv_panel", "xrx", "care_team", "folder", "awv", "dd",
     # Metadata
     "updated_date",
 }
@@ -125,6 +127,8 @@ PATIENTS_TABLE_COLUMNS = {
     # Patient Panel Enhancement Columns
     "transportation_status", "hh_status", "medlist_date", "smartph_active",
     "language", "rpm_team", "bh_team", "cog_team", "pcp_name", "consents",
+    # 7 New Columns (DME, eTV Panel, XRx, CareTeam, Folder, AWV, DD)
+    "dme", "etv_panel", "xrx", "care_team", "folder", "awv", "dd",
 }
 
 # Columns that should NOT be editable (computed, auto-generated, or special IDs)
@@ -331,6 +335,14 @@ def format_column_name(col: str) -> str:
         "cog_team": "Cog Team",
         "pcp_name": "PCP Name",
         "consents": "Consents",
+        # 7 New Columns
+        "dme": "DME",
+        "etv_panel": "eTV Panel",
+        "xrx": "XRx",
+        "care_team": "CareTeam",
+        "folder": "Folder",
+        "awv": "AWV",
+        "dd": "DD",
     }
     return overrides.get(col, name)
 
@@ -871,7 +883,7 @@ def _render_patient_data_tab(
                 # Skip readonly columns - they'll use default config
                 # (changes won't be saved due to save function filtering)
                 continue
-            elif col in ["labs_notes", "imaging_notes", "general_notes", "next_appointment_date", "consents", "rpm_team", "pcp_name", "language"]:
+            elif col in ["labs_notes", "imaging_notes", "general_notes", "next_appointment_date", "consents", "rpm_team", "pcp_name", "language", "dme", "etv_panel", "xrx", "care_team", "folder", "awv", "dd"]:
                 # Notes and text columns - use wider text column
                 col_config[col] = st.column_config.TextColumn(
                     display_name, width="large"

@@ -979,6 +979,14 @@ def show_coordinator_patient_list(user_id, context="default"):
         "cog_team": "Cog Team",
         "pcp_name": "PCP Name",
         "consents": "Consents",
+        # 7 New Columns
+        "dme": "DME",
+        "etv_panel": "eTV Panel",
+        "xrx": "XRx",
+        "care_team": "CareTeam",
+        "folder": "Folder",
+        "awv": "AWV",
+        "dd": "DD",
     }
     required_columns = [
         "Status",
@@ -1011,6 +1019,14 @@ def show_coordinator_patient_list(user_id, context="default"):
         "Cog Team",
         "PCP Name",
         "Consents",
+        # 7 New Columns
+        "DME",
+        "eTV Panel",
+        "XRx",
+        "CareTeam",
+        "Folder",
+        "AWV",
+        "DD",
     ]
     # Metrics for active patient counts (show only once, no dropdown)
     allowed_statuses = ["Active", "Active-Geri", "Active-PCP", "Hospice"]
@@ -1151,7 +1167,7 @@ def show_coordinator_patient_list(user_id, context="default"):
 
     st.subheader("Patient Panel")
     st.caption(
-        "Columns: Status, First Name, Last Name, Med POC, Med Phone, Appt POC, Appt Phone, Nurse POC, Nurse Phone, Facility, Provider, Coordinator, Last Visit Date, Service Type, Phone Number, Telehealth, Transportation Status, HH Status, MedList Date, SmartPh Active, Language, RPM Team, BH Team, Cog Team, PCP Name, Consents"
+        "Columns: Status, First Name, Last Name, Med POC, Med Phone, Appt POC, Appt Phone, Nurse POC, Nurse Phone, Facility, Provider, Coordinator, Last Visit Date, Service Type, Phone Number, Telehealth, Transportation Status, HH Status, MedList Date, SmartPh Active, Language, RPM Team, BH Team, Cog Team, PCP Name, Consents, DME, eTV Panel, XRx, CareTeam, Folder, AWV, DD"
     )
 
     st.dataframe(

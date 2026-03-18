@@ -2316,6 +2316,14 @@ def show_patient_list_section(user_id, section_id=None, has_cpm_role=False):
                 ("cog_team", "Cog Team"),
                 ("pcp_name", "PCP Name"),
                 ("consents", "Consents"),
+                # 7 New Columns
+                ("dme", "DME"),
+                ("etv_panel", "eTV Panel"),
+                ("xrx", "XRx"),
+                ("care_team", "CareTeam"),
+                ("folder", "Folder"),
+                ("awv", "AWV"),
+                ("dd", "DD"),
             ]
             patients_df = pd.DataFrame(filtered_patients)
             # Ensure all required columns are present and sourced from patient_data_list
@@ -3221,6 +3229,25 @@ def show_unfiltered_patient_summary(patients_list=None, height=900):
         ("last_visit_date", "Last Visit Date"),
         ("service_type", "Service Type"),
         ("phone_primary", "Phone Number"),
+        # Patient Panel Enhancement Columns
+        ("transportation_status", "Transportation Status"),
+        ("hh_status", "HH Status"),
+        ("medlist_date", "MedList Date"),
+        ("smartph_active", "SmartPh Active"),
+        ("language", "Language"),
+        ("rpm_team", "RPM Team"),
+        ("bh_team", "BH Team"),
+        ("cog_team", "Cog Team"),
+        ("pcp_name", "PCP Name"),
+        ("consents", "Consents"),
+        # 7 New Columns
+        ("dme", "DME"),
+        ("etv_panel", "eTV Panel"),
+        ("xrx", "XRx"),
+        ("care_team", "CareTeam"),
+        ("folder", "Folder"),
+        ("awv", "AWV"),
+        ("dd", "DD"),
     ]
 
     try:

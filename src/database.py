@@ -4436,6 +4436,23 @@ def get_all_patient_panel():
             imaging_notes,
             general_notes,
             next_appointment_date,
+            transportation_status,
+            hh_status,
+            medlist_date,
+            smartph_active,
+            language,
+            rpm_team,
+            bh_team,
+            cog_team,
+            pcp_name,
+            consents,
+            dme,
+            etv_panel,
+            xrx,
+            care_team,
+            folder,
+            awv,
+            dd,
             updated_date
         FROM patient_panel
         ORDER BY last_name, first_name
