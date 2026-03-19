@@ -159,7 +159,7 @@ ASSIGNMENT_COLUMNS = {
 
 # Persistent columns that must always be visible
 PERSISTENT_VISIBLE_COLUMNS = {
-    col for col in ["patient_id", "first_name", "last_name", "status"]
+    col for col in ["patient_id", "first_name", "last_name", "care_provider_name", "care_coordinator_name", "status"]
 }
 
 # Configuration file path for column settings
@@ -707,9 +707,9 @@ def _render_patient_data_tab(
             )
 
         with search_col2:
-            if st.button("Clear search", key="zmo_clear_search"):
+            def _clear_search():
                 st.session_state["zmo_search_input"] = ""
-                st.rerun()
+            st.button("Clear search", key="zmo_clear_search", on_click=_clear_search)
 
         # Filter merged data based on patient search
         if patient_search:
@@ -729,6 +729,16 @@ def _render_patient_data_tab(
         st.markdown("### Column Management")
 
         all_cols = list(merged.columns)
+
+        # Reorder: move care_provider_name and care_coordinator_name right after facility
+        _priority_after_facility = ["care_provider_name", "care_coordinator_name"]
+        if "facility" in all_cols:
+            _insert_at = all_cols.index("facility") + 1
+            for _col in reversed(_priority_after_facility):
+                if _col in all_cols:
+                    all_cols.remove(_col)
+                    all_cols.insert(_insert_at, _col)
+
         visible_cols, col_order = load_column_config(all_cols)
 
         # Column search and filter controls
@@ -752,20 +762,20 @@ def _render_patient_data_tab(
 
         with col_controls[2]:
             st.write("")  # Vertical spacer
-            if st.button("Clear Results", key="zmo_clear_results", use_container_width=True):
+            def _clear_results():
                 st.session_state["zmo_search_input"] = ""
                 st.session_state["zmo_col_search"] = ""
                 st.session_state["zmo_show_only"] = False
-                st.rerun()
+            st.button("Clear Results", key="zmo_clear_results", use_container_width=True, on_click=_clear_results)
 
         with col_controls[3]:
             st.write("")  # Vertical spacer
-            if st.button("Reset Columns", key="zmo_reset_cols", use_container_width=True):
+            def _reset_cols():
                 save_column_config(all_cols, all_cols)
                 st.session_state["zmo_col_search"] = ""
                 st.session_state["zmo_show_only"] = False
                 st.session_state["zmo_search_input"] = ""
-                st.rerun()
+            st.button("Reset Columns", key="zmo_reset_cols", use_container_width=True, on_click=_reset_cols)
 
         # Filter columns based on search term
         filtered_cols = all_cols
@@ -776,7 +786,7 @@ def _render_patient_data_tab(
         # Persistent columns that must always be visible
         persistent_cols = [
             col for col in all_cols
-            if any(name in col.lower() for name in ["patient_id", "first_name", "last_name", "status"])
+            if any(name in col.lower() for name in ["patient_id", "first_name", "last_name", "care_provider_name", "care_coordinator_name", "status"])
         ]
 
         # Show/hide columns with checkboxes
