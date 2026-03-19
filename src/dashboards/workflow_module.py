@@ -940,13 +940,26 @@ def show_workflow_management(
     with left_col:
         selected_instance_id = None
         if workflow_options:
+            options_list = list(workflow_options.keys())
+
+            # Restore previously selected workflow after rerun
+            default_index = 0
+            prev_instance_id = st.session_state.get("_wf_selected_instance_id")
+            if prev_instance_id is not None:
+                for i, label in enumerate(options_list):
+                    if workflow_options[label] == prev_instance_id:
+                        default_index = i
+                        break
+
             selected_workflow_text = st.selectbox(
                 "Select Ongoing Workflow:",
-                list(workflow_options.keys()),
+                options_list,
+                index=default_index,
                 key="workflow_action_select_dropdown",
                 label_visibility="visible",
             )
             selected_instance_id = workflow_options[selected_workflow_text]
+            st.session_state["_wf_selected_instance_id"] = selected_instance_id
             # --- Place Resume Workflow, Complete Next Step, and Assign to Me in a single row ---
             if selected_instance_id:
                 resume_btn_key = f"resume_workflow_{selected_instance_id}"
