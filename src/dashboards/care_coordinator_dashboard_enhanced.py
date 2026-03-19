@@ -1196,7 +1196,8 @@ def show_coordinator_patient_list(user_id, context="default"):
 
     # Determine if coordinator filter is broadened beyond just the current user
     show_all_coordinators_workflows = (
-        "All Coordinators" in selected_coordinators
+        not selected_coordinators  # empty list = no filter = all coordinators
+        or "All Coordinators" in selected_coordinators
         or len(selected_coordinators) > 1
         or (len(selected_coordinators) == 1 and selected_coordinators[0] != current_user_name)
     )
