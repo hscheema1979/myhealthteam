@@ -86,8 +86,8 @@ def create_workflow_instance(template_id, patient_id, coordinator_id, notes=None
         patient_id_to_store = normalize_patient_id(patient_id, conn=conn)
         cursor = conn.execute(
             """
-            INSERT INTO workflow_instances (template_id, template_name, patient_id, patient_name, coordinator_id, coordinator_name, workflow_status, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, 'Active', datetime('now'))
+            INSERT INTO workflow_instances (template_id, template_name, patient_id, patient_name, coordinator_id, coordinator_name, workflow_status, current_owner_role, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, 'Active', 'CC', datetime('now'))
         """,
             (
                 template_id,
@@ -386,10 +386,10 @@ def complete_workflow_step(
             date_col = f"step{step_order}_date"
             duration_col = f"step{step_order}_duration_minutes"
 
-            # Find the next incomplete step to update current_step
+            # Find the next incomplete step to update current_step and owner
             next_step = conn.execute(
                 """
-                SELECT ws.step_order
+                SELECT ws.step_order, ws.owner
                 FROM workflow_steps ws
                 JOIN workflow_instances wi ON ws.template_id = wi.template_id
                 WHERE wi.instance_id = ?
@@ -400,6 +400,7 @@ def complete_workflow_step(
 
             # Determine next incomplete step (first step where stepX_complete != 1)
             new_current_step = step_order  # Default to current step
+            new_owner_role = None
             for step_row in next_step:
                 step_num = step_row["step_order"]
                 if step_num > step_order:
@@ -412,12 +413,13 @@ def complete_workflow_step(
                     # Access sqlite3.Row using bracket notation (not .get())
                     if check_result and check_col in check_result.keys() and check_result[check_col] != 1:
                         new_current_step = step_num
+                        new_owner_role = step_row["owner"]
                         break
             # If all steps are complete, keep current_step at the last step
 
-            # Update workflow_instances with step completion AND new current_step
-            update_sql = f"UPDATE workflow_instances SET {step_col} = 1, {notes_col} = ?, {date_col} = date('now'), {duration_col} = ?, current_step = ? WHERE instance_id = ?"
-            conn.execute(update_sql, (notes, duration_minutes, new_current_step, instance_id))
+            # Update workflow_instances with step completion, new current_step, and current owner role
+            update_sql = f"UPDATE workflow_instances SET {step_col} = 1, {notes_col} = ?, {date_col} = date('now'), {duration_col} = ?, current_step = ?, current_owner_role = ? WHERE instance_id = ?"
+            conn.execute(update_sql, (notes, duration_minutes, new_current_step, new_owner_role, instance_id))
             conn.commit()
         except Exception as e:
             # Log error for debugging

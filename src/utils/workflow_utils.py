@@ -119,8 +119,9 @@ def get_ongoing_workflows(user_id, user_role_ids=None):
             workflows = conn.execute(query).fetchall()
         else:
             # For regular coordinators, show only their workflows
+            # Exclude workflows where the current step belongs to a different role (e.g., RR)
             coordinator_id = get_user_coordinator_id(user_id)
-            
+
             if coordinator_id:
                 query = """
                     SELECT *, (
@@ -130,6 +131,11 @@ def get_ongoing_workflows(user_id, user_role_ids=None):
                     WHERE workflow_status = 'Active' AND (
                         CAST(coordinator_id AS TEXT) = CAST(? AS TEXT) OR
                         CAST(current_owner_user_id AS TEXT) = CAST(? AS TEXT)
+                    )
+                    AND (
+                        wi.current_owner_role IS NULL
+                        OR wi.current_owner_role = ''
+                        OR wi.current_owner_role = 'CC'
                     )
                     ORDER BY created_at DESC
                 """
