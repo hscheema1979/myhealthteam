@@ -749,29 +749,37 @@ from src import database
 
 
 def show_workflow_management(
-    user_id, coordinator_id, active_patients, filtered_patients=None, user_role_ids=None
+    user_id, coordinator_id, active_patients, filtered_patients=None, user_role_ids=None,
+    show_all_patient_workflows=False
 ):
-    from src.utils.workflow_utils import get_ongoing_workflows
+    from src.utils.workflow_utils import get_ongoing_workflows, get_workflows_by_patient_ids
 
-    workflow_data = get_ongoing_workflows(user_id, user_role_ids)
-
-    # Filter workflows to only show those for patients currently visible in the patient filter
-    if filtered_patients and len(filtered_patients) > 0:
-        # Get patient IDs from filtered patients
+    if show_all_patient_workflows and filtered_patients and len(filtered_patients) > 0:
+        # When coordinator filter is broadened, fetch ALL workflows for the filtered patients
         filtered_patient_ids = set()
         for patient in filtered_patients:
             patient_id = patient.get("patient_id")
             if patient_id:
                 filtered_patient_ids.add(str(patient_id))
+        workflow_data = get_workflows_by_patient_ids(filtered_patient_ids)
+    else:
+        workflow_data = get_ongoing_workflows(user_id, user_role_ids)
 
-        # Filter workflow data to only include workflows for filtered patients
-        filtered_workflow_data = []
-        for wf in workflow_data or []:
-            wf_patient_id = str(wf.get("patient_id", ""))
-            if wf_patient_id in filtered_patient_ids:
-                filtered_workflow_data.append(wf)
+        # Filter workflows to only show those for patients currently visible in the patient filter
+        if filtered_patients and len(filtered_patients) > 0:
+            filtered_patient_ids = set()
+            for patient in filtered_patients:
+                patient_id = patient.get("patient_id")
+                if patient_id:
+                    filtered_patient_ids.add(str(patient_id))
 
-        workflow_data = filtered_workflow_data
+            filtered_workflow_data = []
+            for wf in workflow_data or []:
+                wf_patient_id = str(wf.get("patient_id", ""))
+                if wf_patient_id in filtered_patient_ids:
+                    filtered_workflow_data.append(wf)
+
+            workflow_data = filtered_workflow_data
 
     # --- Add custom CSS for workflow action buttons ---
     st.markdown(

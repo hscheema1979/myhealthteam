@@ -101,6 +101,55 @@ def get_user_coordinator_id(user_id):
         conn.close()
 
 
+def get_workflows_by_patient_ids(patient_ids):
+    """Get all active workflows for a set of patient IDs, regardless of which coordinator started them."""
+    if not patient_ids:
+        return []
+    try:
+        conn = database.get_db_connection()
+        # Build placeholders for IN clause
+        placeholders = ",".join(["?" for _ in patient_ids])
+        query = f"""
+            SELECT *, (
+                SELECT COUNT(*) FROM workflow_steps ws WHERE ws.template_id = wi.template_id
+            ) as total_steps
+            FROM workflow_instances wi
+            WHERE workflow_status = 'Active'
+              AND patient_id IN ({placeholders})
+            ORDER BY created_at DESC
+        """
+        workflows = conn.execute(query, list(patient_ids)).fetchall()
+        conn.close()
+
+        formatted = []
+        for wf in workflows:
+            wf = dict(wf)
+            current_step = wf.get('current_step', 1)
+            total_steps = wf.get('total_steps', 0)
+            if total_steps and current_step > total_steps:
+                current_step = total_steps
+            formatted.append({
+                'instance_id': wf['instance_id'],
+                'patient_name': wf.get('patient_name', 'Unknown'),
+                'patient_id': wf.get('patient_id'),
+                'workflow_type': wf.get('template_name'),
+                'coordinator_id': wf.get('coordinator_id'),
+                'coordinator_name': wf.get('coordinator_name'),
+                'current_owner_user_id': wf.get('current_owner_user_id'),
+                'current_owner_name': wf.get('current_owner_name'),
+                'current_step': current_step,
+                'total_steps': total_steps,
+                'step_progress': f"Step {current_step} of {total_steps}" if total_steps else "N/A",
+                'priority': wf.get('priority', 'Medium'),
+                'created_date': wf.get('created_at')[:10] if wf.get('created_at') else 'N/A',
+                'workflow_status': wf.get('workflow_status', 'Active'),
+            })
+        return formatted
+    except Exception as e:
+        print(f"Error getting workflows by patient IDs: {e}")
+        return []
+
+
 def get_ongoing_workflows(user_id, user_role_ids=None):
     """Get ongoing workflows for a user: all active workflows where the user is the coordinator or the current owner."""
     try:

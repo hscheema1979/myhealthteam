@@ -1194,12 +1194,20 @@ def show_coordinator_patient_list(user_id, context="default"):
     # --- Restore Workflow Management UI ---
     from src.dashboards.workflow_module import show_workflow_management
 
+    # Determine if coordinator filter is broadened beyond just the current user
+    show_all_coordinators_workflows = (
+        "All Coordinators" in selected_coordinators
+        or len(selected_coordinators) > 1
+        or (len(selected_coordinators) == 1 and selected_coordinators[0] != current_user_name)
+    )
+
     show_workflow_management(
         user_id=user_id,
         coordinator_id=user_id,  # Pass user_id as coordinator_id for workflow compatibility
         active_patients=active_patient_names,
         filtered_patients=patient_data_list,  # Pass filtered patient data for workflow filtering
         user_role_ids=user_role_ids,
+        show_all_patient_workflows=show_all_coordinators_workflows,
     )
 
     # Define available task types for the task entry UI
