@@ -106,6 +106,32 @@ Comprehensive documentation is available in the `docs/` directory:
 - API documentation
 - Deployment guides
 
+## 🚀 Development & Deployment Pipeline
+
+All changes follow a 3-stage pipeline: **Dev -> Test -> Prod**.
+
+### Environments
+
+| Environment | Server | Path | Port |
+|-------------|--------|------|------|
+| **Dev** | VPS5 | `/home/ubuntu/projects/myhealthteam` | 8501 |
+| **Test** | VPS2 | `/opt/test_myhealthteam` | 8503 |
+| **Prod** | VPS2 | `/opt/myhealthteam` | 8501 |
+
+### Workflow
+
+1. **Develop** on VPS5 — make changes, run local tests, commit & push to GitHub
+2. **Test** on VPS2 test instance — pull, restart (port 8503), run e2e tests with Playwright
+3. **Deploy** to VPS2 prod instance — pull, restart (port 8501), verify health check
+
+### Running E2E Tests
+
+```bash
+ssh root@100.103.208.24 "cd /opt/test_myhealthteam && venv/bin/python tests/e2e/test_name.py"
+```
+
+See `CLAUDE.md` for detailed deployment instructions and SSH access info.
+
 ## 🤝 Contributing
 
 1. Fork the repository

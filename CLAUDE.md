@@ -393,41 +393,93 @@ st.info(f"{TextStyle.INFO_INDICATOR}: Data updated successfully")
 - Error Red: `#d62728`
 - Neutral Gray: `#7f7f7f` (historical data)
 
-## VPS Deployment
+## Development & Deployment Pipeline
 
-### Quick Deploy to VPS2
+**IMPORTANT**: All changes MUST follow this 3-stage pipeline: Dev (VPS5) -> Test (VPS2) -> Prod (VPS2).
+
+### Environment Overview
+
+| Environment | Server | Path | Port | Purpose |
+|-------------|--------|------|------|---------|
+| **Dev** | VPS5 (`vps-4c55fcfa`) | `/home/ubuntu/projects/myhealthteam` | 8501 | Local development, coding, unit tests |
+| **Test** | VPS2 (`srv1167106`) | `/opt/test_myhealthteam` | 8503 | Integration testing, e2e tests, QA |
+| **Prod** | VPS2 (`srv1167106`) | `/opt/myhealthteam` | 8501 | Live production (care.myhealthteam.org) |
+
+### SSH Access
+
+- **VPS5 (Dev)**: Local — this is where Claude Code runs
+- **VPS2 (Test + Prod)**: `ssh root@100.103.208.24` (via Tailscale)
+
+### Deployment Workflow
+
+```
+1. DEVELOP on VPS5 (local)
+   - Make code changes
+   - Run local tests
+   - Commit to git, push to GitHub
+
+2. TEST on VPS2 /opt/test_myhealthteam (port 8503)
+   - Pull latest: ssh root@100.103.208.24 "cd /opt/test_myhealthteam && git pull origin main"
+   - Apply schema changes if needed: sqlite3 production.db < src/sql/migration.sql
+   - Restart: kill the streamlit process, then:
+     cd /opt/test_myhealthteam && nohup venv/bin/streamlit run app.py --server.port=8503 --server.address=127.0.0.1 > /tmp/test_myhealthteam.log 2>&1 &
+   - Run e2e tests: venv/bin/python tests/e2e/test_name.py
+   - Verify manually if needed
+
+3. DEPLOY to VPS2 /opt/myhealthteam (port 8501) — ONLY after tests pass
+   - Pull latest: ssh root@100.103.208.24 "cd /opt/myhealthteam && git pull origin main"
+   - Apply schema changes if needed
+   - Restart: kill the streamlit process, then:
+     cd /opt/myhealthteam && nohup venv/bin/streamlit run app.py --server.port=8501 --server.address=0.0.0.0 > /tmp/myhealthteam_prod.log 2>&1 &
+   - Verify: curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8501
+```
+
+### Handling Local Changes on VPS2
+
+Both test and prod instances may have local modifications. Before pulling:
 
 ```bash
-# SSH to production server
-ssh server2
+# Stash local changes
+git stash
 
-# Navigate to application directory
-cd /opt/myhealthteam
-
-# Pull latest changes
+# Pull latest
 git pull origin main
 
-# Restart the service
-sudo systemctl restart myhealthteam
-
-# Verify service status
-sudo systemctl status myhealthteam
+# If untracked files conflict:
+mv conflicting_file.py conflicting_file.py.local_backup
+git pull origin main
 ```
 
 ### Applying Schema Changes on VPS2
 
-When adding new columns or tables:
+When adding new columns or tables, apply to BOTH test and prod databases:
 
 ```bash
-ssh server2 "cd /opt/myhealthteam && sqlite3 production.db < src/sql/add_new_columns.sql"
+# Test instance
+ssh root@100.103.208.24 "cd /opt/test_myhealthteam && sqlite3 production.db < src/sql/add_new_columns.sql"
+
+# Prod instance (after testing)
+ssh root@100.103.208.24 "cd /opt/myhealthteam && sqlite3 production.db < src/sql/add_new_columns.sql"
 ```
 
 ### Production Environment
 
-- **Service**: `myhealthteam` (systemd)
+- **URL**: `https://care.myhealthteam.org`
 - **Database**: `/opt/myhealthteam/production.db`
-- **Logs**: `journalctl -u myhealthteam -f`
-- **Redirect URI**: `https://care.myhealthteam.org`
+- **Test Database**: `/opt/test_myhealthteam/production.db` (separate copy)
+- **Logs**: `/tmp/myhealthteam_prod.log`
+
+### E2E Tests (run on VPS2 test instance)
+
+```bash
+ssh root@100.103.208.24 "cd /opt/test_myhealthteam && venv/bin/python tests/e2e/test_name.py"
+```
+
+Available tests in `tests/e2e/`:
+- `test_zmo_search_fix.py` — ZMO search/clear button session_state regression
+- `test_7_columns_and_zmo.py` — Patient panel columns and ZMO editability
+- `test_view_only_dashboards.py` — View-only dashboard access
+- `test_workflow_fix.py` — Workflow ownership filter (RR workflows hidden from CC)
 
 ## SQL Scripts
 
